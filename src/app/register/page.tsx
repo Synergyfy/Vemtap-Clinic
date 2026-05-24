@@ -7,7 +7,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { 
   User, Building2, MapPin, CreditCard, 
   CheckCircle2, ArrowRight, ArrowLeft, 
-  ShieldCheck, Globe, Zap, Users, QrCode
+  ShieldCheck, Globe, Zap, Users, QrCode,
+  Eye, EyeOff
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -16,10 +17,13 @@ const steps = ["Account", "Clinic Info", "Branch Setup", "Plan"];
 
 export default function RegisterPage() {
   const [currentStep, setCurrentStep] = useState(0);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [formData, setFormData] = useState({
     // Account
     email: "",
     password: "",
+    confirmPassword: "",
     fullName: "",
     // Clinic Info
     clinicName: "",
@@ -80,16 +84,49 @@ export default function RegisterPage() {
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-bold text-slate-700">Password</label>
-                <input
-                  type="password"
-                  value={formData.password}
-                  onChange={(e) => updateForm("password", e.target.value)}
-                  className="w-full px-6 py-4 rounded-2xl bg-slate-50 border border-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-blue/50"
-                  placeholder="••••••••"
-                />
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    value={formData.password}
+                    onChange={(e) => updateForm("password", e.target.value)}
+                    className="w-full px-6 py-4 rounded-2xl bg-slate-50 border border-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-blue/50"
+                    placeholder="••••••••"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-400 hover:text-brand-blue transition-colors"
+                  >
+                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  </button>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-slate-700">Confirm Password</label>
+                <div className="relative">
+                  <input
+                    type={showConfirmPassword ? "text" : "password"}
+                    value={formData.confirmPassword}
+                    onChange={(e) => updateForm("confirmPassword", e.target.value)}
+                    className="w-full px-6 py-4 rounded-2xl bg-slate-50 border border-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-blue/50"
+                    placeholder="••••••••"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-400 hover:text-brand-blue transition-colors"
+                  >
+                    {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  </button>
+                </div>
               </div>
             </div>
-            <Button variant="primary" className="w-full py-5 text-lg font-bold rounded-2xl mt-4" onClick={nextStep} disabled={!formData.email || !formData.password}>
+            <Button 
+              variant="primary" 
+              className="w-full py-5 text-lg font-bold rounded-2xl mt-4" 
+              onClick={nextStep} 
+              disabled={!formData.email || !formData.password || formData.password !== formData.confirmPassword}
+            >
               Continue to Clinic Setup
             </Button>
             <p className="text-center text-sm text-slate-500">

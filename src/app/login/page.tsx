@@ -79,12 +79,23 @@ export default function LoginPage() {
                 <label htmlFor="remember" className="text-xs text-slate-500 font-medium">Keep me logged in for 30 days</label>
               </div>
 
-              <Link href="/dashboard" className="block w-full">
+              <Link href="/admin/dashboard" className="block w-full">
                 <Button variant="primary" className="w-full py-5 text-lg font-bold rounded-2xl group shadow-lg shadow-brand-blue/20">
                   Login to Dashboard <ArrowRight size={20} className="ml-2 group-hover:translate-x-1 transition-transform" />
                 </Button>
               </Link>
             </form>
+
+            <div className="mt-8 pt-8 border-t border-slate-100">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-center mb-4">Demo Quick Access</p>
+              <div className="grid grid-cols-1 gap-3">
+                <Link href="/admin/dashboard" className="block w-full">
+                  <Button variant="dark" size="sm" className="w-full py-4 rounded-xl gap-2 text-xs">
+                    <ShieldCheck size={14} className="text-brand-blue" /> Login as Super Admin (Mock)
+                  </Button>
+                </Link>
+              </div>
+            </div>
 
             <div className="mt-8 pt-8 border-t border-slate-100 text-center">
               <p className="text-sm text-slate-500">

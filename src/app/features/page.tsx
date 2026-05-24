@@ -83,24 +83,24 @@ export default function FeaturesPage() {
       <Navbar />
       
       {/* Hero Section */}
-      <section className="pt-32 pb-20 bg-brand-navy relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-1/2 h-full bg-brand-blue/10 blur-[120px] rounded-full translate-x-1/3 -translate-y-1/3"></div>
+      <section className="pt-32 pb-20 bg-white relative overflow-hidden border-b border-slate-100">
+        <div className="absolute top-0 right-0 w-1/2 h-full bg-brand-blue/5 blur-[120px] rounded-full translate-x-1/3 -translate-y-1/3"></div>
         <div className="max-w-7xl mx-auto px-6 relative z-10 text-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
           >
-            <h1 className="text-4xl md:text-6xl font-bold text-white mb-6">
+            <h1 className="text-4xl md:text-6xl font-bold text-brand-navy mb-6">
               The Most Complete <br />
               <span className="text-brand-blue">Eye Clinic</span> OS
             </h1>
-            <p className="text-xl text-slate-300 max-w-3xl mx-auto mb-10 leading-relaxed">
+            <p className="text-xl text-slate-600 max-w-3xl mx-auto mb-10 leading-relaxed">
               Every feature you need to run a modern, efficient, and profitable eye care practice. From patient check-in to HMO reconciliation.
             </p>
             <div className="flex flex-wrap justify-center gap-4">
               <Button size="lg" variant="primary" onClick={() => openModal("demo")}>Request Full Demo</Button>
-              <Button size="lg" variant="outline" className="text-white border-white/20 hover:bg-white/10" onClick={() => openModal("tour")}>Watch Product Tour</Button>
+              <Button size="lg" variant="outline" onClick={() => openModal("tour")}>Watch Product Tour</Button>
             </div>
           </motion.div>
         </div>

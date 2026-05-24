@@ -51,6 +51,14 @@ export const RequestDemoPopup = () => {
           />
         </div>
         <div className="space-y-2">
+          <label className="text-sm font-medium text-slate-700">Phone Number</label>
+          <input
+            type="tel"
+            className="w-full px-4 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-blue/50"
+            placeholder="+234 800 000 0000"
+          />
+        </div>
+        <div className="space-y-2">
           <label className="text-sm font-medium text-slate-700">Clinic Type</label>
           <select className="w-full px-4 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-blue/50 bg-white">
             <option>Single Branch Clinic</option>
