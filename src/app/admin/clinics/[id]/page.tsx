@@ -7,7 +7,8 @@ import {
   ArrowLeft, Mail, Phone, Globe, Calendar,
   CreditCard, ShieldCheck, Activity, ListTodo,
   ExternalLink, MoreVertical, Plus, Search,
-  TrendingUp, TrendingDown, Clock, ShieldAlert
+  TrendingUp, TrendingDown, Clock, ShieldAlert,
+  Settings2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -78,7 +79,7 @@ export default function ClinicDetailsPage() {
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2">
                 <span className="flex items-center gap-2 text-sm text-slate-500 font-medium">
-                  <User className="text-brand-blue" size={16} /> {clinic.owner}
+                  <Users className="text-brand-blue" size={16} /> {clinic.owner}
                 </span>
                 <span className="flex items-center gap-2 text-sm text-slate-500 font-medium">
                   <MapPin className="text-brand-blue" size={16} /> {clinic.location}
@@ -136,12 +137,11 @@ export default function ClinicDetailsPage() {
             {activeTab === "overview" && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {[
-                  { label: "Total Revenue", val: clinic.stats.totalRevenue, icon: CreditCard, color: "blue", trend: "+12.5%" },
-                  { label: "Active Patients", val: clinic.stats.activePatients, icon: Users, color: "emerald", trend: "+5.2%" },
-                  { label: "Total Branches", val: clinic.stats.totalBranches, icon: MapPin, color: "purple", trend: "0%" },
-                  { label: "Staff Strength", val: clinic.stats.totalStaff, icon: User, color: "amber", trend: "+2" },
-                ].map((stat, i) => (
-                  <div key={i} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
+                { label: "Total Revenue", val: clinic.stats.totalRevenue, icon: CreditCard, color: "blue", trend: "+12.5%" },
+                { label: "Active Patients", val: clinic.stats.activePatients, icon: Users, color: "emerald", trend: "+5.2%" },
+                { label: "Total Branches", val: clinic.stats.totalBranches, icon: MapPin, color: "purple", trend: "0%" },
+                { label: "Staff Strength", val: clinic.stats.totalStaff, icon: Users, color: "amber", trend: "+2" },
+                ].map((stat, i) => (                  <div key={i} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
                     <div className="flex items-center justify-between mb-4">
                       <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center", 
                         stat.color === "blue" ? "bg-blue-50 text-blue-500" :
@@ -222,7 +222,7 @@ export default function ClinicDetailsPage() {
                       <p className="text-xs text-slate-500 mb-4">{br.address}</p>
                       <div className="flex items-center gap-4 pt-4 border-t border-slate-100">
                         <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-600">
-                          <User size={12} className="text-brand-blue" /> {br.manager}
+                          <Users size={12} className="text-brand-blue" /> {br.manager}
                         </div>
                         <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-600">
                           <Phone size={12} className="text-brand-blue" /> {br.phone}
@@ -252,5 +252,3 @@ export default function ClinicDetailsPage() {
 }
 
 // Helper icons
-const User = ({ className, size }: { className?: string, size?: number }) => <Users className={className} size={size} />;
-const Settings2 = ({ className, size }: { className?: string, size?: number }) => <Settings2 className={className} size={size} />;

@@ -106,7 +106,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
           {/* Footer */}
           <div className="p-4 border-t border-white/5 shrink-0 bg-brand-navy/50">
-            <div className={cn("flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 cursor-pointer transition-all group", !isSidebarOpen && "lg:justify-center")}>
+            <Link href="/login" className={cn("flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 cursor-pointer transition-all group", !isSidebarOpen && "lg:justify-center")}>
               <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center border border-white/10 shrink-0">
                 <User size={20} className="text-brand-blue" />
               </div>
@@ -115,7 +115,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <p className="text-[10px] text-white/40 truncate">admin@vemtap.com</p>
               </div>
               <LogOut size={18} className={cn("text-white/40 group-hover:text-red-400 transition-colors shrink-0", !isSidebarOpen && "lg:hidden")} />
-            </div>
+            </Link>
           </div>
         </div>
       </aside>

@@ -10,6 +10,8 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useRouter } from "next/navigation";
+import { useModals } from "@/lib/modal-context";
 
 const stats = [
   { 
@@ -60,6 +62,9 @@ const alerts = [
 ];
 
 export default function AdminDashboard() {
+  const { openModal } = useModals();
+  const router = useRouter();
+
   return (
     <div className="space-y-6 lg:space-y-10">
       {/* Header - Mobile Responsive */}
@@ -72,7 +77,12 @@ export default function AdminDashboard() {
           <Button variant="outline" size="sm" className="flex-1 sm:flex-none gap-2 h-11 px-4 lg:px-6 rounded-xl font-bold border-slate-200">
             <Download size={16} /> <span className="hidden xs:inline">Reports</span>
           </Button>
-          <Button variant="primary" size="sm" className="flex-1 sm:flex-none gap-2 h-11 px-4 lg:px-6 rounded-xl font-bold shadow-lg shadow-brand-blue/20">
+          <Button 
+            variant="primary" 
+            size="sm" 
+            className="flex-1 sm:flex-none gap-2 h-11 px-4 lg:px-6 rounded-xl font-bold shadow-lg shadow-brand-blue/20"
+            onClick={() => openModal("clinic")}
+          >
             <Plus size={16} /> <span className="hidden xs:inline">New Clinic</span><span className="xs:hidden">Add Clinic</span>
           </Button>
         </div>
@@ -133,7 +143,11 @@ export default function AdminDashboard() {
               </thead>
               <tbody className="divide-y divide-slate-50">
                 {recentClinics.map((clinic, i) => (
-                  <tr key={i} className="hover:bg-slate-50/30 transition-colors group">
+                  <tr 
+                    key={i} 
+                    onClick={() => router.push(`/admin/clinics/${i + 1}`)}
+                    className="hover:bg-slate-50/30 transition-colors group cursor-pointer"
+                  >
                     <td className="px-6 lg:px-8 py-4 lg:py-5">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-400 shrink-0">
@@ -201,7 +215,11 @@ export default function AdminDashboard() {
                 </div>
               ))}
             </div>
-            <Button variant="outline" className="w-full mt-6 rounded-xl text-xs lg:text-sm font-bold py-4 lg:py-5 border-slate-200">View All Alerts</Button>
+            <Button 
+              variant="outline" 
+              className="w-full mt-6 rounded-xl text-xs lg:text-sm font-bold py-4 lg:py-5 border-slate-200" 
+              onClick={() => console.log("View All Alerts clicked")}
+            >View All Alerts</Button>
           </div>
 
           <div className="bg-brand-navy rounded-[2.5rem] p-6 lg:p-8 text-white relative overflow-hidden group">
@@ -212,7 +230,10 @@ export default function AdminDashboard() {
               Avg. response time: <span className="text-white font-bold">14 mins</span><br />
               Resolved tickets today: <span className="text-white font-bold">42</span>
             </p>
-            <Button className="w-full bg-white text-brand-navy hover:bg-slate-100 font-bold rounded-xl text-xs lg:text-sm py-4 lg:py-5 relative z-10 shadow-lg">Open Support Desk</Button>
+            <Button 
+              className="w-full bg-white text-brand-navy hover:bg-slate-100 font-bold rounded-xl text-xs lg:text-sm py-4 lg:py-5 relative z-10 shadow-lg" 
+              onClick={() => console.log("Open Support Desk clicked")}
+            >Open Support Desk</Button>
           </div>
         </div>
       </div>

@@ -51,7 +51,7 @@ export default function LoginPage() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <label className="text-sm font-bold text-slate-700">Password</label>
-                  <Link href="/forgot-password" size="sm" className="text-xs font-bold text-brand-blue hover:underline">
+                  <Link href="/forgot-password" className="text-xs font-bold text-brand-blue hover:underline">
                     Forgot Password?
                   </Link>
                 </div>
@@ -79,20 +79,32 @@ export default function LoginPage() {
                 <label htmlFor="remember" className="text-xs text-slate-500 font-medium">Keep me logged in for 30 days</label>
               </div>
 
-              <Link href="/admin/dashboard" className="block w-full">
-                <Button variant="primary" className="w-full py-5 text-lg font-bold rounded-2xl group shadow-lg shadow-brand-blue/20">
-                  Login to Dashboard <ArrowRight size={20} className="ml-2 group-hover:translate-x-1 transition-transform" />
+              {/* Login Dropdown */}
+              <div className="relative group">
+                <Button variant="primary" className="w-full py-5 text-lg font-bold rounded-2xl shadow-lg shadow-brand-blue/20">
+                  Login to Dashboard
                 </Button>
-              </Link>
+                <div className="absolute top-full left-0 w-full pt-2 opacity-0 group-hover:opacity-100 transition-opacity z-50">
+                  <div className="bg-white border border-slate-200 rounded-2xl shadow-2xl p-2">
+                    <Link href="/admin/dashboard" className="block px-4 py-3 hover:bg-slate-50 rounded-xl text-sm font-bold text-slate-700">
+                      Super Admin Dashboard
+                    </Link>
+                    <Link href="/clinic/dashboard" className="block px-4 py-3 hover:bg-slate-50 rounded-xl text-sm font-bold text-sky-600">
+                      Clinic Admin Dashboard
+                    </Link>
+                  </div>
+                </div>
+              </div>
             </form>
 
-            <div className="mt-8 pt-8 border-t border-slate-100">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-center mb-4">Demo Quick Access</p>
-              <div className="grid grid-cols-1 gap-3">
-                <Link href="/admin/dashboard" className="block w-full">
-                  <Button variant="dark" size="sm" className="w-full py-4 rounded-xl gap-2 text-xs">
-                    <ShieldCheck size={14} className="text-brand-blue" /> Login as Super Admin (Mock)
-                  </Button>
+            <div className="mt-8 pt-8 border-t border-slate-100 text-center">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Demo Quick Access</p>
+              <div className="flex gap-2">
+                <Link href="/admin/dashboard" className="flex-1">
+                  <Button variant="dark" size="sm" className="w-full py-4 rounded-xl text-xs">Admin</Button>
+                </Link>
+                <Link href="/clinic/dashboard" className="flex-1">
+                  <Button variant="dark" size="sm" className="w-full py-4 rounded-xl text-xs bg-sky-600 hover:bg-sky-700">Clinic</Button>
                 </Link>
               </div>
             </div>

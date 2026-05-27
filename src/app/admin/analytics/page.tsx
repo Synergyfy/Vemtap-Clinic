@@ -28,7 +28,7 @@ export default function PlatformAnalyticsPage() {
               </button>
             ))}
           </div>
-          <Button variant="outline" size="sm" className="gap-2">
+          <Button variant="outline" size="sm" className="gap-2" onClick={() => console.log("PDF Report clicked")}>
             <Download size={16} /> PDF Report
           </Button>
         </div>

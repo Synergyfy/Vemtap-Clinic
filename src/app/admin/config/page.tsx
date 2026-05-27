@@ -72,7 +72,12 @@ export default function ConfigHubPage() {
           <h1 className="text-2xl lg:text-3xl font-bold text-brand-navy font-black tracking-tight">Healthcare Configuration</h1>
           <p className="text-sm lg:text-base text-slate-500 mt-1">Global system settings and standardized healthcare databases.</p>
         </div>
-        <Button variant="outline" size="sm" className="w-full md:w-auto gap-2 h-11 px-6 rounded-xl font-bold border-slate-200">
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className="w-full md:w-auto gap-2 h-11 px-6 rounded-xl font-bold border-slate-200" 
+          onClick={() => console.log("Global Settings clicked")}
+        >
           <Settings2 size={16} /> <span className="md:inline">Global Settings</span>
         </Button>
       </div>
@@ -130,7 +135,10 @@ export default function ConfigHubPage() {
               Changes made here affect all clinics across the platform. Use these tools to ensure data integrity and standardize clinical workflows for eye care providers.
             </p>
           </div>
-          <Button className="w-full md:w-auto bg-white text-brand-navy hover:bg-slate-100 font-bold shrink-0 h-12 px-8 rounded-xl shadow-lg">
+          <Button 
+            className="w-full md:w-auto bg-white text-brand-navy hover:bg-slate-100 font-bold shrink-0 h-12 px-8 rounded-xl shadow-lg"
+            onClick={() => console.log("Backup Database clicked")}
+          >
             Backup Database
           </Button>
         </div>

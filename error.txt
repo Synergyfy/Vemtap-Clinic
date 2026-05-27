@@ -1,15 +1,20 @@
-Uncaught Error: Element type is invalid: expected a string (for built-in components) or a class/function (for composite components) but got: undefined. You likely forgot to export your component from the file it's defined in, or you might have mixed up default and named imports.
+## Error Type
+Build Error
 
-Check the render method of `Footer`.
-    at eval (src/components/layout/footer.tsx:25:19)
-    at Array.map (<anonymous>:1:18)
-    at Footer (src/components/layout/footer.tsx:23:51)
-    at Home (src/app/page.tsx:36:7)
-  23 |               {[Globe, Linkedin, Github,...
-  24 |                 <a key={idx} href="#" cl...
-> 25 |                   <Icon size={18} />
-     |                   ^
-  26 |                 </a>
-  27 |               ))}
-  28 |             </div>
+## Error Message
+Module not found: Can't resolve '@/components/ui/badge'
 
+## Build Output
+./src/app/clinic/patients/page.tsx:4:1
+Module not found: Can't resolve '@/components/ui/badge'
+  2 | import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+  3 | import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+> 4 | import { Badge } from "@/components/ui/badge";
+    | ^
+  5 |
+  6 | const patients = [
+  7 |   { id: "P-001", name: "Adesuwa Okoro", age: 34, lastVisit: "2 days ago", status: "Active" },
+
+https://nextjs.org/docs/messages/module-not-found
+
+Next.js version: 16.2.6 (Webpack)

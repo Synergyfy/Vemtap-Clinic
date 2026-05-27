@@ -76,14 +76,25 @@ const clinics = [
   },
 ];
 
+import { ClinicActionModal } from "@/components/popups/clinic-action-modal";
+
 export default function ClinicsListPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
+  const [activeClinic, setActiveClinic] = useState<{ id: string; name: string } | null>(null);
 
   return (
     <div className="space-y-8">
       <OnboardingModal isOpen={isOnboardingOpen} onClose={() => setIsOnboardingOpen(false)} />
+      {activeClinic && (
+        <ClinicActionModal 
+          isOpen={!!activeClinic} 
+          onClose={() => setActiveClinic(null)} 
+          clinicId={activeClinic.id} 
+          clinicName={activeClinic.name} 
+        />
+      )}
 
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -224,7 +235,12 @@ export default function ClinicsListPage() {
                           <ExternalLink size={18} />
                         </Button>
                       </Link>
-                      <Button variant="ghost" size="sm" className="h-10 w-10 p-0 rounded-xl">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-10 w-10 p-0 rounded-xl"
+                        onClick={() => setActiveClinic({ id: clinic.id, name: clinic.name })}
+                      >
                         <MoreVertical size={18} />
                       </Button>
                     </div>

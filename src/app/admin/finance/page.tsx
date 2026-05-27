@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useModals } from "@/lib/modal-context";
 
 const transactions = [
   { id: "TXN-8492", clinic: "ClearVision Eye Clinic", amount: "$1,240.00", date: "2 hours ago", method: "Paystack", status: "Success", type: "Subscription" },
@@ -21,6 +22,8 @@ const transactions = [
 ];
 
 export default function FinanceDashboardPage() {
+  const { openModal } = useModals();
+
   return (
     <div className="space-y-10">
       {/* Header */}
@@ -33,7 +36,7 @@ export default function FinanceDashboardPage() {
           <Button variant="outline" size="sm" className="gap-2">
             <Download size={16} /> Financial Report
           </Button>
-          <Button variant="primary" size="sm" className="gap-2">
+          <Button variant="primary" size="sm" className="gap-2" onClick={() => openModal("invoice")}>
             <Receipt size={16} /> Manage Invoices
           </Button>
         </div>
@@ -122,7 +125,12 @@ export default function FinanceDashboardPage() {
                       </div>
                     </td>
                     <td className="px-8 py-5 text-right">
-                      <Button variant="ghost" size="sm" className="w-8 h-8 p-0 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="w-8 h-8 p-0 rounded-lg"
+                        onClick={() => openModal("transaction")}
+                      >
                         <MoreVertical size={16} />
                       </Button>
                     </td>
@@ -178,7 +186,7 @@ export default function FinanceDashboardPage() {
             <p className="text-xs text-emerald-100 mb-6 leading-relaxed">
               Platform commissions for this period are calculated and ready for processing.
             </p>
-            <Button className="w-full bg-white text-emerald-600 hover:bg-emerald-50 font-bold rounded-xl text-sm">Review Payouts</Button>
+            <Button className="w-full bg-white text-emerald-600 hover:bg-emerald-50 font-bold rounded-xl text-sm" onClick={() => openModal("invoice")}>Review Payouts</Button>
           </div>
         </div>
       </div>

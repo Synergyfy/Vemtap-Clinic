@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, ReactNode } from "react";
 
-type ModalType = "demo" | "tour" | "sales" | null;
+type ModalType = "demo" | "tour" | "sales" | "clinic" | "invoice" | "transaction" | null;
 
 interface ModalContextType {
   activeModal: ModalType;
