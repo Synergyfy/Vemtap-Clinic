@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Modal } from "@/components/ui/modal";
+import { Tooltip } from "@/components/ui/tooltip";
 import { PageHeader } from "@/app/clinic/_components/page-header";
 import {
   defaultClinicHmoAgreements,
@@ -30,14 +31,16 @@ function inputClassName() {
   return "mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none focus:border-sky-300 focus:ring-2 focus:ring-sky-100";
 }
 
-function numberField(value: number, onChange: (v: number) => void) {
+function numberField(value: number, onChange: (v: number) => void, tooltipContent?: string) {
   return (
-    <input
-      value={String(value)}
-      onChange={(e) => onChange(Number(e.target.value || 0))}
-      inputMode="numeric"
-      className={inputClassName()}
-    />
+    <Tooltip content={tooltipContent || "Enter numerical value"}>
+      <input
+        value={String(value)}
+        onChange={(e) => onChange(Number(e.target.value || 0))}
+        inputMode="numeric"
+        className={inputClassName()}
+      />
+    </Tooltip>
   );
 }
 
@@ -119,7 +122,7 @@ export default function HMOPage() {
     <div className="space-y-8">
       <PageHeader
         title="HMO Management"
-        description="Phase 2: activate HMOs for this clinic and configure clinic-specific agreement pricing + claims settings."
+        description="Activate and configure Health Maintenance Organization agreements, pricing, and claims processing settings for your clinic."
         actions={[
           { label: "Activate HMO", onClick: () => setIsActivateOpen(true), variant: "primary", disabled: availableToActivate.length === 0 },
           { label: "Billing & finance", href: "/clinic/finance" },
@@ -212,66 +215,87 @@ export default function HMOPage() {
 
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <div>
+                      <label className="text-sm font-medium text-slate-700">Display Name</label>
+                      <Tooltip content="Custom name for internal tracking">
+                        <input
+                            value={selected.hmoName}
+                            onChange={(e) => updateSelected({ ...selected, hmoName: e.target.value })}
+                            className={inputClassName()}
+                            placeholder="Custom HMO Name"
+                        />
+                      </Tooltip>
+                    </div>
+                    <div>
                       <label className="text-sm font-medium text-slate-700">Agreement start</label>
-                      <input
-                        value={selected.agreementStartISO}
-                        onChange={(e) => updateSelected({ ...selected, agreementStartISO: e.target.value })}
-                        className={inputClassName()}
-                        placeholder="YYYY-MM-DD"
-                      />
+                      <Tooltip content="Official commencement date of the HMO contract">
+                        <input
+                            value={selected.agreementStartISO}
+                            onChange={(e) => updateSelected({ ...selected, agreementStartISO: e.target.value })}
+                            className={inputClassName()}
+                            placeholder="YYYY-MM-DD"
+                        />
+                      </Tooltip>
                     </div>
                     <div>
                       <label className="text-sm font-medium text-slate-700">Agreement end (optional)</label>
-                      <input
-                        value={selected.agreementEndISO ?? ""}
-                        onChange={(e) => updateSelected({ ...selected, agreementEndISO: e.target.value || undefined })}
-                        className={inputClassName()}
-                        placeholder="YYYY-MM-DD"
-                      />
+                      <Tooltip content="Contract expiration or renewal date">
+                        <input
+                            value={selected.agreementEndISO ?? ""}
+                            onChange={(e) => updateSelected({ ...selected, agreementEndISO: e.target.value || undefined })}
+                            className={inputClassName()}
+                            placeholder="YYYY-MM-DD"
+                        />
+                      </Tooltip>
                     </div>
                     <div>
                       <label className="text-sm font-medium text-slate-700">Billing cycle</label>
-                      <select
-                        value={selected.billingCycle}
-                        onChange={(e) =>
-                          updateSelected({ ...selected, billingCycle: e.target.value as ClinicHmoAgreement["billingCycle"] })
-                        }
-                        className={inputClassName()}
-                      >
-                        <option value="Per visit">Per visit</option>
-                        <option value="Monthly">Monthly</option>
-                      </select>
+                      <Tooltip content="Frequency of invoice generation">
+                        <select
+                            value={selected.billingCycle}
+                            onChange={(e) =>
+                            updateSelected({ ...selected, billingCycle: e.target.value as ClinicHmoAgreement["billingCycle"] })
+                            }
+                            className={inputClassName()}
+                        >
+                            <option value="Per visit">Per visit</option>
+                            <option value="Monthly">Monthly</option>
+                        </select>
+                      </Tooltip>
                     </div>
                     <div>
                       <label className="text-sm font-medium text-slate-700">Payment cycle</label>
-                      <select
-                        value={selected.paymentCycle}
-                        onChange={(e) =>
-                          updateSelected({ ...selected, paymentCycle: e.target.value as ClinicHmoAgreement["paymentCycle"] })
-                        }
-                        className={inputClassName()}
-                      >
-                        <option value="Weekly">Weekly</option>
-                        <option value="Monthly">Monthly</option>
-                        <option value="Quarterly">Quarterly</option>
-                      </select>
+                      <Tooltip content="Expected remittance frequency from the HMO">
+                        <select
+                            value={selected.paymentCycle}
+                            onChange={(e) =>
+                            updateSelected({ ...selected, paymentCycle: e.target.value as ClinicHmoAgreement["paymentCycle"] })
+                            }
+                            className={inputClassName()}
+                        >
+                            <option value="Weekly">Weekly</option>
+                            <option value="Monthly">Monthly</option>
+                            <option value="Quarterly">Quarterly</option>
+                        </select>
+                      </Tooltip>
                     </div>
                     <div className="md:col-span-2">
                       <label className="text-sm font-medium text-slate-700">Claims submission schedule</label>
-                      <select
-                        value={selected.claimsSubmissionSchedule}
-                        onChange={(e) =>
-                          updateSelected({
-                            ...selected,
-                            claimsSubmissionSchedule: e.target.value as ClinicHmoAgreement["claimsSubmissionSchedule"],
-                          })
-                        }
-                        className={inputClassName()}
-                      >
-                        <option value="Monthly">Monthly</option>
-                        <option value="Bi-weekly">Bi-weekly</option>
-                        <option value="Weekly">Weekly</option>
-                      </select>
+                      <Tooltip content="Scheduled timing for batch claim submission">
+                        <select
+                            value={selected.claimsSubmissionSchedule}
+                            onChange={(e) =>
+                            updateSelected({
+                                ...selected,
+                                claimsSubmissionSchedule: e.target.value as ClinicHmoAgreement["claimsSubmissionSchedule"],
+                            })
+                            }
+                            className={inputClassName()}
+                        >
+                            <option value="Monthly">Monthly</option>
+                            <option value="Bi-weekly">Bi-weekly</option>
+                            <option value="Weekly">Weekly</option>
+                        </select>
+                      </Tooltip>
                     </div>
                   </div>
                 </section>
@@ -282,55 +306,64 @@ export default function HMOPage() {
                     <div>
                       <label className="text-sm font-medium text-slate-700">Consultation</label>
                       {numberField(selected.pricingRules.consultation, (v) =>
-                        updateSelected({ ...selected, pricingRules: { ...selected.pricingRules, consultation: v } })
+                        updateSelected({ ...selected, pricingRules: { ...selected.pricingRules, consultation: v } }),
+                        "Standard consultation fee"
                       )}
                     </div>
                     <div>
                       <label className="text-sm font-medium text-slate-700">Eye test</label>
                       {numberField(selected.pricingRules.eyeTest, (v) =>
-                        updateSelected({ ...selected, pricingRules: { ...selected.pricingRules, eyeTest: v } })
+                        updateSelected({ ...selected, pricingRules: { ...selected.pricingRules, eyeTest: v } }),
+                        "Basic eye examination rate"
                       )}
                     </div>
                     <div>
                       <label className="text-sm font-medium text-slate-700">Diagnostics</label>
                       {numberField(selected.pricingRules.diagnostics, (v) =>
-                        updateSelected({ ...selected, pricingRules: { ...selected.pricingRules, diagnostics: v } })
+                        updateSelected({ ...selected, pricingRules: { ...selected.pricingRules, diagnostics: v } }),
+                        "Advanced diagnostic imaging or tests"
                       )}
                     </div>
                     <div>
                       <label className="text-sm font-medium text-slate-700">Lens</label>
                       {numberField(selected.pricingRules.lens, (v) =>
-                        updateSelected({ ...selected, pricingRules: { ...selected.pricingRules, lens: v } })
+                        updateSelected({ ...selected, pricingRules: { ...selected.pricingRules, lens: v } }),
+                        "Prescription lens base rate"
                       )}
                     </div>
                     <div>
                       <label className="text-sm font-medium text-slate-700">Frame</label>
                       {numberField(selected.pricingRules.frame, (v) =>
-                        updateSelected({ ...selected, pricingRules: { ...selected.pricingRules, frame: v } })
+                        updateSelected({ ...selected, pricingRules: { ...selected.pricingRules, frame: v } }),
+                        "Optical frame allowance or flat rate"
                       )}
                     </div>
                     <div>
                       <label className="text-sm font-medium text-slate-700">Drugs</label>
                       {numberField(selected.pricingRules.drugs, (v) =>
-                        updateSelected({ ...selected, pricingRules: { ...selected.pricingRules, drugs: v } })
+                        updateSelected({ ...selected, pricingRules: { ...selected.pricingRules, drugs: v } }),
+                        "Pharmacy dispensing flat rate or markup"
                       )}
                     </div>
                     <div>
                       <label className="text-sm font-medium text-slate-700">Surgery</label>
                       {numberField(selected.pricingRules.surgery, (v) =>
-                        updateSelected({ ...selected, pricingRules: { ...selected.pricingRules, surgery: v } })
+                        updateSelected({ ...selected, pricingRules: { ...selected.pricingRules, surgery: v } }),
+                        "Ophthalmic surgical procedure fee"
                       )}
                     </div>
                     <div>
                       <label className="text-sm font-medium text-slate-700">Procedure</label>
                       {numberField(selected.pricingRules.procedure, (v) =>
-                        updateSelected({ ...selected, pricingRules: { ...selected.pricingRules, procedure: v } })
+                        updateSelected({ ...selected, pricingRules: { ...selected.pricingRules, procedure: v } }),
+                        "Minor clinical procedure rate"
                       )}
                     </div>
                     <div>
                       <label className="text-sm font-medium text-slate-700">Optical (misc)</label>
                       {numberField(selected.pricingRules.optical, (v) =>
-                        updateSelected({ ...selected, pricingRules: { ...selected.pricingRules, optical: v } })
+                        updateSelected({ ...selected, pricingRules: { ...selected.pricingRules, optical: v } }),
+                        "Miscellaneous optical accessories"
                       )}
                     </div>
                   </div>
@@ -344,73 +377,81 @@ export default function HMOPage() {
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <div>
                       <label className="text-sm font-medium text-slate-700">Submission format</label>
-                      <select
-                        value={selected.claimsSettings.submissionFormat}
-                        onChange={(e) =>
-                          updateSelected({
-                            ...selected,
-                            claimsSettings: { ...selected.claimsSettings, submissionFormat: e.target.value as ClinicHmoAgreement["claimsSettings"]["submissionFormat"] },
-                          })
-                        }
-                        className={inputClassName()}
-                      >
-                        <option value="Spreadsheet">Spreadsheet</option>
-                        <option value="Portal export">Portal export</option>
-                        <option value="API payload">API payload</option>
-                      </select>
+                      <Tooltip content="Digital format for claim transmission">
+                        <select
+                            value={selected.claimsSettings.submissionFormat}
+                            onChange={(e) =>
+                            updateSelected({
+                                ...selected,
+                                claimsSettings: { ...selected.claimsSettings, submissionFormat: e.target.value as ClinicHmoAgreement["claimsSettings"]["submissionFormat"] },
+                            })
+                            }
+                            className={inputClassName()}
+                        >
+                            <option value="Spreadsheet">Spreadsheet</option>
+                            <option value="Portal export">Portal export</option>
+                            <option value="API payload">API payload</option>
+                        </select>
+                      </Tooltip>
                     </div>
                     <div>
                       <label className="text-sm font-medium text-slate-700">Batching rules</label>
-                      <select
-                        value={selected.claimsSettings.batchingRules}
-                        onChange={(e) =>
-                          updateSelected({
-                            ...selected,
-                            claimsSettings: { ...selected.claimsSettings, batchingRules: e.target.value as ClinicHmoAgreement["claimsSettings"]["batchingRules"] },
-                          })
-                        }
-                        className={inputClassName()}
-                      >
-                        <option value="Per patient">Per patient</option>
-                        <option value="Per visit">Per visit</option>
-                        <option value="Monthly batch">Monthly batch</option>
-                      </select>
+                      <Tooltip content="Logic for grouping claims into submissions">
+                        <select
+                            value={selected.claimsSettings.batchingRules}
+                            onChange={(e) =>
+                            updateSelected({
+                                ...selected,
+                                claimsSettings: { ...selected.claimsSettings, batchingRules: e.target.value as ClinicHmoAgreement["claimsSettings"]["batchingRules"] },
+                            })
+                            }
+                            className={inputClassName()}
+                        >
+                            <option value="Per patient">Per patient</option>
+                            <option value="Per visit">Per visit</option>
+                            <option value="Monthly batch">Monthly batch</option>
+                        </select>
+                      </Tooltip>
                     </div>
                     <div className="md:col-span-2">
                       <label className="text-sm font-medium text-slate-700">Approval workflow</label>
-                      <select
-                        value={selected.claimsSettings.approvalWorkflow}
-                        onChange={(e) =>
-                          updateSelected({
-                            ...selected,
-                            claimsSettings: { ...selected.claimsSettings, approvalWorkflow: e.target.value as ClinicHmoAgreement["claimsSettings"]["approvalWorkflow"] },
-                          })
-                        }
-                        className={inputClassName()}
-                      >
-                        <option value="Clinic review → Submit">Clinic review → Submit</option>
-                        <option value="Submit directly">Submit directly</option>
-                      </select>
+                      <Tooltip content="Internal review steps before final submission">
+                        <select
+                            value={selected.claimsSettings.approvalWorkflow}
+                            onChange={(e) =>
+                            updateSelected({
+                                ...selected,
+                                claimsSettings: { ...selected.claimsSettings, approvalWorkflow: e.target.value as ClinicHmoAgreement["claimsSettings"]["approvalWorkflow"] },
+                            })
+                            }
+                            className={inputClassName()}
+                        >
+                            <option value="Clinic review → Submit">Clinic review → Submit</option>
+                            <option value="Submit directly">Submit directly</option>
+                        </select>
+                      </Tooltip>
                     </div>
                     <div className="md:col-span-2">
                       <label className="text-sm font-medium text-slate-700">Required supporting documents</label>
-                      <input
-                        value={selected.claimsSettings.requiredDocuments.join(", ")}
-                        onChange={(e) =>
-                          updateSelected({
-                            ...selected,
-                            claimsSettings: {
-                              ...selected.claimsSettings,
-                              requiredDocuments: e.target.value
-                                .split(",")
-                                .map((s) => s.trim())
-                                .filter(Boolean),
-                            },
-                          })
-                        }
-                        className={inputClassName()}
-                        placeholder="e.g., Invoice summary, Authorization"
-                      />
+                      <Tooltip content="List of mandatory attachments for claims">
+                        <input
+                            value={selected.claimsSettings.requiredDocuments.join(", ")}
+                            onChange={(e) =>
+                            updateSelected({
+                                ...selected,
+                                claimsSettings: {
+                                ...selected.claimsSettings,
+                                requiredDocuments: e.target.value
+                                    .split(",")
+                                    .map((s) => s.trim())
+                                    .filter(Boolean),
+                                },
+                            })
+                            }
+                            className={inputClassName()}
+                            placeholder="e.g., Invoice summary, Authorization"
+                        />
+                      </Tooltip>
                       <p className="mt-1 text-xs text-slate-500">Comma-separated list</p>
                     </div>
                   </div>
@@ -428,73 +469,83 @@ export default function HMOPage() {
           <form onSubmit={activate} className="space-y-4">
             <div>
               <label className="text-sm font-medium text-slate-700">Select HMO</label>
-              <select
-                value={activateForm.hmoId}
-                onChange={(e) => setActivateForm((p) => ({ ...p, hmoId: e.target.value }))}
-                className={inputClassName()}
-              >
-                {availableToActivate.map((h) => (
-                  <option key={h.id} value={h.id}>
-                    {h.name} ({h.shortCode})
-                  </option>
-                ))}
-              </select>
+              <Tooltip content="Pick an HMO from the master registry">
+                <select
+                    value={activateForm.hmoId}
+                    onChange={(e) => setActivateForm((p) => ({ ...p, hmoId: e.target.value }))}
+                    className={inputClassName()}
+                >
+                    {availableToActivate.map((h) => (
+                    <option key={h.id} value={h.id}>
+                        {h.name} ({h.shortCode})
+                    </option>
+                    ))}
+                </select>
+              </Tooltip>
             </div>
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div>
                 <label className="text-sm font-medium text-slate-700">Agreement start</label>
-                <input
-                  value={activateForm.agreementStartISO}
-                  onChange={(e) => setActivateForm((p) => ({ ...p, agreementStartISO: e.target.value }))}
-                  className={inputClassName()}
-                  placeholder="YYYY-MM-DD"
-                  required
-                />
+                <Tooltip content="Start date for this clinic's agreement">
+                    <input
+                    value={activateForm.agreementStartISO}
+                    onChange={(e) => setActivateForm((p) => ({ ...p, agreementStartISO: e.target.value }))}
+                    className={inputClassName()}
+                    placeholder="YYYY-MM-DD"
+                    required
+                    />
+                </Tooltip>
               </div>
               <div>
                 <label className="text-sm font-medium text-slate-700">Billing cycle</label>
-                <select
-                  value={activateForm.billingCycle}
-                  onChange={(e) =>
-                    setActivateForm((p) => ({ ...p, billingCycle: e.target.value as ClinicHmoAgreement["billingCycle"] }))
-                  }
-                  className={inputClassName()}
-                >
-                  <option value="Per visit">Per visit</option>
-                  <option value="Monthly">Monthly</option>
-                </select>
+                <Tooltip content="Preferred frequency for generating bills">
+                    <select
+                    value={activateForm.billingCycle}
+                    onChange={(e) =>
+                        setActivateForm((p) => ({ ...p, billingCycle: e.target.value as ClinicHmoAgreement["billingCycle"] }))
+                    }
+                    className={inputClassName()}
+                    >
+                    <option value="Per visit">Per visit</option>
+                    <option value="Monthly">Monthly</option>
+                    </select>
+                </Tooltip>
               </div>
               <div>
                 <label className="text-sm font-medium text-slate-700">Payment cycle</label>
-                <select
-                  value={activateForm.paymentCycle}
-                  onChange={(e) =>
-                    setActivateForm((p) => ({ ...p, paymentCycle: e.target.value as ClinicHmoAgreement["paymentCycle"] }))
-                  }
-                  className={inputClassName()}
-                >
-                  <option value="Weekly">Weekly</option>
-                  <option value="Monthly">Monthly</option>
-                  <option value="Quarterly">Quarterly</option>
-                </select>
+                <Tooltip content="Expected frequency of HMO payments">
+                    <select
+                    value={activateForm.paymentCycle}
+                    onChange={(e) =>
+                        setActivateForm((p) => ({ ...p, paymentCycle: e.target.value as ClinicHmoAgreement["paymentCycle"] }))
+                    }
+                    className={inputClassName()}
+                    >
+                    <option value="Weekly">Weekly</option>
+                    <option value="Monthly">Monthly</option>
+                    <option value="Quarterly">Quarterly</option>
+                    </select>
+                </Tooltip>
               </div>
               <div>
                 <label className="text-sm font-medium text-slate-700">Claims schedule</label>
-                <select
-                  value={activateForm.claimsSubmissionSchedule}
-                  onChange={(e) =>
-                    setActivateForm((p) => ({
-                      ...p,
-                      claimsSubmissionSchedule: e.target.value as ClinicHmoAgreement["claimsSubmissionSchedule"],
-                    }))
-                  }
-                  className={inputClassName()}
-                >
-                  <option value="Monthly">Monthly</option>
-                  <option value="Bi-weekly">Bi-weekly</option>
-                  <option value="Weekly">Weekly</option>
-                </select>
+                <Tooltip content="How often you will submit claim batches">
+                    <select
+                    value={activateForm.claimsSubmissionSchedule}
+                    onChange={(e) =>
+                        setActivateForm((p) => ({
+                        ...p,
+                        claimsSubmissionSchedule: e.target.value as ClinicHmoAgreement["claimsSubmissionSchedule"],
+                        }))
+                    }
+                    className={inputClassName()}
+                    >
+                    <option value="Monthly">Monthly</option>
+                    <option value="Bi-weekly">Bi-weekly</option>
+                    <option value="Weekly">Weekly</option>
+                    </select>
+                </Tooltip>
               </div>
             </div>
 
