@@ -119,7 +119,7 @@ export default function HMOPage() {
     <div className="space-y-8">
       <PageHeader
         title="HMO Management"
-        description="Phase 2: activate HMOs for this clinic and configure clinic-specific agreement pricing + claims settings."
+        description="Activate and configure Health Maintenance Organization agreements, pricing, and claims processing settings for your clinic."
         actions={[
           { label: "Activate HMO", onClick: () => setIsActivateOpen(true), variant: "primary", disabled: availableToActivate.length === 0 },
           { label: "Billing & finance", href: "/clinic/finance" },
@@ -211,6 +211,15 @@ export default function HMOPage() {
                   </div>
 
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div>
+                      <label className="text-sm font-medium text-slate-700">Display Name</label>
+                      <input
+                        value={selected.hmoName}
+                        onChange={(e) => updateSelected({ ...selected, hmoName: e.target.value })}
+                        className={inputClassName()}
+                        placeholder="Custom HMO Name"
+                      />
+                    </div>
                     <div>
                       <label className="text-sm font-medium text-slate-700">Agreement start</label>
                       <input
