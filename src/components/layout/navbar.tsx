@@ -40,6 +40,7 @@ export const Navbar = () => {
   const navLinks = [
     { name: "Features", href: "/features" },
     { name: "Solutions", href: "/industries" },
+    { name: "Patient Portal", href: "/patient" },
     { name: "Pricing", href: "/pricing" },
     { 
       name: "Resources", 
