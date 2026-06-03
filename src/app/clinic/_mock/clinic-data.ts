@@ -179,6 +179,23 @@ export type ClinicInvoice = {
   method: "POS" | "Transfer" | "Cash";
   status: "Paid" | "Pending" | "Voided";
   createdISO: string;
+  items?: { name: string; quantity: number; price: number }[];
+};
+
+export type ClinicExpense = {
+  id: string;
+  category: "Utilities" | "Salary" | "Supplies" | "Rent" | "Maintenance" | "Other";
+  amount: number;
+  description: string;
+  dateISO: string;
+  status: "Paid" | "Pending";
+};
+
+export type ClinicRevenueSummary = {
+  month: string;
+  private: number;
+  hmo: number;
+  expenses: number;
 };
 
 export type ClinicStaffOnDuty = {
@@ -197,6 +214,7 @@ export type ClinicHmoClaim = {
   amount: number; // NGN
   status: "Draft" | "Submitted" | "Queried" | "Approved" | "Rejected" | "Paid";
   submittedISO: string;
+  claimDetails?: string;
 };
 
 export type HmoMasterRecord = {
@@ -364,6 +382,21 @@ export const clinicPatients: ClinicPatient[] = [
   { id: "P-005", name: "Kemi Balogun", age: 29, sex: "Female", phone: "0902 700 3011", lastVisitISO: "2026-04-28", status: "Inactive" },
 ];
 
+export const clinicExpenses: ClinicExpense[] = [
+  { id: "EXP-001", category: "Utilities", amount: 45000, description: "Electricity bill May 2026", dateISO: "2026-05-20", status: "Paid" },
+  { id: "EXP-002", category: "Supplies", amount: 120000, description: "Lens blanks and frames stock", dateISO: "2026-05-22", status: "Paid" },
+  { id: "EXP-003", category: "Salary", amount: 850000, description: "Staff salaries May 2026", dateISO: "2026-05-25", status: "Paid" },
+  { id: "EXP-004", category: "Maintenance", amount: 25000, description: "AC servicing", dateISO: "2026-05-26", status: "Pending" },
+];
+
+export const clinicRevenueHistory: ClinicRevenueSummary[] = [
+  { month: "Jan", private: 1200000, hmo: 800000, expenses: 1100000 },
+  { month: "Feb", private: 1400000, hmo: 950000, expenses: 1050000 },
+  { month: "Mar", private: 1100000, hmo: 1100000, expenses: 1200000 },
+  { month: "Apr", private: 1600000, hmo: 850000, expenses: 1150000 },
+  { month: "May", private: 1800000, hmo: 1200000, expenses: 1300000 },
+];
+
 export const clinicPatientNotes: ClinicPatientNote[] = [
   {
     id: "N-001",
@@ -487,16 +520,35 @@ export const clinicPharmacyItems: ClinicPharmacyItem[] = [
 ];
 
 export const clinicInvoicesToday: ClinicInvoice[] = [
-  { id: "INV-9001", patientName: "Adesuwa Okoro", payerType: "Private", amount: 35000, method: "POS", status: "Paid", createdISO: "2026-05-26T10:14:00" },
+  {
+    id: "INV-9001",
+    patientName: "Adesuwa Okoro",
+    payerType: "Private",
+    amount: 35000,
+    method: "POS",
+    status: "Paid",
+    createdISO: "2026-05-26T10:14:00",
+    items: [{ name: "Consultation", quantity: 1, price: 5000 }, { name: "Single Vision Lenses", quantity: 1, price: 30000 }]
+  },
   { id: "INV-9002", patientName: "Fatima Yusuf", payerType: "HMO", amount: 25000, method: "Transfer", status: "Pending", createdISO: "2026-05-26T09:22:00" },
   { id: "INV-9003", patientName: "Chidi Okafor", payerType: "Private", amount: 85000, method: "POS", status: "Paid", createdISO: "2026-05-26T11:03:00" },
   { id: "INV-9004", patientName: "Ifeanyi Nwosu", payerType: "HMO", amount: 60000, method: "Transfer", status: "Paid", createdISO: "2026-05-26T12:05:00" },
 ];
 
 export const clinicHmoClaims: ClinicHmoClaim[] = [
-  { id: "CLM-1101", hmo: "Hygeia HMO", patientName: "Ifeanyi Nwosu", amount: 120000, status: "Submitted", submittedISO: "2026-05-24" },
-  { id: "CLM-1102", hmo: "Reliance HMO", patientName: "Kemi Balogun", amount: 45000, status: "Queried", submittedISO: "2026-05-20" },
-  { id: "CLM-1103", hmo: "AXA Mansard", patientName: "Adesuwa Okoro", amount: 60000, status: "Approved", submittedISO: "2026-05-18" },
+  { id: "CLM-1101", hmo: "Hygeia HMO", patientName: "Ifeanyi Nwosu", amount: 120000, status: "Submitted", submittedISO: "2026-05-24", claimDetails: "Cataract Surgery - Pre-auth approved" },
+  { id: "CLM-1102", hmo: "Reliance HMO", patientName: "Kemi Balogun", amount: 45000, status: "Queried", submittedISO: "2026-05-20", claimDetails: "OCT Scan - Missing referral letter" },
+  { id: "CLM-1103", hmo: "AXA Mansard", patientName: "Adesuwa Okoro", amount: 60000, status: "Approved", submittedISO: "2026-05-18", claimDetails: "Glaucoma Screening & Drugs" },
+  { id: "CLM-1104", hmo: "NHIA", patientName: "Usman Danjuma", amount: 15000, status: "Paid", submittedISO: "2026-05-10", claimDetails: "General Consultation & Basic Drops" },
+  { id: "CLM-1105", hmo: "Hygeia HMO", patientName: "Bolanle Ajayi", amount: 28000, status: "Draft", submittedISO: "2026-05-26", claimDetails: "Refraction & Frame Fitting" },
+  { id: "CLM-1106", hmo: "AXA Mansard", patientName: "Chukwudi Obi", amount: 145000, status: "Rejected", submittedISO: "2026-05-15", claimDetails: "Surgical Review - Coverage limit exceeded" },
+];
+
+export const clinicHmoPatients = [
+  { id: "P-001", name: "Adesuwa Okoro", hmo: "AXA Mansard", hmoNumber: "AXA/12345/B", status: "Verified", expiryISO: "2026-12-31" },
+  { id: "P-004", name: "Ifeanyi Nwosu", hmo: "Hygeia HMO", hmoNumber: "HYG/8821/A", status: "Verified", expiryISO: "2027-01-15" },
+  { id: "P-006", name: "Maryam Sule", hmo: "NHIA", hmoNumber: "NH/G/9902", status: "Pending", expiryISO: "2026-09-30" },
+  { id: "P-008", name: "Amina Musa", hmo: "Reliance HMO", hmoNumber: "RHL-552-11", status: "Verified", expiryISO: "2026-06-20" },
 ];
 
 export const clinicStaffOnDuty: ClinicStaffOnDuty[] = [
@@ -523,6 +575,79 @@ export const clinicFollowUps: ClinicFollowUp[] = [
 export const clinicPatientDocuments: ClinicPatientDocument[] = [
   { id: "D-001", patientId: "P-001", name: "Refraction sheet", type: "Scan", uploadedISO: "2026-05-24T13:05:00" },
   { id: "D-002", patientId: "P-004", name: "HMO authorization", type: "Consent", uploadedISO: "2026-05-20T11:00:00" },
+];
+
+export const branchRegionalMetrics = [
+  { region: "Lagos Island", revenue: 3050000, branches: 2, growth: "+12%" },
+  { region: "Lagos Mainland", revenue: 1200000, branches: 1, growth: "+8%" },
+];
+
+export const branchStaffProductivity = [
+  { branchId: "B-001", doctorKpi: 92, nurseKpi: 88, efficiency: "High" },
+  { branchId: "B-002", doctorKpi: 85, nurseKpi: 82, efficiency: "Optimal" },
+  { branchId: "B-003", doctorKpi: 78, nurseKpi: 90, efficiency: "Optimal" },
+];
+
+export const interBranchTransfers = [
+  { id: "TR-501", from: "Vemtap Main", to: "Vemtap Ikeja", item: "Lens Blanks (Single)", qty: 50, status: "Completed", date: "2026-05-25" },
+  { id: "TR-502", from: "Vemtap Lekki", to: "Vemtap Main", item: "Designer Frames", qty: 12, status: "In Transit", date: "2026-05-27" },
+];
+
+export const branchQueueDistribution = [
+  { branchId: "B-001", consultation: 12, eyeTest: 5, optical: 8, pharmacy: 3 },
+  { branchId: "B-002", consultation: 4, eyeTest: 2, optical: 3, pharmacy: 1 },
+  { branchId: "B-003", consultation: 2, eyeTest: 1, optical: 4, pharmacy: 0 },
+];
+
+export const branchStaffDistribution = [
+  { branchId: "B-001", doctors: 3, nurses: 4, opticians: 2, receptionists: 3 },
+  { branchId: "B-002", doctors: 1, nurses: 2, opticians: 1, receptionists: 1 },
+  { branchId: "B-003", doctors: 1, nurses: 1, opticians: 2, receptionists: 1 },
+];
+
+export const doctorPerformanceData = [
+  { name: "Dr. A. Bello", volume: 145, satisfaction: 4.8, avgConsult: "22m" },
+  { name: "Dr. E. Nwachukwu", volume: 112, satisfaction: 4.9, avgConsult: "28m" },
+  { name: "Optom. S. Danladi", volume: 190, satisfaction: 4.7, avgConsult: "18m" },
+];
+
+export const appointmentTrendData = [
+  { month: "Jan", booked: 450, actual: 410 },
+  { month: "Feb", booked: 480, actual: 425 },
+  { month: "Mar", booked: 520, actual: 490 },
+  { month: "Apr", booked: 600, actual: 510 },
+  { month: "May", booked: 650, actual: 580 },
+];
+
+export const opticalConversionData = [
+  { month: "Jan", exams: 210, sales: 145 },
+  { month: "Feb", exams: 230, sales: 160 },
+  { month: "Mar", exams: 205, sales: 155 },
+  { month: "Apr", exams: 250, sales: 180 },
+  { month: "May", exams: 280, sales: 210 },
+];
+
+export const revenueForecastData = [
+  { month: "Jun", forecast: 2100000 },
+  { month: "Jul", forecast: 2350000 },
+  { month: "Aug", forecast: 2500000 },
+];
+
+export const clinicKnowledgeBase = [
+  { id: "KB-001", title: "Generating HMO Claims", category: "Billing", readTime: "5m", icon: "FileText" },
+  { id: "KB-002", title: "Managing Multi-Branch Queues", category: "Operations", readTime: "8m", icon: "Users" },
+  { id: "KB-003", title: "Stock Transfer Protocols", category: "Inventory", readTime: "4m", icon: "Package" },
+  { id: "KB-004", title: "Ophthalmic Device Integration", category: "Technical", readTime: "12m", icon: "Cpu" },
+];
+
+export const clinicSuccessTeam = [
+  { name: "Blessing Okoro", role: "Dedicated Account Manager", availability: "Available", avatar: "BO" },
+  { name: "Technical Support", role: "24/7 Operations Team", availability: "Live Now", avatar: "TS" },
+];
+
+export const clinicIncidentLogs = [
+  { id: "INC-101", issue: "NHIA Portal Sync Latency", status: "Resolved", time: "2 hours ago", severity: "Medium" },
+  { id: "INC-102", issue: "Branch POS Offline (Ikeja)", status: "Monitoring", time: "15 mins ago", severity: "High" },
 ];
 
 export const formatNGN = (value: number) =>

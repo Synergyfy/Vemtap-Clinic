@@ -1,41 +1,53 @@
 "use client";
 
 import React, { useState } from "react";
-import { motion } from "framer-motion";
 import { 
-  Headphones, MessageSquare, Ticket, AlertCircle,
-  Search, Filter, Plus, MoreVertical, CheckCircle2,
-  Clock, ArrowRight, User, Building2, Send,
-  ShieldAlert, Zap, MessageCircle
+  Ticket, AlertCircle, Search, Plus, MoreVertical, 
+  CheckCircle2, Clock, User, Building2, ShieldAlert, 
+  Zap, MessageCircle, Activity
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useModals } from "@/lib/modal-context";
 
 const tickets = [
-  { id: "TKT-1042", subject: "Unable to verify HMO card", clinic: "ClearVision VI", user: "Receptionist Mary", priority: "High", status: "Open", time: "12m ago" },
-  { id: "TKT-1041", subject: "Lens inventory sync error", clinic: "Lagos Vision Center", user: "Optician John", priority: "Medium", status: "Pending", time: "45m ago" },
-  { id: "TKT-1040", subject: "Custom template request", clinic: "Precision Eyecare", user: "Dr. David", priority: "Low", status: "Open", time: "2h ago" },
-  { id: "TKT-1039", subject: "2FA login loop", clinic: "Optimal Optical", user: "Clinic Admin", priority: "Critical", status: "Open", time: "3h ago" },
-  { id: "TKT-1038", subject: "Subscription payment failed", clinic: "Elite Vision", user: "Dr. Funmi", priority: "High", status: "Resolved", time: "Yesterday" },
+  { id: "TKT-1042", subject: "Unable to verify HMO card", clinic: "ClearVision VI", user: "Receptionist Mary", priority: "High", status: "Open", time: "12m ago", type: "Ticket" },
+  { id: "TKT-1041", subject: "Lens inventory sync error", clinic: "Lagos Vision Center", user: "Optician John", priority: "Medium", status: "Pending", time: "45m ago", type: "Ticket" },
+  { id: "CMP-2001", subject: "Unprofessional staff behavior", clinic: "Precision Eyecare", user: "Patient A. Bello", priority: "High", status: "Open", time: "1h ago", type: "Complaint" },
+  { id: "TKT-1040", subject: "Custom template request", clinic: "Precision Eyecare", user: "Dr. David", priority: "Low", status: "Open", time: "2h ago", type: "Ticket" },
+  { id: "CMP-2002", subject: "Overcharging for frames", clinic: "Optimal Optical", user: "Patient C. Okafor", priority: "Critical", status: "Open", time: "3h ago", type: "Complaint" },
+];
+
+const incidentLogs = [
+  { id: "INC-901", incident: "Paystack Gateway Timeout", severity: "High", time: "10m ago", status: "Investigating" },
+  { id: "INC-900", incident: "HMO API Latency", severity: "Medium", time: "2h ago", status: "Resolved" },
 ];
 
 export default function SupportDashboardPage() {
-  const [activeStatus, setActiveStatus] = useState("all");
+  const [activeTab, setActiveTab] = useState("all");
+  const { openModal } = useModals();
+
+  const filteredTickets = tickets.filter(t => {
+    if (activeTab === "all") return true;
+    if (activeTab === "complaints") return t.type === "Complaint";
+    if (activeTab === "tickets") return t.type === "Ticket";
+    return t.status.toLowerCase() === activeTab;
+  });
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-10 pb-20">
       {/* Header */}
-      <div className="flex flex-col md:row md:items-center justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-brand-navy font-black tracking-tight">Support Desk</h1>
           <p className="text-slate-500 font-medium mt-1">Manage platform-wide tickets, complaints, and system incidents.</p>
         </div>
         <div className="flex items-center gap-3">
-          <Button variant="outline" size="sm" className="gap-2">
-            <ShieldAlert size={16} /> Incident Logs
+          <Button variant="outline" size="sm" className="gap-2" onClick={() => openModal("incident-log")}>
+            <ShieldAlert size={16} /> View Incident Logs
           </Button>
-          <Button variant="primary" size="sm" className="gap-2">
-            <Plus size={16} /> Internal Memo
+          <Button variant="primary" size="sm" className="gap-2" onClick={() => openModal("broadcast")}>
+            <Plus size={16} /> Broadcast Memo
           </Button>
         </div>
       </div>
@@ -44,9 +56,9 @@ export default function SupportDashboardPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {[
           { label: "Open Tickets", val: "14", icon: Ticket, color: "blue" },
-          { label: "Avg. Resolution", val: "4.2h", icon: Zap, color: "emerald" },
+          { label: "Active Complaints", val: "5", icon: AlertCircle, color: "rose" },
+          { label: "System Uptime", val: "99.9%", icon: Zap, color: "emerald" },
           { label: "Active Chats", val: "6", icon: MessageCircle, color: "brand-blue" },
-          { label: "Critical Issues", val: "2", icon: AlertCircle, color: "rose" },
         ].map((stat, i) => (
           <div key={i} className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm flex items-center gap-4 group hover:shadow-lg transition-all">
             <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 transition-colors", 
@@ -67,21 +79,21 @@ export default function SupportDashboardPage() {
 
       {/* Main Support Area */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Tickets List */}
+        {/* Tickets & Complaints List */}
         <div className="lg:col-span-2 space-y-6">
-          <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm flex flex-col md:row items-center justify-between gap-6">
+          <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="relative flex-1 w-full max-w-sm group">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-brand-blue transition-colors" size={16} />
-              <input type="text" placeholder="Search tickets..." className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm outline-none focus:ring-2 focus:ring-brand-blue/20" />
+              <input type="text" placeholder="Search support..." className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm outline-none focus:ring-2 focus:ring-brand-blue/20" />
             </div>
             <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0">
-              {["all", "open", "pending", "resolved"].map((s) => (
+              {["all", "tickets", "complaints", "resolved"].map((s) => (
                 <button
                   key={s}
-                  onClick={() => setActiveStatus(s)}
+                  onClick={() => setActiveTab(s)}
                   className={cn(
                     "px-4 py-1.5 rounded-lg text-xs font-bold capitalize transition-all",
-                    activeStatus === s ? "bg-brand-navy text-white" : "text-slate-400 hover:text-brand-navy hover:bg-slate-50"
+                    activeTab === s ? "bg-brand-navy text-white" : "text-slate-400 hover:text-brand-navy hover:bg-slate-50"
                   )}
                 >
                   {s}
@@ -92,28 +104,30 @@ export default function SupportDashboardPage() {
 
           <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
             <div className="divide-y divide-slate-50">
-              {tickets.map((t, i) => (
-                <div key={i} className="p-6 hover:bg-slate-50/50 transition-all cursor-pointer group">
-                  <div className="flex flex-col md:row md:items-center justify-between gap-4">
+              {filteredTickets.map((t, i) => (
+                <div key={i} className="p-6 hover:bg-slate-50/50 transition-all cursor-pointer group" onClick={() => openModal("ticket")}>
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="flex items-start gap-4">
                       <div className={cn(
                         "w-10 h-10 rounded-xl flex items-center justify-center shrink-0",
+                        t.type === "Complaint" ? "bg-rose-50 text-rose-500" :
                         t.priority === "Critical" ? "bg-rose-50 text-rose-500" :
                         t.priority === "High" ? "bg-amber-50 text-amber-500" :
                         t.priority === "Medium" ? "bg-blue-50 text-blue-500" : "bg-slate-100 text-slate-500"
                       )}>
-                        <Ticket size={20} />
+                        {t.type === "Complaint" ? <AlertCircle size={20} /> : <Ticket size={20} />}
                       </div>
                       <div>
                         <div className="flex items-center gap-2 mb-1">
                           <h4 className="text-sm font-bold text-brand-navy group-hover:text-brand-blue transition-colors">{t.subject}</h4>
                           <span className={cn(
                             "text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-widest",
+                            t.type === "Complaint" ? "bg-rose-600 text-white" :
                             t.priority === "Critical" ? "bg-rose-600 text-white" :
                             t.priority === "High" ? "bg-amber-500 text-white" :
                             t.priority === "Medium" ? "bg-blue-500 text-white" : "bg-slate-400 text-white"
                           )}>
-                            {t.priority}
+                            {t.type === "Complaint" ? "Complaint" : t.priority}
                           </span>
                         </div>
                         <div className="flex items-center gap-3 text-[10px] text-slate-400 font-bold">
@@ -142,13 +156,42 @@ export default function SupportDashboardPage() {
               ))}
             </div>
             <div className="p-6 bg-slate-50/30 border-t border-slate-50 text-center font-bold text-xs text-slate-400">
-              Page 1 of 12 • Showing 5 of 58 Tickets
+              Page 1 of 12 • Showing {filteredTickets.length} items
             </div>
           </div>
         </div>
 
-        {/* Support Tools */}
+        {/* Support Tools & Incident Monitoring */}
         <div className="space-y-6">
+          {/* Active Incident Feed */}
+          <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-bold text-brand-navy">Active Incidents</h3>
+              <div className="flex h-2 w-2 relative">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
+              </div>
+            </div>
+            <div className="space-y-4">
+              {incidentLogs.map((inc, i) => (
+                <div key={i} className="p-4 rounded-2xl bg-slate-50 border border-slate-100">
+                  <div className="flex justify-between items-start mb-2">
+                    <h4 className="text-xs font-bold text-brand-navy">{inc.incident}</h4>
+                    <span className={cn(
+                      "text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-widest",
+                      inc.severity === "High" ? "bg-rose-100 text-rose-600" : "bg-amber-100 text-amber-600"
+                    )}>{inc.severity}</span>
+                  </div>
+                  <div className="flex items-center justify-between mt-4">
+                    <span className="text-[10px] text-slate-400 font-bold">{inc.time} • {inc.status}</span>
+                    <Button variant="ghost" size="sm" className="h-7 text-[10px] font-black text-brand-blue p-0">Details</Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <Button variant="outline" className="w-full mt-6 rounded-xl text-xs font-bold border-slate-200" onClick={() => openModal("incident-log")}>Full Incident Logs</Button>
+          </div>
+
           <div className="bg-brand-navy p-8 rounded-[2.5rem] text-white relative overflow-hidden">
             <div className="absolute top-0 right-0 w-32 h-32 bg-brand-blue/20 blur-[60px] rounded-full"></div>
             <h3 className="text-lg font-bold mb-6 relative z-10">Live Support Chat</h3>
@@ -171,7 +214,7 @@ export default function SupportDashboardPage() {
                 </div>
               ))}
             </div>
-            <Button className="w-full bg-brand-blue hover:bg-brand-blue/90 text-white font-bold rounded-xl text-sm py-5">
+            <Button className="w-full bg-brand-blue hover:bg-brand-blue/90 text-white font-bold rounded-xl text-sm py-5" onClick={() => openModal("chat-console")}>
               Launch Chat Console
             </Button>
           </div>

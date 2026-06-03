@@ -55,7 +55,7 @@ export const Modal = ({ isOpen, onClose, title, children, className }: ModalProp
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             transition={{ type: "spring", duration: 0.5 }}
             className={cn(
-              "relative w-full max-w-lg bg-white rounded-3xl shadow-2xl overflow-hidden z-10",
+              "relative w-full max-w-lg bg-white rounded-3xl shadow-2xl z-10",
               className
             )}
           >
