@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, ReactNode } from "react";
 
-type ModalType = "demo" | "tour" | "sales" | "clinic" | "invoice" | "transaction" | "staff" | "branch" | "report" | null;
+type ModalType = "demo" | "tour" | "sales" | "clinic" | "invoice" | "transaction" | "staff" | "branch" | "report" | "expense" | "claim" | "hmo-verify" | "hmo-claim" | "report-schedule" | "staff-profile" | "kb-article" | "support-ticket" | "incident-log" | "broadcast" | "ticket" | "chat-console" | null;
 
 interface ModalContextType {
   activeModal: ModalType;
