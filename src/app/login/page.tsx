@@ -8,7 +8,7 @@ import {
   Mail, Lock, Eye, EyeOff, ArrowRight, 
   ShieldCheck, Smartphone, CheckCircle2,
   Users, User, ChevronDown, LayoutDashboard,
-  Building2, UserCircle, Clock, Stethoscope
+  Building2, UserCircle, Clock, Stethoscope, Heart
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -23,6 +23,7 @@ export default function LoginPage() {
     { name: "Super Admin Dashboard", href: "/admin/dashboard", icon: LayoutDashboard, color: "text-slate-900", desc: "Global network oversight" },
     { name: "Clinic Admin Dashboard", href: "/clinic/dashboard", icon: Building2, color: "text-sky-600", desc: "Branch & clinical operations" },
     { name: "Doctor Clinical Hub", href: "/doctor/dashboard", icon: Stethoscope, color: "text-emerald-600", desc: "Patient care & consultations" },
+    { name: "Nurse Station", href: "/nurse/dashboard", icon: Heart, color: "text-cyan-600", desc: "Vitals, monitoring & patient care" },
     { name: "Receptionist Frontdesk", href: "/reception/dashboard", icon: Clock, color: "text-amber-600", desc: "Registration & queue flow" },
     { name: "Patient Success Portal", href: "/patient/dashboard", icon: UserCircle, color: "text-emerald-600", desc: "Results, orders & bookings" },
   ];
