@@ -34,36 +34,59 @@ export default function PlatformAnalyticsPage() {
         </div>
       </div>
 
-      {/* Growth Overview */}
+      {/* Growth & Revenue Overview */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm relative overflow-hidden group">
           <div className="flex items-center justify-between mb-10">
             <div>
-              <h3 className="text-xl font-bold text-brand-navy">Onboarding Growth</h3>
-              <p className="text-xs text-slate-500">New clinics joined per month</p>
+              <h2 className="text-xl font-bold text-brand-navy">Revenue & Onboarding Growth</h2>
+              <p className="text-xs text-slate-500">MRR and new clinics joined per month</p>
             </div>
-            <div className="text-right">
-              <p className="text-2xl font-black text-brand-navy">+24%</p>
-              <p className="text-[10px] font-bold text-emerald-500 flex items-center justify-end gap-1">
-                <ArrowUpRight size={12} /> vs last month
-              </p>
+            <div className="flex gap-6 text-right">
+              <div>
+                <p className="text-2xl font-black text-brand-navy">$142k</p>
+                <p className="text-[10px] font-bold text-emerald-500 flex items-center justify-end gap-1 uppercase tracking-tighter">
+                  MRR <ArrowUpRight size={12} /> +12%
+                </p>
+              </div>
+              <div>
+                <p className="text-2xl font-black text-brand-navy">110</p>
+                <p className="text-[10px] font-bold text-brand-blue flex items-center justify-end gap-1 uppercase tracking-tighter">
+                  New Clinics <ArrowUpRight size={12} /> +24%
+                </p>
+              </div>
             </div>
           </div>
           
           {/* Mock Chart Area */}
-          <div className="h-64 w-full flex items-end gap-3 px-4">
+          <div className="h-64 w-full flex items-end gap-3 px-4 relative">
+            {/* Legend */}
+            <div className="absolute top-0 right-4 flex gap-4">
+              <div className="flex items-center gap-1.5">
+                <div className="w-3 h-3 bg-brand-blue rounded-full"></div>
+                <span className="text-[10px] font-bold text-slate-500">Revenue</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="w-3 h-3 bg-brand-soft-blue rounded-full"></div>
+                <span className="text-[10px] font-bold text-slate-500">Onboarding</span>
+              </div>
+            </div>
             {[40, 65, 35, 80, 55, 90, 70, 85, 100, 75, 95, 110].map((val, i) => (
               <div key={i} className="flex-1 flex flex-col items-center gap-2 group/bar">
-                <motion.div 
-                  initial={{ height: 0 }}
-                  animate={{ height: `${val}%` }}
-                  transition={{ duration: 1, delay: i * 0.05 }}
-                  className="w-full bg-brand-soft-blue group-hover/bar:bg-brand-blue rounded-t-xl transition-all relative"
-                >
-                  <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-brand-navy text-white text-[10px] font-bold px-2 py-1 rounded opacity-0 group-hover/bar:opacity-100 transition-opacity">
-                    {val}
-                  </div>
-                </motion.div>
+                <div className="w-full flex flex-col-reverse items-end h-full gap-0.5">
+                  <motion.div 
+                    initial={{ height: 0 }}
+                    animate={{ height: `${val}%` }}
+                    transition={{ duration: 1, delay: i * 0.05 }}
+                    className="w-full bg-brand-soft-blue group-hover/bar:bg-brand-blue/50 rounded-t-sm transition-all relative"
+                  />
+                  <motion.div 
+                    initial={{ height: 0 }}
+                    animate={{ height: `${val * 0.6}%` }}
+                    transition={{ duration: 1, delay: i * 0.05 + 0.2 }}
+                    className="w-full bg-brand-blue rounded-t-sm transition-all relative"
+                  />
+                </div>
                 <span className="text-[8px] font-black text-slate-400 uppercase tracking-tighter">M{i+1}</span>
               </div>
             ))}
@@ -73,23 +96,26 @@ export default function PlatformAnalyticsPage() {
         <div className="space-y-6">
           <div className="bg-brand-navy p-8 rounded-[2.5rem] text-white relative overflow-hidden">
             <div className="absolute top-0 right-0 w-32 h-32 bg-brand-blue/20 blur-[60px] rounded-full"></div>
-            <h3 className="text-lg font-bold mb-6">User Distribution</h3>
+            <h3 className="text-lg font-bold mb-6">Revenue by Plan Type</h3>
             <div className="space-y-6">
               {[
-                { label: "Doctors", val: "1,240", perc: 15 },
-                { label: "Nurses", val: "2,420", perc: 30 },
-                { label: "Staff", val: "4,581", perc: 55 },
-              ].map((group, i) => (
+                { label: "Starter", val: "$18.5k", perc: 15, color: "slate-400" },
+                { label: "Growth", val: "$64.2k", perc: 45, color: "brand-blue" },
+                { label: "Enterprise", val: "$59.8k", perc: 40, color: "emerald-400" },
+              ].map((plan, i) => (
                 <div key={i} className="space-y-2">
                   <div className="flex justify-between text-xs font-bold">
-                    <span className="text-slate-400">{group.label}</span>
-                    <span>{group.val}</span>
+                    <span className="text-slate-400">{plan.label}</span>
+                    <span>{plan.val}</span>
                   </div>
                   <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
                     <motion.div 
                       initial={{ width: 0 }}
-                      animate={{ width: `${group.perc}%` }}
-                      className="h-full bg-brand-blue rounded-full"
+                      animate={{ width: `${plan.perc}%` }}
+                      className={cn("h-full rounded-full", 
+                        plan.color === "brand-blue" ? "bg-brand-blue" : 
+                        plan.color === "emerald-400" ? "bg-emerald-400" : "bg-slate-400"
+                      )}
                     />
                   </div>
                 </div>
@@ -98,12 +124,87 @@ export default function PlatformAnalyticsPage() {
           </div>
 
           <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
-            <h3 className="text-lg font-bold text-brand-navy mb-4">Daily Active Users</h3>
-            <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-black text-brand-navy">4,821</span>
-              <span className="text-xs font-bold text-emerald-500">+12%</span>
+            <h3 className="text-lg font-bold text-brand-navy mb-4 text-center">ARPU</h3>
+            <div className="flex flex-col items-center justify-center">
+              <div className="text-4xl font-black text-brand-navy">$1,295</div>
+              <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest mt-1">+5.4% VS LAST QTR</p>
+              <p className="text-[10px] text-slate-400 font-medium mt-4 text-center uppercase tracking-tighter">Average Revenue Per Unit</p>
             </div>
-            <p className="text-xs text-slate-500 mt-1">Platform utilization peak: 11:00 AM</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Clinic & Retention Analytics */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Top Performing Clinics */}
+        <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
+          <div className="flex items-center justify-between mb-8">
+            <h3 className="text-xl font-bold text-brand-navy">Top Clinics by Volume</h3>
+            <Button variant="ghost" size="sm" className="text-brand-blue font-bold text-xs">View Ranking</Button>
+          </div>
+          <div className="space-y-4">
+            {[
+              { name: "ClearVision Eye Clinic", patients: "1,240", growth: "+12%", health: 98 },
+              { name: "Lagos Vision Center", patients: "980", growth: "+8%", health: 95 },
+              { name: "Optimal Optical", patients: "850", growth: "+15%", health: 92 },
+              { name: "Precision Eyecare", patients: "720", growth: "+5%", health: 88 },
+            ].map((clinic, i) => (
+              <div key={i} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100 group hover:border-brand-blue/30 transition-all">
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-sm font-black text-brand-navy shadow-sm">
+                    {i + 1}
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-brand-navy">{clinic.name}</h4>
+                    <p className="text-[10px] text-slate-400 font-medium">{clinic.patients} patients • {clinic.growth} growth</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-[10px] font-black text-brand-blue uppercase tracking-widest mb-1">Health Score</div>
+                  <div className="flex items-center gap-1.5 justify-end">
+                    <div className="w-16 h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                      <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${clinic.health}%` }} />
+                    </div>
+                    <span className="text-xs font-bold text-brand-navy">{clinic.health}%</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Feature Adoption & Retention */}
+        <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
+          <div className="flex items-center justify-between mb-8">
+            <h3 className="text-xl font-bold text-brand-navy">Feature Adoption</h3>
+            <Button variant="ghost" size="sm" className="text-brand-blue font-bold text-xs">Full Audit</Button>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            {[
+              { label: "HMO Module", val: "94%", desc: "High engagement", color: "emerald" },
+              { label: "Optical Shop", val: "72%", desc: "Growing", color: "brand-blue" },
+              { label: "Inventory", val: "45%", desc: "Underused", color: "amber" },
+              { label: "Reports", val: "88%", desc: "Essential", color: "purple" },
+            ].map((feat, i) => (
+              <div key={i} className="p-5 rounded-[2rem] bg-slate-50 border border-slate-100 text-center">
+                <div className={cn("inline-flex items-center justify-center w-12 h-12 rounded-2xl mb-4 font-black text-lg", 
+                  feat.color === "emerald" ? "bg-emerald-100 text-emerald-600" :
+                  feat.color === "brand-blue" ? "bg-brand-soft-blue text-brand-blue" :
+                  feat.color === "amber" ? "bg-amber-100 text-amber-600" : "bg-purple-100 text-purple-600"
+                )}>
+                  {feat.val}
+                </div>
+                <h4 className="text-sm font-bold text-brand-navy mb-1">{feat.label}</h4>
+                <p className="text-[10px] text-slate-400 font-medium uppercase tracking-widest">{feat.desc}</p>
+              </div>
+            ))}
+          </div>
+          <div className="mt-8 p-6 bg-brand-soft-blue/30 rounded-[2rem] border border-brand-soft-blue flex items-center justify-between">
+            <div>
+              <p className="text-xs font-black text-brand-blue uppercase tracking-widest mb-1">User Retention (90D)</p>
+              <h4 className="text-2xl font-black text-brand-navy">88.4%</h4>
+            </div>
+            <Activity className="text-brand-blue animate-pulse" size={32} />
           </div>
         </div>
       </div>

@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Users, Calendar, Clock, 
   Wallet, Headphones, Settings2, Bell, Search, 
   Menu, X, User, Database, Eye, Package, LogOut,
-  UserCog, Building2
+  UserCog, Building2, BarChart3
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -24,6 +24,7 @@ const sidebarLinks = [
   { name: "HMO Management", href: "/clinic/hmo", icon: Database },
   { name: "Staff Management", href: "/clinic/staff", icon: UserCog },
   { name: "Branch Management", href: "/clinic/branches", icon: Building2 },
+  { name: "Reports & Analytics", href: "/clinic/reports", icon: BarChart3 },
   { name: "Support", href: "/clinic/support", icon: Headphones },
   { name: "Settings", href: "/clinic/settings", icon: Settings2 },
 ];
