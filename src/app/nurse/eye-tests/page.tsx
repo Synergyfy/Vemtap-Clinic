@@ -39,7 +39,7 @@ export default function NurseEyeTests() {
         description="Prepare patients for vision measurements and eye examinations."
       />
 
-      <div className="grid grid-cols-1 gap-4 md:gap-8 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-4">
         <Card>
           <CardContent className="p-6 flex items-center justify-between">
             <div>
@@ -87,17 +87,32 @@ export default function NurseEyeTests() {
       </div>
 
       <Card id="eye-queue">
-        <CardHeader className="flex-row items-center justify-between">
-          <CardTitle>Eye Test Queue</CardTitle>
-          <Link
-            href="/nurse/vitals"
-            className="text-sm font-medium text-cyan-700 hover:text-cyan-800"
-          >
-            Record Vision
-          </Link>
+        <CardHeader className="flex-row items-center justify-between px-4 sm:px-6 py-3 sm:py-4">
+          <CardTitle className="text-base sm:text-lg">Eye Test Queue</CardTitle>
+          <Link href="/nurse/vitals" className="text-xs sm:text-sm font-medium text-cyan-700 hover:text-cyan-800">Record Vision</Link>
         </CardHeader>
-        <CardContent className="p-0 sm:p-6">
-          <div className="overflow-x-auto">
+        <CardContent className="p-0">
+          <div className="md:hidden divide-y divide-slate-100">
+            {eyeTestPatients.map((p) => (
+              <div key={p.id} className="p-4">
+                <div className="flex items-center justify-between gap-3 mb-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-slate-900 text-sm truncate">{p.patientName}</p>
+                    <p className="text-[10px] text-slate-400">{p.age}yrs / {p.gender}</p>
+                  </div>
+                  <Link href={`/nurse/vitals?patient=${p.patientId}`} className="shrink-0 rounded-lg bg-cyan-600 px-3 py-1.5 text-[10px] font-bold text-white">Measure</Link>
+                </div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[10px] text-slate-500 truncate">{p.purpose}</span>
+                  <span className="text-slate-200">|</span>
+                  {statusBadge(p.priority)}
+                  {statusBadge(p.status)}
+                </div>
+              </div>
+            ))}
+            {eyeTestPatients.length === 0 && <p className="text-center text-sm text-slate-500 py-6">No eye test patients today.</p>}
+          </div>
+          <div className="hidden md:block overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -112,32 +127,17 @@ export default function NurseEyeTests() {
               <TableBody>
                 {eyeTestPatients.map((p) => (
                   <TableRow key={p.id}>
-                    <TableCell className="font-medium text-slate-900 whitespace-nowrap">
-                      {p.patientName}
-                    </TableCell>
+                    <TableCell className="font-medium text-slate-900 whitespace-nowrap">{p.patientName}</TableCell>
                     <TableCell className="text-sm text-slate-600 whitespace-nowrap">{p.purpose}</TableCell>
-                    <TableCell className="text-sm text-slate-500">
-                      {p.age}yrs / {p.gender}
-                    </TableCell>
+                    <TableCell className="text-sm text-slate-500">{p.age}yrs / {p.gender}</TableCell>
                     <TableCell>{statusBadge(p.priority)}</TableCell>
                     <TableCell>{statusBadge(p.status)}</TableCell>
                     <TableCell className="text-right">
-                      <Link
-                        href={`/nurse/vitals?patient=${p.patientId}`}
-                        className="inline-flex items-center justify-center rounded-lg bg-cyan-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-cyan-700 transition-colors whitespace-nowrap"
-                      >
-                        Measure Vision
-                      </Link>
+                      <Link href={`/nurse/vitals?patient=${p.patientId}`} className="inline-flex items-center justify-center rounded-lg bg-cyan-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-cyan-700 whitespace-nowrap">Measure Vision</Link>
                     </TableCell>
                   </TableRow>
                 ))}
-                {eyeTestPatients.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-center text-sm text-slate-500 py-6">
-                      No eye test patients today.
-                    </TableCell>
-                  </TableRow>
-                )}
+                {eyeTestPatients.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-sm text-slate-500 py-6">No eye test patients today.</TableCell></TableRow>}
               </TableBody>
             </Table>
           </div>

@@ -29,8 +29,8 @@ export default function DoctorAvailability() {
   });
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8 pb-20">
-      <div className="flex items-center gap-4">
+    <div className="max-w-6xl mx-auto space-y-4 sm:space-y-8 pb-20">
+      <div className="flex items-center gap-3 sm:gap-4">
         <button 
           onClick={() => router.back()}
           className="p-2 hover:bg-white rounded-full border border-transparent hover:border-slate-200 transition-all"
@@ -43,18 +43,18 @@ export default function DoctorAvailability() {
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-8">
         {/* Weekly Schedule Builder */}
         <div className="lg:col-span-2 space-y-6">
           <Card className="rounded-[2rem] border-slate-200 shadow-xl shadow-slate-100/50">
-            <CardHeader className="p-8 border-b border-slate-50 flex-row items-center justify-between">
+            <CardHeader className="p-4 sm:p-8 border-b border-slate-50 flex-row items-center justify-between gap-3">
               <div>
-                <CardTitle className="text-xl font-black text-slate-900">Weekly Consultation Hours</CardTitle>
-                <p className="text-sm font-bold text-slate-400 mt-1">Set your standard recurring weekly schedule</p>
+                <CardTitle className="text-base sm:text-xl font-black text-slate-900">Weekly Consultation Hours</CardTitle>
+                <p className="text-[10px] sm:text-sm font-bold text-slate-400 mt-1">Set your standard recurring weekly schedule</p>
               </div>
-              <button className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-black hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-200">
-                <Save size={18} />
-                Save Schedule
+              <button className="flex items-center gap-2 px-4 sm:px-6 py-2 sm:py-2.5 rounded-xl bg-emerald-600 text-white text-xs sm:text-sm font-black hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-200">
+                <Save size={16} className="sm:w-[18px] sm:h-[18px]" />
+                <span className="hidden sm:inline">Save Schedule</span> Save
               </button>
             </CardHeader>
             <CardContent className="p-0">
@@ -63,14 +63,14 @@ export default function DoctorAvailability() {
                   const config = schedule[day as keyof typeof schedule];
                   return (
                     <div key={day} className={cn(
-                      "p-6 flex items-center justify-between transition-colors",
+                      "p-3 sm:p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 transition-colors",
                       !config.active && "bg-slate-50/50"
                     )}>
-                      <div className="flex items-center gap-6 flex-1">
-                        <div className="w-32">
-                          <p className="font-black text-slate-900">{day}</p>
+                      <div className="flex items-center gap-3 sm:gap-6 flex-1">
+                        <div className="w-20 sm:w-32">
+                          <p className="font-black text-slate-900 text-sm sm:text-base">{day}</p>
                           <Badge className={cn(
-                            "mt-1 text-[10px] uppercase font-black tracking-tighter",
+                            "mt-1 text-[8px] sm:text-[10px] uppercase font-black tracking-tighter",
                             config.active ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-slate-500"
                           )}>
                             {config.active ? "Working" : "Day Off"}
@@ -78,29 +78,29 @@ export default function DoctorAvailability() {
                         </div>
                         
                         {config.active ? (
-                          <div className="flex items-center gap-8 flex-1">
-                            <div className="space-y-1">
-                              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Shift</p>
-                              <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm">
-                                <span className="text-xs font-bold text-slate-700">{config.start}</span>
+                          <div className="flex items-center gap-4 sm:gap-8 flex-1">
+                            <div className="space-y-0.5 sm:space-y-1">
+                              <p className="text-[8px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest">Shift</p>
+                              <div className="flex items-center gap-1.5 sm:gap-2 bg-white px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-slate-200 shadow-sm">
+                                <span className="text-[10px] sm:text-xs font-bold text-slate-700">{config.start}</span>
                                 <span className="text-slate-300">—</span>
-                                <span className="text-xs font-bold text-slate-700">{config.end}</span>
+                                <span className="text-[10px] sm:text-xs font-bold text-slate-700">{config.end}</span>
                               </div>
                             </div>
-                            <div className="space-y-1">
-                              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Break Time</p>
-                              <div className="flex items-center gap-2 text-amber-600 font-bold text-xs">
-                                <Coffee size={14} />
+                            <div className="space-y-0.5 sm:space-y-1">
+                              <p className="text-[8px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest">Break</p>
+                              <div className="flex items-center gap-1.5 text-amber-600 font-bold text-[10px] sm:text-xs">
+                                <Coffee size={12} className="sm:w-[14px] sm:h-[14px]" />
                                 {config.break}
                               </div>
                             </div>
                           </div>
                         ) : (
-                          <p className="text-sm font-bold text-slate-400 italic">No slots available for booking</p>
+                          <p className="text-xs sm:text-sm font-bold text-slate-400 italic">No slots available</p>
                         )}
                       </div>
                       
-                      <button className="text-xs font-black uppercase text-emerald-700 hover:underline">
+                      <button className="text-[10px] sm:text-xs font-black uppercase text-emerald-700 hover:underline self-end sm:self-auto">
                         Edit Day
                       </button>
                     </div>

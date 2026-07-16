@@ -311,36 +311,36 @@ export default function OpticalPage() {
       />
 
       {/* Metric Counters */}
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-3">
         <Card className="border border-slate-200 shadow-sm hover:shadow-md transition-all">
-          <CardContent className="p-6 flex items-center justify-between">
-            <div>
-              <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Open Lens Orders</p>
-              <p className="mt-2 text-3xl font-extrabold text-slate-900">{openCount}</p>
+          <CardContent className="p-3 sm:p-6 flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-[11px] sm:text-sm font-semibold text-slate-500 uppercase tracking-wider">Open Lens Orders</p>
+              <p className="mt-1 sm:mt-2 text-xl sm:text-3xl font-extrabold text-slate-900 tabular-nums">{openCount}</p>
             </div>
-            <div className="p-3 bg-sky-50 text-sky-600 rounded-2xl">
+            <div className="p-2 sm:p-3 bg-sky-50 text-sky-600 rounded-2xl shrink-0">
               <Glasses className="h-6 w-6" />
             </div>
           </CardContent>
         </Card>
         <Card className="border border-slate-200 shadow-sm hover:shadow-md transition-all">
-          <CardContent className="p-6 flex items-center justify-between">
-            <div>
-              <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Lenses In Production</p>
-              <p className="mt-2 text-3xl font-extrabold text-slate-900">{inProduction}</p>
+          <CardContent className="p-3 sm:p-6 flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-[11px] sm:text-sm font-semibold text-slate-500 uppercase tracking-wider">Lenses In Production</p>
+              <p className="mt-1 sm:mt-2 text-xl sm:text-3xl font-extrabold text-slate-900 tabular-nums">{inProduction}</p>
             </div>
-            <div className="p-3 bg-amber-50 text-amber-600 rounded-2xl">
+            <div className="p-2 sm:p-3 bg-amber-50 text-amber-600 rounded-2xl shrink-0">
               <Wrench className="h-6 w-6" />
             </div>
           </CardContent>
         </Card>
         <Card className="border border-slate-200 shadow-sm hover:shadow-md transition-all">
-          <CardContent className="p-6 flex items-center justify-between">
-            <div>
-              <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Ready for Pickup</p>
-              <p className="mt-2 text-3xl font-extrabold text-slate-900 text-emerald-600">{readyCount}</p>
+          <CardContent className="p-3 sm:p-6 flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-[11px] sm:text-sm font-semibold text-slate-500 uppercase tracking-wider">Ready for Pickup</p>
+              <p className="mt-1 sm:mt-2 text-xl sm:text-3xl font-extrabold text-slate-900 text-emerald-600 tabular-nums">{readyCount}</p>
             </div>
-            <div className="p-3 bg-emerald-50 text-emerald-600 rounded-2xl">
+            <div className="p-2 sm:p-3 bg-emerald-50 text-emerald-600 rounded-2xl shrink-0">
               <Package className="h-6 w-6" />
             </div>
           </CardContent>
@@ -383,8 +383,8 @@ export default function OpticalPage() {
       {activeTab === "orders" && (
         <Card className="border border-slate-200 shadow-sm overflow-hidden">
           <CardHeader className="bg-white border-b border-slate-100 py-5">
-            <CardTitle className="text-lg font-bold text-slate-900">Active Patient Lens Orders</CardTitle>
-            <p className="text-sm text-slate-500">Live tracker of patient optician orders in the production and dispensing pipeline.</p>
+            <CardTitle className="text-base sm:text-lg font-bold text-slate-900">Active Patient Lens Orders</CardTitle>
+            <p className="text-xs sm:text-sm text-slate-500">Live tracker of patient optician orders in the production and dispensing pipeline.</p>
           </CardHeader>
           <CardContent className="p-0">
             <div className="overflow-x-auto">
@@ -514,8 +514,8 @@ export default function OpticalPage() {
       {activeTab === "lens-pricing" && (
         <Card className="border border-slate-200 shadow-sm overflow-hidden">
           <CardHeader className="bg-white border-b border-slate-100 py-5">
-            <CardTitle className="text-lg font-bold text-slate-900">Custom Lens Pricing & HMO Coverage Index</CardTitle>
-            <p className="text-sm text-slate-500">Global index of uncut lens specs, base private price, and HMO coverage brackets.</p>
+            <CardTitle className="text-base sm:text-lg font-bold text-slate-900">Custom Lens Pricing & HMO Coverage Index</CardTitle>
+            <p className="text-xs sm:text-sm text-slate-500">Global index of uncut lens specs, base private price, and HMO coverage brackets.</p>
           </CardHeader>
           <CardContent className="p-0">
             <div className="overflow-x-auto">
@@ -562,8 +562,8 @@ export default function OpticalPage() {
       {activeTab === "inventory" && (
         <Card className="border border-slate-200 shadow-sm overflow-hidden">
           <CardHeader className="bg-white border-b border-slate-100 py-5">
-            <CardTitle className="text-lg font-bold text-slate-900">Accessories, Cases, & Lens Blanks Inventory</CardTitle>
-            <p className="text-sm text-slate-500">Real-time stock ledger of supporting optician components and laboratory lens blanks.</p>
+            <CardTitle className="text-base sm:text-lg font-bold text-slate-900">Accessories, Cases, & Lens Blanks Inventory</CardTitle>
+            <p className="text-xs sm:text-sm text-slate-500">Real-time stock ledger of supporting optician components and laboratory lens blanks.</p>
           </CardHeader>
           <CardContent className="p-0">
             <div className="overflow-x-auto">
@@ -624,8 +624,8 @@ export default function OpticalPage() {
       {activeTab === "tracking" && (
         <Card className="border border-slate-200 shadow-sm overflow-hidden">
           <CardHeader className="bg-white border-b border-slate-100 py-5">
-            <CardTitle className="text-lg font-bold text-slate-900">External Lab Shipments & Lens Pipeline</CardTitle>
-            <p className="text-sm text-slate-500">Track complex surfacing, coatings, and glazing for prescription lenses outsourced to specialist labs.</p>
+            <CardTitle className="text-base sm:text-lg font-bold text-slate-900">External Lab Shipments & Lens Pipeline</CardTitle>
+            <p className="text-xs sm:text-sm text-slate-500">Track complex surfacing, coatings, and glazing for prescription lenses outsourced to specialist labs.</p>
           </CardHeader>
           <CardContent className="p-0">
             <div className="overflow-x-auto">
@@ -688,8 +688,8 @@ export default function OpticalPage() {
       {activeTab === "sales" && (
         <Card className="border border-slate-200 shadow-sm overflow-hidden">
           <CardHeader className="bg-white border-b border-slate-100 py-5">
-            <CardTitle className="text-lg font-bold text-slate-900">Recent Optical Sales & Revenue Ledger</CardTitle>
-            <p className="text-sm text-slate-500">POS history showing private revenue collections and active HMO optical insurance claims.</p>
+            <CardTitle className="text-base sm:text-lg font-bold text-slate-900">Recent Optical Sales & Revenue Ledger</CardTitle>
+            <p className="text-xs sm:text-sm text-slate-500">POS history showing private revenue collections and active HMO optical insurance claims.</p>
           </CardHeader>
           <CardContent className="p-0">
             <div className="overflow-x-auto">
@@ -742,8 +742,8 @@ export default function OpticalPage() {
       {activeTab === "suppliers" && (
         <Card className="border border-slate-200 shadow-sm overflow-hidden">
           <CardHeader className="bg-white border-b border-slate-100 py-5">
-            <CardTitle className="text-lg font-bold text-slate-900">Lab Partners & Material Suppliers</CardTitle>
-            <p className="text-sm text-slate-500">Official repository of active laboratory outsourcing contacts, wholesale vendors, and lead times.</p>
+            <CardTitle className="text-base sm:text-lg font-bold text-slate-900">Lab Partners & Material Suppliers</CardTitle>
+            <p className="text-xs sm:text-sm text-slate-500">Official repository of active laboratory outsourcing contacts, wholesale vendors, and lead times.</p>
           </CardHeader>
           <CardContent className="p-0">
             <div className="overflow-x-auto">

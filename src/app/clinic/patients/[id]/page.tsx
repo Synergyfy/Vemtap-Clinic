@@ -132,12 +132,12 @@ export default function PatientProfilePage() {
       {tab === "Overview" ? (
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
           <Card className="lg:col-span-2">
-            <CardHeader className="flex-row items-center justify-between">
-              <CardTitle>Patient overview</CardTitle>
-              <div>{statusBadge(patient.status)}</div>
+            <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <CardTitle className="text-base sm:text-lg font-bold">Patient overview</CardTitle>
+              <div className="self-start">{statusBadge(patient.status)}</div>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
                 <div className="rounded-xl border border-slate-200 p-4">
                   <p className="text-sm text-slate-500">Appointments (today)</p>
                   <p className="mt-1 text-xl font-bold text-slate-900 tabular-nums">{appointments.length}</p>
@@ -191,9 +191,9 @@ export default function PatientProfilePage() {
           </Card>
 
           <Card>
-            <CardHeader className="flex-row items-center justify-between">
-              <CardTitle>Notes</CardTitle>
-              <Link href="/clinic/support" className="text-sm font-medium text-sky-700 hover:text-sky-800">
+            <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <CardTitle className="text-base sm:text-lg font-bold">Notes</CardTitle>
+              <Link href="/clinic/support" className="text-xs sm:text-sm font-medium text-sky-700 hover:text-sky-800 self-start">
                 Open support
               </Link>
             </CardHeader>
@@ -222,36 +222,38 @@ export default function PatientProfilePage() {
 
       {tab === "Consultations" ? (
         <Card>
-          <CardHeader className="flex-row items-center justify-between">
-            <CardTitle>Consultations</CardTitle>
-            <Link href="/clinic/queue" className="text-sm font-medium text-sky-700 hover:text-sky-800">
+          <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <CardTitle className="text-base sm:text-lg font-bold">Consultations</CardTitle>
+            <Link href="/clinic/queue" className="text-xs sm:text-sm font-medium text-sky-700 hover:text-sky-800 self-start">
               Open queue
             </Link>
           </CardHeader>
           <CardContent>
             {consultations.length ? (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Provider</TableHead>
-                    <TableHead>Chief complaint</TableHead>
-                    <TableHead>Diagnosis</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {consultations.map((c) => (
-                    <TableRow key={c.id}>
-                      <TableCell className="tabular-nums">{c.visitISO}</TableCell>
-                      <TableCell>{c.provider}</TableCell>
-                      <TableCell>{c.chiefComplaint}</TableCell>
-                      <TableCell>{c.diagnosis}</TableCell>
-                      <TableCell>{statusBadge(c.status)}</TableCell>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Provider</TableHead>
+                      <TableHead>Chief complaint</TableHead>
+                      <TableHead>Diagnosis</TableHead>
+                      <TableHead>Status</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {consultations.map((c) => (
+                      <TableRow key={c.id}>
+                        <TableCell className="tabular-nums">{c.visitISO}</TableCell>
+                        <TableCell>{c.provider}</TableCell>
+                        <TableCell>{c.chiefComplaint}</TableCell>
+                        <TableCell>{c.diagnosis}</TableCell>
+                        <TableCell>{statusBadge(c.status)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             ) : (
               <p className="text-sm text-slate-500">No consultations recorded yet.</p>
             )}
@@ -261,34 +263,36 @@ export default function PatientProfilePage() {
 
       {tab === "Eye tests" ? (
         <Card>
-          <CardHeader className="flex-row items-center justify-between">
-            <CardTitle>Eye tests</CardTitle>
-            <Link href="/clinic/queue" className="text-sm font-medium text-sky-700 hover:text-sky-800">
+          <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <CardTitle className="text-base sm:text-lg font-bold">Eye tests</CardTitle>
+            <Link href="/clinic/queue" className="text-xs sm:text-sm font-medium text-sky-700 hover:text-sky-800 self-start">
               Add from workflow
             </Link>
           </CardHeader>
           <CardContent>
             {tests.length ? (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Summary</TableHead>
-                    <TableHead>Performed by</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {tests.map((t) => (
-                    <TableRow key={t.id}>
-                      <TableCell className="tabular-nums">{t.testISO}</TableCell>
-                      <TableCell>{t.type}</TableCell>
-                      <TableCell>{t.summary}</TableCell>
-                      <TableCell>{t.performedBy}</TableCell>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Summary</TableHead>
+                      <TableHead>Performed by</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {tests.map((t) => (
+                      <TableRow key={t.id}>
+                        <TableCell className="tabular-nums">{t.testISO}</TableCell>
+                        <TableCell>{t.type}</TableCell>
+                        <TableCell>{t.summary}</TableCell>
+                        <TableCell>{t.performedBy}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             ) : (
               <p className="text-sm text-slate-500">No tests recorded yet.</p>
             )}
@@ -298,9 +302,9 @@ export default function PatientProfilePage() {
 
       {tab === "Prescriptions" ? (
         <Card>
-          <CardHeader className="flex-row items-center justify-between">
-            <CardTitle>Prescriptions</CardTitle>
-            <Link href="/clinic/pharmacy" className="text-sm font-medium text-sky-700 hover:text-sky-800">
+          <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <CardTitle className="text-base sm:text-lg font-bold">Prescriptions</CardTitle>
+            <Link href="/clinic/pharmacy" className="text-xs sm:text-sm font-medium text-sky-700 hover:text-sky-800 self-start">
               Open pharmacy
             </Link>
           </CardHeader>
@@ -336,36 +340,38 @@ export default function PatientProfilePage() {
 
       {tab === "Lens orders" ? (
         <Card>
-          <CardHeader className="flex-row items-center justify-between">
-            <CardTitle>Lens orders</CardTitle>
-            <Link href="/clinic/optical" className="text-sm font-medium text-sky-700 hover:text-sky-800">
+          <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <CardTitle className="text-base sm:text-lg font-bold">Lens orders</CardTitle>
+            <Link href="/clinic/optical" className="text-xs sm:text-sm font-medium text-sky-700 hover:text-sky-800 self-start">
               Open optical
             </Link>
           </CardHeader>
           <CardContent>
             {lensOrders.length ? (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Order</TableHead>
-                    <TableHead>Lens</TableHead>
-                    <TableHead>Frame</TableHead>
-                    <TableHead>Due</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {lensOrders.map((o) => (
-                    <TableRow key={o.id}>
-                      <TableCell className="font-medium">{o.id}</TableCell>
-                      <TableCell>{o.lens}</TableCell>
-                      <TableCell>{o.frame}</TableCell>
-                      <TableCell className="tabular-nums">{o.dueISO}</TableCell>
-                      <TableCell>{statusBadge(o.status)}</TableCell>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Order</TableHead>
+                      <TableHead>Lens</TableHead>
+                      <TableHead>Frame</TableHead>
+                      <TableHead>Due</TableHead>
+                      <TableHead>Status</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {lensOrders.map((o) => (
+                      <TableRow key={o.id}>
+                        <TableCell className="font-medium">{o.id}</TableCell>
+                        <TableCell>{o.lens}</TableCell>
+                        <TableCell>{o.frame}</TableCell>
+                        <TableCell className="tabular-nums">{o.dueISO}</TableCell>
+                        <TableCell>{statusBadge(o.status)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             ) : (
               <p className="text-sm text-slate-500">No lens orders for this patient yet.</p>
             )}
@@ -376,36 +382,38 @@ export default function PatientProfilePage() {
       {tab === "Billing" ? (
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
           <Card className="lg:col-span-2">
-            <CardHeader className="flex-row items-center justify-between">
-              <CardTitle>Billing</CardTitle>
-              <Link href="/clinic/finance" className="text-sm font-medium text-sky-700 hover:text-sky-800">
+            <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <CardTitle className="text-base sm:text-lg font-bold">Billing</CardTitle>
+              <Link href="/clinic/finance" className="text-xs sm:text-sm font-medium text-sky-700 hover:text-sky-800 self-start">
                 Open finance
               </Link>
             </CardHeader>
             <CardContent>
               {billing.length ? (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Invoice</TableHead>
-                      <TableHead>Payer</TableHead>
-                      <TableHead>Method</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {billing.map((b) => (
-                      <TableRow key={b.id}>
-                        <TableCell className="font-medium">{b.id}</TableCell>
-                        <TableCell>{b.payerType}</TableCell>
-                        <TableCell>{b.method}</TableCell>
-                        <TableCell className="tabular-nums">{formatNGN(b.amount)}</TableCell>
-                        <TableCell>{statusBadge(b.status)}</TableCell>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Invoice</TableHead>
+                        <TableHead>Payer</TableHead>
+                        <TableHead>Method</TableHead>
+                        <TableHead>Amount</TableHead>
+                        <TableHead>Status</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {billing.map((b) => (
+                        <TableRow key={b.id}>
+                          <TableCell className="font-medium">{b.id}</TableCell>
+                          <TableCell>{b.payerType}</TableCell>
+                          <TableCell>{b.method}</TableCell>
+                          <TableCell className="tabular-nums">{formatNGN(b.amount)}</TableCell>
+                          <TableCell>{statusBadge(b.status)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
               ) : (
                 <p className="text-sm text-slate-500">No invoices recorded for this patient today.</p>
               )}
@@ -413,7 +421,7 @@ export default function PatientProfilePage() {
           </Card>
           <Card>
             <CardHeader>
-              <CardTitle>Summary</CardTitle>
+              <CardTitle className="text-base sm:text-lg font-bold">Summary</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="rounded-xl border border-slate-200 p-4">
@@ -433,34 +441,36 @@ export default function PatientProfilePage() {
 
       {tab === "HMO" ? (
         <Card>
-          <CardHeader className="flex-row items-center justify-between">
-            <CardTitle>HMO</CardTitle>
-            <Link href="/clinic/hmo" className="text-sm font-medium text-sky-700 hover:text-sky-800">
-              Open HMO
-            </Link>
-          </CardHeader>
+            <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <CardTitle className="text-base sm:text-lg font-bold">HMO</CardTitle>
+              <Link href="/clinic/hmo" className="text-xs sm:text-sm font-medium text-sky-700 hover:text-sky-800 self-start">
+                Open HMO
+              </Link>
+            </CardHeader>
           <CardContent>
             {hmoClaims.length ? (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Claim</TableHead>
-                    <TableHead>HMO</TableHead>
-                    <TableHead>Amount</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {hmoClaims.map((c) => (
-                    <TableRow key={c.id}>
-                      <TableCell className="font-medium">{c.id}</TableCell>
-                      <TableCell>{c.hmo}</TableCell>
-                      <TableCell className="tabular-nums">{formatNGN(c.amount)}</TableCell>
-                      <TableCell>{statusBadge(c.status)}</TableCell>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Claim</TableHead>
+                      <TableHead>HMO</TableHead>
+                      <TableHead>Amount</TableHead>
+                      <TableHead>Status</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {hmoClaims.map((c) => (
+                      <TableRow key={c.id}>
+                        <TableCell className="font-medium">{c.id}</TableCell>
+                        <TableCell>{c.hmo}</TableCell>
+                        <TableCell className="tabular-nums">{formatNGN(c.amount)}</TableCell>
+                        <TableCell>{statusBadge(c.status)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             ) : (
               <p className="text-sm text-slate-500">No HMO claims recorded for this patient yet.</p>
             )}
@@ -470,32 +480,34 @@ export default function PatientProfilePage() {
 
       {tab === "Follow-ups" ? (
         <Card>
-          <CardHeader className="flex-row items-center justify-between">
-            <CardTitle>Follow-ups</CardTitle>
-            <Link href="/clinic/appointments" className="text-sm font-medium text-sky-700 hover:text-sky-800">
+          <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <CardTitle className="text-base sm:text-lg font-bold">Follow-ups</CardTitle>
+            <Link href="/clinic/appointments" className="text-xs sm:text-sm font-medium text-sky-700 hover:text-sky-800 self-start">
               Schedule follow-up
             </Link>
           </CardHeader>
           <CardContent>
             {followUps.length ? (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Due</TableHead>
-                    <TableHead>Reason</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {followUps.map((f) => (
-                    <TableRow key={f.id}>
-                      <TableCell className="tabular-nums">{f.dueISO}</TableCell>
-                      <TableCell>{f.reason}</TableCell>
-                      <TableCell>{statusBadge(f.status)}</TableCell>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Due</TableHead>
+                      <TableHead>Reason</TableHead>
+                      <TableHead>Status</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {followUps.map((f) => (
+                      <TableRow key={f.id}>
+                        <TableCell className="tabular-nums">{f.dueISO}</TableCell>
+                        <TableCell>{f.reason}</TableCell>
+                        <TableCell>{statusBadge(f.status)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             ) : (
               <p className="text-sm text-slate-500">No follow-ups created yet.</p>
             )}
@@ -505,32 +517,34 @@ export default function PatientProfilePage() {
 
       {tab === "Documents" ? (
         <Card>
-          <CardHeader className="flex-row items-center justify-between">
-            <CardTitle>Documents &amp; scans</CardTitle>
-            <Link href="/clinic/settings" className="text-sm font-medium text-sky-700 hover:text-sky-800">
+          <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <CardTitle className="text-base sm:text-lg font-bold">Documents &amp; scans</CardTitle>
+            <Link href="/clinic/settings" className="text-xs sm:text-sm font-medium text-sky-700 hover:text-sky-800 self-start">
               Document settings
             </Link>
           </CardHeader>
           <CardContent>
             {documents.length ? (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Uploaded</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {documents.map((d) => (
-                    <TableRow key={d.id}>
-                      <TableCell className="font-medium">{d.name}</TableCell>
-                      <TableCell>{d.type}</TableCell>
-                      <TableCell className="tabular-nums">{d.uploadedISO}</TableCell>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Uploaded</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {documents.map((d) => (
+                      <TableRow key={d.id}>
+                        <TableCell className="font-medium">{d.name}</TableCell>
+                        <TableCell>{d.type}</TableCell>
+                        <TableCell className="tabular-nums">{d.uploadedISO}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             ) : (
               <p className="text-sm text-slate-500">No documents uploaded yet.</p>
             )}
