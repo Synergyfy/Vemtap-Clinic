@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { Modal } from "@/components/ui/modal";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -50,6 +51,14 @@ function priorityBadge(priority: string) {
 export default function SupportPage() {
   const { openModal } = useModals();
   const [activeTab, setActiveTab] = useState<SupportTab>("tickets");
+  const [bookingOpen, setBookingOpen] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [bookingTopic, setBookingTopic] = useState("System Navigation");
+  const [bookingDate, setBookingDate] = useState("");
+  const [bookingTime, setBookingTime] = useState("Morning");
+  const [feedbackCategory, setFeedbackCategory] = useState("Feature Request");
+  const [feedbackDescription, setFeedbackDescription] = useState("");
+  const [feedbackPriority, setFeedbackPriority] = useState("Medium");
 
   const tabs = [
     { id: "tickets", label: "Support Tickets", icon: MessageSquare },
@@ -65,7 +74,7 @@ export default function SupportPage() {
         description="24/7 dedicated support hub for technical issues, training, and account success."
         actions={[
           { label: "Create New Ticket", variant: "primary", onClick: () => openModal("support-ticket") },
-          { label: "Live WhatsApp Support", variant: "outline", onClick: () => alert("Redirecting to dedicated WhatsApp support channel...") },
+          { label: "Live WhatsApp Support", variant: "outline", onClick: () => window.open("https://wa.me/234800VEMTAP", "_blank") },
         ]}
       />
 
@@ -90,7 +99,7 @@ export default function SupportPage() {
       <div className="space-y-6">
         {activeTab === "tickets" && (
           <div className="space-y-6">
-             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+             <div className="grid grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-4">
                 {[
                   { label: "Total Tickets", value: clinicSupportTickets.length, icon: MessageSquare, color: "text-slate-600" },
                   { label: "Open Now", value: clinicSupportTickets.filter(t => t.status === "Open").length, icon: Clock, color: "text-sky-600" },
@@ -98,24 +107,24 @@ export default function SupportPage() {
                   { label: "Network Uptime", value: "99.98%", icon: Activity, color: "text-blue-600" },
                 ].map((stat, i) => (
                    <Card key={i} className="border-none shadow-sm bg-white">
-                      <CardContent className="p-6">
-                         <div className="flex items-center justify-between">
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{stat.label}</p>
-                            <stat.icon size={14} className={stat.color} />
+                      <CardContent className="p-3 sm:p-6 flex items-center justify-between gap-2">
+                         <div className="min-w-0">
+                            <p className="text-[11px] sm:text-sm font-medium text-slate-500">{stat.label}</p>
+                            <p className="mt-1 text-xl sm:text-2xl font-bold tabular-nums">{stat.value}</p>
                          </div>
-                         <p className="text-2xl font-bold text-slate-900 mt-1">{stat.value}</p>
+                         <stat.icon size={14} className={cn("shrink-0", stat.color)} />
                       </CardContent>
                    </Card>
                 ))}
              </div>
 
              <Card className="border-none shadow-sm rounded-3xl p-0 overflow-hidden bg-white">
-                <CardHeader className="px-8 py-6 border-b border-slate-50">
-                   <CardTitle className="text-lg">Recent Service Requests</CardTitle>
-                   <p className="text-sm text-slate-500">Track the progress of your technical and operational tickets.</p>
-                </CardHeader>
-                <Table>
-                   <TableHeader className="bg-slate-50/50">
+                 <CardHeader className="px-8 py-6 border-b border-slate-50">
+                    <CardTitle className="text-base sm:text-lg">Recent Service Requests</CardTitle>
+                    <p className="text-xs sm:text-sm text-slate-500">Track the progress of your technical and operational tickets.</p>
+                 </CardHeader>
+                 <div className="overflow-x-auto"><Table>
+                    <TableHeader className="bg-slate-50/50">
                       <TableRow>
                          <TableHead className="px-8 text-[10px] font-black text-slate-400 uppercase tracking-widest">Ticket ID</TableHead>
                          <TableHead className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Subject</TableHead>
@@ -137,8 +146,8 @@ export default function SupportPage() {
                          </TableRow>
                       ))}
                    </TableBody>
-                </Table>
-             </Card>
+                 </Table></div>
+              </Card>
           </div>
         )}
 
@@ -178,7 +187,7 @@ export default function SupportPage() {
                           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">WhatsApp Direct</p>
                        </div>
                        <p className="text-xs text-slate-600 font-medium mb-6">Fastest response for operational queries and quick fixes.</p>
-                       <Button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold" onClick={() => alert("Redirecting to WhatsApp support...")}>Start Chat</Button>
+                       <Button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold" onClick={() => window.open("https://wa.me/234800VEMTAP", "_blank")}>Start Chat</Button>
                     </Card>
                     <Card className="border-none shadow-sm rounded-3xl p-6 bg-white border border-sky-100">
                        <div className="flex items-center gap-3 mb-4">
@@ -188,7 +197,7 @@ export default function SupportPage() {
                           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Email Assistance</p>
                        </div>
                        <p className="text-xs text-slate-600 font-medium mb-6">Best for formal requests, billing issues, and contract updates.</p>
-                       <Button className="w-full bg-sky-600 hover:bg-sky-700 text-white rounded-xl font-bold" onClick={() => alert("Opening default email client to support@vemtap.com...")}>Email Us</Button>
+                       <Button className="w-full bg-sky-600 hover:bg-sky-700 text-white rounded-xl font-bold" onClick={() => window.location.href = "mailto:support@vemtap.com?subject=Support Request"}>Email Us</Button>
                     </Card>
                  </div>
               </div>
@@ -199,12 +208,12 @@ export default function SupportPage() {
                     <div className="space-y-2">
                        <p className="text-sm font-bold text-slate-900">Staff Training Session</p>
                        <p className="text-xs text-slate-500 leading-relaxed">Book a personalized training session for your new nurses or front desk team.</p>
-                       <Button variant="outline" className="w-full mt-4 rounded-xl font-bold border-slate-100 h-10 text-xs" onClick={() => alert("Opening training scheduler...")}>Book Session</Button>
+                        <Button variant="outline" className="w-full mt-4 rounded-xl font-bold border-slate-100 h-10 text-xs" onClick={() => setBookingOpen(true)}>Book Session</Button>
                     </div>
                     <div className="pt-6 border-t border-slate-50 space-y-2">
                        <p className="text-sm font-bold text-slate-900">Platform Feedback</p>
                        <p className="text-xs text-slate-500 leading-relaxed">Have a feature suggestion? Help us shape the future of Vemtap.</p>
-                       <Button variant="ghost" className="w-full mt-2 rounded-xl font-bold text-sky-600 h-10 text-xs" onClick={() => alert("Feature feedback form triggered...")}>Submit Idea</Button>
+                        <Button variant="ghost" className="w-full mt-2 rounded-xl font-bold text-sky-600 h-10 text-xs" onClick={() => setFeedbackOpen(true)}>Submit Idea</Button>
                     </div>
                  </div>
               </Card>
@@ -245,12 +254,12 @@ export default function SupportPage() {
         {activeTab === "health" && (
            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <Card className="lg:col-span-2 border-none shadow-sm rounded-3xl p-8 bg-white">
-                 <CardHeader className="p-0 mb-8 flex-row items-center justify-between">
+                 <CardHeader className="p-0 mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <div>
-                       <CardTitle className="text-lg">Network Service Status</CardTitle>
-                       <p className="text-sm text-slate-500 mt-1">Real-time health of Vemtap's core infrastructure and integrations.</p>
+                       <CardTitle className="text-base sm:text-lg">Network Service Status</CardTitle>
+                       <p className="text-xs sm:text-sm text-slate-500 mt-1">Real-time health of Vemtap's core infrastructure and integrations.</p>
                     </div>
-                    <Badge className="bg-emerald-50 text-emerald-700 border-none font-black text-[10px] px-3 py-1">ALL SYSTEMS OPERATIONAL</Badge>
+                    <Badge className="bg-emerald-50 text-emerald-700 border-none font-black text-[10px] px-3 py-1 self-start">ALL SYSTEMS OPERATIONAL</Badge>
                  </CardHeader>
                  <div className="space-y-6">
                     {[
@@ -299,7 +308,22 @@ export default function SupportPage() {
                  <Card className="border-none shadow-sm rounded-3xl p-6 bg-white border border-sky-100">
                     <p className="text-sm font-bold text-slate-900 mb-2">Technical Audit</p>
                     <p className="text-xs text-slate-600 mb-6 leading-relaxed">Download your clinic's technical performance and uptime report for the last quarter.</p>
-                    <Button variant="outline" className="w-full rounded-xl font-bold border-sky-100 text-sky-600 h-11 text-xs" onClick={() => alert("Downloading global systems audit XLSX...")}>
+                     <Button variant="outline" className="w-full rounded-xl font-bold border-sky-100 text-sky-600 h-11 text-xs" onClick={() => {
+                       const auditData = clinicIncidentLogs.map(inc => ({
+                         ID: inc.id,
+                         Issue: inc.issue,
+                         Severity: inc.severity,
+                         Status: inc.status,
+                         Time: inc.time
+                       }));
+                       const headers = Object.keys(auditData[0]);
+                       const csv = [headers.join(","), ...auditData.map(row => headers.map(h => `"${row[h]}"`).join(","))].join("\n");
+                       const blob = new Blob([csv], { type: "text/csv" });
+                       const url = URL.createObjectURL(blob);
+                       const a = document.createElement("a");
+                       a.href = url; a.download = "technical-audit-log.csv"; a.click();
+                       URL.revokeObjectURL(url);
+                     }}>
                        <Download size={14} className="mr-2" /> Download Audit
                     </Button>
                  </Card>
@@ -307,6 +331,65 @@ export default function SupportPage() {
            </div>
         )}
       </div>
+
+      {/* Booking Modal */}
+      <Modal isOpen={bookingOpen} onClose={() => setBookingOpen(false)} title="Book Training Session">
+        <div className="space-y-4">
+          <div>
+            <label className="block text-xs font-bold text-slate-600 mb-1">Topic</label>
+            <select value={bookingTopic} onChange={e => setBookingTopic(e.target.value)} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm font-medium outline-none focus:ring-2 focus:ring-sky-100">
+              <option>System Navigation</option>
+              <option>Reporting</option>
+              <option>HMO Workflow</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-slate-600 mb-1">Preferred Date</label>
+            <input type="date" value={bookingDate} onChange={e => setBookingDate(e.target.value)} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm font-medium outline-none focus:ring-2 focus:ring-sky-100" />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-slate-600 mb-1">Time</label>
+            <select value={bookingTime} onChange={e => setBookingTime(e.target.value)} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm font-medium outline-none focus:ring-2 focus:ring-sky-100">
+              <option>Morning</option>
+              <option>Afternoon</option>
+            </select>
+          </div>
+          <div className="flex gap-3 pt-2">
+            <Button onClick={() => { alert(`Booking confirmed!\nTopic: ${bookingTopic}\nDate: ${bookingDate || "TBD"}\nTime: ${bookingTime}`); setBookingOpen(false); }} className="flex-1 bg-sky-600 hover:bg-sky-700 text-white rounded-xl font-bold">Book</Button>
+            <Button variant="outline" onClick={() => setBookingOpen(false)} className="flex-1 rounded-xl font-bold">Cancel</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Feedback Modal */}
+      <Modal isOpen={feedbackOpen} onClose={() => setFeedbackOpen(false)} title="Submit Feedback">
+        <div className="space-y-4">
+          <div>
+            <label className="block text-xs font-bold text-slate-600 mb-1">Category</label>
+            <select value={feedbackCategory} onChange={e => setFeedbackCategory(e.target.value)} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm font-medium outline-none focus:ring-2 focus:ring-sky-100">
+              <option>Feature Request</option>
+              <option>Bug Report</option>
+              <option>Improvement</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-slate-600 mb-1">Description</label>
+            <textarea value={feedbackDescription} onChange={e => setFeedbackDescription(e.target.value)} rows={4} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm font-medium outline-none focus:ring-2 focus:ring-sky-100 resize-none" placeholder="Describe your feedback..." />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-slate-600 mb-1">Priority</label>
+            <select value={feedbackPriority} onChange={e => setFeedbackPriority(e.target.value)} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm font-medium outline-none focus:ring-2 focus:ring-sky-100">
+              <option>Low</option>
+              <option>Medium</option>
+              <option>High</option>
+            </select>
+          </div>
+          <div className="flex gap-3 pt-2">
+            <Button onClick={() => { alert(`Feedback submitted!\nCategory: ${feedbackCategory}\nPriority: ${feedbackPriority}\nDescription: ${feedbackDescription}`); setFeedbackOpen(false); setFeedbackDescription(""); }} className="flex-1 bg-sky-600 hover:bg-sky-700 text-white rounded-xl font-bold">Submit</Button>
+            <Button variant="outline" onClick={() => setFeedbackOpen(false)} className="flex-1 rounded-xl font-bold">Cancel</Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

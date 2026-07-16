@@ -13,7 +13,9 @@ import {
   clinicRevenueHistory,
   formatNGN 
 } from "@/app/clinic/_mock/clinic-data";
+import type { ClinicInvoice } from "@/app/clinic/_mock/clinic-data";
 import { useModals } from "@/lib/modal-context";
+import { Modal } from "@/components/ui/modal";
 import { 
   Search, 
   Plus, 
@@ -27,6 +29,19 @@ import {
   Users
 } from "lucide-react";
 
+const exportCSV = (data: Record<string, any>[], filename: string) => {
+  if (data.length === 0) return;
+  const headers = Object.keys(data[0]);
+  const csv = [headers.join(","), ...data.map(row => headers.map(h => `"${row[h]}"`).join(","))].join("\n");
+  const blob = new Blob([csv], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+};
+
 function statusBadge(status: string) {
   const s = status.toLowerCase();
   if (s === "paid" || s === "approved") return <Badge className="bg-emerald-600 text-white">{status}</Badge>;
@@ -38,11 +53,31 @@ function statusBadge(status: string) {
 export default function FinancePage() {
   const { openModal } = useModals();
   const [activeTab, setActiveTab] = useState("overview");
+  const [invoiceSearch, setInvoiceSearch] = useState("");
+  const [invoiceFilterOpen, setInvoiceFilterOpen] = useState(false);
+  const [invoiceFilterStatus, setInvoiceFilterStatus] = useState("All");
+  const [invoiceFilterDateFrom, setInvoiceFilterDateFrom] = useState("");
+  const [invoiceFilterDateTo, setInvoiceFilterDateTo] = useState("");
+  const [receiptModalOpen, setReceiptModalOpen] = useState(false);
+  const [receiptInvoice, setReceiptInvoice] = useState<ClinicInvoice | null>(null);
+  const [reminderModalOpen, setReminderModalOpen] = useState(false);
+  const [reminderSent, setReminderSent] = useState(false);
 
   const paidInvoices = clinicInvoicesToday.filter((i) => i.status === "Paid");
   const pendingInvoices = clinicInvoicesToday.filter((i) => i.status === "Pending");
   const paidTotal = paidInvoices.reduce((acc, i) => acc + i.amount, 0);
   const pendingTotal = pendingInvoices.reduce((acc, i) => acc + i.amount, 0);
+
+  const filteredInvoices = clinicInvoicesToday.filter((i) => {
+    const matchesSearch = invoiceSearch === "" ||
+      i.patientName.toLowerCase().includes(invoiceSearch.toLowerCase()) ||
+      i.id.toLowerCase().includes(invoiceSearch.toLowerCase());
+    const matchesStatus = invoiceFilterStatus === "All" || i.status === invoiceFilterStatus;
+    const dateStr = i.createdISO.slice(0, 10);
+    const matchesDateFrom = !invoiceFilterDateFrom || dateStr >= invoiceFilterDateFrom;
+    const matchesDateTo = !invoiceFilterDateTo || dateStr <= invoiceFilterDateTo;
+    return matchesSearch && matchesStatus && matchesDateFrom && matchesDateTo;
+  });
 
   const tabs = [
     { id: "overview", label: "Overview", icon: TrendingUp },
@@ -53,6 +88,29 @@ export default function FinancePage() {
     { id: "expenses", label: "Expenses", icon: TrendingDown },
   ];
 
+  const handlePrintInvoice = (invoice: ClinicInvoice) => {
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+    const itemsHtml = invoice.items
+      ? invoice.items.map(item => `<tr><td>${item.name}</td><td>${item.quantity}</td><td>${formatNGN(item.price)}</td></tr>`).join("")
+      : "";
+    printWindow.document.write(`
+      <html><head><title>Invoice ${invoice.id}</title>
+      <style>body{font-family:sans-serif;padding:40px}table{width:100%;border-collapse:collapse;margin-top:16px}th,td{border:1px solid #ddd;padding:8px;text-align:left}th{background:#f5f5f5}h1{margin:0}h2{margin-top:24px}.total{font-size:1.2em;font-weight:bold;text-align:right;margin-top:16px}</style>
+      </head><body>
+      <h1>Invoice ${invoice.id}</h1>
+      <p><strong>Patient:</strong> ${invoice.patientName}</p>
+      <p><strong>Date:</strong> ${invoice.createdISO.slice(0, 10)}</p>
+      <p><strong>Status:</strong> ${invoice.status}</p>
+      <p><strong>Payment Method:</strong> ${invoice.method}</p>
+      ${itemsHtml ? `<h2>Items</h2><table><thead><tr><th>Item</th><th>Qty</th><th>Price</th></tr></thead><tbody>${itemsHtml}</tbody></table>` : ""}
+      <p class="total">Total: ${formatNGN(invoice.amount)}</p>
+      </body></html>
+    `);
+    printWindow.document.close();
+    printWindow.print();
+  };
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -61,7 +119,36 @@ export default function FinancePage() {
         actions={[
           { label: "Create Invoice", onClick: () => openModal("invoice"), variant: "primary" },
           { label: "Record Expense", onClick: () => openModal("expense") },
-          { label: "Generate P&L", onClick: () => alert("Generating Profit & Loss statement..."), variant: "outline" },
+          { label: "Generate P&L", onClick: () => {
+            const totalRevenue = paidTotal + pendingTotal;
+            const totalExpenses = clinicExpenses.reduce((acc, e) => acc + e.amount, 0);
+            const netProfit = totalRevenue - totalExpenses;
+            const content = [
+              "PROFIT & LOSS STATEMENT",
+              "========================",
+              "",
+              `Period: ${new Date().toLocaleDateString("en-NG")}`,
+              "",
+              "REVENUE",
+              `  Paid Invoices:  ${formatNGN(paidTotal)}`,
+              `  Pending Invoices: ${formatNGN(pendingTotal)}`,
+              `  Total Revenue:  ${formatNGN(totalRevenue)}`,
+              "",
+              "EXPENSES",
+              ...clinicExpenses.map(e => `  ${e.category} (${e.id}): ${formatNGN(e.amount)} - ${e.description}`),
+              `  Total Expenses: ${formatNGN(totalExpenses)}`,
+              "",
+              "========================",
+              `NET PROFIT: ${formatNGN(netProfit)}`,
+            ].join("\n");
+            const blob = new Blob([content], { type: "text/plain" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "profit-and-loss.txt";
+            a.click();
+            URL.revokeObjectURL(url);
+          }, variant: "outline" },
         ]}
       />
 
@@ -85,49 +172,49 @@ export default function FinancePage() {
 
       {activeTab === "overview" && (
         <div className="space-y-6">
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-4">
             <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
+              <CardContent className="p-3 sm:p-6 flex items-center justify-between gap-2">
+                <div className="min-w-0">
                   <p className="text-sm font-medium text-slate-500">Revenue (Today)</p>
-                  <TrendingUp className="h-4 w-4 text-emerald-500" />
+                  <p className="mt-1 text-2xl font-bold text-slate-900">{formatNGN(paidTotal)}</p>
+                  <p className="mt-1 text-xs text-slate-500">From {paidInvoices.length} invoices</p>
                 </div>
-                <p className="mt-1 text-2xl font-bold text-slate-900">{formatNGN(paidTotal)}</p>
-                <p className="mt-1 text-xs text-slate-500">From {paidInvoices.length} invoices</p>
+                <TrendingUp className="h-4 w-4 text-emerald-500 shrink-0" />
               </CardContent>
             </Card>
             <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
+              <CardContent className="p-3 sm:p-6 flex items-center justify-between gap-2">
+                <div className="min-w-0">
                   <p className="text-sm font-medium text-slate-500">Outstanding</p>
-                  <Filter className="h-4 w-4 text-amber-500" />
+                  <p className="mt-1 text-2xl font-bold text-rose-600">{formatNGN(pendingTotal)}</p>
+                  <p className="mt-1 text-xs text-slate-500">{pendingInvoices.length} pending payments</p>
                 </div>
-                <p className="mt-1 text-2xl font-bold text-rose-600">{formatNGN(pendingTotal)}</p>
-                <p className="mt-1 text-xs text-slate-500">{pendingInvoices.length} pending payments</p>
+                <Filter className="h-4 w-4 text-amber-500 shrink-0" />
               </CardContent>
             </Card>
             <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
+              <CardContent className="p-3 sm:p-6 flex items-center justify-between gap-2">
+                <div className="min-w-0">
                   <p className="text-sm font-medium text-slate-500">HMO Receivables</p>
-                  <Building2 className="h-4 w-4 text-blue-500" />
+                  <p className="mt-1 text-2xl font-bold text-slate-900">
+                    {formatNGN(clinicHmoClaims.reduce((acc, c) => acc + (c.status !== "Paid" ? c.amount : 0), 0))}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-500">{clinicHmoClaims.filter(c => c.status !== "Paid").length} active claims</p>
                 </div>
-                <p className="mt-1 text-2xl font-bold text-slate-900">
-                  {formatNGN(clinicHmoClaims.reduce((acc, c) => acc + (c.status !== "Paid" ? c.amount : 0), 0))}
-                </p>
-                <p className="mt-1 text-xs text-slate-500">{clinicHmoClaims.filter(c => c.status !== "Paid").length} active claims</p>
+                <Building2 className="h-4 w-4 text-blue-500 shrink-0" />
               </CardContent>
             </Card>
             <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
+              <CardContent className="p-3 sm:p-6 flex items-center justify-between gap-2">
+                <div className="min-w-0">
                   <p className="text-sm font-medium text-slate-500">Daily Expenses</p>
-                  <TrendingDown className="h-4 w-4 text-rose-500" />
+                  <p className="mt-1 text-2xl font-bold text-slate-900">
+                    {formatNGN(clinicExpenses.filter(e => e.dateISO === "2026-05-26").reduce((acc, e) => acc + e.amount, 0))}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-500">Operational costs today</p>
                 </div>
-                <p className="mt-1 text-2xl font-bold text-slate-900">
-                  {formatNGN(clinicExpenses.filter(e => e.dateISO === "2026-05-26").reduce((acc, e) => acc + e.amount, 0))}
-                </p>
-                <p className="mt-1 text-xs text-slate-500">Operational costs today</p>
+                <TrendingDown className="h-4 w-4 text-rose-500 shrink-0" />
               </CardContent>
             </Card>
           </div>
@@ -204,28 +291,76 @@ export default function FinancePage() {
 
       {activeTab === "invoices" && (
         <Card>
-          <CardHeader className="flex-row items-center justify-between border-b pb-4">
+          <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b pb-4">
             <div>
-              <CardTitle>Invoice Management</CardTitle>
-              <p className="text-sm text-slate-500">Track and manage all patient billings.</p>
+              <CardTitle className="text-base sm:text-lg font-bold">Invoice Management</CardTitle>
+              <p className="text-xs sm:text-sm text-slate-500">Track and manage all patient billings.</p>
             </div>
-            <div className="flex items-center space-x-2">
-              <div className="relative">
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <div className="relative flex-1 sm:flex-none">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-500" />
                 <input 
                   type="text" 
-                  placeholder="Search invoice or patient..." 
-                  className="pl-9 pr-4 py-2 text-sm border rounded-md w-64 focus:outline-none focus:ring-1 focus:ring-primary"
+                  placeholder="Search invoices..." 
+                  className="w-full sm:w-56 pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500/50 focus:border-sky-500 transition-colors"
+                  value={invoiceSearch}
+                  onChange={(e) => setInvoiceSearch(e.target.value)}
                 />
               </div>
-              <Button variant="outline" size="sm">
-                <Filter className="h-4 w-4 mr-2" />
-                Filter
+              <Button variant="outline" size="sm" onClick={() => setInvoiceFilterOpen(!invoiceFilterOpen)} className="shrink-0">
+                <Filter className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Filter</span>
               </Button>
             </div>
           </CardHeader>
+          {invoiceFilterOpen && (
+            <div className="px-6 py-3 border-b bg-slate-50 flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <label className="text-xs font-medium text-slate-500">Status</label>
+                <select
+                  className="text-sm border rounded-md px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary"
+                  value={invoiceFilterStatus}
+                  onChange={(e) => setInvoiceFilterStatus(e.target.value)}
+                >
+                  <option value="All">All</option>
+                  <option value="Paid">Paid</option>
+                  <option value="Pending">Pending</option>
+                  <option value="Voided">Voided</option>
+                </select>
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="text-xs font-medium text-slate-500">From</label>
+                <input
+                  type="date"
+                  className="text-sm border rounded-md px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary"
+                  value={invoiceFilterDateFrom}
+                  onChange={(e) => setInvoiceFilterDateFrom(e.target.value)}
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="text-xs font-medium text-slate-500">To</label>
+                <input
+                  type="date"
+                  className="text-sm border rounded-md px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary"
+                  value={invoiceFilterDateTo}
+                  onChange={(e) => setInvoiceFilterDateTo(e.target.value)}
+                />
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setInvoiceFilterStatus("All");
+                  setInvoiceFilterDateFrom("");
+                  setInvoiceFilterDateTo("");
+                }}
+              >
+                Clear
+              </Button>
+            </div>
+          )}
           <CardContent className="p-0">
-            <Table>
+            <div className="overflow-x-auto"><Table>
               <TableHeader>
                 <TableRow>
                   <TableHead className="pl-6">Invoice ID</TableHead>
@@ -238,7 +373,7 @@ export default function FinancePage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {clinicInvoicesToday.map((i) => (
+                {filteredInvoices.map((i) => (
                   <TableRow key={i.id} className="hover:bg-slate-50">
                     <TableCell className="pl-6 font-medium">{i.id}</TableCell>
                     <TableCell>{i.patientName}</TableCell>
@@ -250,30 +385,42 @@ export default function FinancePage() {
                     <TableCell className="text-slate-500 text-sm">{i.createdISO.slice(0, 10)}</TableCell>
                     <TableCell className="pr-6 text-right">
                       <Button variant="ghost" size="sm" onClick={() => openModal("invoice")}>View</Button>
-                      <Button variant="ghost" size="sm" className="text-blue-600" onClick={() => alert("Printing invoice " + i.id + "...")}>Print</Button>
+                      <Button variant="ghost" size="sm" className="text-blue-600" onClick={() => handlePrintInvoice(i)}>Print</Button>
                     </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
-            </Table>
+            </Table></div>
           </CardContent>
         </Card>
       )}
 
       {activeTab === "hmo" && (
         <Card>
-          <CardHeader className="flex-row items-center justify-between border-b pb-4">
+          <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b pb-4">
             <div>
-              <CardTitle>HMO Claims & Receivables</CardTitle>
-              <p className="text-sm text-slate-500">Manage insurance claims and track reimbursements.</p>
+              <CardTitle className="text-base sm:text-lg font-bold">HMO Claims & Receivables</CardTitle>
+              <p className="text-xs sm:text-sm text-slate-500">Manage insurance claims and track reimbursements.</p>
             </div>
-            <Button variant="outline" size="sm" onClick={() => alert("Exporting claim schedule...")}>
-              <Download className="h-4 w-4 mr-2" />
-              Export Schedule
+            <Button variant="outline" size="sm" onClick={() => {
+              const csvData = clinicHmoClaims.map(c => ({
+                "Claim ID": c.id,
+                "HMO Provider": c.hmo,
+                "Patient": c.patientName,
+                "Amount (NGN)": c.amount,
+                "Status": c.status,
+                "Submitted On": c.submittedISO,
+                "Details": c.claimDetails || "",
+              }));
+              exportCSV(csvData, "hmo-claims-schedule.csv");
+            }} className="self-start">
+              <Download className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Export Schedule</span>
+              <span className="sm:hidden">Export</span>
             </Button>
           </CardHeader>
           <CardContent className="p-0">
-            <Table>
+            <div className="overflow-x-auto"><Table>
               <TableHeader>
                 <TableRow>
                   <TableHead className="pl-6">Claim ID</TableHead>
@@ -300,25 +447,26 @@ export default function FinancePage() {
                   </TableRow>
                 ))}
               </TableBody>
-            </Table>
+            </Table></div>
           </CardContent>
         </Card>
       )}
 
       {activeTab === "expenses" && (
         <Card>
-          <CardHeader className="flex-row items-center justify-between border-b pb-4">
+          <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b pb-4">
             <div>
-              <CardTitle>Operational Expenses</CardTitle>
-              <p className="text-sm text-slate-500">Track all clinic spending and utility payments.</p>
+              <CardTitle className="text-base sm:text-lg font-bold">Operational Expenses</CardTitle>
+              <p className="text-xs sm:text-sm text-slate-500">Track all clinic spending and utility payments.</p>
             </div>
-            <Button variant="primary" size="sm" onClick={() => openModal("expense")}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Expense
+            <Button variant="primary" size="sm" onClick={() => openModal("expense")} className="self-start">
+              <Plus className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Add Expense</span>
+              <span className="sm:hidden">Add</span>
             </Button>
           </CardHeader>
           <CardContent className="p-0">
-            <Table>
+            <div className="overflow-x-auto"><Table>
               <TableHeader>
                 <TableRow>
                   <TableHead className="pl-6">Expense ID</TableHead>
@@ -347,27 +495,38 @@ export default function FinancePage() {
                   </TableRow>
                 ))}
               </TableBody>
-            </Table>
+            </Table></div>
           </CardContent>
         </Card>
       )}
 
       {activeTab === "payments" && (
         <Card>
-          <CardHeader className="flex-row items-center justify-between border-b pb-4">
+          <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b pb-4">
             <div>
-              <CardTitle>Transaction Ledger</CardTitle>
-              <p className="text-sm text-slate-500">Real-time log of all incoming payments across all methods.</p>
+              <CardTitle className="text-base sm:text-lg font-bold">Transaction Ledger</CardTitle>
+              <p className="text-xs sm:text-sm text-slate-500">Real-time log of all incoming payments across all methods.</p>
             </div>
-            <div className="flex items-center space-x-2">
-              <Button variant="outline" size="sm" onClick={() => alert("Downloading transaction ledger CSV...")}>
-                <Download className="h-4 w-4 mr-2" />
-                Download CSV
-              </Button>
-            </div>
+            <Button variant="outline" size="sm" onClick={() => {
+              const csvData = paidInvoices.map(i => ({
+                "Ref ID": i.id.replace("INV", "PAY"),
+                "Invoice ID": i.id,
+                "Patient": i.patientName,
+                "Method": i.method,
+                "Amount (NGN)": i.amount,
+                "Status": "Success",
+                "Date": i.createdISO.slice(0, 10),
+                "Time": i.createdISO.split("T")[1]?.slice(0, 5) || "",
+              }));
+              exportCSV(csvData, "transaction-ledger.csv");
+            }} className="self-start">
+              <Download className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Download CSV</span>
+              <span className="sm:hidden">Export</span>
+            </Button>
           </CardHeader>
           <CardContent className="p-0">
-            <Table>
+            <div className="overflow-x-auto"><Table>
               <TableHeader>
                 <TableRow>
                   <TableHead className="pl-6">Ref ID</TableHead>
@@ -396,30 +555,37 @@ export default function FinancePage() {
                     </TableCell>
                     <TableCell className="text-slate-500 text-sm">{i.createdISO.split("T")[1].slice(0, 5)}</TableCell>
                     <TableCell className="pr-6 text-right">
-                      <Button variant="ghost" size="sm" onClick={() => alert("Generating receipt for " + i.id + "...")}>Receipt</Button>
+                      <Button variant="ghost" size="sm" onClick={() => {
+                        setReceiptInvoice(i);
+                        setReceiptModalOpen(true);
+                      }}>Receipt</Button>
                     </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
-            </Table>
+            </Table></div>
           </CardContent>
         </Card>
       )}
 
       {activeTab === "debtors" && (
         <Card>
-          <CardHeader className="flex-row items-center justify-between border-b pb-4">
+          <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b pb-4">
             <div>
-              <CardTitle>Outstanding Balances (Debtors)</CardTitle>
-              <p className="text-sm text-slate-500">Patients with unpaid or partially paid invoices.</p>
+              <CardTitle className="text-base sm:text-lg font-bold">Outstanding Balances</CardTitle>
+              <p className="text-xs sm:text-sm text-slate-500">Patients with unpaid or partially paid invoices.</p>
             </div>
-            <Button variant="outline" size="sm" className="text-rose-600 border-rose-200 hover:bg-rose-50" onClick={() => alert("Sending payment reminders to all debtors...")}>
-              <Users className="h-4 w-4 mr-2" />
-              Send Reminders
+            <Button variant="outline" size="sm" className="text-rose-600 border-rose-200 hover:bg-rose-50 self-start" onClick={() => {
+              setReminderSent(false);
+              setReminderModalOpen(true);
+            }}>
+              <Users className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Send Reminders</span>
+              <span className="sm:hidden">Remind</span>
             </Button>
           </CardHeader>
           <CardContent className="p-0">
-            <Table>
+            <div className="overflow-x-auto"><Table>
               <TableHeader>
                 <TableRow>
                   <TableHead className="pl-6">Invoice</TableHead>
@@ -448,10 +614,117 @@ export default function FinancePage() {
                   </TableRow>
                 ))}
               </TableBody>
-            </Table>
+            </Table></div>
           </CardContent>
         </Card>
       )}
+
+      {/* Receipt Modal */}
+      <Modal isOpen={receiptModalOpen} onClose={() => setReceiptModalOpen(false)} title="Payment Receipt" className="max-w-md">
+        {receiptInvoice && (
+          <div className="space-y-4">
+            <div className="text-center border-b pb-4">
+              <p className="text-lg font-bold text-slate-900">Payment Receipt</p>
+              <p className="text-xs text-slate-500">Vemtap Clinic</p>
+            </div>
+            <div className="space-y-3 text-sm">
+              <div className="flex justify-between">
+                <span className="text-slate-500">Receipt ID</span>
+                <span className="font-medium">{receiptInvoice.id.replace("INV", "RCT")}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Invoice ID</span>
+                <span className="font-medium">{receiptInvoice.id}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Patient</span>
+                <span className="font-medium">{receiptInvoice.patientName}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Amount</span>
+                <span className="font-bold text-emerald-600">{formatNGN(receiptInvoice.amount)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Date</span>
+                <span className="font-medium">{receiptInvoice.createdISO.slice(0, 10)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Method</span>
+                <span className="font-medium">{receiptInvoice.method}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Status</span>
+                <span>{statusBadge(receiptInvoice.status)}</span>
+              </div>
+            </div>
+            <div className="flex gap-2 pt-2">
+              <Button variant="outline" size="sm" className="flex-1" onClick={() => setReceiptModalOpen(false)}>
+                Close
+              </Button>
+              <Button variant="primary" size="sm" className="flex-1" onClick={() => {
+                const printWindow = window.open("", "_blank");
+                if (!printWindow) return;
+                printWindow.document.write(`
+                  <html><head><title>Receipt ${receiptInvoice.id}</title>
+                  <style>body{font-family:sans-serif;padding:40px;text-align:center}h1{margin:0;font-size:1.5em}p{margin:4px 0}.line{border-top:1px dashed #ccc;margin:16px 0}.amt{font-size:1.4em;font-weight:bold}</style>
+                  </head><body>
+                  <h1>Vemtap Clinic</h1>
+                  <p>Payment Receipt</p>
+                  <div class="line"></div>
+                  <p><strong>Receipt:</strong> ${receiptInvoice.id.replace("INV", "RCT")}</p>
+                  <p><strong>Invoice:</strong> ${receiptInvoice.id}</p>
+                  <p><strong>Patient:</strong> ${receiptInvoice.patientName}</p>
+                  <p class="amt">${formatNGN(receiptInvoice.amount)}</p>
+                  <p><strong>Date:</strong> ${receiptInvoice.createdISO.slice(0, 10)}</p>
+                  <p><strong>Method:</strong> ${receiptInvoice.method}</p>
+                  <div class="line"></div>
+                  <p style="font-size:0.8em;color:#999">Thank you for your payment</p>
+                  </body></html>
+                `);
+                printWindow.document.close();
+                printWindow.print();
+              }}>
+                Print Receipt
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Send Reminders Confirmation Modal */}
+      <Modal isOpen={reminderModalOpen} onClose={() => setReminderModalOpen(false)} title="Send Payment Reminders" className="max-w-md">
+        {!reminderSent ? (
+          <div className="space-y-4">
+            <p className="text-sm text-slate-600">
+              Send payment reminders to <strong>{pendingInvoices.length} debtors</strong>?
+            </p>
+            <p className="text-xs text-slate-500">
+              This will send an SMS and email notification to all patients with pending invoices totaling {formatNGN(pendingTotal)}.
+            </p>
+            <div className="flex gap-2 pt-2">
+              <Button variant="outline" size="sm" className="flex-1" onClick={() => setReminderModalOpen(false)}>
+                Cancel
+              </Button>
+              <Button variant="primary" size="sm" className="flex-1" onClick={() => setReminderSent(true)}>
+                Confirm & Send
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4 text-center">
+            <div className="mx-auto w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center">
+              <Users className="h-6 w-6 text-emerald-600" />
+            </div>
+            <p className="text-sm font-medium text-slate-900">Reminders Sent!</p>
+            <p className="text-xs text-slate-500">
+              Payment reminders have been sent to {pendingInvoices.length} debtors.
+            </p>
+            <Button variant="primary" size="sm" className="w-full" onClick={() => setReminderModalOpen(false)}>
+              Done
+            </Button>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

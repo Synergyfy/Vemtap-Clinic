@@ -142,46 +142,57 @@ export default function NurseTreatment() {
         </Card>
       </div>
 
-      <Card>
-        <CardHeader className="flex-row items-center justify-between">
-          <CardTitle>All Treatment Notes</CardTitle>
-          <button
-            onClick={openModal}
-            className="inline-flex items-center gap-1.5 text-sm font-medium text-cyan-700 hover:text-cyan-800 transition-colors"
-          >
-            <Plus size={16} />
-            Add Note
-          </button>
-        </CardHeader>
-        <CardContent className="p-0 sm:p-6">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date/Time</TableHead>
-                  <TableHead>Patient</TableHead>
-                  <TableHead>Note</TableHead>
-                  <TableHead>Category</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {observationNotes.map((o) => (
-                  <TableRow key={o.id}>
-                    <TableCell className="text-xs text-slate-400 tabular-nums whitespace-nowrap">
-                      {o.timestamp}
-                    </TableCell>
-                    <TableCell className="font-medium text-slate-900 whitespace-nowrap">
-                      {o.patientName}
-                    </TableCell>
-                    <TableCell className="text-sm text-slate-600 max-w-md">{o.note}</TableCell>
-                    <TableCell>{categoryBadge(o.category)}</TableCell>
+        <Card>
+          <CardHeader className="flex-row items-center justify-between px-4 sm:px-6 py-3 sm:py-4">
+            <CardTitle className="text-base sm:text-lg">All Treatment Notes</CardTitle>
+            <button
+              onClick={openModal}
+              className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-medium text-cyan-700 hover:text-cyan-800 transition-colors"
+            >
+              <Plus size={16} />
+              Add Note
+            </button>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="md:hidden divide-y divide-slate-100">
+              {observationNotes.map((o) => (
+                <div key={o.id} className="p-4 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <p className="font-medium text-slate-900 text-sm truncate">{o.patientName}</p>
+                      {categoryBadge(o.category)}
+                    </div>
+                    <span className="text-[10px] text-slate-400 tabular-nums shrink-0">{o.timestamp}</span>
+                  </div>
+                  <p className="text-xs text-slate-600 leading-relaxed">{o.note}</p>
+                </div>
+              ))}
+              {observationNotes.length === 0 && <p className="text-center text-sm text-slate-500 py-6">No treatment notes recorded.</p>}
+            </div>
+            <div className="hidden md:block overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date/Time</TableHead>
+                    <TableHead>Patient</TableHead>
+                    <TableHead>Note</TableHead>
+                    <TableHead>Category</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
+                </TableHeader>
+                <TableBody>
+                  {observationNotes.map((o) => (
+                    <TableRow key={o.id}>
+                      <TableCell className="text-xs text-slate-400 tabular-nums whitespace-nowrap">{o.timestamp}</TableCell>
+                      <TableCell className="font-medium text-slate-900 whitespace-nowrap">{o.patientName}</TableCell>
+                      <TableCell className="text-sm text-slate-600 max-w-md">{o.note}</TableCell>
+                      <TableCell>{categoryBadge(o.category)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
 
       <Modal isOpen={modalOpen} onClose={() => { setModalOpen(false); setSuccessMsg(""); }} title="Add Treatment Note">
         {successMsg ? (

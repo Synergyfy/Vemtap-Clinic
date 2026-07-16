@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Modal } from "@/components/ui/modal";
-import { Users, User, Calendar, Activity, ClipboardList, AlertTriangle } from "lucide-react";
+import { Users, User, Calendar, Activity, ClipboardList, AlertTriangle, ArrowRight, Clock } from "lucide-react";
 import { PageHeader } from "@/app/clinic/_components/page-header";
 import { useNurseStore } from "@/app/nurse/_mock/nurse-store";
 import type { AssignedPatient } from "@/app/nurse/_mock/nurse-data";
@@ -18,6 +18,25 @@ function statusBadge(status: string) {
   if (status === "Completed") return <Badge className="bg-emerald-600 text-white">Completed</Badge>;
   if (status === "Normal") return <Badge className="bg-sky-600 text-white">Normal</Badge>;
   return <Badge variant="outline">{status}</Badge>;
+}
+
+function PatientCard({ p, onDetail, action }: { p: AssignedPatient; onDetail: (p: AssignedPatient) => void; action: React.ReactNode }) {
+  return (
+    <div className="p-4">
+      <div className="flex items-center justify-between gap-3 mb-2">
+        <div className="min-w-0 flex-1">
+          <button onClick={() => onDetail(p)} className="font-medium text-slate-900 hover:text-cyan-700 transition-colors text-sm truncate text-left">{p.patientName}</button>
+          <p className="text-[10px] text-slate-400">{p.age}yrs / {p.gender}</p>
+        </div>
+        {action}
+      </div>
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-[10px] text-slate-500 truncate">{p.purpose}</span>
+        <span className="text-slate-200">|</span>
+        {statusBadge(p.priority)}
+      </div>
+    </div>
+  );
 }
 
 export default function NursePatients() {
@@ -39,6 +58,58 @@ export default function NursePatients() {
     ? monitoringAlerts.filter((a) => a.patientId === detailPatient.patientId)
     : [];
 
+  function renderTable(title: string, icon: React.ReactNode, badge: React.ReactNode, data: AssignedPatient[], emptyText: string, actionFn: (p: AssignedPatient) => React.ReactNode) {
+    return (
+      <Card>
+        <CardHeader className="flex-row items-center justify-between px-4 sm:px-6 py-3 sm:py-4">
+          <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+            {icon}
+            {title}
+          </CardTitle>
+          {badge}
+        </CardHeader>
+        <CardContent className="p-0">
+          <div className="md:hidden divide-y divide-slate-100">
+            {data.map((p) => (
+              <PatientCard key={p.id} p={p} onDetail={setDetailPatient} action={actionFn(p)} />
+            ))}
+            {data.length === 0 && <p className="text-center text-sm text-slate-500 py-6">{emptyText}</p>}
+          </div>
+          <div className="hidden md:block overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Patient</TableHead>
+                  <TableHead>Purpose</TableHead>
+                  <TableHead>Priority</TableHead>
+                  <TableHead className="text-right">Action</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {data.map((p) => (
+                  <TableRow key={p.id}>
+                    <TableCell>
+                      <button onClick={() => setDetailPatient(p)} className="font-medium text-slate-900 hover:text-cyan-700 transition-colors text-left whitespace-nowrap">
+                        {p.patientName}
+                      </button>
+                      <p className="text-xs text-slate-400">{p.age}yrs / {p.gender}</p>
+                    </TableCell>
+                    <TableCell className="text-sm text-slate-600 whitespace-nowrap">{p.purpose}</TableCell>
+                    <TableCell>{statusBadge(p.priority)}</TableCell>
+                    <TableCell className="text-right">{actionFn(p)}</TableCell>
+                  </TableRow>
+                ))}
+                {data.length === 0 && (
+                  <TableRow><TableCell colSpan={4} className="text-center text-sm text-slate-500 py-6">{emptyText}</TableCell></TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <div className="space-y-6 md:space-y-8">
       <PageHeader
@@ -47,169 +118,61 @@ export default function NursePatients() {
       />
 
       <div className="grid grid-cols-1 gap-4 md:gap-8 lg:grid-cols-3">
-        <Card id="waiting">
-          <CardHeader className="flex-row items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <Users size={18} className="text-slate-400" />
-              Waiting
-            </CardTitle>
-            <Badge variant="secondary">{waiting.length}</Badge>
-          </CardHeader>
-          <CardContent className="p-0 sm:p-6">
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Patient</TableHead>
-                    <TableHead>Purpose</TableHead>
-                    <TableHead>Priority</TableHead>
-                    <TableHead className="text-right">Action</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {waiting.map((p) => (
-                    <TableRow key={p.id}>
-                      <TableCell>
-                        <button
-                          onClick={() => setDetailPatient(p)}
-                          className="font-medium text-slate-900 hover:text-cyan-700 transition-colors text-left whitespace-nowrap"
-                        >
-                          {p.patientName}
-                        </button>
-                        <p className="text-xs text-slate-400">{p.age}yrs / {p.gender}</p>
-                      </TableCell>
-                      <TableCell className="text-sm text-slate-600 whitespace-nowrap">{p.purpose}</TableCell>
-                      <TableCell>{statusBadge(p.priority)}</TableCell>
-                      <TableCell className="text-right">
-                        <Link
-                          href={`/nurse/vitals?patient=${p.patientId}`}
-                          className="inline-flex items-center justify-center rounded-lg bg-cyan-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-cyan-700 transition-colors"
-                        >
-                          Record Vitals
-                        </Link>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  {waiting.length === 0 && (
-                    <TableRow><TableCell colSpan={4} className="text-center text-sm text-slate-500 py-6">No waiting patients.</TableCell></TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
+        {renderTable(
+          "Waiting",
+          <Users size={18} className="text-slate-400" />,
+          <Badge variant="secondary">{waiting.length}</Badge>,
+          waiting,
+          "No waiting patients.",
+          (p) => (
+            <Link
+              href={`/nurse/vitals?patient=${p.patientId}`}
+              className="inline-flex items-center justify-center rounded-lg bg-cyan-600 px-3 py-1.5 text-[10px] sm:text-xs font-medium text-white hover:bg-cyan-700 whitespace-nowrap"
+            >
+              Record Vitals
+            </Link>
+          )
+        )}
 
-        <Card id="observation">
-          <CardHeader className="flex-row items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <Activity size={18} className="text-amber-500" />
-              Under Observation
-            </CardTitle>
-            <Badge className="bg-amber-600 text-white">{underObservation.length}</Badge>
-          </CardHeader>
-          <CardContent className="p-0 sm:p-6">
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Patient</TableHead>
-                    <TableHead>Purpose</TableHead>
-                    <TableHead>Priority</TableHead>
-                    <TableHead className="text-right">Action</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {underObservation.map((p) => (
-                    <TableRow key={p.id}>
-                      <TableCell>
-                        <button
-                          onClick={() => setDetailPatient(p)}
-                          className="font-medium text-slate-900 hover:text-cyan-700 transition-colors text-left whitespace-nowrap"
-                        >
-                          {p.patientName}
-                        </button>
-                        <p className="text-xs text-slate-400">{p.age}yrs / {p.gender}</p>
-                      </TableCell>
-                      <TableCell className="text-sm text-slate-600 whitespace-nowrap">{p.purpose}</TableCell>
-                      <TableCell>{statusBadge(p.priority)}</TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <button
-                            onClick={() => markPatientCompleted(p.patientId)}
-                            className="inline-flex items-center justify-center rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700 transition-colors"
-                          >
-                            Mark Done
-                          </button>
-                          <Link
-                            href={`/nurse/monitoring?patient=${p.patientId}`}
-                            className="inline-flex items-center justify-center rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors"
-                          >
-                            Monitor
-                          </Link>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  {underObservation.length === 0 && (
-                    <TableRow><TableCell colSpan={4} className="text-center text-sm text-slate-500 py-6">No patients under observation.</TableCell></TableRow>
-                  )}
-                </TableBody>
-              </Table>
+        {renderTable(
+          "Under Observation",
+          <Activity size={18} className="text-amber-500" />,
+          <Badge className="bg-amber-600 text-white">{underObservation.length}</Badge>,
+          underObservation,
+          "No patients under observation.",
+          (p) => (
+            <div className="flex items-center justify-end gap-1">
+              <button
+                onClick={() => markPatientCompleted(p.patientId)}
+                className="inline-flex items-center justify-center rounded-lg bg-emerald-600 px-3 py-1.5 text-[10px] sm:text-xs font-medium text-white hover:bg-emerald-700 whitespace-nowrap"
+              >
+                Mark Done
+              </button>
+              <Link
+                href={`/nurse/monitoring?patient=${p.patientId}`}
+                className="inline-flex items-center justify-center rounded-lg border border-slate-200 px-3 py-1.5 text-[10px] sm:text-xs font-medium text-slate-700 hover:bg-slate-50 whitespace-nowrap"
+              >
+                Monitor
+              </Link>
             </div>
-          </CardContent>
-        </Card>
+          )
+        )}
 
-        <Card id="completed">
-          <CardHeader className="flex-row items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <ClipboardList size={18} className="text-emerald-500" />
-              Completed
-            </CardTitle>
-            <Badge className="bg-emerald-600 text-white">{completed.length}</Badge>
-          </CardHeader>
-          <CardContent className="p-0 sm:p-6">
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Patient</TableHead>
-                    <TableHead>Purpose</TableHead>
-                    <TableHead>Priority</TableHead>
-                    <TableHead className="text-right">Action</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {completed.map((p) => (
-                    <TableRow key={p.id}>
-                      <TableCell>
-                        <button
-                          onClick={() => setDetailPatient(p)}
-                          className="font-medium text-slate-900 hover:text-cyan-700 transition-colors text-left whitespace-nowrap"
-                        >
-                          {p.patientName}
-                        </button>
-                        <p className="text-xs text-slate-400">{p.age}yrs / {p.gender}</p>
-                      </TableCell>
-                      <TableCell className="text-sm text-slate-600 whitespace-nowrap">{p.purpose}</TableCell>
-                      <TableCell>{statusBadge(p.priority)}</TableCell>
-                      <TableCell className="text-right">
-                        <Link
-                          href={`/nurse/treatment?patient=${p.patientId}`}
-                          className="inline-flex items-center justify-center rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors"
-                        >
-                          View Notes
-                        </Link>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  {completed.length === 0 && (
-                    <TableRow><TableCell colSpan={4} className="text-center text-sm text-slate-500 py-6">No completed patients.</TableCell></TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
+        {renderTable(
+          "Completed",
+          <ClipboardList size={18} className="text-emerald-500" />,
+          <Badge className="bg-emerald-600 text-white">{completed.length}</Badge>,
+          completed,
+          "No completed patients.",
+          (p) => (
+            <Link
+              href={`/nurse/treatment?patient=${p.patientId}`}
+              className="inline-flex items-center justify-center rounded-lg border border-slate-200 px-3 py-1.5 text-[10px] sm:text-xs font-medium text-slate-700 hover:bg-slate-50 whitespace-nowrap"
+            >
+              View Notes
+            </Link>
+          )
+        )}
       </div>
 
       <Modal isOpen={!!detailPatient} onClose={() => setDetailPatient(null)} title="Patient Details">
@@ -279,7 +242,7 @@ export default function NursePatients() {
                 {patientNotes.slice(0, 3).map((n) => (
                   <div key={n.id} className="rounded-xl border border-slate-200 p-3 mb-2">
                     <p className="text-xs text-slate-600">{n.note}</p>
-                    <p className="mt-1 text-[10px] text-slate-400">{n.timestamp} • {n.category}</p>
+                    <p className="mt-1 text-[10px] text-slate-400">{n.timestamp} &bull; {n.category}</p>
                   </div>
                 ))}
               </div>

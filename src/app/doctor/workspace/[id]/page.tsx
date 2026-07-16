@@ -166,10 +166,10 @@ export default function ConsultationWorkspace() {
   ];
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6 pb-20">
+    <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6 pb-20">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
+        <div className="flex items-center gap-3 sm:gap-4">
           <button 
             onClick={() => router.back()}
             className="p-2 hover:bg-white rounded-full border border-transparent hover:border-slate-200 transition-all"
@@ -178,28 +178,28 @@ export default function ConsultationWorkspace() {
           </button>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold text-slate-900">{patient.name}</h1>
-              <Badge variant="outline" className="bg-slate-100">{patient.id}</Badge>
+              <h1 className="text-lg sm:text-2xl font-bold text-slate-900">{patient.name}</h1>
+              <Badge variant="outline" className="bg-slate-100 text-[10px] sm:text-xs">{patient.id}</Badge>
             </div>
-            <p className="text-sm text-slate-500 mt-0.5">
+            <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
               {patient.age} years • {patient.sex} • {patient.phone}
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <button className="flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200 bg-white text-sm font-medium text-slate-700 hover:bg-slate-50">
-            <History size={18} />
+        <div className="flex items-center gap-2 sm:gap-3">
+          <button className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-xl border border-slate-200 bg-white text-xs sm:text-sm font-medium text-slate-700 hover:bg-slate-50">
+            <History size={16} className="sm:w-[18px] sm:h-[18px]" />
             History
           </button>
-          <button className="flex items-center gap-2 px-6 py-2 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-200 transition-all">
-            <Save size={18} />
-            Complete Session
+          <button className="flex items-center gap-1.5 sm:gap-2 px-4 sm:px-6 py-2 rounded-xl bg-emerald-600 text-white text-xs sm:text-sm font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-200 transition-all">
+            <Save size={16} className="sm:w-[18px] sm:h-[18px]" />
+            Complete
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-8">
         {/* Sidebar Context */}
         <aside className="space-y-6">
           <Card>
@@ -259,19 +259,19 @@ export default function ConsultationWorkspace() {
         {/* Main Workspace Area */}
         <div className="lg:col-span-3 space-y-6">
           {/* Tabs Navigation */}
-          <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-xl">
+          <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-xl overflow-x-auto">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={cn(
-                  "flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all",
+                  "flex-1 flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-all whitespace-nowrap",
                   activeTab === tab.id 
                     ? "bg-white text-emerald-700 shadow-sm font-bold" 
                     : "text-slate-500 hover:text-slate-700 hover:bg-white/50"
                 )}
               >
-                <tab.icon size={18} />
+                <tab.icon size={16} className="sm:w-[18px] sm:h-[18px]" />
                 <span className="hidden sm:inline">{tab.label}</span>
               </button>
             ))}
@@ -287,18 +287,18 @@ export default function ConsultationWorkspace() {
           </Card>
 
           {/* Workspace Footer Actions */}
-          <div className="flex items-center justify-between p-4 bg-white border border-slate-200 rounded-2xl shadow-sm">
-            <div className="flex items-center gap-4">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between p-3 sm:p-4 bg-white border border-slate-200 rounded-2xl shadow-sm gap-3">
+            <div className="flex items-center justify-center sm:justify-start gap-4">
               <button className="text-xs font-bold text-slate-500 hover:text-slate-700">Clear Form</button>
               <div className="w-px h-4 bg-slate-200" />
-              <button className="text-xs font-bold text-slate-500 hover:text-slate-700">Save as Draft</button>
+              <button className="text-xs font-bold text-slate-500 hover:text-slate-700">Save Draft</button>
             </div>
-            <div className="flex items-center gap-3">
-              <button className="px-4 py-2 rounded-lg border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50">
-                Refer Patient
+            <div className="flex items-center gap-2 sm:gap-3">
+              <button className="flex-1 sm:flex-none px-4 py-2 rounded-lg border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50">
+                Refer
               </button>
-              <button className="px-4 py-2 rounded-lg bg-slate-900 text-white text-xs font-bold hover:bg-slate-800">
-                Order Eye Tests
+              <button className="flex-1 sm:flex-none px-4 py-2 rounded-lg bg-slate-900 text-white text-xs font-bold hover:bg-slate-800">
+                Order Tests
               </button>
             </div>
           </div>

@@ -46,6 +46,30 @@ export default function StaffPage() {
     setRoster(roster.filter(s => s.id !== id));
   };
 
+  // Filter State
+  const [showFilters, setShowFilters] = useState(false);
+  const [filterRole, setFilterRole] = useState("");
+  const [filterDepartment, setFilterDepartment] = useState("");
+  const [filterStatus, setFilterStatus] = useState("");
+
+  // Week Navigator State
+  const [weekOffset, setWeekOffset] = useState(0);
+
+  // Edit Staff State
+  const [editStaff, setEditStaff] = useState<typeof clinicStaff[0] | null>(null);
+  const [editForm, setEditForm] = useState({ name: "", role: "", department: "", phone: "", email: "", status: "" });
+
+  // Assign Shift Modal State
+  const [assignModal, setAssignModal] = useState<{ day: string; timeSlot: string } | null>(null);
+
+  // Create Custom Role Modal State
+  const [createRoleModal, setCreateRoleModal] = useState(false);
+  const [newRoleName, setNewRoleName] = useState("");
+  const [newRolePerms, setNewRolePerms] = useState<string[]>([]);
+
+  // Permissions Saved State
+  const [permissionsSaved, setPermissionsSaved] = useState(false);
+
   const togglePermission = (role: string, perm: string) => {
     setPermissionsMap(prev => {
       const current = prev[role] || [];
@@ -68,7 +92,7 @@ export default function StaffPage() {
       />
 
       {/* Analytics Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-4">
         {[
           { label: "Total Team", value: clinicStaff.length, sub: "Active members", icon: Users, color: "text-blue-600" },
           { label: "Productivity", value: "88%", sub: "+4% from last week", icon: TrendingUp, color: "text-emerald-600" },
@@ -76,14 +100,13 @@ export default function StaffPage() {
           { label: "Open Shifts", value: 2, sub: "For upcoming week", icon: CalendarDays, color: "text-rose-600" },
         ].map((stat, i) => (
           <Card key={i} className="border-none shadow-sm bg-white overflow-hidden">
-            <CardContent className="p-5 flex items-center gap-4">
-              <div className={cn("p-3 rounded-2xl bg-slate-50", stat.color)}>
-                <stat.icon size={20} />
+            <CardContent className="p-3 sm:p-6 flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-[11px] sm:text-sm font-medium text-slate-500">{stat.label}</p>
+                <p className="mt-1 text-xl sm:text-2xl font-bold tabular-nums">{stat.value}</p>
               </div>
-              <div>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{stat.label}</p>
-                <p className="text-xl font-bold text-slate-900 leading-tight">{stat.value}</p>
-                <p className="text-[10px] text-slate-500 font-medium">{stat.sub}</p>
+              <div className={cn("p-2 sm:p-3 rounded-xl bg-slate-50 shrink-0", stat.color)}>
+                <stat.icon size={20} />
               </div>
             </CardContent>
           </Card>
@@ -91,43 +114,104 @@ export default function StaffPage() {
       </div>
 
       {/* Interactive Tabs */}
-      <div className="flex gap-1 bg-slate-100 p-1 rounded-2xl w-fit">
-        {[
-          { id: "team", label: "Team Directory", icon: Users },
-          { id: "shifts", label: "Shift Schedule", icon: CalendarDays },
-          { id: "permissions", label: "Roles & Permissions", icon: ShieldCheck },
-        ].map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id as TabType)}
-            className={cn(
-              "flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all",
-              activeTab === tab.id 
-                ? "bg-white text-brand-navy shadow-sm" 
-                : "text-slate-500 hover:text-slate-700 hover:bg-white/50"
-            )}
-          >
-            <tab.icon size={16} />
-            {tab.label}
-          </button>
-        ))}
+      <div className="overflow-x-auto -mx-6 px-6">
+        <div className="flex gap-1 bg-slate-100 p-1 rounded-2xl w-fit min-w-max">
+          {[
+            { id: "team", label: "Team", fullLabel: "Team Directory", icon: Users },
+            { id: "shifts", label: "Shifts", fullLabel: "Shift Schedule", icon: CalendarDays },
+            { id: "permissions", label: "Roles", fullLabel: "Roles & Permissions", icon: ShieldCheck },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as TabType)}
+              className={cn(
+                "flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap",
+                activeTab === tab.id 
+                  ? "bg-white text-brand-navy shadow-sm" 
+                  : "text-slate-500 hover:text-slate-700 hover:bg-white/50"
+              )}
+            >
+              <tab.icon size={14} className="sm:w-4 sm:h-4" />
+              <span className="sm:hidden">{tab.label}</span>
+              <span className="hidden sm:inline">{tab.fullLabel}</span>
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="space-y-6">
         {activeTab === "team" && (
           <Card className="border-none shadow-sm rounded-3xl overflow-hidden">
-            <CardHeader className="border-b border-slate-50 px-8 py-6">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg">Staff Directory</CardTitle>
-                <div className="flex gap-2">
-                    <Button variant="outline" size="sm" className="rounded-xl font-bold text-xs uppercase tracking-wider">Filter</Button>
-                    <Button variant="outline" size="sm" className="rounded-xl font-bold text-xs uppercase tracking-wider">Export</Button>
+            <CardHeader className="border-b border-slate-50 px-4 sm:px-8 py-4 sm:py-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <CardTitle className="text-base sm:text-lg font-bold">Staff Directory</CardTitle>
+                <div className="flex gap-2 self-start">
+                    <Button variant="outline" size="sm" className="rounded-xl font-bold text-xs" onClick={() => setShowFilters(!showFilters)}>
+                      <span className="sm:hidden">Filter</span>
+                      <span className="hidden sm:inline uppercase tracking-wider">Filter</span>
+                    </Button>
+                    <Button variant="outline" size="sm" className="rounded-xl font-bold text-xs" onClick={() => {
+                      const csv = "Name,Role,Department,Status\n" + clinicStaff.map(s => `${s.name},${s.role},${s.department},${s.status}`).join("\n");
+                      const blob = new Blob([csv], {type:"text/csv"});
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement("a");
+                      a.href = url;
+                      a.download = "staff-directory.csv";
+                      a.click();
+                      URL.revokeObjectURL(url);
+                    }}>
+                      <span className="sm:hidden">Export</span>
+                      <span className="hidden sm:inline uppercase tracking-wider">Export</span>
+                    </Button>
                 </div>
               </div>
+              {showFilters && (
+                <div className="flex flex-wrap gap-3 px-8 py-4 bg-slate-50 border-t border-slate-100">
+                  <select value={filterRole} onChange={e => setFilterRole(e.target.value)} className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 outline-none">
+                    <option value="">All Roles</option>
+                    <option>Doctor</option><option>Nurse</option><option>Receptionist</option><option>Optometrist</option><option>Optician</option><option>Pharmacist</option><option>Cashier</option>
+                  </select>
+                  <select value={filterDepartment} onChange={e => setFilterDepartment(e.target.value)} className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 outline-none">
+                    <option value="">All Departments</option>
+                    <option>Clinic</option><option>Front desk</option><option>Pharmacy</option><option>Optical</option>
+                  </select>
+                  <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 outline-none">
+                    <option value="">All Statuses</option>
+                    <option>Active</option><option>Inactive</option>
+                  </select>
+                  <button onClick={() => { setFilterRole(""); setFilterDepartment(""); setFilterStatus(""); }} className="text-[10px] font-bold text-slate-400 hover:text-slate-600 uppercase tracking-wider px-2">Reset</button>
+                </div>
+              )}
             </CardHeader>
             <CardContent className="p-0">
-              <Table>
-                <TableHeader className="bg-slate-50/50">
+               {/* Mobile: card list */}
+               <div className="md:hidden divide-y divide-slate-100">
+                 {clinicStaff.filter(s => !filterRole || s.role === filterRole).filter(s => !filterDepartment || s.department === filterDepartment).filter(s => !filterStatus || s.status === filterStatus).map((staff) => (
+                   <div key={staff.id} className="p-4">
+                     <div className="flex items-start justify-between gap-3">
+                       <div className="flex items-center gap-3 min-w-0">
+                         <div className="w-9 h-9 rounded-full bg-sky-100 flex items-center justify-center text-sky-700 font-bold text-xs shrink-0">
+                           {staff.name.split(' ').map(n => n[0]).join('')}
+                         </div>
+                         <div className="min-w-0">
+                           <p className="font-bold text-slate-900 text-sm truncate">{staff.name}</p>
+                           <p className="text-[10px] text-slate-500 truncate">{staff.role} • {staff.department}</p>
+                         </div>
+                       </div>
+                       <div className="shrink-0 flex flex-col items-end gap-1">
+                         <Badge className={cn("rounded-lg px-2 py-0.5 text-[10px] font-black uppercase", staff.status === "Active" ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500")}>{staff.status}</Badge>
+                         <button onClick={() => { setEditStaff(staff); setEditForm({ name: staff.name, role: staff.role, department: staff.department, phone: "", email: staff.email, status: staff.status }); }} className="text-[10px] font-bold text-sky-600">Edit</button>
+                       </div>
+                     </div>
+                   </div>
+                 ))}
+                 {clinicStaff.filter(s => !filterRole || s.role === filterRole).filter(s => !filterDepartment || s.department === filterDepartment).filter(s => !filterStatus || s.status === filterStatus).length === 0 && (
+                   <p className="p-8 text-center text-sm text-slate-500">No staff members match filters.</p>
+                 )}
+               </div>
+               {/* Desktop: full table */}
+               <div className="hidden md:block overflow-x-auto"><Table>
+                 <TableHeader className="bg-slate-50/50">
                   <TableRow>
                     <TableHead className="px-8 h-12 text-[10px] font-black text-slate-400 uppercase tracking-widest">Staff Member</TableHead>
                     <TableHead className="h-12 text-[10px] font-black text-slate-400 uppercase tracking-widest">Role</TableHead>
@@ -138,7 +222,7 @@ export default function StaffPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {clinicStaff.map((staff) => (
+                  {clinicStaff.filter(s => !filterRole || s.role === filterRole).filter(s => !filterDepartment || s.department === filterDepartment).filter(s => !filterStatus || s.status === filterStatus).map((staff) => (
                     <TableRow key={staff.id} className="hover:bg-slate-50/50 border-slate-50">
                       <TableCell className="px-8 py-4">
                         <div className="flex items-center gap-3">
@@ -162,45 +246,47 @@ export default function StaffPage() {
                         </div>
                       </TableCell>
                       <TableCell className="py-4">
-                        <Badge className={cn(
-                          "rounded-lg px-2 py-0.5 text-[10px] font-black uppercase tracking-wider",
-                          staff.status === "Active" ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500"
-                        )}>
-                          {staff.status}
-                        </Badge>
+                        <Badge className={cn("rounded-lg px-2 py-0.5 text-[10px] font-black uppercase tracking-wider", staff.status === "Active" ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500")}>{staff.status}</Badge>
                       </TableCell>
                       <TableCell className="px-8 py-4 text-right">
-                         <Button variant="ghost" size="sm" className="font-bold text-sky-600 hover:text-sky-700 hover:bg-sky-50 rounded-xl">Edit</Button>
+                         <Button variant="ghost" size="sm" className="font-bold text-sky-600 hover:text-sky-700 hover:bg-sky-50 rounded-xl" onClick={() => { setEditStaff(staff); setEditForm({ name: staff.name, role: staff.role, department: staff.department, phone: "", email: staff.email, status: staff.status }); }}>Edit</Button>
                       </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
-              </Table>
-            </CardContent>
+               </Table></div>
+             </CardContent>
           </Card>
         )}
 
         {activeTab === "shifts" && (
           <div className="grid grid-cols-1 lg:grid-cols-7 gap-6">
             <Card className="lg:col-span-5 border-none shadow-sm rounded-3xl overflow-hidden">
-                <CardHeader className="border-b border-slate-50 px-8 py-6 flex-row items-center justify-between">
-                    <CardTitle className="text-lg">Weekly Roster</CardTitle>
-                    <div className="flex items-center gap-4">
-                        <span className="text-sm font-bold text-slate-900">May 25 – May 31, 2026</span>
+                <CardHeader className="border-b border-slate-50 px-8 py-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <CardTitle className="text-base sm:text-lg">Weekly Roster</CardTitle>
+                    <div className="flex items-center gap-4 self-start sm:self-auto">
+                        {(() => {
+                          const baseDate = new Date(2026, 4, 25);
+                          baseDate.setDate(baseDate.getDate() + weekOffset * 7);
+                          const end = new Date(baseDate);
+                          end.setDate(end.getDate() + 6);
+                          const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+                          return <span className="text-sm font-bold text-slate-900">{months[baseDate.getMonth()]} {baseDate.getDate()} – {months[end.getMonth()]} {end.getDate()}, {end.getFullYear()}</span>;
+                        })()}
                         <div className="flex gap-1">
-                             <Button variant="outline" size="icon" className="w-8 h-8 rounded-lg">{"<"}</Button>
-                             <Button variant="outline" size="icon" className="w-8 h-8 rounded-lg">{">"}</Button>
+                             <Button variant="outline" size="icon" className="w-8 h-8 rounded-lg" onClick={() => setWeekOffset(w => w - 1)}>{"<"}</Button>
+                             <Button variant="outline" size="icon" className="w-8 h-8 rounded-lg" onClick={() => setWeekOffset(w => w + 1)}>{">"}</Button>
                         </div>
                     </div>
                 </CardHeader>
-                <CardContent className="p-8">
-                    <div className="grid grid-cols-7 gap-4 mb-4">
+                <CardContent className="p-4 sm:p-8">
+                    <div className="grid grid-cols-4 sm:grid-cols-7 gap-2 sm:gap-4 mb-4">
                         {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
                             <div key={day} className="text-center">
                                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">{day}</p>
-                                <div className="h-24 rounded-2xl bg-slate-50 border border-slate-100 flex flex-col items-center justify-center gap-2 p-2 hover:bg-white hover:shadow-md transition-all cursor-pointer group">
-                                    <Plus size={16} className="text-slate-300 group-hover:text-sky-500" />
-                                    <span className="text-[10px] font-bold text-slate-400 group-hover:text-sky-600">Assign</span>
+                                <div className="h-16 sm:h-24 rounded-xl sm:rounded-2xl bg-slate-50 border border-slate-100 flex flex-col items-center justify-center gap-1 sm:gap-2 p-1.5 sm:p-2 hover:bg-white hover:shadow-md transition-all cursor-pointer group" onClick={() => setAssignModal({ day, timeSlot: "Morning" })}>
+                                    <Plus size={14} className="text-slate-300 group-hover:text-sky-500 sm:w-4 sm:h-4" />
+                                    <span className="text-[8px] sm:text-[10px] font-bold text-slate-400 group-hover:text-sky-600">Assign</span>
                                 </div>
                             </div>
                         ))}
@@ -233,7 +319,7 @@ export default function StaffPage() {
             </Card>
             <Card className="lg:col-span-2 border-none shadow-sm rounded-3xl bg-brand-navy text-white">
                 <CardHeader>
-                    <CardTitle className="text-lg">Staff Availability</CardTitle>
+                    <CardTitle className="text-base sm:text-lg">Staff Availability</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6">
                     <div>
@@ -285,18 +371,20 @@ export default function StaffPage() {
                         </CardContent>
                     </Card>
                 ))}
-                <Button variant="outline" className="w-full rounded-2xl border-dashed border-2 py-8 text-slate-400 font-bold hover:text-sky-600 hover:border-sky-200">
+                <Button variant="outline" className="w-full rounded-2xl border-dashed border-2 py-8 text-slate-400 font-bold hover:text-sky-600 hover:border-sky-200" onClick={() => { setNewRoleName(""); setNewRolePerms([]); setCreateRoleModal(true); }}>
                     <Plus size={20} className="mr-2" /> Create Custom Role
                 </Button>
             </div>
 
             <Card className="lg:col-span-2 border-none shadow-sm rounded-3xl overflow-hidden">
-                <CardHeader className="border-b border-slate-50 px-8 py-6 flex-row items-center justify-between bg-slate-50/30">
+                <CardHeader className="border-b border-slate-50 px-8 py-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-slate-50/30">
                     <div>
-                        <CardTitle className="text-lg">{selectedRole} Permissions</CardTitle>
-                        <p className="text-xs text-slate-500 mt-1">Configure individual access modules for this role.</p>
+                        <CardTitle className="text-base sm:text-lg">{selectedRole} Permissions</CardTitle>
+                        <p className="text-[10px] sm:text-xs text-slate-500 mt-1">Configure individual access modules for this role.</p>
                     </div>
-                    <Button className="bg-brand-blue text-white rounded-xl font-bold shadow-lg shadow-brand-blue/20">Save Configuration</Button>
+                    <Button className="self-start bg-brand-blue text-white rounded-xl font-bold shadow-lg shadow-brand-blue/20" onClick={() => { setPermissionsSaved(true); setTimeout(() => setPermissionsSaved(false), 3000); }}>
+                      {permissionsSaved ? "✓ Saved!" : "Save Configuration"}
+                    </Button>
                 </CardHeader>
                 <CardContent className="p-8">
                     <div className="space-y-8">
@@ -400,6 +488,105 @@ export default function StaffPage() {
                   <Button type="submit" className="flex-1 bg-sky-600 hover:bg-sky-700 text-white rounded-xl font-bold shadow-lg shadow-sky-600/20">Assign Shift</Button>
               </div>
           </form>
+      </Modal>
+
+      {/* Edit Staff Modal */}
+      <Modal isOpen={!!editStaff} onClose={() => setEditStaff(null)} title="Edit Staff Member">
+        <div className="space-y-4 py-2">
+          <div>
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Name</label>
+            <input value={editForm.name} onChange={e => setEditForm({...editForm, name: e.target.value})} className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 outline-none" />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Role</label>
+              <select value={editForm.role} onChange={e => setEditForm({...editForm, role: e.target.value})} className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 outline-none">
+                <option>Doctor</option><option>Nurse</option><option>Receptionist</option><option>Optometrist</option><option>Optician</option><option>Pharmacist</option><option>Cashier</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Department</label>
+              <select value={editForm.department} onChange={e => setEditForm({...editForm, department: e.target.value})} className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 outline-none">
+                <option>Clinic</option><option>Front desk</option><option>Pharmacy</option><option>Optical</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Phone</label>
+            <input value={editForm.phone} onChange={e => setEditForm({...editForm, phone: e.target.value})} className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 outline-none" placeholder="Enter phone number" />
+          </div>
+          <div>
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Email</label>
+            <input value={editForm.email} onChange={e => setEditForm({...editForm, email: e.target.value})} className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 outline-none" />
+          </div>
+          <div>
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Status</label>
+            <select value={editForm.status} onChange={e => setEditForm({...editForm, status: e.target.value as "Active" | "Inactive"})} className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 outline-none">
+              <option>Active</option><option>Inactive</option>
+            </select>
+          </div>
+          <div className="flex justify-end gap-2 pt-4 border-t border-slate-50">
+            <button onClick={() => setEditStaff(null)} className="rounded-full border px-4 py-2 text-sm font-bold text-slate-600 hover:bg-slate-50">Cancel</button>
+            <button onClick={() => {
+              setEditStaff(null);
+            }} className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-700">Save</button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Assign Shift Modal */}
+      <Modal isOpen={!!assignModal} onClose={() => setAssignModal(null)} title={`Assign Staff – ${assignModal?.day ?? ""}`}>
+        <div className="space-y-4 py-2">
+          <div>
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Staff Member</label>
+            <select className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 outline-none">
+              {clinicStaff.map(s => <option key={s.id}>{s.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Shift Time</label>
+            <select className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 outline-none">
+              <option>Morning</option><option>Afternoon</option><option>Night</option>
+            </select>
+          </div>
+          <div className="flex justify-end gap-2 pt-4 border-t border-slate-50">
+            <button onClick={() => setAssignModal(null)} className="rounded-full border px-4 py-2 text-sm font-bold text-slate-600 hover:bg-slate-50">Cancel</button>
+            <button onClick={() => setAssignModal(null)} className="rounded-full bg-sky-600 px-4 py-2 text-sm font-bold text-white hover:bg-sky-700">Assign</button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Create Custom Role Modal */}
+      <Modal isOpen={createRoleModal} onClose={() => setCreateRoleModal(false)} title="Create Custom Role">
+        <div className="space-y-4 py-2">
+          <div>
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Role Name</label>
+            <input value={newRoleName} onChange={e => setNewRoleName(e.target.value)} className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 outline-none" placeholder="e.g. Lab Technician" />
+          </div>
+          <div>
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Permissions</label>
+            <div className="space-y-2 max-h-48 overflow-y-auto">
+              {["view_patients","edit_patients","register_patient","manage_billing","view_revenue","manage_invoices","create_consultation","order_lab_tests","prescribe_drugs","surgery_booking"].map(perm => (
+                <label key={perm} className="flex items-center gap-2 text-xs font-bold text-slate-600 capitalize cursor-pointer">
+                  <input type="checkbox" checked={newRolePerms.includes(perm)} onChange={e => {
+                    setNewRolePerms(prev => e.target.checked ? [...prev, perm] : prev.filter(p => p !== perm));
+                  }} className="rounded" />
+                  {perm.replace(/_/g, " ")}
+                </label>
+              ))}
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 pt-4 border-t border-slate-50">
+            <button onClick={() => setCreateRoleModal(false)} className="rounded-full border px-4 py-2 text-sm font-bold text-slate-600 hover:bg-slate-50">Cancel</button>
+            <button onClick={() => {
+              if (newRoleName.trim()) {
+                setPermissionsMap(prev => ({ ...prev, [newRoleName.trim()]: newRolePerms }));
+                setSelectedRole(newRoleName.trim());
+                setCreateRoleModal(false);
+              }
+            }} className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-700">Create</button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

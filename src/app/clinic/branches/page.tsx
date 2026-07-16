@@ -1,10 +1,12 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Modal } from "@/components/ui/modal";
 import { PageHeader } from "@/app/clinic/_components/page-header";
 import { 
     clinicBranches, 
@@ -43,6 +45,11 @@ export default function BranchesPage() {
   const { openModal } = useModals();
   const [activeTab, setActiveTab] = useState<BranchTab>("network");
   const [selectedBranchId, setSelectedBranchId] = useState<string | null>(clinicBranches[0].id);
+  const [heatmapOpen, setHeatmapOpen] = useState(false);
+  const [transferModal, setTransferModal] = useState(false);
+  const [transferForm, setTransferForm] = useState({ from: "", to: "", item: "", qty: 0, notes: "" });
+  const [trackTransfer, setTrackTransfer] = useState<null | typeof interBranchTransfers[0]>(null);
+  const router = useRouter();
 
   const selectedBranch = clinicBranches.find(b => b.id === selectedBranchId) || clinicBranches[0];
   const totalRevenue = clinicBranches.reduce((acc, b) => acc + b.revenue, 0);
@@ -62,12 +69,32 @@ export default function BranchesPage() {
         description="Enterprise Multi-Branch Command Center: Monitor performance, sync resources, and coordinate network-wide operations."
         actions={[
           { label: "Register New Branch", variant: "primary", onClick: () => openModal("branch") },
-          { label: "Regional Benchmark", variant: "outline", onClick: () => alert("Generating regional performance comparison...") },
+          { label: "Regional Benchmark", variant: "outline", onClick: () => {
+            const staffLookup = Object.fromEntries(clinicBranches.map(b => {
+              const s = branchStaffData.find(st => st.branchId === b.id);
+              return [b.id, s];
+            }));
+            const prodLookup = Object.fromEntries(branchStaffProductivity.map(p => [p.branchId, p]));
+            const header = "Branch,Revenue,Patients,Staff,Staff On Duty,Efficiency\n";
+            const rows = clinicBranches.map(b => {
+              const s = staffLookup[b.id];
+              const p = prodLookup[b.id];
+              return `"${b.name}",${b.revenue},${b.activePatients},${s?.staffCount ?? 0},${s?.onDuty ?? 0},"${p?.efficiency ?? "N/A"}"`;
+            }).join("\n");
+            const csv = header + rows;
+            const blob = new Blob([csv], { type: "text/csv" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "regional-benchmark.csv";
+            a.click();
+            URL.revokeObjectURL(url);
+          } },
         ]}
       />
 
       {/* Global Network Intelligence */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-4">
         {[
           { label: "Network Branches", value: clinicBranches.length, sub: "Across 2 Regions", icon: Building2, color: "text-sky-600" },
           { label: "Global Revenue", value: formatNGN(totalRevenue), sub: "All Branches", icon: TrendingUp, color: "text-emerald-600" },
@@ -75,14 +102,13 @@ export default function BranchesPage() {
           { label: "Network Efficiency", value: "88%", sub: "Aggregated Score", icon: Zap, color: "text-amber-600" },
         ].map((stat, i) => (
           <Card key={i} className="border-none shadow-sm bg-white overflow-hidden">
-            <CardContent className="p-5 flex items-center gap-4">
-              <div className={cn("p-3 rounded-2xl bg-slate-50", stat.color)}>
-                <stat.icon size={20} />
+            <CardContent className="p-3 sm:p-6 flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-[11px] sm:text-sm font-medium text-slate-500">{stat.label}</p>
+                <p className="mt-1 text-xl sm:text-2xl font-bold tabular-nums">{stat.value}</p>
               </div>
-              <div>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{stat.label}</p>
-                <p className="text-xl font-bold text-slate-900 leading-tight">{stat.value}</p>
-                <p className="text-[10px] text-slate-500 font-medium">{stat.sub}</p>
+              <div className={cn("p-2 sm:p-3 rounded-xl bg-slate-50 shrink-0", stat.color)}>
+                <stat.icon size={20} />
               </div>
             </CardContent>
           </Card>
@@ -112,16 +138,16 @@ export default function BranchesPage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <Card className="lg:col-span-2 border-none shadow-sm rounded-3xl overflow-hidden">
               <CardHeader className="border-b border-slate-50 px-8 py-6">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div>
-                    <CardTitle className="text-lg">Branch Directory</CardTitle>
-                    <p className="text-sm text-slate-500">Live operational status across the network.</p>
+                    <CardTitle className="text-base sm:text-lg">Branch Directory</CardTitle>
+                    <p className="text-xs sm:text-sm text-slate-500">Live operational status across the network.</p>
                   </div>
-                  <Button variant="outline" size="sm" className="rounded-xl font-bold text-xs">Regional Heatmap</Button>
+                   <Button variant="outline" size="sm" className="self-start rounded-xl font-bold text-xs" onClick={() => setHeatmapOpen(true)}>Regional Heatmap</Button>
                 </div>
               </CardHeader>
               <CardContent className="p-0">
-                <Table>
+                <div className="overflow-x-auto"><Table>
                   <TableHeader className="bg-slate-50/50">
                     <TableRow>
                       <TableHead className="px-8 h-12 text-[10px] font-black text-slate-400 uppercase tracking-widest">Branch</TableHead>
@@ -189,7 +215,7 @@ export default function BranchesPage() {
                       );
                     })}
                   </TableBody>
-                </Table>
+                </Table></div>
               </CardContent>
             </Card>
 
@@ -231,9 +257,9 @@ export default function BranchesPage() {
 
         {activeTab === "analytics" && (
            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                      <h3 className="text-xl font-bold text-slate-900">{selectedBranch.name} Performance</h3>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                      <h3 className="text-lg sm:text-xl font-bold text-slate-900">{selectedBranch.name} Performance</h3>
                       <select 
                         className="bg-white border border-slate-200 rounded-xl px-4 py-1.5 text-sm font-bold text-slate-700 outline-none"
                         value={selectedBranchId || ""}
@@ -328,12 +354,12 @@ export default function BranchesPage() {
                   const dist = branchQueueDistribution.find(d => d.branchId === branch.id);
                   return (
                       <Card key={branch.id} className="border-none shadow-sm rounded-3xl overflow-hidden bg-white">
-                          <CardHeader className="bg-slate-50/50 border-b border-slate-100 p-6 flex-row items-center justify-between">
+                          <CardHeader className="bg-slate-50/50 border-b border-slate-100 p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                               <div>
-                                  <CardTitle className="text-base">{branch.name}</CardTitle>
+                                  <CardTitle className="text-sm sm:text-base">{branch.name}</CardTitle>
                                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">{branch.location}</p>
                               </div>
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-2 self-start">
                                 <span className="text-[10px] font-black text-emerald-600 uppercase">Live</span>
                                 <div className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse" />
                               </div>
@@ -369,7 +395,7 @@ export default function BranchesPage() {
                                    ))}
                                 </div>
                               </div>
-                              <Button className="w-full mt-6 bg-brand-navy hover:bg-slate-800 text-white rounded-xl font-bold shadow-lg shadow-slate-900/10" onClick={() => alert("Redirecting to Live Queue Board for " + branch.name)}>Monitor Queue</Button>
+                              <Button className="w-full mt-6 bg-brand-navy hover:bg-slate-800 text-white rounded-xl font-bold shadow-lg shadow-slate-900/10" onClick={() => router.push("/clinic/queue")}>Monitor Queue</Button>
                           </CardContent>
                       </Card>
                   );
@@ -385,7 +411,7 @@ export default function BranchesPage() {
                   return (
                       <Card key={branch.id} className="border-none shadow-sm rounded-3xl overflow-hidden bg-white">
                           <CardHeader className="bg-slate-50/50 border-b border-slate-100 p-6">
-                              <CardTitle className="text-base">{branch.name} Staff</CardTitle>
+                              <CardTitle className="text-sm sm:text-base">{branch.name} Staff</CardTitle>
                               <div className="flex items-center gap-2 mt-1">
                                 <Badge className="bg-sky-50 text-sky-700 border-none font-black text-[10px]">{staff?.onDuty}/{staff?.staffCount} On Duty</Badge>
                                 <span className="text-[10px] font-bold text-slate-400">{branch.manager} (Mgr)</span>
@@ -420,17 +446,17 @@ export default function BranchesPage() {
         {activeTab === "operations" && (
            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <Card className="lg:col-span-2 border-none shadow-sm rounded-3xl overflow-hidden bg-white">
-                 <CardHeader className="border-b border-slate-50 px-8 py-6 flex-row items-center justify-between">
-                    <div>
-                        <CardTitle className="text-lg">Inter-Branch Stock Transfers</CardTitle>
-                        <p className="text-sm text-slate-500">Monitor and approve inventory movements between branches.</p>
-                    </div>
-                    <Button variant="primary" size="sm" className="rounded-xl font-bold" onClick={() => alert("Initializing new stock transfer...")}>
-                       <Plus size={14} className="mr-1.5" /> New Transfer
-                    </Button>
+                 <CardHeader className="border-b border-slate-50 px-8 py-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                     <div>
+                         <CardTitle className="text-base sm:text-lg">Inter-Branch Stock Transfers</CardTitle>
+                         <p className="text-xs sm:text-sm text-slate-500">Monitor and approve inventory movements between branches.</p>
+                     </div>
+                     <Button variant="primary" size="sm" className="self-start rounded-xl font-bold" onClick={() => setTransferModal(true)}>
+                        <Plus size={14} className="sm:mr-1.5" /> <span className="hidden sm:inline">New Transfer</span><span className="sm:hidden">New</span>
+                     </Button>
                  </CardHeader>
                  <CardContent className="p-0">
-                    <Table>
+                    <div className="overflow-x-auto"><Table>
                        <TableHeader className="bg-slate-50/50">
                           <TableRow>
                              <TableHead className="px-8 h-12 text-[10px] font-black text-slate-400 uppercase tracking-widest">From / To</TableHead>
@@ -457,14 +483,14 @@ export default function BranchesPage() {
                                       {tr.status}
                                    </Badge>
                                 </TableCell>
-                                <TableCell className="px-8 py-5 text-right">
-                                   <Button variant="ghost" size="sm" className="text-sky-600 font-bold">Track</Button>
+                                 <TableCell className="px-8 py-5 text-right">
+                                    <Button variant="ghost" size="sm" className="text-sky-600 font-bold" onClick={() => setTrackTransfer(tr)}>Track</Button>
                                 </TableCell>
                              </TableRow>
                           ))}
                        </TableBody>
-                    </Table>
-                 </CardContent>
+                    </Table></div>
+                  </CardContent>
               </Card>
 
               <div className="space-y-6">
@@ -489,13 +515,146 @@ export default function BranchesPage() {
                           <span>Today's Cross-Bookings</span>
                           <span className="text-sky-400">14 Patients</span>
                        </div>
-                       <Button className="w-full bg-white/10 hover:bg-white/20 text-white rounded-xl border-none font-bold">Schedule Network Appointment</Button>
+                        <Button className="w-full bg-white/10 hover:bg-white/20 text-white rounded-xl border-none font-bold" onClick={() => window.location.href = "/clinic/appointments"}>Schedule Network Appointment</Button>
                     </div>
                  </Card>
               </div>
            </div>
         )}
       </div>
+
+      {/* Heatmap Modal */}
+      <Modal isOpen={heatmapOpen} onClose={() => setHeatmapOpen(false)} title="Regional Performance Heatmap">
+        <div className="grid grid-cols-2 gap-3">
+          {clinicBranches.map(b => (
+            <div key={b.id} className={`p-4 rounded-xl border ${b.status === "Active" ? "bg-emerald-50 border-emerald-200" : "bg-rose-50 border-rose-200"}`}>
+              <p className="font-bold text-sm">{b.name}</p>
+              <p className="text-xs">{b.status === "Active" ? "Operational" : "Closed"} • {b.activePatients} patients</p>
+            </div>
+          ))}
+        </div>
+      </Modal>
+
+      {/* New Transfer Modal */}
+      <Modal isOpen={transferModal} onClose={() => setTransferModal(false)} title="New Stock Transfer">
+        <div className="space-y-4">
+          <div>
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">From Branch</label>
+            <select
+              className="w-full mt-1 bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold outline-none"
+              value={transferForm.from}
+              onChange={e => setTransferForm(f => ({ ...f, from: e.target.value }))}
+            >
+              <option value="">Select branch</option>
+              {clinicBranches.map(b => <option key={b.id} value={b.name}>{b.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">To Branch</label>
+            <select
+              className="w-full mt-1 bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold outline-none"
+              value={transferForm.to}
+              onChange={e => setTransferForm(f => ({ ...f, to: e.target.value }))}
+            >
+              <option value="">Select branch</option>
+              {clinicBranches.map(b => <option key={b.id} value={b.name}>{b.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Item</label>
+            <input
+              type="text"
+              className="w-full mt-1 bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold outline-none"
+              placeholder="e.g. Lens Blanks"
+              value={transferForm.item}
+              onChange={e => setTransferForm(f => ({ ...f, item: e.target.value }))}
+            />
+          </div>
+          <div>
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Quantity</label>
+            <input
+              type="number"
+              className="w-full mt-1 bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold outline-none"
+              value={transferForm.qty}
+              onChange={e => setTransferForm(f => ({ ...f, qty: Number(e.target.value) }))}
+            />
+          </div>
+          <div>
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Notes</label>
+            <textarea
+              className="w-full mt-1 bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold outline-none resize-none"
+              rows={3}
+              placeholder="Optional notes"
+              value={transferForm.notes}
+              onChange={e => setTransferForm(f => ({ ...f, notes: e.target.value }))}
+            />
+          </div>
+          <div className="flex gap-3 pt-2">
+            <Button variant="outline" className="flex-1 rounded-xl font-bold" onClick={() => setTransferModal(false)}>Cancel</Button>
+            <Button variant="primary" className="flex-1 rounded-xl font-bold" onClick={() => {
+              alert(`Transfer submitted: ${transferForm.qty}x ${transferForm.item} from ${transferForm.from} to ${transferForm.to}`);
+              setTransferForm({ from: "", to: "", item: "", qty: 0, notes: "" });
+              setTransferModal(false);
+            }}>Submit Transfer</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Track Transfer Modal */}
+      <Modal isOpen={!!trackTransfer} onClose={() => setTrackTransfer(null)} title="Transfer Details">
+        {trackTransfer && (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Transfer ID</p>
+                <p className="text-sm font-black text-slate-900">{trackTransfer.id}</p>
+              </div>
+              <Badge className={trackTransfer.status === "Completed" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}>
+                {trackTransfer.status}
+              </Badge>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-slate-50 p-4 rounded-2xl">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">From</p>
+                <p className="text-sm font-bold text-slate-900">{trackTransfer.from}</p>
+              </div>
+              <div className="bg-slate-50 p-4 rounded-2xl">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">To</p>
+                <p className="text-sm font-bold text-slate-900">{trackTransfer.to}</p>
+              </div>
+              <div className="bg-slate-50 p-4 rounded-2xl">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Item</p>
+                <p className="text-sm font-bold text-slate-900">{trackTransfer.item}</p>
+              </div>
+              <div className="bg-slate-50 p-4 rounded-2xl">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Quantity</p>
+                <p className="text-sm font-bold text-slate-900">{trackTransfer.qty}</p>
+              </div>
+            </div>
+            <div>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Timeline</p>
+              <div className="flex items-center gap-2">
+                {["Created", "In Transit", "Received"].map((step, i) => {
+                  const isCompleted = (trackTransfer.status === "Completed" && i <= 2) || (trackTransfer.status === "In Transit" && i <= 1) || (i === 0);
+                  const isCurrent = (trackTransfer.status === "In Transit" && i === 1) || (trackTransfer.status === "Completed" && i === 2) || (trackTransfer.status !== "In Transit" && trackTransfer.status !== "Completed" && i === 0);
+                  return (
+                    <React.Fragment key={step}>
+                      <div className="flex flex-col items-center">
+                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black ${isCompleted || isCurrent ? "bg-sky-500 text-white" : "bg-slate-200 text-slate-400"}`}>
+                          {i + 1}
+                        </div>
+                        <p className={`text-[10px] font-bold mt-1 ${isCompleted || isCurrent ? "text-sky-600" : "text-slate-400"}`}>{step}</p>
+                      </div>
+                      {i < 2 && <div className={`flex-1 h-0.5 mt-[-14px] ${isCompleted ? "bg-sky-500" : "bg-slate-200"}`} />}
+                    </React.Fragment>
+                  );
+                })}
+              </div>
+            </div>
+            <p className="text-[10px] font-bold text-slate-400">Date: {trackTransfer.date}</p>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

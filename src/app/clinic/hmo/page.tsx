@@ -72,6 +72,45 @@ export default function HMOPage() {
   const [agreements, setAgreements] = React.useState<ClinicHmoAgreement[]>(defaultClinicHmoAgreements);
   const [selectedHmoId, setSelectedHmoId] = React.useState<string>(defaultClinicHmoAgreements[0]?.hmoId ?? "");
   const [isActivateOpen, setIsActivateOpen] = React.useState(false);
+  const [claimSearch, setClaimSearch] = useState("");
+  const [claimFilterOpen, setClaimFilterOpen] = useState(false);
+  const [claimFilterStatus, setClaimFilterStatus] = useState("All");
+  const [claimFilterDateFrom, setClaimFilterDateFrom] = useState("");
+  const [claimFilterDateTo, setClaimFilterDateTo] = useState("");
+  const [verifyAllOpen, setVerifyAllOpen] = useState(false);
+  const [historyPatient, setHistoryPatient] = useState<typeof clinicHmoPatients[number] | null>(null);
+  const [reverifyPatient, setReverifyPatient] = useState<typeof clinicHmoPatients[number] | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  const showSuccess = (msg: string) => {
+    setSuccessMessage(msg);
+    setTimeout(() => setSuccessMessage(null), 3000);
+  };
+
+  const exportCSV = (data: Record<string, any>[], filename: string) => {
+    if (data.length === 0) return;
+    const headers = Object.keys(data[0]);
+    const csv = [headers.join(","), ...data.map(row => headers.map(h => `"${row[h]}"`).join(","))].join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const filteredClaims = clinicHmoClaims.filter((c) => {
+    const matchesSearch =
+      claimSearch === "" ||
+      c.patientName.toLowerCase().includes(claimSearch.toLowerCase()) ||
+      c.id.toLowerCase().includes(claimSearch.toLowerCase()) ||
+      c.hmo.toLowerCase().includes(claimSearch.toLowerCase());
+    const matchesStatus = claimFilterStatus === "All" || c.status === claimFilterStatus;
+    const matchesDateFrom = !claimFilterDateFrom || c.submittedISO >= claimFilterDateFrom;
+    const matchesDateTo = !claimFilterDateTo || c.submittedISO <= claimFilterDateTo;
+    return matchesSearch && matchesStatus && matchesDateFrom && matchesDateTo;
+  });
 
   const selected = agreements.find((a) => a.hmoId === selectedHmoId) ?? null;
   const activatedIds = React.useMemo(() => new Set(agreements.map((a) => a.hmoId)), [agreements]);
@@ -147,13 +186,25 @@ export default function HMOPage() {
 
   return (
     <div className="space-y-6">
+      {successMessage && (
+        <div className="fixed top-4 right-4 z-[200] bg-emerald-600 text-white px-6 py-3 rounded-xl shadow-lg font-medium text-sm flex items-center gap-2 animate-in fade-in slide-in-from-top-4">
+          <CheckCircle2 className="h-4 w-4" />
+          {successMessage}
+        </div>
+      )}
       <PageHeader
         title="HMO Management"
         description="Enterprise insurance hub: Manage agreements, track claims, and verify patient coverage."
         actions={[
           { label: "Verify HMO", onClick: () => openModal("hmo-verify"), variant: "primary" },
           { label: "New Claim", onClick: () => openModal("hmo-claim") },
-          { label: "Export All Claims", onClick: () => alert("Preparing global HMO claims export (XLSX)...") },
+          { label: "Export All Claims", onClick: () => {
+            exportCSV(
+              clinicHmoClaims.map(c => ({ "Claim ID": c.id, "HMO Provider": c.hmo, "Patient": c.patientName, "Amount": c.amount, "Status": c.status, "Submitted": c.submittedISO, "Details": c.claimDetails || "" })),
+              "hmo_claims_export.csv"
+            );
+            showSuccess("Claims exported as CSV successfully.");
+          }},
         ]}
       />
 
@@ -177,62 +228,62 @@ export default function HMOPage() {
 
       {activeTab === "dashboard" && (
         <div className="space-y-6">
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-4">
             <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
+              <CardContent className="p-3 sm:p-6 flex items-center justify-between gap-2">
+                <div className="min-w-0">
                   <p className="text-sm font-medium text-slate-500">Total Receivables</p>
-                  <TrendingUp className="h-4 w-4 text-emerald-500" />
+                  <p className="mt-1 text-2xl font-bold text-slate-900">
+                    {formatNGN(clinicHmoClaims.reduce((acc, c) => acc + (c.status !== "Paid" ? c.amount : 0), 0))}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-500">Unpaid claims across all HMOs</p>
                 </div>
-                <p className="mt-1 text-2xl font-bold text-slate-900">
-                  {formatNGN(clinicHmoClaims.reduce((acc, c) => acc + (c.status !== "Paid" ? c.amount : 0), 0))}
-                </p>
-                <p className="mt-1 text-xs text-slate-500">Unpaid claims across all HMOs</p>
+                <TrendingUp className="h-4 w-4 text-emerald-500 shrink-0" />
               </CardContent>
             </Card>
             <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
+              <CardContent className="p-3 sm:p-6 flex items-center justify-between gap-2">
+                <div className="min-w-0">
                   <p className="text-sm font-medium text-slate-500">Pending Claims</p>
-                  <Clock className="h-4 w-4 text-amber-500" />
+                  <p className="mt-1 text-2xl font-bold text-slate-900">
+                    {clinicHmoClaims.filter(c => c.status === "Submitted" || c.status === "Draft").length}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-500">Waiting for approval or submission</p>
                 </div>
-                <p className="mt-1 text-2xl font-bold text-slate-900">
-                  {clinicHmoClaims.filter(c => c.status === "Submitted" || c.status === "Draft").length}
-                </p>
-                <p className="mt-1 text-xs text-slate-500">Waiting for approval or submission</p>
+                <Clock className="h-4 w-4 text-amber-500 shrink-0" />
               </CardContent>
             </Card>
             <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
+              <CardContent className="p-3 sm:p-6 flex items-center justify-between gap-2">
+                <div className="min-w-0">
                   <p className="text-sm font-medium text-slate-500">Queries/Rejected</p>
-                  <AlertCircle className="h-4 w-4 text-rose-500" />
+                  <p className="mt-1 text-2xl font-bold text-rose-600">
+                    {clinicHmoClaims.filter(c => c.status === "Queried" || c.status === "Rejected").length}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-500">Requires attention or appeal</p>
                 </div>
-                <p className="mt-1 text-2xl font-bold text-rose-600">
-                  {clinicHmoClaims.filter(c => c.status === "Queried" || c.status === "Rejected").length}
-                </p>
-                <p className="mt-1 text-xs text-slate-500">Requires attention or appeal</p>
+                <AlertCircle className="h-4 w-4 text-rose-500 shrink-0" />
               </CardContent>
             </Card>
             <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
+              <CardContent className="p-3 sm:p-6 flex items-center justify-between gap-2">
+                <div className="min-w-0">
                   <p className="text-sm font-medium text-slate-500">Verified Patients</p>
-                  <CheckCircle2 className="h-4 w-4 text-blue-500" />
+                  <p className="mt-1 text-2xl font-bold text-slate-900">
+                    {clinicHmoPatients.filter(p => p.status === "Verified").length}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-500">Coverage confirmed this month</p>
                 </div>
-                <p className="mt-1 text-2xl font-bold text-slate-900">
-                  {clinicHmoPatients.filter(p => p.status === "Verified").length}
-                </p>
-                <p className="mt-1 text-xs text-slate-500">Coverage confirmed this month</p>
+                <CheckCircle2 className="h-4 w-4 text-blue-500 shrink-0" />
               </CardContent>
             </Card>
           </div>
 
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             <Card>
-              <CardHeader>
-                <CardTitle>Top HMO Partners</CardTitle>
-                <p className="text-sm text-slate-500">HMO revenue distribution for the current period.</p>
+              <CardHeader className="p-0 mb-8">
+                <CardTitle className="text-xs sm:text-sm font-black text-slate-400 uppercase tracking-widest">Top HMO Partners</CardTitle>
+                <p className="text-xs sm:text-sm text-slate-500">HMO revenue distribution for the current period.</p>
               </CardHeader>
               <CardContent className="space-y-6 pt-4 border-t">
                 {agreements.map((a) => {
@@ -257,9 +308,9 @@ export default function HMOPage() {
             </Card>
 
             <Card>
-              <CardHeader>
-                <CardTitle>Claim Status Pipeline</CardTitle>
-                <p className="text-sm text-slate-500">Tracking the lifecycle of your insurance billings.</p>
+              <CardHeader className="p-0 mb-8">
+                <CardTitle className="text-xs sm:text-sm font-black text-slate-400 uppercase tracking-widest">Claim Status Pipeline</CardTitle>
+                <p className="text-xs sm:text-sm text-slate-500">Tracking the lifecycle of your insurance billings.</p>
               </CardHeader>
               <CardContent className="h-[300px] flex items-center justify-center pt-4 border-t">
                  <div className="grid grid-cols-2 gap-8 w-full max-w-sm">
@@ -283,31 +334,74 @@ export default function HMOPage() {
 
       {activeTab === "claims" && (
         <Card>
-          <CardHeader className="flex-row items-center justify-between border-b pb-4">
+          <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b pb-4">
             <div>
-              <CardTitle>Claims Management</CardTitle>
-              <p className="text-sm text-slate-500">Track and manage insurance claim submissions.</p>
+              <CardTitle className="text-base sm:text-lg font-bold">Claims Management</CardTitle>
+              <p className="text-xs sm:text-sm text-slate-500">Track and manage insurance claim submissions.</p>
             </div>
-            <div className="flex items-center space-x-2">
-               <div className="relative">
+            <div className="flex flex-col items-end gap-3">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
+               <div className="relative w-full sm:w-auto">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-500" />
                 <input 
                   type="text" 
                   placeholder="Search claim or HMO..." 
-                  className="pl-9 pr-4 py-2 text-sm border rounded-md w-64 focus:outline-none"
+                  className="pl-9 pr-4 py-2 text-sm border rounded-md w-full sm:w-56 focus:outline-none"
+                  value={claimSearch}
+                  onChange={(e) => setClaimSearch(e.target.value)}
                 />
               </div>
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" className="self-start" onClick={() => setClaimFilterOpen(!claimFilterOpen)}>
                 <Filter className="h-4 w-4 mr-2" />
-                Filter
+                {claimFilterOpen ? "Hide Filters" : "Filter"}
               </Button>
+            </div>
+            {claimFilterOpen && (
+              <div className="flex flex-wrap items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100 w-full">
+                <select
+                  value={claimFilterStatus}
+                  onChange={(e) => setClaimFilterStatus(e.target.value)}
+                  className="text-sm border rounded-lg px-3 py-2 bg-white focus:outline-none"
+                >
+                  <option value="All">All Statuses</option>
+                  <option value="Draft">Draft</option>
+                  <option value="Submitted">Submitted</option>
+                  <option value="Approved">Approved</option>
+                  <option value="Paid">Paid</option>
+                  <option value="Queried">Queried</option>
+                  <option value="Rejected">Rejected</option>
+                </select>
+                <input
+                  type="date"
+                  value={claimFilterDateFrom}
+                  onChange={(e) => setClaimFilterDateFrom(e.target.value)}
+                  className="text-sm border rounded-lg px-3 py-2 bg-white focus:outline-none"
+                  placeholder="From date"
+                />
+                <span className="text-slate-400 text-sm">to</span>
+                <input
+                  type="date"
+                  value={claimFilterDateTo}
+                  onChange={(e) => setClaimFilterDateTo(e.target.value)}
+                  className="text-sm border rounded-lg px-3 py-2 bg-white focus:outline-none"
+                  placeholder="To date"
+                />
+                <Button variant="ghost" size="sm" onClick={() => {
+                  setClaimFilterStatus("All");
+                  setClaimFilterDateFrom("");
+                  setClaimFilterDateTo("");
+                }}>
+                  Clear Filters
+                </Button>
+              </div>
+            )}
             </div>
           </CardHeader>
           <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="pl-6">Claim ID</TableHead>
+           <div className="overflow-x-auto"><Table>
+               <TableHeader>
+                 <TableRow>
+                   <TableHead className="pl-6">Claim ID</TableHead>
                   <TableHead>HMO Provider</TableHead>
                   <TableHead>Patient</TableHead>
                   <TableHead>Service Summary</TableHead>
@@ -317,7 +411,7 @@ export default function HMOPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {clinicHmoClaims.map((c) => (
+                {filteredClaims.map((c) => (
                   <TableRow key={c.id} className="hover:bg-slate-50">
                     <TableCell className="pl-6 font-medium">{c.id}</TableCell>
                     <TableCell className="font-medium text-slate-700">{c.hmo}</TableCell>
@@ -330,31 +424,32 @@ export default function HMOPage() {
                     <TableCell className="pr-6 text-right">
                       <Button variant="ghost" size="sm" onClick={() => openModal("claim")}>Review</Button>
                     </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      )}
+                   </TableRow>
+                 ))}
+               </TableBody>
+             </Table></div>
+           </CardContent>
+         </Card>
+       )}
 
-      {activeTab === "patients" && (
+       {activeTab === "patients" && (
         <Card>
-          <CardHeader className="flex-row items-center justify-between border-b pb-4">
+          <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b pb-4">
             <div>
-              <CardTitle>Enrolled Patients</CardTitle>
-              <p className="text-sm text-slate-500">Monitor coverage status for active HMO patients.</p>
+              <CardTitle className="text-base sm:text-lg font-bold">Enrolled Patients</CardTitle>
+              <p className="text-xs sm:text-sm text-slate-500">Monitor coverage status for active HMO patients.</p>
             </div>
-            <Button variant="outline" size="sm" onClick={() => alert("Starting bulk verification...")}>
-               <CheckCircle2 className="h-4 w-4 mr-2" />
-               Verify All Expiring
+            <Button variant="outline" size="sm" className="self-start" onClick={() => setVerifyAllOpen(true)}>
+               <CheckCircle2 className="h-4 w-4 sm:mr-2" />
+               <span className="hidden sm:inline">Verify All Expiring</span>
+               <span className="sm:hidden">Verify All</span>
             </Button>
           </CardHeader>
           <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="pl-6">Patient ID</TableHead>
+           <div className="overflow-x-auto"><Table>
+               <TableHeader>
+                 <TableRow>
+                   <TableHead className="pl-6">Patient ID</TableHead>
                   <TableHead>Full Name</TableHead>
                   <TableHead>HMO Provider</TableHead>
                   <TableHead>Policy Number</TableHead>
@@ -373,35 +468,35 @@ export default function HMOPage() {
                     <TableCell>{statusBadge(p.status)}</TableCell>
                     <TableCell className="text-sm text-slate-500">{p.expiryISO}</TableCell>
                     <TableCell className="pr-6 text-right">
-                      <Button variant="ghost" size="sm">History</Button>
-                      <Button variant="ghost" size="sm" className="text-primary" onClick={() => alert("Re-verifying " + p.name + "...")}>Re-verify</Button>
+                      <Button variant="ghost" size="sm" onClick={() => setHistoryPatient(p)}>History</Button>
+                      <Button variant="ghost" size="sm" className="text-primary" onClick={() => setReverifyPatient(p)}>Re-verify</Button>
                     </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      )}
+                 </TableRow>
+                 ))}
+               </TableBody>
+             </Table></div>
+           </CardContent>
+         </Card>
+       )}
 
-      {activeTab === "agreements" && (
+       {activeTab === "agreements" && (
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-5">
           <Card className="lg:col-span-2">
-            <CardHeader className="flex-row items-center justify-between">
+            <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div>
-                <CardTitle>Active Agreements</CardTitle>
-                <p className="text-sm text-slate-500">{agreements.length} contracts signed</p>
+                <CardTitle className="text-base sm:text-lg font-bold">Active Agreements</CardTitle>
+                <p className="text-xs sm:text-sm text-slate-500">{agreements.length} contracts signed</p>
               </div>
-              <Button size="sm" onClick={() => setIsActivateOpen(true)} disabled={availableToActivate.length === 0}>
-                <Plus className="h-4 w-4 mr-2" />
+              <Button size="sm" className="self-start" onClick={() => setIsActivateOpen(true)} disabled={availableToActivate.length === 0}>
+                <Plus className="h-4 w-4 sm:mr-2" />
                 Activate
               </Button>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>HMO</TableHead>
+             <div className="overflow-x-auto"><Table>
+                 <TableHeader>
+                   <TableRow>
+                     <TableHead>HMO</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Billing</TableHead>
                   </TableRow>
@@ -418,16 +513,16 @@ export default function HMOPage() {
                       <TableCell>{statusBadge(a.status)}</TableCell>
                       <TableCell className="text-slate-600">{a.billingCycle}</TableCell>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
+                   ))}
+                 </TableBody>
+               </Table></div>
+             </CardContent>
+           </Card>
 
           <Card className="lg:col-span-3">
-            <CardHeader className="flex-row items-center justify-between">
-              <CardTitle>Agreement Configuration</CardTitle>
-              {selected ? <div className="shrink-0">{statusBadge(selected.status)}</div> : null}
+            <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <CardTitle className="text-base sm:text-lg font-bold">Agreement Configuration</CardTitle>
+              {selected ? <div className="shrink-0 self-start">{statusBadge(selected.status)}</div> : null}
             </CardHeader>
             <CardContent>
               {!selected ? (
@@ -586,7 +681,40 @@ export default function HMOPage() {
                         </select>
                       </div>
                       <div className="md:col-span-2">
-                         <Button variant="outline" className="w-full h-12 rounded-2xl font-bold" onClick={() => alert("Downloading agreement PDF summary...")}>
+                         <Button variant="outline" className="w-full h-12 rounded-2xl font-bold" onClick={() => {
+                           if (!selected) return;
+                           const content = [
+                             `HMO Agreement Summary`,
+                             `${"=".repeat(40)}`,
+                             ``,
+                             `HMO Partner: ${selected.hmoName}`,
+                             `Status: ${selected.status}`,
+                             `Agreement Start: ${selected.agreementStartISO}`,
+                             `Billing Cycle: ${selected.billingCycle}`,
+                             `Payment Cycle: ${selected.paymentCycle}`,
+                             ``,
+                             `Claims Submission Format: ${selected.claimsSettings.submissionFormat}`,
+                             `Batching Rules: ${selected.claimsSettings.batchingRules}`,
+                             `Approval Workflow: ${selected.claimsSettings.approvalWorkflow}`,
+                             `Required Documents: ${selected.claimsSettings.requiredDocuments.join(", ")}`,
+                             ``,
+                             `Tariff Rules:`,
+                             `  Consultation: ₦${selected.pricingRules.consultation}`,
+                             `  Eye Test: ₦${selected.pricingRules.eyeTest}`,
+                             `  Diagnostics: ₦${selected.pricingRules.diagnostics}`,
+                             `  Lens: ₦${selected.pricingRules.lens}`,
+                             `  Frame: ₦${selected.pricingRules.frame}`,
+                             `  Surgery: ₦${selected.pricingRules.surgery}`,
+                           ].join("\n");
+                           const blob = new Blob([content], { type: "text/plain" });
+                           const url = URL.createObjectURL(blob);
+                           const a = document.createElement("a");
+                           a.href = url;
+                           a.download = `${selected.hmoName.replace(/\s+/g, "_")}_agreement.txt`;
+                           a.click();
+                           URL.revokeObjectURL(url);
+                           showSuccess("Agreement summary downloaded.");
+                         }}>
                            <Download className="h-4 w-4 mr-2" />
                            Download Agreement PDF
                          </Button>
@@ -673,6 +801,123 @@ export default function HMOPage() {
               <Button type="submit" variant="primary">Activate HMO</Button>
             </div>
           </form>
+        )}
+      </Modal>
+
+      <Modal isOpen={verifyAllOpen} onClose={() => setVerifyAllOpen(false)} title="Verify All Expiring Enrollments">
+        <div className="space-y-4">
+          <p className="text-sm text-slate-600">
+            Verify all expiring patient enrollments? This will re-check eligibility with all HMO providers.
+          </p>
+          <div className="flex items-center justify-end gap-2 pt-2">
+            <Button variant="ghost" onClick={() => setVerifyAllOpen(false)}>Cancel</Button>
+            <Button
+              variant="primary"
+              onClick={() => {
+                setVerifyAllOpen(false);
+                showSuccess("All expiring enrollments verified with HMO providers.");
+              }}
+            >
+              Confirm Verification
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal isOpen={!!historyPatient} onClose={() => setHistoryPatient(null)} title={historyPatient ? `${historyPatient.name} - HMO History` : ""}>
+        {historyPatient && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div className="p-3 bg-slate-50 rounded-xl">
+                <p className="text-slate-500 font-medium">HMO Provider</p>
+                <p className="font-bold text-slate-900">{historyPatient.hmo}</p>
+              </div>
+              <div className="p-3 bg-slate-50 rounded-xl">
+                <p className="text-slate-500 font-medium">Policy Number</p>
+                <p className="font-bold text-slate-900 font-mono">{historyPatient.hmoNumber}</p>
+              </div>
+            </div>
+            <div className="space-y-3">
+              <h4 className="text-sm font-bold text-slate-900">Activity Log</h4>
+              <div className="space-y-2">
+                <div className="flex items-start gap-3 p-3 bg-emerald-50 rounded-xl">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-600 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-slate-900">Eligibility Verified</p>
+                    <p className="text-xs text-slate-500">2026-01-15 - Coverage confirmed for 2026</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3 p-3 bg-blue-50 rounded-xl">
+                  <FileText className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-slate-900">Claim Submitted</p>
+                    <p className="text-xs text-slate-500">2026-03-20 - CLM-1101 - ₦120,000 - Cataract Surgery</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3 p-3 bg-emerald-50 rounded-xl">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-600 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-slate-900">Claim Approved</p>
+                    <p className="text-xs text-slate-500">2026-04-01 - CLM-1101 approved by HMO</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3 p-3 bg-amber-50 rounded-xl">
+                  <Clock className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-slate-900">Renewal Due</p>
+                    <p className="text-xs text-slate-500">{historyPatient.expiryISO} - Policy expires, re-verification required</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-end pt-2">
+              <Button variant="ghost" onClick={() => setHistoryPatient(null)}>Close</Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      <Modal isOpen={!!reverifyPatient} onClose={() => setReverifyPatient(null)} title="Re-verify Patient Enrollment">
+        {reverifyPatient && (
+          <div className="space-y-4">
+            <div className="p-4 bg-slate-50 rounded-xl space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-slate-500">Patient</span>
+                <span className="font-bold text-slate-900">{reverifyPatient.name}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">HMO Provider</span>
+                <span className="font-medium text-slate-700">{reverifyPatient.hmo}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Policy Number</span>
+                <span className="font-mono text-slate-700">{reverifyPatient.hmoNumber}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Current Status</span>
+                {statusBadge(reverifyPatient.status)}
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Expiry Date</span>
+                <span className="text-slate-700">{reverifyPatient.expiryISO}</span>
+              </div>
+            </div>
+            <p className="text-sm text-slate-600">
+              This will send a real-time eligibility check to {reverifyPatient.hmo} to confirm the patient&apos;s coverage status.
+            </p>
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <Button variant="ghost" onClick={() => setReverifyPatient(null)}>Cancel</Button>
+              <Button
+                variant="primary"
+                onClick={() => {
+                  setReverifyPatient(null);
+                  showSuccess(`${reverifyPatient.name} re-verified with ${reverifyPatient.hmo}. Status: Verified.`);
+                }}
+              >
+                Confirm Re-verification
+              </Button>
+            </div>
+          </div>
         )}
       </Modal>
     </div>

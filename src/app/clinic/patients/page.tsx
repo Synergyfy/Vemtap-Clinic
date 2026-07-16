@@ -120,27 +120,27 @@ export default function PatientsPage() {
         ]}
       />
 
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-4">
         <Card>
-          <CardContent className="p-6">
+          <CardContent className="p-3 sm:p-6">
             <p className="text-sm font-medium text-slate-500">Total patients</p>
             <p className="mt-1 text-2xl font-bold text-slate-900">{patients.length}</p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-6">
+          <CardContent className="p-3 sm:p-6">
             <p className="text-sm font-medium text-slate-500">Active</p>
             <p className="mt-1 text-2xl font-bold text-slate-900">{activeCount}</p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-6">
+          <CardContent className="p-3 sm:p-6">
             <p className="text-sm font-medium text-slate-500">New (today)</p>
             <p className="mt-1 text-2xl font-bold text-slate-900">{newCount}</p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-6">
+          <CardContent className="p-3 sm:p-6">
             <p className="text-sm font-medium text-slate-500">Open optical orders</p>
             <p className="mt-1 text-2xl font-bold text-slate-900">{openOpticalOrders}</p>
           </CardContent>
@@ -148,9 +148,9 @@ export default function PatientsPage() {
       </div>
 
       <Card>
-        <CardHeader className="flex-row items-center justify-between">
-          <CardTitle>Registered patients</CardTitle>
-          <p className="text-sm text-slate-500">Showing {filteredPatients.length} record(s)</p>
+        <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <CardTitle className="text-base sm:text-lg font-bold">Registered patients</CardTitle>
+          <p className="text-xs sm:text-sm text-slate-500">Showing {filteredPatients.length} record(s)</p>
         </CardHeader>
         <CardContent>
           <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-3">
@@ -178,7 +178,7 @@ export default function PatientsPage() {
             </div>
           </div>
 
-          <Table>
+          <div className="overflow-x-auto"><Table>
             <TableHeader>
               <TableRow>
                 <TableHead>ID</TableHead>
@@ -223,7 +223,7 @@ export default function PatientsPage() {
                 </TableRow>
               ))}
             </TableBody>
-          </Table>
+          </Table></div>
 
           <p className="mt-3 text-xs text-slate-500">
             History column shows consultations / eye tests. Open a patient to view full timeline, medical history, eye examination history,

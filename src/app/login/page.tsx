@@ -8,7 +8,7 @@ import {
   Mail, Lock, Eye, EyeOff, ArrowRight, 
   ShieldCheck, Smartphone, CheckCircle2,
   Users, User, ChevronDown, LayoutDashboard,
-  Building2, UserCircle, Clock, Stethoscope, Heart
+  Building2, UserCircle, Clock, Stethoscope, Heart, Pill
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -24,6 +24,8 @@ export default function LoginPage() {
     { name: "Clinic Admin Dashboard", href: "/clinic/dashboard", icon: Building2, color: "text-sky-600", desc: "Branch & clinical operations" },
     { name: "Doctor Clinical Hub", href: "/doctor/dashboard", icon: Stethoscope, color: "text-emerald-600", desc: "Patient care & consultations" },
     { name: "Nurse Station", href: "/nurse/dashboard", icon: Heart, color: "text-cyan-600", desc: "Vitals, monitoring & patient care" },
+    { name: "Optical Hub", href: "/optician/dashboard", icon: Eye, color: "text-amber-600", desc: "Lens orders, production & inventory" },
+    { name: "Pharmacy Station", href: "/pharmacy/dashboard", icon: Pill, color: "text-emerald-600", desc: "Prescriptions, inventory & dispensing" },
     { name: "Receptionist Frontdesk", href: "/reception/dashboard", icon: Clock, color: "text-amber-600", desc: "Registration & queue flow" },
     { name: "Patient Success Portal", href: "/patient/dashboard", icon: UserCircle, color: "text-emerald-600", desc: "Results, orders & bookings" },
   ];
@@ -116,7 +118,7 @@ export default function LoginPage() {
                           initial={{ opacity: 0, y: 10, scale: 0.95 }}
                           animate={{ opacity: 1, y: 0, scale: 1 }}
                           exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                          className="absolute bottom-full left-0 w-full mb-3 bg-white border border-slate-100 rounded-3xl shadow-2xl p-3 z-50 overflow-hidden"
+                          className="absolute bottom-full left-0 w-full mb-3 bg-white border border-slate-100 rounded-3xl shadow-2xl p-3 z-50 overflow-y-auto max-h-[28rem]"
                         >
                            <div className="p-3 mb-2">
                               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Select Environment</p>

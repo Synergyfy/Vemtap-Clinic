@@ -11,6 +11,7 @@ import {
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { Modal } from "@/components/ui/modal";
+import { BottomNav } from "@/components/layout/bottom-nav";
 
 const sidebarLinks = [
   { name: "Dashboard", href: "/doctor/dashboard", icon: LayoutDashboard },
@@ -141,10 +142,20 @@ export default function DoctorLayout({ children }: { children: React.ReactNode }
           </button>
         </header>
 
-        <div className="flex-1 overflow-y-auto p-8">
+        <div className="flex-1 overflow-y-auto p-4 md:p-8 pb-20 md:pb-8">
           {children}
         </div>
       </main>
+
+      <BottomNav 
+        items={[
+          { label: "Home", href: "/doctor/dashboard", icon: LayoutDashboard },
+          { label: "Queue", href: "/doctor/queue", icon: Clock },
+          { label: "Patients", href: "/doctor/patients", icon: Users },
+          { label: "Appts", href: "/doctor/appointments", icon: Calendar },
+        ]}
+        activeColor="text-emerald-600"
+      />
 
       <Modal isOpen={isLogoutOpen} onClose={() => setIsLogoutOpen(false)} title="Log out">
         <p className="text-sm text-slate-600">Are you sure you want to log out of the doctor portal?</p>

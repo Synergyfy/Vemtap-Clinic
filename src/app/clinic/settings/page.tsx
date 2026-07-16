@@ -28,6 +28,15 @@ type SettingsTab = "profile" | "branches" | "billing" | "branding" | "notificati
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<SettingsTab>("profile");
+  const [backupModal, setBackupModal] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [applyVat, setApplyVat] = useState(true);
+  const [patientDeposits, setPatientDeposits] = useState(true);
+  const [autoHmoClaims, setAutoHmoClaims] = useState(false);
+  const [lockPaidInvoices, setLockPaidInvoices] = useState(true);
+  const [smsReceipts, setSmsReceipts] = useState(false);
+  const [theme, setTheme] = useState<"light" | "dark">("light");
+  const [customizeModal, setCustomizeModal] = useState<string | null>(null);
 
   const tabs = [
     { id: "profile", label: "Clinic Profile", icon: Globe },
@@ -46,10 +55,83 @@ export default function SettingsPage() {
         title="Settings & Configuration"
         description="Global control center: Tailor your clinic network's branding, financial rules, and security protocols."
         actions={[
-          { label: "Backup Data", variant: "outline", onClick: () => alert("Initiating full system encrypted backup...") },
-          { label: "Save All Changes", variant: "primary", onClick: () => alert("Clinic configurations synchronized across all branches.") },
+          { label: "Backup Data", variant: "outline", onClick: () => setBackupModal(true) },
+          { label: "Save All Changes", variant: "primary", onClick: () => { setSaved(true); setTimeout(() => setSaved(false), 3000); } },
         ]}
       />
+
+      {saved && (
+        <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-3 rounded-2xl text-sm font-bold flex items-center gap-2">
+          <span className="w-2 h-2 bg-emerald-500 rounded-full" />
+          Settings saved successfully
+        </div>
+      )}
+
+      {backupModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-3xl p-8 max-w-md w-full mx-4 shadow-2xl">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center">
+                <Database size={20} className="text-emerald-600" />
+              </div>
+              <h3 className="text-lg font-bold text-slate-900">Backup Started</h3>
+            </div>
+            <p className="text-sm text-slate-600 mb-6">You&apos;ll receive an email when complete.</p>
+            <button
+              onClick={() => setBackupModal(false)}
+              className="w-full bg-slate-900 text-white py-3 rounded-2xl text-sm font-bold hover:bg-slate-800 transition-colors"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+
+      {customizeModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-3xl p-8 max-w-md w-full mx-4 shadow-2xl">
+            <h3 className="text-lg font-bold text-slate-900 mb-6">Customize {customizeModal}</h3>
+            <div className="space-y-4 mb-6">
+              <div>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5 ml-1">Template Name</label>
+                <input
+                  type="text"
+                  defaultValue={customizeModal}
+                  className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-4 py-3 text-sm font-bold text-slate-900 outline-none focus:ring-2 focus:ring-sky-100 transition-all"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5 ml-1">Header Text</label>
+                <textarea
+                  rows={3}
+                  className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-4 py-3 text-sm font-bold text-slate-900 outline-none focus:ring-2 focus:ring-sky-100 transition-all resize-none"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5 ml-1">Footer Text</label>
+                <textarea
+                  rows={3}
+                  className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-4 py-3 text-sm font-bold text-slate-900 outline-none focus:ring-2 focus:ring-sky-100 transition-all resize-none"
+                />
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setCustomizeModal(null)}
+                className="flex-1 bg-slate-100 text-slate-700 py-3 rounded-2xl text-sm font-bold hover:bg-slate-200 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => setCustomizeModal(null)}
+                className="flex-1 bg-slate-900 text-white py-3 rounded-2xl text-sm font-bold hover:bg-slate-800 transition-colors"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Tab Navigation */}
       <div className="flex space-x-1 border-b border-slate-200 overflow-x-auto pb-px">
@@ -131,7 +213,12 @@ export default function SettingsPage() {
                           <span>Next Renewal</span>
                           <span>Jan 15, 2027</span>
                        </div>
-                       <Button className="w-full bg-white/10 hover:bg-white/20 text-white rounded-xl border-none font-bold">Manage Billing</Button>
+                        <Button
+                          className="w-full bg-white/10 hover:bg-white/20 text-white rounded-xl border-none font-bold"
+                          onClick={() => window.open("https://billing.vemtap.com", "_blank")}
+                        >
+                          Manage Billing
+                        </Button>
                     </div>
                  </Card>
 
@@ -154,15 +241,15 @@ export default function SettingsPage() {
                     Invoicing & Taxation
                  </h3>
                  <div className="space-y-6">
-                    <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl">
-                       <div>
-                          <p className="text-sm font-bold text-slate-700">Apply VAT to all invoices</p>
-                          <p className="text-[10px] text-slate-400 font-bold">Automatic 7.5% tax calculation</p>
-                       </div>
-                       <div className="w-10 h-6 bg-emerald-500 rounded-full relative cursor-pointer">
-                          <div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full shadow-sm" />
-                       </div>
-                    </div>
+                     <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl">
+                        <div>
+                           <p className="text-sm font-bold text-slate-700">Apply VAT to all invoices</p>
+                           <p className="text-[10px] text-slate-400 font-bold">Automatic 7.5% tax calculation</p>
+                        </div>
+                        <button onClick={() => setApplyVat(!applyVat)} className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${applyVat ? "bg-emerald-600" : "bg-slate-200"}`}>
+                          <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${applyVat ? "translate-x-6" : "translate-x-1"}`} />
+                        </button>
+                     </div>
                     <div>
                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5 ml-1">Invoice Prefix</label>
                        <input type="text" defaultValue="VMT-" className={inputClass} />
@@ -183,24 +270,44 @@ export default function SettingsPage() {
                     <Settings2 size={20} className="text-emerald-600" />
                     Operational Billing Toggles
                  </h3>
-                 <div className="space-y-4">
-                    {[
-                      { label: "Enable Patient Deposits", desc: "Allow advance payments for procedures." },
-                      { label: "Automated HMO Claims", desc: "Generate claim forms on invoice finalization." },
-                      { label: "Lock Paid Invoices", desc: "Prevent edits to invoices after payment confirmation." },
-                      { label: "SMS Receipt Delivery", desc: "Send link to digital receipt via WhatsApp/SMS." },
-                    ].map(item => (
-                       <div key={item.label} className="flex items-center justify-between py-4 border-b border-slate-50 last:border-0">
-                          <div className="max-w-[80%]">
-                             <p className="text-sm font-bold text-slate-700">{item.label}</p>
-                             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">{item.desc}</p>
-                          </div>
-                          <div className="w-10 h-6 bg-slate-200 rounded-full relative cursor-pointer">
-                             <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full shadow-sm" />
-                          </div>
-                       </div>
-                    ))}
-                 </div>
+                  <div className="space-y-4">
+                     <div className="flex items-center justify-between py-4 border-b border-slate-50">
+                        <div className="max-w-[80%]">
+                           <p className="text-sm font-bold text-slate-700">Enable Patient Deposits</p>
+                           <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">Allow advance payments for procedures.</p>
+                        </div>
+                        <button onClick={() => setPatientDeposits(!patientDeposits)} className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${patientDeposits ? "bg-emerald-600" : "bg-slate-200"}`}>
+                          <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${patientDeposits ? "translate-x-6" : "translate-x-1"}`} />
+                        </button>
+                     </div>
+                     <div className="flex items-center justify-between py-4 border-b border-slate-50">
+                        <div className="max-w-[80%]">
+                           <p className="text-sm font-bold text-slate-700">Automated HMO Claims</p>
+                           <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">Generate claim forms on invoice finalization.</p>
+                        </div>
+                        <button onClick={() => setAutoHmoClaims(!autoHmoClaims)} className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${autoHmoClaims ? "bg-emerald-600" : "bg-slate-200"}`}>
+                          <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${autoHmoClaims ? "translate-x-6" : "translate-x-1"}`} />
+                        </button>
+                     </div>
+                     <div className="flex items-center justify-between py-4 border-b border-slate-50">
+                        <div className="max-w-[80%]">
+                           <p className="text-sm font-bold text-slate-700">Lock Paid Invoices</p>
+                           <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">Prevent edits to invoices after payment confirmation.</p>
+                        </div>
+                        <button onClick={() => setLockPaidInvoices(!lockPaidInvoices)} className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${lockPaidInvoices ? "bg-emerald-600" : "bg-slate-200"}`}>
+                          <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${lockPaidInvoices ? "translate-x-6" : "translate-x-1"}`} />
+                        </button>
+                     </div>
+                     <div className="flex items-center justify-between py-4 last:border-0">
+                        <div className="max-w-[80%]">
+                           <p className="text-sm font-bold text-slate-700">SMS Receipt Delivery</p>
+                           <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">Send link to digital receipt via WhatsApp/SMS.</p>
+                        </div>
+                        <button onClick={() => setSmsReceipts(!smsReceipts)} className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${smsReceipts ? "bg-emerald-600" : "bg-slate-200"}`}>
+                          <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${smsReceipts ? "translate-x-6" : "translate-x-1"}`} />
+                        </button>
+                     </div>
+                  </div>
               </Card>
            </div>
         )}
@@ -221,29 +328,39 @@ export default function SettingsPage() {
                           <div className="aspect-square rounded-2xl bg-slate-50 border-2 border-dashed border-slate-200 flex items-center justify-center text-slate-300 font-bold text-xs">+</div>
                        </div>
                        
-                       <div className="pt-4">
-                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5 ml-1">Dashboard Theme</label>
-                          <div className="flex gap-4">
-                             <button className="flex-1 py-3 bg-slate-900 text-white rounded-2xl text-xs font-black uppercase tracking-widest">Dark</button>
-                             <button className="flex-1 py-3 bg-slate-50 text-slate-400 rounded-2xl text-xs font-black uppercase tracking-widest">Light</button>
-                          </div>
-                       </div>
+                        <div className="pt-4">
+                           <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5 ml-1">Dashboard Theme</label>
+                           <div className="flex gap-4">
+                              <button
+                                onClick={() => setTheme("dark")}
+                                className={`flex-1 py-3 rounded-2xl text-xs font-black uppercase tracking-widest transition-all ${theme === "dark" ? "bg-slate-900 text-white ring-2 ring-sky-400 ring-offset-2" : "bg-slate-900 text-white"}`}
+                              >
+                                Dark
+                              </button>
+                              <button
+                                onClick={() => setTheme("light")}
+                                className={`flex-1 py-3 rounded-2xl text-xs font-black uppercase tracking-widest transition-all ${theme === "light" ? "bg-slate-50 text-slate-900 ring-2 ring-sky-400 ring-offset-2" : "bg-slate-50 text-slate-400"}`}
+                              >
+                                Light
+                              </button>
+                           </div>
+                        </div>
                     </div>
 
                     <div className="space-y-6">
                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b pb-2">Document Templates</p>
                        <div className="space-y-4">
-                          {['Clinical Report', 'Prescription Sheet', 'Invoice Summary'].map(doc => (
-                             <div key={doc} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100 hover:border-sky-200 transition-all cursor-pointer group">
-                                <div className="flex items-center gap-3">
-                                   <div className="w-8 h-8 rounded-xl bg-white flex items-center justify-center text-slate-400 group-hover:text-sky-600">
-                                      <Eye size={16} />
-                                   </div>
-                                   <span className="text-sm font-bold text-slate-700">{doc}</span>
-                                </div>
-                                <Button variant="ghost" size="sm" className="text-[10px] font-black uppercase text-sky-600">Customize</Button>
-                             </div>
-                          ))}
+                           {['Clinical Report', 'Prescription Sheet', 'Invoice Summary'].map(doc => (
+                              <div key={doc} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100 hover:border-sky-200 transition-all cursor-pointer group">
+                                 <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 rounded-xl bg-white flex items-center justify-center text-slate-400 group-hover:text-sky-600">
+                                       <Eye size={16} />
+                                    </div>
+                                    <span className="text-sm font-bold text-slate-700">{doc}</span>
+                                 </div>
+                                 <Button variant="ghost" size="sm" className="text-[10px] font-black uppercase text-sky-600" onClick={() => setCustomizeModal(doc)}>Customize</Button>
+                              </div>
+                           ))}
                        </div>
                     </div>
                  </div>
@@ -255,12 +372,12 @@ export default function SettingsPage() {
            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               <div className="lg:col-span-2 space-y-6">
                  <Card className="border-none shadow-sm rounded-3xl p-0 overflow-hidden bg-white">
-                    <CardHeader className="px-8 py-6 border-b border-slate-50">
-                       <CardTitle className="text-lg">Security Audit Log</CardTitle>
-                       <p className="text-sm text-slate-500">Monitoring all administrative and clinical configuration changes.</p>
-                    </CardHeader>
-                    <Table>
-                       <TableHeader className="bg-slate-50/50">
+                     <CardHeader className="px-8 py-6 border-b border-slate-50">
+                       <CardTitle className="text-base sm:text-lg">Security Audit Log</CardTitle>
+                       <p className="text-xs sm:text-sm text-slate-500">Monitoring all administrative and clinical configuration changes.</p>
+                     </CardHeader>
+                     <div className="overflow-x-auto"><Table>
+                        <TableHeader className="bg-slate-50/50">
                           <TableRow>
                              <TableHead className="px-8 text-[10px] font-black text-slate-400 uppercase tracking-widest">User</TableHead>
                              <TableHead className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Action</TableHead>
@@ -282,8 +399,8 @@ export default function SettingsPage() {
                              </TableRow>
                           ))}
                        </TableBody>
-                    </Table>
-                 </Card>
+                     </Table></div>
+                  </Card>
               </div>
 
               <div className="space-y-6">
@@ -296,7 +413,21 @@ export default function SettingsPage() {
                     <p className="text-xs text-white/60 font-medium leading-relaxed mb-6">
                        All sensitive patient data is encrypted at rest and masked in regional analytics views.
                     </p>
-                    <Button className="w-full bg-white/10 hover:bg-white/20 text-white rounded-xl border-none font-bold">Download Compliance Cert</Button>
+                    <Button
+                      className="w-full bg-white/10 hover:bg-white/20 text-white rounded-xl border-none font-bold"
+                      onClick={() => {
+                        const content = `Vemtap Eye Clinic - Compliance Certificate\nGenerated: ${new Date().toLocaleDateString()}\nStatus: Compliant`;
+                        const blob = new Blob([content], { type: "text/plain" });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement("a");
+                        a.href = url;
+                        a.download = "Vemtap-Compliance-Certificate.txt";
+                        a.click();
+                        URL.revokeObjectURL(url);
+                      }}
+                    >
+                      Download Compliance Cert
+                    </Button>
                  </Card>
 
                  <Card className="border-none shadow-sm rounded-3xl p-6 bg-white">
