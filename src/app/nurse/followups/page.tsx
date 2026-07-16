@@ -152,18 +152,51 @@ export default function NurseFollowUps() {
       </div>
 
       <Card>
-        <CardHeader className="flex-row items-center justify-between">
-          <CardTitle>All Follow-up Schedules</CardTitle>
+        <CardHeader className="flex-row items-center justify-between px-4 sm:px-6 py-3 sm:py-4">
+          <CardTitle className="text-base sm:text-lg">All Follow-up Schedules</CardTitle>
           <button
             onClick={openSchedule}
-            className="inline-flex items-center gap-1.5 text-sm font-medium text-cyan-700 hover:text-cyan-800 transition-colors"
+            className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-medium text-cyan-700 hover:text-cyan-800 transition-colors"
           >
             <Plus size={16} />
             Schedule New
           </button>
         </CardHeader>
-        <CardContent className="p-0 sm:p-6">
-          <div className="overflow-x-auto">
+        <CardContent className="p-0">
+          <div className="md:hidden divide-y divide-slate-100">
+            {followUps.map((f) => (
+              <div key={f.id} className="p-4">
+                <div className="flex items-center justify-between gap-3 mb-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-slate-900 text-sm truncate">{f.patientName}</p>
+                    <p className="text-xs text-slate-500 mt-0.5">{f.reason}</p>
+                  </div>
+                  {statusBadge(f.status)}
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-medium text-rose-600 bg-rose-50 px-2 py-1 rounded-md flex items-center gap-1">
+                    <Calendar size={10} />
+                    Due: {f.dueDate}
+                  </span>
+                  {f.status === "Pending" ? (
+                    <button
+                      onClick={() => setDoneConfirm(f.id)}
+                      className="rounded-lg bg-emerald-600 px-3 py-1.5 text-[10px] font-bold text-white"
+                    >
+                      Mark Done
+                    </button>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-[10px] text-emerald-600 font-medium">
+                      <CheckCircle2 size={12} />
+                      Done
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+            {followUps.length === 0 && <p className="text-center text-sm text-slate-500 py-6">No follow-ups scheduled.</p>}
+          </div>
+          <div className="hidden md:block overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -183,17 +216,9 @@ export default function NurseFollowUps() {
                     <TableCell>{statusBadge(f.status)}</TableCell>
                     <TableCell className="text-right">
                       {f.status === "Pending" ? (
-                        <button
-                          onClick={() => setDoneConfirm(f.id)}
-                          className="inline-flex items-center justify-center rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700 transition-colors whitespace-nowrap"
-                        >
-                          Mark Done
-                        </button>
+                        <button onClick={() => setDoneConfirm(f.id)} className="inline-flex items-center justify-center rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700 whitespace-nowrap">Mark Done</button>
                       ) : (
-                        <span className="inline-flex items-center gap-1 text-xs text-emerald-600 font-medium">
-                          <CheckCircle2 size={14} />
-                          Done
-                        </span>
+                        <span className="inline-flex items-center gap-1 text-xs text-emerald-600 font-medium"><CheckCircle2 size={14} />Done</span>
                       )}
                     </TableCell>
                   </TableRow>

@@ -284,27 +284,27 @@ export default function AppointmentsPage() {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-4">
         <Card>
-          <CardContent className="p-6">
+          <CardContent className="p-3 sm:p-6">
             <p className="text-sm font-medium text-slate-500">Today</p>
             <p className="mt-1 text-2xl font-bold text-slate-900">{todayAppointments.length}</p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-6">
+          <CardContent className="p-3 sm:p-6">
             <p className="text-sm font-medium text-slate-500">Checked-in</p>
             <p className="mt-1 text-2xl font-bold text-slate-900">{checkedIn}</p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-6">
+          <CardContent className="p-3 sm:p-6">
             <p className="text-sm font-medium text-slate-500">In progress</p>
             <p className="mt-1 text-2xl font-bold text-slate-900">{inProgress}</p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-6">
+          <CardContent className="p-3 sm:p-6">
             <p className="text-sm font-medium text-slate-500">Missed</p>
             <p className="mt-1 text-2xl font-bold text-slate-900">{missedAppointments.length}</p>
           </CardContent>
@@ -313,12 +313,12 @@ export default function AppointmentsPage() {
 
       {tab === "Calendar" ? (
         <Card>
-          <CardHeader className="flex-row items-center justify-between">
+          <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
-              <CardTitle>Appointment calendar</CardTitle>
-              <p className="mt-1 text-sm text-slate-500">{monthYearLabel(calendarMonthISO)}</p>
+              <CardTitle className="text-base sm:text-lg font-bold">Appointment calendar</CardTitle>
+              <p className="mt-1 text-xs sm:text-sm text-slate-500">{monthYearLabel(calendarMonthISO)}</p>
             </div>
-            <div className="flex items-center gap-3 text-sm text-slate-500">
+            <div className="flex items-center gap-3 text-xs sm:text-sm text-slate-500 self-start sm:self-auto">
               <span>{followUpsCount} follow-up(s)</span>
               <span>{walkInsCount} walk-in(s)</span>
             </div>
@@ -494,11 +494,12 @@ export default function AppointmentsPage() {
 
       {tab === "Upcoming" ? (
         <Card>
-          <CardHeader className="flex-row items-center justify-between">
-            <CardTitle>Upcoming appointments</CardTitle>
-            <p className="text-sm text-slate-500">{upcomingAppointments.length} scheduled</p>
+          <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <CardTitle className="text-base sm:text-lg font-bold">Upcoming appointments</CardTitle>
+            <p className="text-xs sm:text-sm text-slate-500">{upcomingAppointments.length} scheduled</p>
           </CardHeader>
           <CardContent>
+            <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -550,17 +551,19 @@ export default function AppointmentsPage() {
                 ))}
               </TableBody>
             </Table>
+            </div>
           </CardContent>
         </Card>
       ) : null}
 
       {tab === "Follow-ups" ? (
         <Card>
-          <CardHeader className="flex-row items-center justify-between">
-            <CardTitle>Follow-ups</CardTitle>
-            <p className="text-sm text-slate-500">{followUpsCount} total</p>
+          <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <CardTitle className="text-base sm:text-lg font-bold">Follow-ups</CardTitle>
+            <p className="text-xs sm:text-sm text-slate-500">{followUpsCount} total</p>
           </CardHeader>
           <CardContent>
+            <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -604,21 +607,23 @@ export default function AppointmentsPage() {
                           Reschedule
                         </button>
                       </TableCell>
-                    </TableRow>
-                  ))}
+                  </TableRow>
+                ))}
               </TableBody>
             </Table>
+            </div>
           </CardContent>
         </Card>
       ) : null}
 
       {tab === "Walk-ins" ? (
         <Card>
-          <CardHeader className="flex-row items-center justify-between">
-            <CardTitle>Walk-ins</CardTitle>
-            <p className="text-sm text-slate-500">{walkInsCount} total</p>
+          <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <CardTitle className="text-base sm:text-lg font-bold">Walk-ins</CardTitle>
+            <p className="text-xs sm:text-sm text-slate-500">{walkInsCount} total</p>
           </CardHeader>
           <CardContent>
+            <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -662,21 +667,23 @@ export default function AppointmentsPage() {
                           Reschedule
                         </button>
                       </TableCell>
-                    </TableRow>
-                  ))}
+                  </TableRow>
+                ))}
               </TableBody>
             </Table>
+            </div>
           </CardContent>
         </Card>
       ) : null}
 
       {tab === "Missed" ? (
         <Card>
-          <CardHeader className="flex-row items-center justify-between">
-            <CardTitle>Missed appointments</CardTitle>
-            <p className="text-sm text-slate-500">{missedAppointments.length} missed</p>
+          <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <CardTitle className="text-base sm:text-lg font-bold">Missed appointments</CardTitle>
+            <p className="text-xs sm:text-sm text-slate-500">{missedAppointments.length} missed</p>
           </CardHeader>
           <CardContent>
+            <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -724,6 +731,7 @@ export default function AppointmentsPage() {
                 ))}
               </TableBody>
             </Table>
+            </div>
           </CardContent>
         </Card>
       ) : null}

@@ -17,7 +17,7 @@ function statusBadge(status: string) {
 
 export default function DoctorQueue() {
   return (
-    <div className="space-y-8">
+    <div className="space-y-4 sm:space-y-8">
       <PageHeader
         title="Consultation Queue"
         description="Manage patients waiting for consultation. Prioritize urgent cases and track wait times."
@@ -26,49 +26,72 @@ export default function DoctorQueue() {
         ]}
       />
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="bg-emerald-50/50 border-emerald-100">
-          <CardContent className="p-6 flex items-center gap-4">
-            <div className="p-3 rounded-xl bg-white text-emerald-600 shadow-sm">
-              <UserPlus size={24} />
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-6">
+        <Card className="col-span-2 md:col-span-1 bg-emerald-50/50 border-emerald-100">
+          <CardContent className="p-3 sm:p-6 flex items-center gap-3 sm:gap-4">
+            <div className="p-2 sm:p-3 rounded-xl bg-white text-emerald-600 shadow-sm">
+              <UserPlus size={20} className="sm:w-6 sm:h-6" />
             </div>
             <div>
-              <p className="text-sm font-medium text-emerald-800">Next Patient</p>
-              <p className="text-xl font-bold text-slate-900">{doctorWaitingPatients[0]?.patientName || "None"}</p>
+              <p className="text-[10px] sm:text-sm font-medium text-emerald-800">Next Patient</p>
+              <p className="text-base sm:text-xl font-bold text-slate-900 truncate">{doctorWaitingPatients[0]?.patientName || "None"}</p>
             </div>
           </CardContent>
         </Card>
         
         <Card>
-          <CardContent className="p-6 flex items-center gap-4">
-            <div className="p-3 rounded-xl bg-slate-100 text-slate-600">
-              <Clock size={24} />
+          <CardContent className="p-3 sm:p-6 flex items-center gap-3 sm:gap-4">
+            <div className="p-2 sm:p-3 rounded-xl bg-slate-100 text-slate-600">
+              <Clock size={20} className="sm:w-6 sm:h-6" />
             </div>
             <div>
-              <p className="text-sm font-medium text-slate-500">Total Waiting</p>
-              <p className="text-xl font-bold text-slate-900">{doctorWaitingPatients.length}</p>
+              <p className="text-[10px] sm:text-sm font-medium text-slate-500">Waiting</p>
+              <p className="text-base sm:text-xl font-bold text-slate-900">{doctorWaitingPatients.length}</p>
             </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent className="p-6 flex items-center gap-4">
-            <div className="p-3 rounded-xl bg-rose-50 text-rose-600">
-              <Clock size={24} />
+          <CardContent className="p-3 sm:p-6 flex items-center gap-3 sm:gap-4">
+            <div className="p-2 sm:p-3 rounded-xl bg-rose-50 text-rose-600">
+              <Clock size={20} className="sm:w-6 sm:h-6" />
             </div>
             <div>
-              <p className="text-sm font-medium text-rose-800">Avg. Wait Time</p>
-              <p className="text-xl font-bold text-slate-900">18 mins</p>
+              <p className="text-[10px] sm:text-sm font-medium text-rose-800">Avg. Wait</p>
+              <p className="text-base sm:text-xl font-bold text-slate-900">18 mins</p>
             </div>
           </CardContent>
         </Card>
       </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle>Active Waiting List</CardTitle>
+        <CardHeader className="px-4 sm:px-6 py-3 sm:py-4">
+          <CardTitle className="text-base sm:text-lg">Active Waiting List</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
+          {/* Mobile: card list */}
+          <div className="md:hidden divide-y divide-slate-100">
+            {doctorWaitingPatients.map((q, index) => (
+              <div key={q.id} className="p-4">
+                <div className="flex items-center justify-between gap-3 mb-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="font-bold text-slate-400 text-xs">#{index + 1}</span>
+                    <p className="font-semibold text-slate-900 text-sm truncate">{q.patientName}</p>
+                  </div>
+                  <Link href={`/doctor/workspace/${q.patientId}`} className="shrink-0 inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-1.5 text-[10px] font-bold text-white">
+                    <PlayCircle size={12} /> Start
+                  </Link>
+                </div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {statusBadge(q.priority)}
+                  <span className="text-[10px] tabular-nums font-medium text-slate-600">{q.waitMinutes}m</span>
+                  {statusBadge(q.status)}
+                </div>
+              </div>
+            ))}
+          </div>
+          {/* Desktop: full table */}
+          <div className="hidden md:block">
           <Table>
             <TableHeader>
               <TableRow>
@@ -108,6 +131,7 @@ export default function DoctorQueue() {
               )}
             </TableBody>
           </Table>
+          </div>
         </CardContent>
       </Card>
     </div>

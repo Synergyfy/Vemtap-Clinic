@@ -188,27 +188,27 @@ export default function QueuePage() {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-4">
         <Card>
-          <CardContent className="p-6">
+          <CardContent className="p-3 sm:p-6">
             <p className="text-sm font-medium text-slate-500">In queue</p>
             <p className="mt-1 text-2xl font-bold text-slate-900">{activeQueue.length}</p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-6">
+          <CardContent className="p-3 sm:p-6">
             <p className="text-sm font-medium text-slate-500">Waiting</p>
             <p className="mt-1 text-2xl font-bold text-slate-900">{waiting}</p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-6">
+          <CardContent className="p-3 sm:p-6">
             <p className="text-sm font-medium text-slate-500">In service</p>
             <p className="mt-1 text-2xl font-bold text-slate-900">{inService}</p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-6">
+          <CardContent className="p-3 sm:p-6">
             <p className="text-sm font-medium text-slate-500">Urgent</p>
             <p className="mt-1 text-2xl font-bold text-slate-900">{urgentCount}</p>
           </CardContent>
@@ -261,12 +261,12 @@ export default function QueuePage() {
           {boardView === "flow-list" && (
             <Card className="border border-slate-200 shadow-sm overflow-hidden">
               <CardHeader className="bg-white border-b border-slate-100 py-5">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div>
-                    <CardTitle className="text-lg font-bold text-slate-900">Active Patient Queue Flow</CardTitle>
-                    <p className="mt-1 text-sm text-slate-500">Enterprise clinical view showing all active patients sorted by clinical path priority and wait times.</p>
+                    <CardTitle className="text-base sm:text-lg font-bold text-slate-900">Active Patient Queue Flow</CardTitle>
+                    <p className="mt-1 text-xs sm:text-sm text-slate-500">Enterprise clinical view showing all active patients sorted by clinical path priority and wait times.</p>
                   </div>
-                  <Badge className="bg-sky-100 text-sky-800 border border-sky-200 text-xs font-semibold px-3 py-1">
+                  <Badge className="bg-sky-100 text-sky-800 border border-sky-200 text-xs font-semibold px-3 py-1 self-start">
                     {activeQueue.length} Active Patients
                   </Badge>
                 </div>
@@ -506,19 +506,19 @@ export default function QueuePage() {
               <div className="lg:col-span-3">
                 <Card className="border border-slate-200 shadow-sm h-full flex flex-col justify-between">
                   <div>
-                    <CardHeader className="bg-white border-b border-slate-100 py-5 flex-row items-center justify-between">
+                    <CardHeader className="bg-white border-b border-slate-100 py-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                       <div>
                         <div className="flex items-center gap-3">
-                          <CardTitle className="text-lg font-bold text-slate-900">{selectedStage} Queue</CardTitle>
+                          <CardTitle className="text-base sm:text-lg font-bold text-slate-900">{selectedStage} Queue</CardTitle>
                           {stageBadge(selectedStage)}
                         </div>
-                        <p className="mt-1 text-sm text-slate-500">Live operational queue list for {selectedStage} department.</p>
+                        <p className="mt-1 text-xs sm:text-sm text-slate-500">Live operational queue list for {selectedStage} department.</p>
                       </div>
-                      <div className="text-right">
-                        <div className="text-2xl font-black text-slate-900">
+                      <div className="text-right self-start sm:self-auto">
+                        <div className="text-xl sm:text-2xl font-black text-slate-900">
                           {activeQueue.filter((q) => q.stage === selectedStage).length}
                         </div>
-                        <div className="text-xs text-slate-400 font-medium">Patients waiting/in-service</div>
+                        <div className="text-[10px] sm:text-xs text-slate-400 font-medium">Patients waiting/in-service</div>
                       </div>
                     </CardHeader>
                     <CardContent className="p-0">
@@ -729,12 +729,12 @@ export default function QueuePage() {
 
       {tab === "Waiting patients" ? (
         <Card>
-          <CardHeader className="flex-row items-center justify-between">
-            <CardTitle>Waiting patients</CardTitle>
-            <p className="text-sm text-slate-500">{waitingPatients.length} waiting</p>
+          <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <CardTitle className="text-base sm:text-lg font-bold">Waiting patients</CardTitle>
+            <p className="text-xs sm:text-sm text-slate-500">{waitingPatients.length} waiting</p>
           </CardHeader>
-          <CardContent>
-            <Table>
+           <CardContent>
+            <div className="overflow-x-auto"><Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Patient</TableHead>
@@ -760,20 +760,20 @@ export default function QueuePage() {
                       <TableCell>{statusBadge(q.status)}</TableCell>
                     </TableRow>
                   ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      ) : null}
+               </TableBody>
+             </Table></div>
+           </CardContent>
+         </Card>
+       ) : null}
 
-      {tab === "Doctor queue" ? (
+       {tab === "Doctor queue" ? (
         <Card>
-          <CardHeader className="flex-row items-center justify-between">
-            <CardTitle>Doctor queue</CardTitle>
-            <p className="text-sm text-slate-500">{doctorQueue.length} patient(s)</p>
+          <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <CardTitle className="text-base sm:text-lg font-bold">Doctor queue</CardTitle>
+            <p className="text-xs sm:text-sm text-slate-500">{doctorQueue.length} patient(s)</p>
           </CardHeader>
           <CardContent>
-            <Table>
+            <div className="overflow-x-auto"><Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Patient</TableHead>
@@ -799,26 +799,26 @@ export default function QueuePage() {
                       <TableCell>{statusBadge(q.status)}</TableCell>
                     </TableRow>
                   ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      ) : null}
+               </TableBody>
+             </Table></div>
+           </CardContent>
+         </Card>
+       ) : null}
 
-      {tab === "Emergency queue" ? (
+       {tab === "Emergency queue" ? (
         <Card>
-          <CardHeader className="flex-row items-center justify-between">
-            <CardTitle>Emergency queue</CardTitle>
-            <p className="text-sm text-slate-500">{emergencyQueue.length} urgent case(s)</p>
+          <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <CardTitle className="text-base sm:text-lg font-bold">Emergency queue</CardTitle>
+            <p className="text-xs sm:text-sm text-slate-500">{emergencyQueue.length} urgent case(s)</p>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Patient</TableHead>
-                  <TableHead>Stage</TableHead>
-                  <TableHead>Wait</TableHead>
-                  <TableHead>Status</TableHead>
+            <div className="overflow-x-auto"><Table>
+               <TableHeader>
+                 <TableRow>
+                   <TableHead>Patient</TableHead>
+                   <TableHead>Stage</TableHead>
+                   <TableHead>Wait</TableHead>
+                   <TableHead>Status</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -833,18 +833,18 @@ export default function QueuePage() {
                       <TableCell>{statusBadge(q.status)}</TableCell>
                     </TableRow>
                   ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      ) : null}
+               </TableBody>
+             </Table></div>
+           </CardContent>
+         </Card>
+       ) : null}
 
-      {tab === "Analytics" ? (
+       {tab === "Analytics" ? (
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
           <Card className="lg:col-span-2">
-            <CardHeader className="flex-row items-center justify-between">
-              <CardTitle>Queue analytics</CardTitle>
-              <p className="text-sm text-slate-500">Today</p>
+            <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <CardTitle className="text-base sm:text-lg font-bold">Queue analytics</CardTitle>
+              <p className="text-xs sm:text-sm text-slate-500">Today</p>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
@@ -889,7 +889,7 @@ export default function QueuePage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Operational insights</CardTitle>
+              <CardTitle className="text-base sm:text-lg font-bold">Operational insights</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="rounded-xl border border-slate-200 p-4">

@@ -87,48 +87,48 @@ export default function ClinicDashboard() {
         ]}
       />
 
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-4">
         <Card>
-          <CardContent className="p-6 flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-slate-500">Today&apos;s patients</p>
-              <p className="mt-1 text-2xl font-bold text-slate-900">{todayPatients}</p>
+          <CardContent className="p-3 sm:p-6 flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-[11px] sm:text-sm font-medium text-slate-500">Today&apos;s patients</p>
+              <p className="mt-1 text-xl sm:text-2xl font-bold text-slate-900 tabular-nums">{todayPatients}</p>
             </div>
-            <div className="p-3 rounded-xl bg-slate-100 text-sky-700">
-              <Users size={24} />
+            <div className="p-2 sm:p-3 rounded-xl bg-slate-100 text-sky-700 shrink-0">
+              <Users size={20} />
             </div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-6 flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-slate-500">Active queue</p>
-              <p className="mt-1 text-2xl font-bold text-slate-900">{activeQueueCount}</p>
+          <CardContent className="p-3 sm:p-6 flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-[11px] sm:text-sm font-medium text-slate-500">Active queue</p>
+              <p className="mt-1 text-xl sm:text-2xl font-bold text-slate-900 tabular-nums">{activeQueueCount}</p>
             </div>
-            <div className="p-3 rounded-xl bg-slate-100 text-amber-700">
-              <Clock size={24} />
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-6 flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-slate-500">Revenue (paid)</p>
-              <p className="mt-1 text-2xl font-bold text-slate-900">{formatNGN(revenuePaid)}</p>
-            </div>
-            <div className="p-3 rounded-xl bg-slate-100 text-emerald-700">
-              <DollarSign size={24} />
+            <div className="p-2 sm:p-3 rounded-xl bg-slate-100 text-amber-700 shrink-0">
+              <Clock size={20} />
             </div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-6 flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-slate-500">Open optical orders</p>
-              <p className="mt-1 text-2xl font-bold text-slate-900">{openOpticalOrders}</p>
+          <CardContent className="p-3 sm:p-6 flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-[11px] sm:text-sm font-medium text-slate-500">Revenue (paid)</p>
+              <p className="mt-1 text-xl sm:text-2xl font-bold text-slate-900 tabular-nums truncate">{formatNGN(revenuePaid)}</p>
             </div>
-            <div className="p-3 rounded-xl bg-slate-100 text-purple-700">
-              <Eye size={24} />
+            <div className="p-2 sm:p-3 rounded-xl bg-slate-100 text-emerald-700 shrink-0">
+              <DollarSign size={20} />
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-3 sm:p-6 flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-[11px] sm:text-sm font-medium text-slate-500">Open optical orders</p>
+              <p className="mt-1 text-xl sm:text-2xl font-bold text-slate-900 tabular-nums">{openOpticalOrders}</p>
+            </div>
+            <div className="p-2 sm:p-3 rounded-xl bg-slate-100 text-purple-700 shrink-0">
+              <Eye size={20} />
             </div>
           </CardContent>
         </Card>
@@ -143,28 +143,46 @@ export default function ClinicDashboard() {
             </Link>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Patient</TableHead>
-                  <TableHead>Lens</TableHead>
-                  <TableHead>Frame</TableHead>
-                  <TableHead>Due</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {clinicOpticalOrders.map((o) => (
-                  <TableRow key={o.id}>
-                    <TableCell className="font-medium">{o.patientName}</TableCell>
-                    <TableCell>{o.lens}</TableCell>
-                    <TableCell>{o.frame}</TableCell>
-                    <TableCell className="tabular-nums">{o.dueISO}</TableCell>
-                    <TableCell>{statusBadge(o.status)}</TableCell>
+            {/* Mobile: compact card list */}
+            <div className="md:hidden space-y-2">
+              {clinicOpticalOrders.slice(0, 4).map((o) => (
+                <div key={o.id} className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 p-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-slate-900 truncate">{o.patientName}</p>
+                    <p className="text-xs text-slate-500 truncate">{o.lens} • {o.frame}</p>
+                  </div>
+                  <div className="shrink-0 flex items-center gap-2">
+                    <span className="text-[10px] font-medium text-slate-400 tabular-nums whitespace-nowrap">{o.dueISO}</span>
+                    {statusBadge(o.status)}
+                  </div>
+                </div>
+              ))}
+            </div>
+            {/* Desktop: full table */}
+            <div className="hidden md:block overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Patient</TableHead>
+                    <TableHead>Lens</TableHead>
+                    <TableHead>Frame</TableHead>
+                    <TableHead>Due</TableHead>
+                    <TableHead>Status</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {clinicOpticalOrders.map((o) => (
+                    <TableRow key={o.id}>
+                      <TableCell className="font-medium">{o.patientName}</TableCell>
+                      <TableCell>{o.lens}</TableCell>
+                      <TableCell>{o.frame}</TableCell>
+                      <TableCell className="tabular-nums">{o.dueISO}</TableCell>
+                      <TableCell>{statusBadge(o.status)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           </CardContent>
         </Card>
 
@@ -199,7 +217,7 @@ export default function ClinicDashboard() {
       <Card>
         <CardHeader className="flex-row items-center justify-between">
           <CardTitle>Alerts</CardTitle>
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="hidden sm:flex items-center gap-3">
             <Link href="/clinic/queue" className="text-sm font-medium text-sky-700 hover:text-sky-800">
               Queue
             </Link>
@@ -217,7 +235,7 @@ export default function ClinicDashboard() {
             </Link>
           </div>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <CardContent className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <div className="rounded-xl border border-slate-200 p-4">
             <p className="text-sm font-semibold text-slate-900">Pharmacy stock</p>
             <p className="mt-1 text-sm text-slate-500">{lowStock} item(s) at/below reorder level</p>
@@ -268,28 +286,47 @@ export default function ClinicDashboard() {
             </Link>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Patient</TableHead>
-                  <TableHead>Stage</TableHead>
-                  <TableHead>Priority</TableHead>
-                  <TableHead>Wait</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {clinicQueue.map((q) => (
-                  <TableRow key={q.id}>
-                    <TableCell className="font-medium">{q.patientName}</TableCell>
-                    <TableCell>{q.stage}</TableCell>
-                    <TableCell>{statusBadge(q.priority)}</TableCell>
-                    <TableCell className="tabular-nums">{q.waitMinutes}m</TableCell>
-                    <TableCell>{statusBadge(q.status)}</TableCell>
+            {/* Mobile: compact card list */}
+            <div className="md:hidden space-y-2">
+              {clinicQueue.slice(0, 4).map((q) => (
+                <div key={q.id} className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 p-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-slate-900 truncate">{q.patientName}</p>
+                    <p className="text-xs text-slate-500 truncate">{q.stage}</p>
+                  </div>
+                  <div className="shrink-0 flex items-center gap-2">
+                    <span className="text-[10px] font-medium text-slate-400 tabular-nums">{q.waitMinutes}m</span>
+                    {statusBadge(q.priority)}
+                    {statusBadge(q.status)}
+                  </div>
+                </div>
+              ))}
+            </div>
+            {/* Desktop: full table */}
+            <div className="hidden md:block overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Patient</TableHead>
+                    <TableHead>Stage</TableHead>
+                    <TableHead>Priority</TableHead>
+                    <TableHead>Wait</TableHead>
+                    <TableHead>Status</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {clinicQueue.map((q) => (
+                    <TableRow key={q.id}>
+                      <TableCell className="font-medium">{q.patientName}</TableCell>
+                      <TableCell>{q.stage}</TableCell>
+                      <TableCell>{statusBadge(q.priority)}</TableCell>
+                      <TableCell className="tabular-nums">{q.waitMinutes}m</TableCell>
+                      <TableCell>{statusBadge(q.status)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           </CardContent>
         </Card>
 

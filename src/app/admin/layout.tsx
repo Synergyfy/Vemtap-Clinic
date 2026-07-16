@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
+import { BottomNav } from "@/components/layout/bottom-nav";
 
 const sidebarLinks = [
   { name: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
@@ -175,12 +176,22 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </header>
 
         {/* Page Content */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-10 scroll-smooth custom-scrollbar">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-10 pb-20 md:pb-10 scroll-smooth custom-scrollbar">
           <div className="max-w-7xl mx-auto">
             {children}
           </div>
         </div>
       </main>
+
+      <BottomNav 
+        items={[
+          { label: "Home", href: "/admin/dashboard", icon: LayoutDashboard },
+          { label: "Clinics", href: "/admin/clinics", icon: Building2 },
+          { label: "Finance", href: "/admin/finance", icon: Wallet },
+          { label: "Analytics", href: "/admin/analytics", icon: BarChart3 },
+        ]}
+        activeColor="text-brand-blue"
+      />
     </div>
   );
 }

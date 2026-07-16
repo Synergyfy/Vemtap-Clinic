@@ -56,7 +56,14 @@ export default function ReportsPage() {
         title="Reports & Analytics"
         description="Centralized business intelligence: Monitor growth, track KPIs, and optimize clinic operations."
         actions={[
-          { label: "Export PDF Report", variant: "primary", onClick: () => alert("Compiling executive intelligence report... PDF generation started.") },
+          { label: "Export PDF Report", variant: "primary", onClick: () => {
+            const report = `VEMTAP CLINIC REPORT\n${"=".repeat(40)}\n\nREVENUE & GROWTH\n-----------------\nNet Revenue: ₦4.8M\nAvg. Transaction: ₦28,400\nForecast (Q3): ₦7.2M\nDebt Ratio: 8.4%\n\nPATIENT METRICS\n---------------\nTotal Patients This Month: 169\nAverage Wait Time: 22.4m\nAppointment Conversion: 82%\n\nSTAFF PERFORMANCE\n-----------------\nDr. Amina K.: 48 consults, 4.8/5.0 rating\nDr. Chidi O.: 42 consults, 4.6/5.0 rating\nNurse Bello: 62 vitals, 4.5/5.0 rating\nOptician Tunde: 35 sales, 4.7/5.0 rating\n\nGenerated: ${new Date().toLocaleString()}\n`;
+            const blob = new Blob([report], { type: "text/plain" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url; a.download = "vemtap-clinic-report.txt"; a.click();
+            URL.revokeObjectURL(url);
+          } },
           { label: "Schedule Auto-Send", variant: "outline", onClick: () => openModal("report-schedule") },
         ]}
       />
@@ -82,7 +89,7 @@ export default function ReportsPage() {
       <div className="space-y-6">
         {activeTab === "revenue" && (
           <div className="space-y-6">
-             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+             <div className="grid grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-4">
                 {[
                   { label: "Net Revenue", value: "₦4.8M", change: "+12.5%", trend: "up", sub: "This Month" },
                   { label: "Avg. Transaction", value: "₦28,400", change: "-2.1%", trend: "down", sub: "Per Patient" },
@@ -90,19 +97,18 @@ export default function ReportsPage() {
                   { label: "Debt Ratio", value: "8.4%", change: "-1.5%", trend: "up", sub: "Collections" },
                 ].map((s, i) => (
                   <Card key={i} className="border-none shadow-sm bg-white">
-                    <CardContent className="p-6">
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{s.label}</p>
-                      <div className="flex items-center justify-between mt-1">
-                        <p className="text-2xl font-bold text-slate-900">{s.value}</p>
-                        <div className={cn(
-                          "flex items-center text-[10px] font-black px-2 py-0.5 rounded-lg",
-                          s.trend === "up" ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600"
-                        )}>
-                          {s.trend === "up" ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
-                          {s.change}
-                        </div>
+                    <CardContent className="p-3 sm:p-6 flex items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="text-[11px] sm:text-sm font-medium text-slate-500">{s.label}</p>
+                        <p className="mt-1 text-xl sm:text-2xl font-bold tabular-nums">{s.value}</p>
                       </div>
-                      <p className="text-[10px] text-slate-500 font-medium mt-1">{s.sub}</p>
+                      <div className={cn(
+                        "flex items-center shrink-0 text-[10px] font-black px-2 py-0.5 rounded-lg",
+                        s.trend === "up" ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600"
+                      )}>
+                        {s.trend === "up" ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
+                        {s.change}
+                      </div>
                     </CardContent>
                   </Card>
                 ))}
@@ -110,12 +116,12 @@ export default function ReportsPage() {
 
              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <Card className="lg:col-span-2 border-none shadow-sm rounded-3xl p-8 bg-white">
-                   <CardHeader className="p-0 mb-8 flex-row items-center justify-between">
+                   <CardHeader className="p-0 mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                       <div>
-                         <CardTitle className="text-sm font-black text-slate-400 uppercase tracking-widest">Revenue Growth vs Forecast</CardTitle>
-                         <p className="text-xs text-slate-500 mt-1 font-medium">Tracking historical performance against predictive models.</p>
+                         <CardTitle className="text-xs sm:text-sm font-black text-slate-400 uppercase tracking-widest">Revenue Growth vs Forecast</CardTitle>
+                         <p className="text-[10px] sm:text-xs text-slate-500 mt-1 font-medium">Tracking historical performance against predictive models.</p>
                       </div>
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 self-start">
                         <div className="flex items-center gap-1.5">
                            <div className="w-2 h-2 rounded-full bg-primary" />
                            <span className="text-[10px] font-bold text-slate-500">Actual</span>
@@ -190,38 +196,66 @@ export default function ReportsPage() {
            <div className="space-y-6">
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                  <Card className="lg:col-span-2 border-none shadow-sm rounded-3xl p-0 overflow-hidden bg-white">
-                    <CardHeader className="px-8 py-6 border-b border-slate-50">
-                       <CardTitle className="text-lg">HMO Partner Performance</CardTitle>
-                       <p className="text-sm text-slate-500">Comparing profitability and approval speed across partners.</p>
-                    </CardHeader>
-                    <Table>
-                       <TableHeader className="bg-slate-50/50">
-                          <TableRow>
-                             <TableHead className="px-8 text-[10px] font-black text-slate-400 uppercase tracking-widest">HMO Provider</TableHead>
-                             <TableHead className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Approval Rate</TableHead>
-                             <TableHead className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Avg Remittance</TableHead>
-                             <TableHead className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Volume</TableHead>
-                          </TableRow>
-                       </TableHeader>
-                       <TableBody>
-                          {[
-                            { name: "AXA Mansard", rate: 94, days: 18, vol: 85 },
-                            { name: "Hygeia HMO", rate: 88, days: 24, vol: 62 },
-                            { name: "Reliance HMO", rate: 91, days: 12, vol: 44 },
-                            { name: "NHIA", rate: 76, days: 45, vol: 120 },
-                          ].map(h => (
-                             <TableRow key={h.name} className="hover:bg-slate-50/50 border-slate-50">
-                                <TableCell className="px-8 py-5 font-bold text-slate-900">{h.name}</TableCell>
-                                <TableCell className="py-5 font-bold text-emerald-600">{h.rate}%</TableCell>
-                                <TableCell className="py-5 font-bold text-slate-600">{h.days} Days</TableCell>
-                                <TableCell className="py-5 font-black text-slate-900">{h.vol} Patients</TableCell>
-                             </TableRow>
-                          ))}
-                       </TableBody>
-                    </Table>
-                 </Card>
+                      <CardHeader className="px-4 sm:px-8 py-4 sm:py-6 border-b border-slate-50">
+                        <CardTitle className="text-base sm:text-lg">HMO Partner Performance</CardTitle>
+                        <p className="text-[10px] sm:text-sm text-slate-500">Comparing profitability and approval speed across partners.</p>
+                      </CardHeader>
+                    {/* Mobile card list */}
+                      <div className="md:hidden divide-y divide-slate-100">
+                        {[
+                          { name: "AXA Mansard", rate: 94, days: 18, vol: 85 },
+                          { name: "Hygeia HMO", rate: 88, days: 24, vol: 62 },
+                          { name: "Reliance HMO", rate: 91, days: 12, vol: 44 },
+                          { name: "NHIA", rate: 76, days: 45, vol: 120 },
+                        ].map(h => (
+                          <div key={h.name} className="p-4">
+                            <p className="font-bold text-slate-900 text-sm mb-2">{h.name}</p>
+                            <div className="grid grid-cols-3 gap-2">
+                              <div>
+                                <p className="text-[10px] text-slate-400 uppercase">Approval</p>
+                                <p className="font-bold text-emerald-600 text-sm">{h.rate}%</p>
+                              </div>
+                              <div>
+                                <p className="text-[10px] text-slate-400 uppercase">Remit.</p>
+                                <p className="font-bold text-slate-600 text-sm">{h.days}d</p>
+                              </div>
+                              <div>
+                                <p className="text-[10px] text-slate-400 uppercase">Volume</p>
+                                <p className="font-black text-slate-900 text-sm">{h.vol}</p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      {/* Desktop table */}
+                      <div className="hidden md:block overflow-x-auto"><Table>
+                         <TableHeader className="bg-slate-50/50">
+                           <TableRow>
+                              <TableHead className="px-8 text-[10px] font-black text-slate-400 uppercase tracking-widest">HMO Provider</TableHead>
+                              <TableHead className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Approval Rate</TableHead>
+                              <TableHead className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Avg Remittance</TableHead>
+                              <TableHead className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Volume</TableHead>
+                           </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                           {[
+                             { name: "AXA Mansard", rate: 94, days: 18, vol: 85 },
+                             { name: "Hygeia HMO", rate: 88, days: 24, vol: 62 },
+                             { name: "Reliance HMO", rate: 91, days: 12, vol: 44 },
+                             { name: "NHIA", rate: 76, days: 45, vol: 120 },
+                           ].map(h => (
+                              <TableRow key={h.name} className="hover:bg-slate-50/50 border-slate-50">
+                                 <TableCell className="px-8 py-5 font-bold text-slate-900">{h.name}</TableCell>
+                                 <TableCell className="py-5 font-bold text-emerald-600">{h.rate}%</TableCell>
+                                 <TableCell className="py-5 font-bold text-slate-600">{h.days} Days</TableCell>
+                                 <TableCell className="py-5 font-black text-slate-900">{h.vol} Patients</TableCell>
+                              </TableRow>
+                           ))}
+                        </TableBody>
+                      </Table></div>
+                  </Card>
 
-                 <div className="space-y-6">
+                  <div className="space-y-6">
                     <Card className="border-none shadow-sm rounded-3xl p-6 bg-brand-navy text-white">
                        <p className="text-[10px] font-black text-white/40 uppercase tracking-widest mb-4">Claim Rejection Analysis</p>
                        <div className="space-y-4">
@@ -328,12 +362,12 @@ export default function ReportsPage() {
            <div className="space-y-6">
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                  <Card className="lg:col-span-2 border-none shadow-sm rounded-3xl p-8 bg-white">
-                    <CardHeader className="p-0 mb-10 flex-row items-center justify-between">
-                       <div>
-                          <CardTitle className="text-sm font-black text-slate-400 uppercase tracking-widest leading-relaxed">Conversion Intelligence</CardTitle>
-                          <p className="text-2xl font-bold text-slate-900 mt-1">Exam-to-Sale Rate</p>
+                   <CardHeader className="p-0 mb-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                      <div>
+                          <CardTitle className="text-xs sm:text-sm font-black text-slate-400 uppercase tracking-widest leading-relaxed">Conversion Intelligence</CardTitle>
+                          <p className="text-lg sm:text-2xl font-bold text-slate-900 mt-1">Exam-to-Sale Rate</p>
                        </div>
-                       <div className="flex gap-4">
+                       <div className="flex gap-4 self-start">
                           <div className="flex items-center gap-1.5">
                              <div className="w-2 h-2 rounded-full bg-slate-100" />
                              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Total Exams</span>
@@ -396,7 +430,7 @@ export default function ReportsPage() {
                              </div>
                           ))}
                        </div>
-                       <Button className="w-full mt-10 bg-white/10 hover:bg-white/20 text-white rounded-2xl border-none font-bold text-xs h-12">Detailed Inventory Log</Button>
+                       <Button className="w-full mt-10 bg-white/10 hover:bg-white/20 text-white rounded-2xl border-none font-bold text-xs h-12" onClick={() => window.location.href = "/clinic/optical"}>Detailed Inventory Log</Button>
                     </Card>
 
                     <Card className="border-none shadow-sm rounded-3xl p-6 bg-white border border-sky-100/50">
@@ -419,15 +453,56 @@ export default function ReportsPage() {
 
         {activeTab === "staff" && (
            <Card className="border-none shadow-sm rounded-3xl p-0 overflow-hidden bg-white">
-              <CardHeader className="px-8 py-6 border-b border-slate-50 flex-row items-center justify-between">
-                 <div>
-                    <CardTitle className="text-lg">Staff Performance KPIs</CardTitle>
-                    <p className="text-sm text-slate-500">Individual productivity and quality-of-care metrics.</p>
-                 </div>
-                 <Button variant="outline" size="sm" className="font-bold" onClick={() => alert("Generating global quarterly performance review...")}>Quarterly Review</Button>
+               <CardHeader className="px-4 sm:px-8 py-4 sm:py-6 border-b border-slate-50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div>
+                     <CardTitle className="text-base sm:text-lg">Staff Performance KPIs</CardTitle>
+                     <p className="text-[10px] sm:text-sm text-slate-500">Individual productivity and quality-of-care metrics.</p>
+                  </div>
+                  <Button variant="outline" size="sm" className="self-start font-bold text-[10px] sm:text-xs" onClick={() => {
+                   const perfData = doctorPerformanceData.map(p => ({
+                     Practitioner: p.name,
+                     Consultations: p.volume,
+                     "Patient Rating": `${p.satisfaction} / 5.0`,
+                     "Avg. Time": p.avgConsult,
+                     Department: p.department || "General"
+                   }));
+                   const headers = Object.keys(perfData[0]);
+                   const csv = [headers.join(","), ...perfData.map(row => headers.map(h => `"${row[h]}"`).join(","))].join("\n");
+                   const blob = new Blob([csv], { type: "text/csv" });
+                   const url = URL.createObjectURL(blob);
+                   const a = document.createElement("a");
+                   a.href = url; a.download = "quarterly-staff-performance.csv"; a.click();
+                   URL.revokeObjectURL(url);
+                 }}>Quarterly Review</Button>
               </CardHeader>
-              <Table>
-                 <TableHeader className="bg-slate-50/50">
+               {/* Mobile card list */}
+               <div className="md:hidden divide-y divide-slate-100">
+                 {doctorPerformanceData.map(p => (
+                   <div key={p.name} className="p-4">
+                     <div className="flex items-center justify-between gap-3 mb-2">
+                       <p className="font-bold text-slate-900 text-sm">{p.name}</p>
+                       <Button variant="ghost" size="sm" className="text-sky-600 font-bold text-[10px] px-2 h-6" onClick={() => openModal("staff-profile")}>Profile</Button>
+                     </div>
+                     <div className="grid grid-cols-3 gap-2">
+                       <div>
+                         <p className="text-[10px] text-slate-400 uppercase">Consults</p>
+                         <p className="font-black text-slate-700 text-sm">{p.volume}</p>
+                       </div>
+                       <div>
+                         <p className="text-[10px] text-slate-400 uppercase">Rating</p>
+                         <p className="font-bold text-emerald-600 text-sm">{p.satisfaction}</p>
+                       </div>
+                       <div>
+                         <p className="text-[10px] text-slate-400 uppercase">Avg Time</p>
+                         <p className="font-bold text-slate-500 text-sm">{p.avgConsult}</p>
+                       </div>
+                     </div>
+                   </div>
+                 ))}
+               </div>
+               {/* Desktop table */}
+               <div className="hidden md:block overflow-x-auto"><Table>
+                  <TableHeader className="bg-slate-50/50">
                     <TableRow>
                        <TableHead className="px-8 text-[10px] font-black text-slate-400 uppercase tracking-widest">Practitioner</TableHead>
                        <TableHead className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Consultations</TableHead>
@@ -435,8 +510,8 @@ export default function ReportsPage() {
                        <TableHead className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Avg. Time</TableHead>
                        <TableHead className="text-[10px] font-black text-slate-400 uppercase tracking-widest pr-8 text-right">Actions</TableHead>
                     </TableRow>
-                 </TableHeader>
-                 <TableBody>
+                  </TableHeader>
+                  <TableBody>
                     {doctorPerformanceData.map(p => (
                        <TableRow key={p.name} className="hover:bg-slate-50/50 border-slate-50">
                           <TableCell className="px-8 py-5 font-bold text-slate-900">{p.name}</TableCell>
@@ -448,9 +523,9 @@ export default function ReportsPage() {
                           </TableCell>
                        </TableRow>
                     ))}
-                 </TableBody>
-              </Table>
-           </Card>
+                  </TableBody>
+                </Table></div>
+            </Card>
         )}
       </div>
     </div>

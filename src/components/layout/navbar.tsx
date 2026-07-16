@@ -194,12 +194,13 @@ export const Navbar = () => {
                 </div>
               ))}
               <hr className="border-slate-100" />
-              <div className="flex flex-col gap-3">
-                <Link href="/book-demo" onClick={() => setIsMobileMenuOpen(false)}>
-                  <Button variant="outline" className="w-full">Book Demo</Button>
-                </Link>
-                <Button variant="primary" className="w-full">Start Free Trial</Button>
-              </div>
+              <Link href="/login" onClick={() => setIsMobileMenuOpen(false)}>
+                <Button variant="outline" className="w-full">Login</Button>
+              </Link>
+              <Link href="/book-demo" onClick={() => setIsMobileMenuOpen(false)}>
+                <Button variant="outline" className="w-full">Book Demo</Button>
+              </Link>
+              <Button variant="primary" className="w-full">Start Free Trial</Button>
             </div>
           </motion.div>
         )}

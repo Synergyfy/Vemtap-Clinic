@@ -213,61 +213,61 @@ export default function PharmacyPage() {
       />
 
       {/* METRICS */}
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-4">
         <Card className="border-slate-200 shadow-sm">
-          <CardContent className="p-6 flex items-center justify-between">
-            <div>
-              <p className="text-sm font-bold text-slate-500 uppercase tracking-wider">Total SKUs</p>
-              <p className="mt-2 text-3xl font-black text-slate-900">{inventory.length}</p>
+          <CardContent className="p-3 sm:p-6 flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-[11px] sm:text-sm font-bold text-slate-500 uppercase tracking-wider">Total SKUs</p>
+              <p className="mt-1 sm:mt-2 text-xl sm:text-3xl font-black text-slate-900 tabular-nums">{inventory.length}</p>
             </div>
-            <div className="w-12 h-12 rounded-full bg-sky-50 flex items-center justify-center text-sky-600">
-              <Pill className="h-6 w-6" />
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-sky-50 flex items-center justify-center text-sky-600 shrink-0">
+              <Pill className="h-5 w-5 sm:h-6 sm:w-6" />
             </div>
           </CardContent>
         </Card>
         <Card className="border-slate-200 shadow-sm">
-          <CardContent className="p-6 flex items-center justify-between">
-            <div>
-              <p className="text-sm font-bold text-slate-500 uppercase tracking-wider">Low Stock</p>
-              <p className="mt-2 text-3xl font-black text-rose-600">{lowStockCount}</p>
+          <CardContent className="p-3 sm:p-6 flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-[11px] sm:text-sm font-bold text-slate-500 uppercase tracking-wider">Low Stock</p>
+              <p className="mt-1 sm:mt-2 text-xl sm:text-3xl font-black text-rose-600 tabular-nums">{lowStockCount}</p>
             </div>
-            <div className="w-12 h-12 rounded-full bg-rose-50 flex items-center justify-center text-rose-600">
-              <AlertTriangle className="h-6 w-6" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="border-slate-200 shadow-sm">
-          <CardContent className="p-6 flex items-center justify-between">
-            <div>
-              <p className="text-sm font-bold text-slate-500 uppercase tracking-wider">Expiring {'<90d'}</p>
-              <p className="mt-2 text-3xl font-black text-amber-600">{expiringSoonCount}</p>
-            </div>
-            <div className="w-12 h-12 rounded-full bg-amber-50 flex items-center justify-center text-amber-600">
-              <AlertTriangle className="h-6 w-6" />
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-rose-50 flex items-center justify-center text-rose-600 shrink-0">
+              <AlertTriangle className="h-5 w-5 sm:h-6 sm:w-6" />
             </div>
           </CardContent>
         </Card>
         <Card className="border-slate-200 shadow-sm">
-          <CardContent className="p-6 flex items-center justify-between">
-            <div>
-              <p className="text-sm font-bold text-slate-500 uppercase tracking-wider">Pending Rx</p>
-              <p className="mt-2 text-3xl font-black text-emerald-600">{activePrescriptions.length}</p>
+          <CardContent className="p-3 sm:p-6 flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-[11px] sm:text-sm font-bold text-slate-500 uppercase tracking-wider">Expiring {'<90d'}</p>
+              <p className="mt-1 sm:mt-2 text-xl sm:text-3xl font-black text-amber-600 tabular-nums">{expiringSoonCount}</p>
             </div>
-            <div className="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600">
-              <ClipboardList className="h-6 w-6" />
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-amber-50 flex items-center justify-center text-amber-600 shrink-0">
+              <AlertTriangle className="h-5 w-5 sm:h-6 sm:w-6" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="border-slate-200 shadow-sm">
+          <CardContent className="p-3 sm:p-6 flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-[11px] sm:text-sm font-bold text-slate-500 uppercase tracking-wider">Pending Rx</p>
+              <p className="mt-1 sm:mt-2 text-xl sm:text-3xl font-black text-emerald-600 tabular-nums">{activePrescriptions.length}</p>
+            </div>
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0">
+              <ClipboardList className="h-5 w-5 sm:h-6 sm:w-6" />
             </div>
           </CardContent>
         </Card>
       </div>
 
       {/* TABS NAVIGATION */}
-      <div className="border-b border-slate-200">
-        <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+      <div className="border-b border-slate-200 overflow-x-auto">
+        <nav className="-mb-px flex space-x-4 sm:space-x-8 min-w-max" aria-label="Tabs">
           {[
-            { id: "queue", name: "Prescription Queue", icon: ClipboardList },
-            { id: "inventory", name: "Drug Inventory", icon: Pill },
-            { id: "expiry", name: "Expiry Tracker", icon: AlertTriangle },
-            { id: "suppliers", name: "Suppliers", icon: Building2 },
+            { id: "queue", name: "Prescription Queue", shortName: "Rx Queue", icon: ClipboardList },
+            { id: "inventory", name: "Drug Inventory", shortName: "Inventory", icon: Pill },
+            { id: "expiry", name: "Expiry Tracker", shortName: "Expiry", icon: AlertTriangle },
+            { id: "suppliers", name: "Suppliers", shortName: "Suppliers", icon: Building2 },
           ].map((tab) => {
             const Icon = tab.icon;
             return (
@@ -275,14 +275,15 @@ export default function PharmacyPage() {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as PharmacyTab)}
                 className={cn(
-                  "group inline-flex items-center gap-2 border-b-2 py-4 px-1 text-sm font-bold transition-colors",
+                  "group inline-flex items-center gap-1.5 sm:gap-2 border-b-2 py-3 sm:py-4 px-1 text-xs sm:text-sm font-bold transition-colors whitespace-nowrap shrink-0",
                   activeTab === tab.id
                     ? "border-sky-500 text-sky-600"
                     : "border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700"
                 )}
               >
-                <Icon className="h-4 w-4" />
-                {tab.name}
+                <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                <span className="sm:hidden">{tab.shortName}</span>
+                <span className="hidden sm:inline">{tab.name}</span>
               </button>
             );
           })}
@@ -296,7 +297,33 @@ export default function PharmacyPage() {
             <CardTitle className="text-lg font-bold text-slate-900">Active Dispensing Queue</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            <div className="overflow-x-auto">
+            {/* Mobile: card list */}
+            <div className="md:hidden divide-y divide-slate-100">
+              {activePrescriptions.length > 0 ? (
+                activePrescriptions.map((p) => (
+                  <div key={p.id} className="p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-bold text-slate-900">{p.patientName}</p>
+                        <p className="text-[10px] font-mono text-slate-400 mt-0.5">{p.id} • {p.date}</p>
+                        <p className="text-xs text-slate-500 mt-1 flex items-center gap-1"><Stethoscope className="h-3 w-3" /> {p.provider}</p>
+                      </div>
+                      <div className="shrink-0 flex flex-col items-end gap-1.5">
+                        <Badge className="bg-slate-100 text-slate-700 border-slate-200 text-[10px]">{p.items.length} meds</Badge>
+                        <button onClick={() => handleOpenDispense(p)}
+                          className="px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg text-[10px] font-bold">
+                          Dispense
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="p-8 text-center text-sm text-slate-500">No active prescriptions.</p>
+              )}
+            </div>
+            {/* Desktop: full table */}
+            <div className="hidden md:block overflow-x-auto">
               <Table>
                 <TableHeader className="bg-slate-50/50">
                   <TableRow>
@@ -325,10 +352,8 @@ export default function PharmacyPage() {
                           <Badge className="bg-slate-100 text-slate-700 border-slate-200">{p.items.length} Medications</Badge>
                         </TableCell>
                         <TableCell className="text-right pr-6">
-                          <button
-                            onClick={() => handleOpenDispense(p)}
-                            className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-bold transition-colors shadow-sm flex items-center gap-1.5 ml-auto"
-                          >
+                          <button onClick={() => handleOpenDispense(p)}
+                            className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-bold transition-colors shadow-sm flex items-center gap-1.5 ml-auto">
                             <Syringe className="h-3 w-3" /> Review & Dispense
                           </button>
                         </TableCell>
@@ -355,7 +380,33 @@ export default function PharmacyPage() {
             <CardTitle className="text-lg font-bold text-slate-900">Drug Inventory Ledger</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            <div className="overflow-x-auto">
+            {/* Mobile: card list */}
+            <div className="md:hidden divide-y divide-slate-100">
+              {inventory.map((i) => (
+                <div key={i.sku} className="p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold text-slate-900 truncate">{i.name}</p>
+                      <p className="text-[10px] font-mono text-slate-400 mt-0.5">{i.sku} • {i.category}</p>
+                      <div className="flex items-center gap-2 mt-1.5">
+                        <span className="text-xs font-bold text-slate-900">{i.stock} units</span>
+                        <Badge variant="outline" className="text-[10px]">{i.dosageForm}</Badge>
+                        {i.stock <= i.reorderLevel && <Badge className="bg-rose-50 text-rose-700 border-rose-200 text-[10px]">Low</Badge>}
+                      </div>
+                    </div>
+                    <div className="shrink-0 flex flex-col items-end gap-1.5">
+                      <span className="text-xs font-bold text-slate-900">{formatNGN(i.price)}</span>
+                      <button onClick={() => handleOpenManageStock(i)}
+                        className="px-2.5 py-1 hover:bg-slate-100 border border-slate-200 text-slate-700 rounded-lg text-[10px] font-bold">
+                        Manage
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {/* Desktop: full table */}
+            <div className="hidden md:block overflow-x-auto">
               <Table>
                 <TableHeader className="bg-slate-50/50">
                   <TableRow>
@@ -388,10 +439,8 @@ export default function PharmacyPage() {
                       </TableCell>
                       <TableCell className="font-bold text-slate-900 text-sm">{formatNGN(i.price)}</TableCell>
                       <TableCell className="text-right pr-6">
-                        <button
-                          onClick={() => handleOpenManageStock(i)}
-                          className="px-2.5 py-1.5 hover:bg-slate-100 border border-slate-200 text-slate-700 rounded-lg text-xs font-bold shadow-sm transition-colors flex items-center gap-1 ml-auto"
-                        >
+                        <button onClick={() => handleOpenManageStock(i)}
+                          className="px-2.5 py-1.5 hover:bg-slate-100 border border-slate-200 text-slate-700 rounded-lg text-xs font-bold shadow-sm transition-colors flex items-center gap-1 ml-auto">
                           <PackagePlus className="h-3 w-3" /> Manage
                         </button>
                       </TableCell>
@@ -411,7 +460,38 @@ export default function PharmacyPage() {
             <CardTitle className="text-lg font-bold text-slate-900">Medical Expiry Tracker</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            <div className="overflow-x-auto">
+            {/* Mobile: card list */}
+            <div className="md:hidden divide-y divide-slate-100">
+              {inventory.slice().sort((a, b) => daysToExpiry(a.expiryISO) - daysToExpiry(b.expiryISO)).map((i) => {
+                const days = daysToExpiry(i.expiryISO);
+                const status = getExpiryStatus(days);
+                const isExpired = days < 0;
+                return (
+                  <div key={i.sku} className={cn("p-4", isExpired && "bg-rose-50/30")}>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-bold text-slate-900 truncate">{i.name}</p>
+                        <p className="text-[10px] font-mono text-slate-400 mt-0.5">{i.batchNumber} • {i.stock} units</p>
+                        <p className="text-xs font-mono text-slate-500 mt-1">Exp: {i.expiryISO}</p>
+                      </div>
+                      <div className="shrink-0 flex flex-col items-end gap-1.5">
+                        <Badge className={cn("border font-bold text-[10px] shadow-sm", status.class)}>{status.label}</Badge>
+                        {isExpired ? (
+                          <button onClick={() => handleRemoveExpired(i.sku)}
+                            className="px-2.5 py-1 bg-rose-50 text-rose-700 border border-rose-200 rounded-lg text-[10px] font-bold flex items-center gap-1">
+                            <Trash2 className="h-3 w-3" /> Remove
+                          </button>
+                        ) : (
+                          <span className="text-[10px] text-slate-400">No action</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            {/* Desktop: full table */}
+            <div className="hidden md:block overflow-x-auto">
               <Table>
                 <TableHeader className="bg-slate-50/50">
                   <TableRow>
@@ -424,40 +504,28 @@ export default function PharmacyPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {inventory
-                    .slice()
-                    .sort((a, b) => daysToExpiry(a.expiryISO) - daysToExpiry(b.expiryISO))
-                    .map((i) => {
-                      const days = daysToExpiry(i.expiryISO);
-                      const status = getExpiryStatus(days);
-                      const isExpired = days < 0;
-
-                      return (
-                        <TableRow key={i.sku} className={cn("hover:bg-slate-50/50 transition-colors", isExpired && "bg-rose-50/30")}>
-                          <TableCell className="font-bold text-slate-900 text-sm">{i.name}</TableCell>
-                          <TableCell className="font-mono text-xs font-bold text-slate-500">{i.batchNumber}</TableCell>
-                          <TableCell className="font-mono text-sm font-black text-slate-900">{i.stock} units</TableCell>
-                          <TableCell className="font-mono text-xs font-bold text-slate-800">{i.expiryISO}</TableCell>
-                          <TableCell>
-                            <Badge className={cn("border font-bold text-xs shadow-sm", status.class)}>
-                              {status.label}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-right pr-6">
-                            {isExpired ? (
-                              <button
-                                onClick={() => handleRemoveExpired(i.sku)}
-                                className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-xs font-bold transition-colors shadow-sm flex items-center gap-1 ml-auto"
-                              >
-                                <Trash2 className="h-3 w-3" /> Remove
-                              </button>
-                            ) : (
-                              <span className="text-xs text-slate-400 font-medium">No action needed</span>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
+                  {inventory.slice().sort((a, b) => daysToExpiry(a.expiryISO) - daysToExpiry(b.expiryISO)).map((i) => {
+                    const days = daysToExpiry(i.expiryISO);
+                    const status = getExpiryStatus(days);
+                    const isExpired = days < 0;
+                    return (
+                      <TableRow key={i.sku} className={cn("hover:bg-slate-50/50 transition-colors", isExpired && "bg-rose-50/30")}>
+                        <TableCell className="font-bold text-slate-900 text-sm">{i.name}</TableCell>
+                        <TableCell className="font-mono text-xs font-bold text-slate-500">{i.batchNumber}</TableCell>
+                        <TableCell className="font-mono text-sm font-black text-slate-900">{i.stock} units</TableCell>
+                        <TableCell className="font-mono text-xs font-bold text-slate-800">{i.expiryISO}</TableCell>
+                        <TableCell><Badge className={cn("border font-bold text-xs shadow-sm", status.class)}>{status.label}</Badge></TableCell>
+                        <TableCell className="text-right pr-6">
+                          {isExpired ? (
+                            <button onClick={() => handleRemoveExpired(i.sku)}
+                              className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-xs font-bold transition-colors shadow-sm flex items-center gap-1 ml-auto">
+                              <Trash2 className="h-3 w-3" /> Remove
+                            </button>
+                          ) : <span className="text-xs text-slate-400 font-medium">No action needed</span>}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>
@@ -472,7 +540,29 @@ export default function PharmacyPage() {
             <CardTitle className="text-lg font-bold text-slate-900">Pharmacy Vendors</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            <div className="overflow-x-auto">
+            {/* Mobile: card list */}
+            <div className="md:hidden divide-y divide-slate-100">
+              {suppliers.map((s) => (
+                <div key={s.id} className="p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold text-slate-900 truncate">{s.name}</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">{s.type} • {s.leadTime}</p>
+                      <p className="text-xs font-mono text-slate-500 mt-1">{s.contact}</p>
+                    </div>
+                    <div className="shrink-0 flex flex-col items-end gap-1.5">
+                      <Badge className={s.status === "Active" ? "bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px]" : "bg-amber-50 text-amber-700 border-amber-200 text-[10px]"}>{s.status}</Badge>
+                      <button onClick={() => handleOpenSupplier(s)}
+                        className="px-2.5 py-1 hover:bg-slate-100 border border-slate-200 text-slate-700 rounded-lg text-[10px] font-bold flex items-center gap-1">
+                        <Mail className="h-3 w-3" /> Contact
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {/* Desktop: full table */}
+            <div className="hidden md:block overflow-x-auto">
               <Table>
                 <TableHeader className="bg-slate-50/50">
                   <TableRow>
@@ -497,10 +587,8 @@ export default function PharmacyPage() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right pr-6">
-                        <button
-                          onClick={() => handleOpenSupplier(s)}
-                          className="px-2.5 py-1.5 hover:bg-slate-100 border border-slate-200 text-slate-700 rounded-lg text-xs font-bold shadow-sm transition-colors flex items-center gap-1 ml-auto"
-                        >
+                        <button onClick={() => handleOpenSupplier(s)}
+                          className="px-2.5 py-1.5 hover:bg-slate-100 border border-slate-200 text-slate-700 rounded-lg text-xs font-bold shadow-sm transition-colors flex items-center gap-1 ml-auto">
                           <Mail className="h-3 w-3" /> Contact
                         </button>
                       </TableCell>
