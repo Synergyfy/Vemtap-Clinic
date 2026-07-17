@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Modal } from "@/components/ui/modal";
-import { HelpCircle, MessageSquare, Phone, Mail, Clock, ChevronDown, Search, LifeBuoy, AlertCircle } from "lucide-react";
+import { HelpCircle, MessageSquare, Phone, Mail, Clock, ChevronDown, Search, LifeBuoy, Send, CheckCircle2, Bot, ExternalLink } from "lucide-react";
 import { PageHeader } from "@/app/clinic/_components/page-header";
 
 const faqs = [
@@ -41,10 +41,30 @@ export default function PharmacySupport() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [newTicketModal, setNewTicketModal] = useState(false);
+  const [ticketSubject, setTicketSubject] = useState("");
+  const [ticketPriority, setTicketPriority] = useState("Low");
+  const [ticketDesc, setTicketDesc] = useState("");
+  const [ticketSent, setTicketSent] = useState(false);
+
+  const [detailTicket, setDetailTicket] = useState<string | null>(null);
 
   const filteredFaqs = faqs.filter(
     (f) => f.q.toLowerCase().includes(searchQuery.toLowerCase()) || f.a.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const sendTicket = () => {
+    if (!ticketSubject.trim() || !ticketDesc.trim()) return;
+    setTicketSent(true);
+    setTimeout(() => { setNewTicketModal(false); setTicketSent(false); setTicketSubject(""); setTicketDesc(""); setTicketPriority("Low"); }, 1500);
+  };
+
+  const selectedTicket = detailTicket ? supportTickets.find((t) => t.id === detailTicket) : null;
+
+  const cardLinks = [
+    { icon: LifeBuoy, color: "text-sky-700", bg: "bg-sky-50", title: "IT Support Desk", line1: "it@vemtap.com", line2: "Ext. 2100", mail: "mailto:it@vemtap.com" },
+    { icon: Phone, color: "text-teal-700", bg: "bg-teal-50", title: "Pharmacy Hotline", line1: "+234 800 PHARMACY", line2: "", tel: "+234800PHARMACY" },
+    { icon: Clock, color: "text-amber-700", bg: "bg-amber-50", title: "Hours", line1: "Mon-Sat 7AM-9PM", line2: "" },
+  ];
 
   return (
     <div className="space-y-6 md:space-y-8">
@@ -52,53 +72,43 @@ export default function PharmacySupport() {
         actions={[{ label: "Submit Ticket", variant: "primary", onClick: () => setNewTicketModal(true) }]} />
 
       <div className="grid grid-cols-1 gap-4 md:gap-8 lg:grid-cols-3">
-        <Card>
-          <CardContent className="p-6 flex items-center gap-4">
-            <div className="w-12 h-12 rounded-full bg-sky-50 flex items-center justify-center text-sky-700"><LifeBuoy size={24} /></div>
-            <div>
-              <p className="text-sm font-bold text-slate-900">IT Support Desk</p>
-              <p className="text-xs text-slate-500">it@vemtap.com • Ext. 2100</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-6 flex items-center gap-4">
-            <div className="w-12 h-12 rounded-full bg-teal-50 flex items-center justify-center text-teal-700"><Phone size={24} /></div>
-            <div>
-              <p className="text-sm font-bold text-slate-900">Pharmacy Hotline</p>
-              <p className="text-xs text-slate-500">+234 800 PHARMACY</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-6 flex items-center gap-4">
-            <div className="w-12 h-12 rounded-full bg-amber-50 flex items-center justify-center text-amber-700"><Clock size={24} /></div>
-            <div>
-              <p className="text-sm font-bold text-slate-900">Hours</p>
-              <p className="text-xs text-slate-500">Mon-Sat 7AM-9PM</p>
-            </div>
-          </CardContent>
-        </Card>
+        {cardLinks.map((c, i) => (
+          <Card key={i}>
+            <CardContent className="p-4 sm:p-6 flex items-center gap-4">
+              <div className={`w-12 h-12 rounded-full ${c.bg} flex items-center justify-center ${c.color} shrink-0`}><c.icon size={24} /></div>
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-slate-900">{c.title}</p>
+                {c.mail ? (
+                  <a href={c.mail} className="text-xs text-slate-500 hover:text-teal-700 transition-colors">{c.line1}</a>
+                ) : c.tel ? (
+                  <a href={c.tel} className="text-xs text-slate-500 hover:text-teal-700 transition-colors">{c.line1}</a>
+                ) : (
+                  <p className="text-xs text-slate-500">{c.line1}</p>
+                )}
+                {c.line2 && <p className="text-xs text-slate-400">{c.line2}</p>}
+              </div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:gap-8 lg:grid-cols-2">
         <Card>
-          <CardHeader className="flex-row items-center justify-between">
-            <CardTitle className="flex items-center gap-2"><HelpCircle size={18} /> Frequently Asked Questions</CardTitle>
-            <div className="relative w-40 md:w-48">
+          <CardHeader className="flex-row items-center justify-between px-4 sm:px-6 py-3 sm:py-4">
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg"><HelpCircle size={18} /> FAQs</CardTitle>
+            <div className="relative w-36 sm:w-48">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input type="text" placeholder="Search FAQ..."
-                value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm outline-none focus:border-teal-500 transition-colors" />
+              <input type="text" placeholder="Search..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-9 pr-3 text-xs sm:text-sm outline-none focus:border-teal-500 transition-colors" />
             </div>
           </CardHeader>
-          <CardContent className="space-y-2">
+          <CardContent className="p-4 sm:p-6 space-y-2">
             {filteredFaqs.map((faq, i) => (
               <div key={i} className="rounded-xl border border-slate-100 overflow-hidden">
                 <button onClick={() => setOpenFaq(openFaq === i ? null : i)}
                   className="w-full flex items-center justify-between p-3 text-left hover:bg-slate-50 transition-colors">
                   <span className="text-sm font-medium text-slate-900">{faq.q}</span>
-                  <ChevronDown size={16} className={`text-slate-400 transition-transform ${openFaq === i ? "rotate-180" : ""}`} />
+                  <ChevronDown size={16} className={`text-slate-400 transition-transform shrink-0 ${openFaq === i ? "rotate-180" : ""}`} />
                 </button>
                 {openFaq === i && <div className="px-3 pb-3 text-sm text-slate-600 leading-relaxed">{faq.a}</div>}
               </div>
@@ -108,24 +118,37 @@ export default function PharmacySupport() {
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2"><MessageSquare size={18} /> Recent Tickets</CardTitle>
+          <CardHeader className="flex-row items-center justify-between px-4 sm:px-6 py-3 sm:py-4">
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg"><MessageSquare size={18} /> Recent Tickets</CardTitle>
           </CardHeader>
-          <CardContent className="p-0 sm:p-6">
-            <div className="overflow-x-auto">
+          <CardContent className="p-0">
+            <div className="md:hidden divide-y divide-slate-100">
+              {supportTickets.map((t) => (
+                <div key={t.id} onClick={() => setDetailTicket(t.id)} className="p-4 hover:bg-slate-50 transition-colors cursor-pointer">
+                  <div className="flex items-center justify-between gap-3 mb-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-slate-900 text-sm truncate">{t.subject}</p>
+                      <span className="text-[9px] font-mono text-slate-400">{t.id}</span>
+                    </div>
+                    {ticketStatusBadge(t.status)}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {priorityBadge(t.priority)}
+                    <span className="text-[10px] text-slate-400">{t.date}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="hidden md:block overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Ticket</TableHead>
-                    <TableHead>Subject</TableHead>
-                    <TableHead>Priority</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Date</TableHead>
+                    <TableHead>Ticket</TableHead><TableHead>Subject</TableHead><TableHead>Priority</TableHead><TableHead>Status</TableHead><TableHead>Date</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {supportTickets.map((t) => (
-                    <TableRow key={t.id}>
+                    <TableRow key={t.id} className="cursor-pointer hover:bg-slate-50" onClick={() => setDetailTicket(t.id)}>
                       <TableCell className="text-xs font-mono text-slate-500">{t.id}</TableCell>
                       <TableCell className="text-sm text-slate-900">{t.subject}</TableCell>
                       <TableCell>{priorityBadge(t.priority)}</TableCell>
@@ -140,31 +163,56 @@ export default function PharmacySupport() {
         </Card>
       </div>
 
-      <Modal isOpen={newTicketModal} onClose={() => setNewTicketModal(false)} title="Submit Support Ticket">
-        <div className="space-y-5">
-          <div>
-            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Subject</label>
-            <input type="text" placeholder="Brief description of the issue..."
-              className="mt-1.5 w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm outline-none focus:border-emerald-500 bg-white" />
+      {/* Ticket Detail Modal */}
+      <Modal isOpen={!!detailTicket} onClose={() => setDetailTicket(null)} title="Ticket Details">
+        {selectedTicket && (
+          <div className="space-y-5">
+            <div className="flex items-center gap-4 pb-4 border-b border-slate-100">
+              <div className="w-14 h-14 rounded-full bg-teal-50 flex items-center justify-center text-teal-700"><MessageSquare size={24} /></div>
+              <div>
+                <h4 className="text-lg font-bold text-slate-900">{selectedTicket.subject}</h4>
+                <p className="text-sm text-slate-500 font-mono">{selectedTicket.id} &bull; {selectedTicket.date}</p>
+                <div className="mt-1 flex gap-2">{priorityBadge(selectedTicket.priority)}{ticketStatusBadge(selectedTicket.status)}</div>
+              </div>
+            </div>
+            <p className="text-sm text-slate-600">Our support team is reviewing your request. You will be notified when there is an update.</p>
+            <div className="flex justify-end pt-2">
+              <button onClick={() => setDetailTicket(null)} className="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-700 hover:bg-slate-50">Close</button>
+            </div>
           </div>
-          <div>
-            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Priority</label>
-            <select className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none focus:border-emerald-500">
-              <option>Low</option>
-              <option>Medium</option>
-              <option>High</option>
-            </select>
+        )}
+      </Modal>
+
+      {/* New Ticket Modal */}
+      <Modal isOpen={newTicketModal} onClose={() => { setNewTicketModal(false); setTicketSent(false); }} title="Submit Support Ticket">
+        {ticketSent ? (
+          <div className="flex flex-col items-center gap-4 py-8">
+            <div className="w-16 h-16 rounded-full bg-emerald-50 flex items-center justify-center"><Send size={32} className="text-emerald-600" /></div>
+            <p className="text-lg font-bold text-emerald-700">Ticket submitted!</p>
+            <p className="text-sm text-slate-500">We&apos;ll respond within 24 hours.</p>
           </div>
-          <div>
-            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Description</label>
-            <textarea rows={4} placeholder="Describe the issue in detail..."
-              className="mt-1.5 w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm outline-none focus:border-emerald-500 bg-white resize-none" />
+        ) : (
+          <div className="space-y-5">
+            <div>
+              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Subject</label>
+              <input type="text" value={ticketSubject} onChange={(e) => setTicketSubject(e.target.value)} className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/50" placeholder="Brief description of the issue" />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Priority</label>
+              <select value={ticketPriority} onChange={(e) => setTicketPriority(e.target.value)} className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/50">
+                <option>Low</option><option>Medium</option><option>High</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Description</label>
+              <textarea value={ticketDesc} onChange={(e) => setTicketDesc(e.target.value)} rows={4} className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/50 resize-none" placeholder="Describe the issue in detail..." />
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <button onClick={() => setNewTicketModal(false)} className="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-700 hover:bg-slate-50">Cancel</button>
+              <button onClick={sendTicket} disabled={!ticketSubject.trim() || !ticketDesc.trim()} className="px-6 py-2.5 rounded-xl bg-teal-600 text-white text-sm font-bold hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-teal-200">Submit Ticket</button>
+            </div>
           </div>
-          <div className="flex items-center justify-end gap-2">
-            <button onClick={() => setNewTicketModal(false)} className="rounded-full border border-slate-200 bg-white px-5 py-2.5 text-sm font-medium text-slate-900 hover:bg-slate-50">Cancel</button>
-            <button onClick={() => setNewTicketModal(false)} className="rounded-full bg-emerald-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-emerald-700">Submit Ticket</button>
-          </div>
-        </div>
+        )}
       </Modal>
     </div>
   );
