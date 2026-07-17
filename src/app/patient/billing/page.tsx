@@ -4,10 +4,12 @@ import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { CreditCard, ShieldCheck, FileText, ArrowUpRight, X, Loader2, CheckCircle2, Download } from "lucide-react";
 import { usePatientStore } from "@/store/patientStore";
+import { useFormatCurrency } from "@/lib/currency";
 import jsPDF from "jspdf";
 
 export default function BillingPage() {
   const { invoices, outstandingBalance, payInvoice } = usePatientStore();
+  const format = useFormatCurrency();
   
   const [isPaymentOpen, setPaymentOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -43,9 +45,9 @@ export default function BillingPage() {
     doc.text(`Date: ${inv.date}`, 20, 40);
     doc.text(`Billed To: Alex Carter`, 20, 60);
     doc.text(`Description: ${inv.desc}`, 20, 80);
-    doc.text(`Amount Due: $${inv.amount.toFixed(2)}`, 20, 90);
+    doc.text(`Amount Due: ${format(inv.amount, { decimals: true })}`, 20, 90);
     if (inv.hmoCovered > 0) {
-      doc.text(`HMO Covered: $${inv.hmoCovered.toFixed(2)}`, 20, 100);
+      doc.text(`HMO Covered: ${format(inv.hmoCovered, { decimals: true })}`, 20, 100);
     }
     doc.line(20, 110, 190, 110);
     doc.setFontSize(16);
@@ -76,7 +78,7 @@ export default function BillingPage() {
             <div className="absolute -right-10 -top-10 w-40 h-40 bg-white/10 rounded-full blur-2xl"></div>
             <div className="relative z-10">
               <h2 className="text-white/90 font-medium mb-1">Outstanding Balance</h2>
-              <p className="text-3xl font-bold mb-6">${outstandingBalance.toFixed(2)}</p>
+              <p className="text-3xl font-bold mb-6">{format(outstandingBalance, { decimals: true })}</p>
               
               {outstandingBalance > 0 ? (
                 <>
@@ -132,7 +134,7 @@ export default function BillingPage() {
             <div className="mt-6 pt-6 border-t border-gray-100">
               <div className="flex justify-between items-center text-sm mb-2">
                 <span className="text-gray-500">Optical Limit</span>
-                <span className="font-semibold text-teal-600">$150 / $300</span>
+                <span className="font-semibold text-teal-600">{format(150)} / {format(300)}</span>
               </div>
               <div className="w-full bg-gray-100 rounded-full h-2">
                 <div className="bg-teal-500 h-2 rounded-full w-1/2"></div>
@@ -164,12 +166,12 @@ export default function BillingPage() {
                       <p className="font-bold text-gray-900">{inv.desc}</p>
                       <p className="text-sm text-gray-500">{inv.date} • {inv.id}</p>
                       {inv.hmoCovered > 0 && (
-                        <p className="text-xs text-teal-600 font-medium mt-1">HMO Covered: ${inv.hmoCovered.toFixed(2)}</p>
+                        <p className="text-xs text-teal-600 font-medium mt-1">HMO Covered: {format(inv.hmoCovered, { decimals: true })}</p>
                       )}
                     </div>
                   </div>
                   <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-2 border-t sm:border-t-0 border-gray-100 pt-3 sm:pt-0">
-                    <span className="font-bold text-lg text-gray-900">${inv.amount.toFixed(2)}</span>
+                    <span className="font-bold text-lg text-gray-900">{format(inv.amount, { decimals: true })}</span>
                     <div className="flex gap-2 items-center">
                       <button 
                         onClick={() => handleDownloadInvoice(inv)}
@@ -219,7 +221,7 @@ export default function BillingPage() {
                   <div className="mb-6 bg-gray-50 p-4 rounded-2xl flex justify-between items-center">
                     <div>
                       <p className="text-sm text-gray-500">Amount Due</p>
-                      <p className="text-2xl font-bold text-gray-900">${invoiceToPay.amount.toFixed(2)}</p>
+                      <p className="text-2xl font-bold text-gray-900">{format(invoiceToPay.amount, { decimals: true })}</p>
                     </div>
                     <div className="text-right">
                       <p className="text-xs text-gray-400">{invoiceToPay.id}</p>
@@ -250,7 +252,7 @@ export default function BillingPage() {
                       {isProcessing ? (
                         <><Loader2 className="w-5 h-5 animate-spin" /> Processing...</>
                       ) : (
-                        `Pay $${invoiceToPay.amount.toFixed(2)}`
+                        `Pay ${format(invoiceToPay.amount, { decimals: true })}`
                       )}
                     </button>
                     <p className="text-xs text-center text-gray-400 mt-4 flex justify-center items-center gap-1">
