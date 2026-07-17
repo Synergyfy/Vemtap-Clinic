@@ -1,13 +1,26 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { User, Shield, MapPin, Bell, LogOut, ChevronRight } from "lucide-react";
+import { Modal } from "@/components/ui/modal";
 
 export default function ProfilePage() {
+  const router = useRouter();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [smsEnabled, setSmsEnabled] = useState(true);
   const [whatsappEnabled, setWhatsappEnabled] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+
+  const handleLogout = () => {
+    try {
+      localStorage.removeItem("patient-portal-storage");
+      sessionStorage.clear();
+    } catch { /* ignore */ }
+    setShowLogoutModal(false);
+    router.replace("/login");
+  };
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
@@ -122,12 +135,26 @@ export default function ProfilePage() {
             <h3 className="text-lg font-bold text-red-900 mb-2">Danger Zone</h3>
             <p className="text-sm text-red-700 mb-4">Actions here can affect your account access.</p>
             
-            <button className="flex items-center justify-center gap-2 w-full bg-white text-red-600 border border-red-200 py-3 rounded-xl font-semibold hover:bg-red-50 transition-colors">
+            <button onClick={() => setShowLogoutModal(true)} className="flex items-center justify-center gap-2 w-full bg-white text-red-600 border border-red-200 py-3 rounded-xl font-semibold hover:bg-red-50 transition-colors">
               <LogOut className="w-5 h-5" /> Sign Out
             </button>
           </motion.div>
         </div>
       </div>
+
+      <Modal isOpen={showLogoutModal} onClose={() => setShowLogoutModal(false)} title="Sign out">
+        <p className="text-sm text-slate-600">Are you sure you want to sign out of your patient account?</p>
+        <div className="mt-6 flex items-center justify-end gap-2">
+          <button type="button" onClick={() => setShowLogoutModal(false)}
+            className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-5 py-2.5 text-sm font-medium text-slate-900 hover:bg-slate-50">
+            Cancel
+          </button>
+          <button type="button" onClick={handleLogout}
+            className="inline-flex items-center justify-center rounded-full bg-rose-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-rose-700">
+            Sign out
+          </button>
+        </div>
+      </Modal>
     </div>
   );
 }

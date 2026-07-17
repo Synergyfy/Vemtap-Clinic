@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { 
   CalendarDays, 
@@ -13,13 +13,16 @@ import {
   User, 
   Plus, 
   ArrowRight,
-  ShieldCheck
+  ShieldCheck,
+  CheckCircle2
 } from "lucide-react";
 import Link from "next/link";
 import { usePatientStore } from "@/store/patientStore";
 
 export default function PatientDashboard() {
-  const { appointments, orders, notifications, outstandingBalance, invoices } = usePatientStore();
+  const { appointments, orders, notifications, outstandingBalance, invoices, addNotification } = usePatientStore();
+  const [checkedIn, setCheckedIn] = useState(false);
+  const [toast, setToast] = useState("");
   
   const upcomingAppt = appointments.find(a => a.status === 'upcoming');
   const activeOrder = orders.find(o => o.status !== 'Delivered') || orders[0];
@@ -33,8 +36,26 @@ export default function PatientDashboard() {
     { label: "Optical Orders", icon: Glasses, href: "/patient/optical", color: "bg-purple-50 text-purple-600" },
   ];
 
+  const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 3000); };
+
+  const handleCheckIn = () => {
+    setCheckedIn(true);
+    addNotification({
+      title: "Checked In",
+      message: "You've checked in for your appointment at 10:30 AM. Please wait to be called.",
+      time: "Just now",
+      type: "appointment",
+    });
+    showToast("Checked in successfully");
+  };
+
   return (
     <div className="space-y-8 pb-10">
+      {toast && (
+        <div className="fixed top-6 right-6 z-50 px-5 py-3 rounded-2xl bg-slate-900 text-white text-xs font-black shadow-2xl flex items-center gap-3 animate-in slide-in-from-top-2 z-[100]">
+          <CheckCircle2 size={16} className="text-emerald-400" /> {toast}
+        </div>
+      )}
       <header className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
@@ -101,8 +122,9 @@ export default function PatientDashboard() {
                     2 patients ahead of you
                   </div>
                 </div>
-                <button className="bg-white text-teal-700 px-6 py-2.5 rounded-2xl font-bold text-sm shadow-lg hover:bg-teal-50 transition-colors">
-                  Check In
+                <button onClick={handleCheckIn} disabled={checkedIn}
+                  className={`px-6 py-2.5 rounded-2xl font-bold text-sm shadow-lg transition-all ${checkedIn ? 'bg-emerald-100 text-emerald-700' : 'bg-white text-teal-700 hover:bg-teal-50'}`}>
+                  {checkedIn ? 'Checked In' : 'Check In'}
                 </button>
               </div>
             </motion.div>

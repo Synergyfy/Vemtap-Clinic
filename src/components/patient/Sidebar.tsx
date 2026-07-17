@@ -1,8 +1,8 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { 
   LayoutDashboard, 
   CalendarDays, 
@@ -10,12 +10,12 @@ import {
   Glasses, 
   CreditCard,
   Settings,
-  HelpCircle,
   LogOut,
   RefreshCw
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { usePatientStore } from "@/store/patientStore";
+import { Modal } from "@/components/ui/modal";
 
 const navigation = [
   { name: "Dashboard", href: "/patient/dashboard", icon: LayoutDashboard },
@@ -27,13 +27,24 @@ const navigation = [
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const resetStore = usePatientStore((state) => state.resetStore);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   const handleReset = () => {
     if (confirm("Are you sure you want to reset all your data to the initial state? This action cannot be undone.")) {
       resetStore();
       alert("Data has been reset successfully!");
     }
+  };
+
+  const handleLogout = () => {
+    try {
+      localStorage.removeItem("patient-portal-storage");
+      sessionStorage.clear();
+    } catch { /* ignore */ }
+    setShowLogoutModal(false);
+    router.replace("/login");
   };
 
   return (
@@ -108,7 +119,7 @@ export default function Sidebar() {
                 </li>
                 <li>
                   <button 
-                    onClick={() => alert("Signing out...")}
+                    onClick={() => setShowLogoutModal(true)}
                     className="w-full group flex gap-x-3 rounded-xl p-3 text-sm font-semibold leading-6 text-gray-400 hover:text-red-400 hover:bg-red-500/10 transition-colors text-left"
                   >
                     <LogOut className="h-5 w-5 shrink-0 text-gray-500 group-hover:text-red-400" />
@@ -120,6 +131,19 @@ export default function Sidebar() {
           </ul>
         </nav>
       </div>
+      <Modal isOpen={showLogoutModal} onClose={() => setShowLogoutModal(false)} title="Sign out">
+        <p className="text-sm text-slate-600">Are you sure you want to sign out of your patient account?</p>
+        <div className="mt-6 flex items-center justify-end gap-2">
+          <button type="button" onClick={() => setShowLogoutModal(false)}
+            className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-5 py-2.5 text-sm font-medium text-slate-900 hover:bg-slate-50">
+            Cancel
+          </button>
+          <button type="button" onClick={handleLogout}
+            className="inline-flex items-center justify-center rounded-full bg-rose-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-rose-700">
+            Sign out
+          </button>
+        </div>
+      </Modal>
     </div>
   );
 }
