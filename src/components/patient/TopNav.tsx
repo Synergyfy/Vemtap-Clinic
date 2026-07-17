@@ -2,10 +2,11 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { Bell, UserCircle, CheckCircle2, FileText, CalendarDays, Info } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { Bell, UserCircle, CheckCircle2, FileText, CalendarDays, Info, LogOut } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePatientStore, Notification } from "@/store/patientStore";
+import { Modal } from "@/components/ui/modal";
 
 const getIcon = (type: Notification['type']) => {
   switch (type) {
@@ -18,10 +19,21 @@ const getIcon = (type: Notification['type']) => {
 
 export default function TopNav() {
   const pathname = usePathname();
+  const router = useRouter();
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const { notifications, markNotificationRead, markAllNotificationsRead } = usePatientStore();
+
+  const handleLogout = () => {
+    try {
+      localStorage.removeItem("patient-portal-storage");
+      sessionStorage.clear();
+    } catch { /* ignore */ }
+    setShowLogoutModal(false);
+    router.replace("/login");
+  };
   const unreadCount = notifications.filter(n => n.unread).length;
 
   // Close dropdown on click outside
@@ -141,6 +153,15 @@ export default function TopNav() {
             aria-hidden="true"
           />
 
+          {/* Logout (mobile) */}
+          <button
+            onClick={() => setShowLogoutModal(true)}
+            className="flex items-center p-2 rounded-full transition-colors text-gray-400 hover:text-red-500 hover:bg-red-50 lg:hidden"
+            aria-label="Sign out"
+          >
+            <LogOut className="h-5 w-5" />
+          </button>
+
           {/* Profile */}
           <Link
             href="/patient/profile"
@@ -155,6 +176,20 @@ export default function TopNav() {
           </Link>
         </div>
       </div>
+
+      <Modal isOpen={showLogoutModal} onClose={() => setShowLogoutModal(false)} title="Sign out">
+        <p className="text-sm text-slate-600">Are you sure you want to sign out of your patient account?</p>
+        <div className="mt-6 flex items-center justify-end gap-2">
+          <button type="button" onClick={() => setShowLogoutModal(false)}
+            className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-5 py-2.5 text-sm font-medium text-slate-900 hover:bg-slate-50">
+            Cancel
+          </button>
+          <button type="button" onClick={handleLogout}
+            className="inline-flex items-center justify-center rounded-full bg-rose-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-rose-700">
+            Sign out
+          </button>
+        </div>
+      </Modal>
     </header>
   );
 }

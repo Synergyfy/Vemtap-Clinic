@@ -7,11 +7,28 @@ import { usePatientStore } from "@/store/patientStore";
 import jsPDF from "jspdf";
 
 export default function OpticalOrdersPage() {
-  const { orders } = usePatientStore();
+  const { orders, addNotification } = usePatientStore();
   const [isInvoiceOpen, setInvoiceOpen] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadSuccess, setDownloadSuccess] = useState(false);
+  const [showCatalog, setShowCatalog] = useState(false);
+  const [toast, setToast] = useState("");
+
+  const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 3000); };
+
+  const catalogItems = [
+    { category: "Frames", items: [
+      { name: "Aviator Classic", price: "₦45,000", material: "Titanium", color: "Gold / Black" },
+      { name: "Wayfarer Pro", price: "₦38,000", material: "Acetate", color: "Tortoise Shell" },
+      { name: "Round Minimal", price: "₦52,000", material: "Stainless Steel", color: "Silver / Gunmetal" },
+    ]},
+    { category: "Lenses", items: [
+      { name: "Anti-Reflective Pro", price: "₦25,000", material: "CR-39", color: "Clear" },
+      { name: "Blue Light Shield", price: "₦32,000", material: "Polycarbonate", color: "Slight Yellow Tint" },
+      { name: "Transition XTRActive", price: "₦55,000", material: "Photochromic", color: "Clear to Dark" },
+    ]},
+  ];
 
   const activeOrders = orders.filter(o => o.status !== 'Delivered');
   const pastOrders = orders.filter(o => o.status === 'Delivered');
@@ -80,6 +97,11 @@ export default function OpticalOrdersPage() {
 
   return (
     <div className="space-y-6 relative">
+      {toast && (
+        <div className="fixed top-6 right-6 z-50 px-5 py-3 rounded-2xl bg-slate-900 text-white text-xs font-black shadow-2xl flex items-center gap-3 animate-in slide-in-from-top-2 z-[100]">
+          <CheckCircle2 size={16} className="text-emerald-400" /> {toast}
+        </div>
+      )}
       <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
@@ -89,7 +111,7 @@ export default function OpticalOrdersPage() {
             Track your eyewear and contact lens orders.
           </p>
         </div>
-        <button className="bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 px-5 py-2.5 rounded-xl font-medium transition-colors shadow-sm self-start sm:self-auto flex items-center gap-2">
+        <button onClick={() => setShowCatalog(true)} className="bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 px-5 py-2.5 rounded-xl font-medium transition-colors shadow-sm self-start sm:self-auto flex items-center gap-2">
           <Search className="w-4 h-4" /> Browse Catalog
         </button>
       </header>
@@ -201,6 +223,50 @@ export default function OpticalOrdersPage() {
           </motion.div>
         ))}
       </div>
+
+      {/* Catalog Modal */}
+      <AnimatePresence>
+        {showCatalog && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-gray-900/40 backdrop-blur-sm" onClick={() => setShowCatalog(false)} />
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+              className="relative bg-white rounded-3xl p-6 md:p-8 w-full max-w-2xl shadow-2xl max-h-[80vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">Product Catalog</h2>
+                  <p className="text-sm text-gray-500">Browse available frames and lenses</p>
+                </div>
+                <button onClick={() => setShowCatalog(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors"><X className="w-5 h-5 text-gray-500" /></button>
+              </div>
+              <div className="space-y-8">
+                {catalogItems.map((section) => (
+                  <div key={section.category}>
+                    <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest mb-3">{section.category}</h3>
+                    <div className="space-y-3">
+                      {section.items.map((item) => (
+                        <div key={item.name} className="flex items-center justify-between p-4 rounded-2xl bg-gray-50 border border-gray-100">
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-bold text-gray-900">{item.name}</p>
+                            <p className="text-xs text-gray-500">{item.material} &bull; {item.color}</p>
+                          </div>
+                          <div className="flex items-center gap-3 shrink-0 ml-3">
+                            <span className="text-sm font-black text-teal-700">{item.price}</span>
+                            <button onClick={() => { showToast(`${item.name} added to enquiry`); addNotification({ title: "Catalogue Enquiry", message: `You expressed interest in ${item.name} (${item.price}). A representative will follow up.`, time: "Just now", type: "general" }); }}
+                              className="px-4 py-2 rounded-xl bg-teal-600 text-white text-xs font-bold hover:bg-teal-700 transition-colors">Enquire</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <button onClick={() => setShowCatalog(false)}
+                className="w-full mt-6 py-3.5 rounded-xl border border-gray-200 text-gray-600 text-sm font-bold hover:bg-gray-50 transition-colors">Close</button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Invoice Modal */}
       <AnimatePresence>
