@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Bell, UserCircle, CheckCircle2, FileText, CalendarDays, Info, LogOut } from "lucide-react";
+import { Bell, UserCircle, CheckCircle2, FileText, CalendarDays, Info, LogOut, User, ArrowRightFromLine } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePatientStore, Notification } from "@/store/patientStore";
 import { Modal } from "@/components/ui/modal";
@@ -21,8 +21,10 @@ export default function TopNav() {
   const pathname = usePathname();
   const router = useRouter();
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const notifRef = useRef<HTMLDivElement>(null);
+  const profileRef = useRef<HTMLDivElement>(null);
 
   const { notifications, markNotificationRead, markAllNotificationsRead } = usePatientStore();
 
@@ -36,11 +38,14 @@ export default function TopNav() {
   };
   const unreadCount = notifications.filter(n => n.unread).length;
 
-  // Close dropdown on click outside
+  // Close dropdowns on click outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      if (notifRef.current && !notifRef.current.contains(event.target as Node)) {
         setIsNotificationsOpen(false);
+      }
+      if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
+        setIsProfileOpen(false);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -58,7 +63,7 @@ export default function TopNav() {
         <div className="flex items-center gap-x-4 lg:gap-x-6">
           
           {/* Notifications Dropdown */}
-          <div className="relative" ref={dropdownRef}>
+          <div className="relative" ref={notifRef}>
             <button
               onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
               className={`relative p-2 rounded-full transition-colors ${
@@ -153,27 +158,58 @@ export default function TopNav() {
             aria-hidden="true"
           />
 
-          {/* Logout (mobile) */}
-          <button
-            onClick={() => setShowLogoutModal(true)}
-            className="flex items-center p-2 rounded-full transition-colors text-gray-400 hover:text-red-500 hover:bg-red-50 lg:hidden"
-            aria-label="Sign out"
-          >
-            <LogOut className="h-5 w-5" />
-          </button>
+          {/* Profile Dropdown */}
+          <div className="relative" ref={profileRef}>
+            <button
+              onClick={() => setIsProfileOpen(!isProfileOpen)}
+              className={`flex items-center p-2 rounded-full transition-colors ${
+                isProfileOpen
+                  ? "bg-teal-50 text-teal-600"
+                  : "text-gray-400 hover:text-gray-500 hover:bg-gray-50"
+              }`}
+              aria-label="Profile menu"
+            >
+              <UserCircle className="h-7 w-7" aria-hidden="true" />
+            </button>
 
-          {/* Profile */}
-          <Link
-            href="/patient/profile"
-            className={`flex items-center p-2 rounded-full transition-colors ${
-              pathname === "/patient/profile"
-                ? "bg-teal-50 text-teal-600"
-                : "text-gray-400 hover:text-gray-500 hover:bg-gray-50"
-            }`}
-          >
-            <span className="sr-only">Your profile</span>
-            <UserCircle className="h-7 w-7" aria-hidden="true" />
-          </Link>
+            <AnimatePresence>
+              {isProfileOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                  transition={{ duration: 0.2 }}
+                  className="absolute right-0 mt-2 w-56 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden z-50 origin-top-right"
+                >
+                  <div className="p-3 border-b border-gray-100 bg-gray-50/50">
+                    <p className="text-sm font-bold text-gray-900">Alex Carter</p>
+                    <p className="text-xs text-gray-500">VC-2024-91</p>
+                  </div>
+                  <div className="p-2 space-y-1">
+                    <Link
+                      href="/patient/profile"
+                      onClick={() => setIsProfileOpen(false)}
+                      className={`flex items-center gap-3 w-full p-3 rounded-xl text-sm font-medium transition-colors ${
+                        pathname === "/patient/profile"
+                          ? "bg-teal-50 text-teal-700"
+                          : "text-gray-700 hover:bg-gray-50"
+                      }`}
+                    >
+                      <User size={18} />
+                      Profile
+                    </Link>
+                    <button
+                      onClick={() => { setIsProfileOpen(false); setShowLogoutModal(true); }}
+                      className="flex items-center gap-3 w-full p-3 rounded-xl text-sm font-medium text-gray-700 hover:bg-red-50 hover:text-red-600 transition-colors text-left"
+                    >
+                      <ArrowRightFromLine size={18} />
+                      Sign Out
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
       </div>
 

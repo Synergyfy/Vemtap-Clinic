@@ -8,10 +8,11 @@ import {
   CheckCircle2, AlertCircle, RefreshCw, 
   Smartphone, Database, Save, ArrowRight,
   ToggleLeft, ToggleRight, Laptop, Fingerprint,
-  Plus
+  Plus, Coins
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useCurrencyStore, currencies } from "@/store/currencyStore";
 
 const integrations = [
   { name: "WhatsApp Business API", provider: "Twilio", status: "Connected", icon: MessageSquare, color: "emerald" },
@@ -19,6 +20,58 @@ const integrations = [
   { name: "Email Server", provider: "AWS SES", status: "Connected", icon: Mail, color: "blue" },
   { name: "Payment Gateway", provider: "Paystack", status: "Active", icon: Key, color: "brand-blue" },
 ];
+
+function PlatformCurrencySetting() {
+  const { activeCurrency, setCurrency } = useCurrencyStore();
+  const [showToast, setShowToast] = useState(false);
+
+  const handleChange = (code: string) => {
+    setCurrency(code as any);
+    setShowToast(true);
+    setTimeout(() => setShowToast(false), 2500);
+  };
+
+  return (
+    <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm relative">
+      {showToast && (
+        <div className="absolute top-4 right-4 px-4 py-2 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-700 text-xs font-bold flex items-center gap-2 animate-in slide-in-from-top-2 z-10">
+          <CheckCircle2 size={14} /> Currency updated
+        </div>
+      )}
+      <h3 className="text-lg font-bold text-brand-navy mb-6 flex items-center gap-2">
+        <Coins className="text-brand-blue" size={24} /> Platform Currency
+      </h3>
+      <p className="text-xs text-slate-500 mb-5 leading-relaxed">
+        Set the default currency for all pricing across the platform. This affects patient billing, product catalogues, and financial reports.
+      </p>
+      <div className="space-y-3">
+        {currencies.map((c) => (
+          <button key={c.code} onClick={() => handleChange(c.code)}
+            className={cn(
+              "w-full flex items-center justify-between p-4 rounded-2xl border transition-all text-left",
+              activeCurrency === c.code
+                ? "bg-brand-soft-blue border-brand-blue/30"
+                : "bg-slate-50 border-slate-100 hover:border-slate-200"
+            )}>
+            <div className="flex items-center gap-3">
+              <div className={cn(
+                "w-10 h-10 rounded-xl flex items-center justify-center text-lg font-black",
+                activeCurrency === c.code ? "bg-brand-blue text-white" : "bg-white border border-slate-100 text-slate-500"
+              )}>
+                {c.symbol}
+              </div>
+              <div>
+                <p className={cn("text-sm font-bold", activeCurrency === c.code ? "text-brand-blue" : "text-brand-navy")}>{c.code}</p>
+                <p className="text-[10px] text-slate-400">{c.name}</p>
+              </div>
+            </div>
+            {activeCurrency === c.code && <CheckCircle2 size={18} className="text-brand-blue shrink-0" />}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState("general");
@@ -159,6 +212,9 @@ export default function SettingsPage() {
               Manage Webhooks
             </Button>
           </div>
+
+          {/* Currency Setting */}
+          <PlatformCurrencySetting />
 
           <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
             <h3 className="text-lg font-bold text-brand-navy mb-6">System Info</h3>

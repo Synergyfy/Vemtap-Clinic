@@ -25,6 +25,8 @@ export default function RecordsPage() {
   const [selectedTest, setSelectedTest] = useState<any>(null);
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadSuccess, setDownloadSuccess] = useState(false);
+  const [showLabReports, setShowLabReports] = useState(false);
+  const [showImaging, setShowImaging] = useState(false);
 
   const testResults = [
     { 
@@ -278,11 +280,11 @@ export default function RecordsPage() {
           <div className="bg-white rounded-[2rem] p-6 border border-gray-100 shadow-sm">
             <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest mb-4">Quick Links</h3>
             <div className="space-y-3">
-              <button className="w-full flex justify-between items-center p-4 rounded-2xl bg-gray-50 hover:bg-gray-100 transition-colors group">
+              <button onClick={() => setShowLabReports(true)} className="w-full flex justify-between items-center p-4 rounded-2xl bg-gray-50 hover:bg-gray-100 transition-colors group">
                 <span className="text-sm font-bold text-gray-700">Lab Reports</span>
                 <ExternalLink className="w-4 h-4 text-gray-400 group-hover:text-teal-600" />
               </button>
-              <button className="w-full flex justify-between items-center p-4 rounded-2xl bg-gray-50 hover:bg-gray-100 transition-colors group">
+              <button onClick={() => setShowImaging(true)} className="w-full flex justify-between items-center p-4 rounded-2xl bg-gray-50 hover:bg-gray-100 transition-colors group">
                 <span className="text-sm font-bold text-gray-700">Imaging Scans</span>
                 <ExternalLink className="w-4 h-4 text-gray-400 group-hover:text-teal-600" />
               </button>
@@ -437,6 +439,78 @@ export default function RecordsPage() {
               >
                 Close Findings
               </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Lab Reports Modal */}
+      <AnimatePresence>
+        {showLabReports && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-gray-900/60 backdrop-blur-md" onClick={() => setShowLabReports(false)} />
+            <motion.div initial={{ opacity: 0, y: 50, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 50, scale: 0.95 }}
+              className="relative bg-white rounded-[3rem] p-8 w-full max-w-lg shadow-2xl">
+              <div className="absolute top-0 right-0 p-6">
+                <button onClick={() => setShowLabReports(false)} className="p-3 bg-gray-100 hover:bg-gray-200 rounded-2xl transition-all"><X className="w-5 h-5 text-gray-500" /></button>
+              </div>
+              <h2 className="text-2xl font-black text-gray-900 mb-6">Lab Reports</h2>
+              <div className="space-y-3">
+                {[
+                  { name: "Blood Chemistry Panel", date: "Sep 10, 2026", status: "Completed", icon: FileText },
+                  { name: "Lipid Profile", date: "Sep 10, 2026", status: "Completed", icon: FileText },
+                  { name: "HbA1c (Diabetes Screening)", date: "Mar 15, 2025", status: "Completed", icon: FileText },
+                ].map((report, i) => (
+                  <div key={i} className="flex items-center justify-between p-4 rounded-2xl bg-gray-50 border border-gray-100 group hover:bg-gray-100 transition-colors cursor-pointer">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-xl bg-white"><report.icon className="w-5 h-5 text-teal-600" /></div>
+                      <div>
+                        <p className="text-sm font-bold text-gray-900">{report.name}</p>
+                        <p className="text-xs text-gray-500">{report.date}</p>
+                      </div>
+                    </div>
+                    <span className="text-[10px] font-black text-emerald-700 bg-emerald-100 px-2.5 py-1 rounded-full uppercase tracking-widest">{report.status}</span>
+                  </div>
+                ))}
+              </div>
+              <button onClick={() => setShowLabReports(false)} className="w-full mt-6 py-4 rounded-2xl bg-gray-900 text-white font-black hover:bg-gray-800 transition-all">Close</button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Imaging Scans Modal */}
+      <AnimatePresence>
+        {showImaging && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-gray-900/60 backdrop-blur-md" onClick={() => setShowImaging(false)} />
+            <motion.div initial={{ opacity: 0, y: 50, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 50, scale: 0.95 }}
+              className="relative bg-white rounded-[3rem] p-8 w-full max-w-lg shadow-2xl">
+              <div className="absolute top-0 right-0 p-6">
+                <button onClick={() => setShowImaging(false)} className="p-3 bg-gray-100 hover:bg-gray-200 rounded-2xl transition-all"><X className="w-5 h-5 text-gray-500" /></button>
+              </div>
+              <h2 className="text-2xl font-black text-gray-900 mb-6">Imaging Scans</h2>
+              <div className="space-y-3">
+                {[
+                  { name: "Fundus Photography", date: "Sep 10, 2026", status: "Available", icon: Eye },
+                  { name: "OCT Retinal Scan", date: "Mar 15, 2025", status: "Available", icon: Eye },
+                  { name: "Visual Field Test", date: "Mar 15, 2025", status: "Archived", icon: Eye },
+                ].map((scan, i) => (
+                  <div key={i} className="flex items-center justify-between p-4 rounded-2xl bg-gray-50 border border-gray-100 group hover:bg-gray-100 transition-colors cursor-pointer">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-xl bg-white"><scan.icon className="w-5 h-5 text-purple-600" /></div>
+                      <div>
+                        <p className="text-sm font-bold text-gray-900">{scan.name}</p>
+                        <p className="text-xs text-gray-500">{scan.date}</p>
+                      </div>
+                    </div>
+                    <span className={`text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-widest ${scan.status === 'Available' ? 'text-teal-700 bg-teal-100' : 'text-gray-500 bg-gray-200'}`}>{scan.status}</span>
+                  </div>
+                ))}
+              </div>
+              <button onClick={() => setShowImaging(false)} className="w-full mt-6 py-4 rounded-2xl bg-gray-900 text-white font-black hover:bg-gray-800 transition-all">Close</button>
             </motion.div>
           </div>
         )}
