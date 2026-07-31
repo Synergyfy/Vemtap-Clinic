@@ -3,12 +3,9 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { 
-  LayoutDashboard, Users, Calendar, Clock, 
-  Wallet, Headphones, Settings2, Bell, Search, 
-  Menu, X, User, Database, Eye, Package, LogOut,
-  UserCog, Building2, BarChart3, ShoppingCart,
-  ShieldCheck, TrendingUp, FileText
+import {
+  LayoutDashboard, ShoppingCart, Clock, Receipt,
+  Settings2, Bell, Menu, X, LogOut, Wallet, BarChart3
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -16,24 +13,13 @@ import { Modal } from "@/components/ui/modal";
 import { BottomNav } from "@/components/layout/bottom-nav";
 
 const sidebarLinks = [
-  { name: "Dashboard", href: "/clinic/dashboard", icon: LayoutDashboard },
-  { name: "Patients", href: "/clinic/patients", icon: Users },
-  { name: "Appointments", href: "/clinic/appointments", icon: Calendar },
-  { name: "Queue Management", href: "/clinic/queue", icon: Clock },
-  { name: "Optical Orders", href: "/clinic/optical", icon: Eye },
-  { name: "Pharmacy", href: "/clinic/pharmacy", icon: Package },
-  { name: "POS Products", href: "/clinic/products", icon: ShoppingCart },
-  { name: "Finance", href: "/clinic/finance", icon: Wallet },
-  { name: "HMO Management", href: "/clinic/hmo", icon: Database },
-  { name: "HMO Claims", href: "/clinic/hmo-advanced", icon: ShieldCheck },
-  { name: "Staff Management", href: "/clinic/staff", icon: UserCog },
-  { name: "Branch Management", href: "/clinic/branches", icon: Building2 },
-  { name: "Reports & Analytics", href: "/clinic/reports", icon: BarChart3 },
-  { name: "Support", href: "/clinic/support", icon: Headphones },
-  { name: "Settings", href: "/clinic/settings", icon: Settings2 },
+  { name: "POS Terminal", href: "/cashier", icon: ShoppingCart },
+  { name: "History", href: "/cashier/history", icon: Receipt },
+  { name: "Reconciliation", href: "/cashier/reconciliation", icon: BarChart3 },
+  { name: "Settings", href: "/cashier/settings", icon: Settings2 },
 ];
 
-export default function ClinicLayout({ children }: { children: React.ReactNode }) {
+export default function CashierLayout({ children }: { children: React.ReactNode }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isLogoutOpen, setIsLogoutOpen] = useState(false);
   const pathname = usePathname();
@@ -46,17 +32,13 @@ export default function ClinicLayout({ children }: { children: React.ReactNode }
   const logout = () => {
     try {
       const keysToRemove = [
-        "vemtap:session",
-        "vemtap:clinic",
-        "vemtap:user",
-        "vemtap_auth",
-        "authToken",
-        "token",
+        "vemtap:session", "vemtap:clinic", "vemtap:user",
+        "vemtap_auth", "authToken", "token",
       ];
       keysToRemove.forEach((k) => localStorage.removeItem(k));
       sessionStorage.clear();
     } catch {
-      // ignore storage errors (e.g., disabled storage)
+      // ignore
     }
     setIsLogoutOpen(false);
     router.replace("/login");
@@ -66,7 +48,7 @@ export default function ClinicLayout({ children }: { children: React.ReactNode }
     <div className="h-screen bg-slate-50 flex overflow-hidden relative">
       <AnimatePresence>
         {isSidebarOpen && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -76,55 +58,55 @@ export default function ClinicLayout({ children }: { children: React.ReactNode }
         )}
       </AnimatePresence>
 
-      <aside 
+      <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-[100] w-[280px] bg-slate-900 text-white transition-transform duration-300 ease-in-out lg:translate-x-0 shadow-2xl lg:shadow-none",
+          "fixed inset-y-0 left-0 z-[100] w-[260px] bg-slate-900 text-white transition-transform duration-300 ease-in-out lg:translate-x-0 shadow-2xl lg:shadow-none",
           isSidebarOpen ? "translate-x-0" : "-translate-x-full",
           "lg:static lg:z-50"
         )}
       >
         <div className="h-full flex flex-col">
-          <div className="p-6 flex items-center justify-between shrink-0 h-20">
-            <Link href="/clinic/dashboard" className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-sky-600 rounded-lg flex items-center justify-center shrink-0">
-                <div className="w-4 h-4 bg-white rounded-sm rotate-45" />
+          <div className="p-5 flex items-center justify-between shrink-0 h-16">
+            <Link href="/cashier" className="flex items-center gap-2">
+              <div className="w-7 h-7 bg-emerald-600 rounded-lg flex items-center justify-center shrink-0">
+                <Wallet size={14} className="text-white" />
               </div>
-              <span className="text-xl font-bold tracking-tight">Clinic<span className="text-sky-500">Hub</span></span>
+              <span className="text-lg font-bold tracking-tight">Vemtap<span className="text-emerald-400">POS</span></span>
             </Link>
-            <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden text-white/50 hover:text-white p-2">
-              <X size={20} />
+            <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden text-white/50 hover:text-white p-1.5">
+              <X size={18} />
             </button>
           </div>
 
-          <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
+          <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
             {sidebarLinks.map((link) => {
-              const isActive = pathname.startsWith(link.href);
+              const isActive = pathname === link.href || (link.href !== "/cashier" && pathname.startsWith(link.href));
               return (
                 <Link
                   key={link.name}
                   href={link.href}
                   className={cn(
                     "flex items-center gap-3 px-4 py-3 rounded-xl transition-all",
-                    isActive 
-                      ? "bg-sky-600 text-white font-bold" 
+                    isActive
+                      ? "bg-emerald-600 text-white font-bold"
                       : "text-white/60 hover:text-white hover:bg-white/5"
                   )}
                 >
-                  <link.icon size={22} />
-                  <span>{link.name}</span>
+                  <link.icon size={20} />
+                  <span className="text-sm">{link.name}</span>
                 </Link>
               );
             })}
           </nav>
 
-          <div className="p-4 border-t border-white/10 shrink-0">
+          <div className="p-3 border-t border-white/10 shrink-0">
             <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5">
-              <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-sky-400 font-bold">
-                CA
+              <div className="w-9 h-9 rounded-full bg-emerald-800 flex items-center justify-center text-emerald-400 font-bold text-sm">
+                CS
               </div>
               <div>
-                <p className="text-sm font-bold">Clinic Admin</p>
-                <p className="text-[10px] text-white/50">Active Branch</p>
+                <p className="text-sm font-bold">Cashier Station</p>
+                <p className="text-[9px] text-white/50">Point of Sale</p>
               </div>
             </div>
           </div>
@@ -132,41 +114,40 @@ export default function ClinicLayout({ children }: { children: React.ReactNode }
       </aside>
 
       <main className="flex-1 min-w-0 flex flex-col h-full overflow-hidden">
-        <header className="h-20 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0 z-40">
+        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 shrink-0 z-40">
           <button onClick={() => setIsSidebarOpen(true)} className="lg:hidden p-2 hover:bg-slate-100 rounded-xl">
-            <Menu size={24} className="text-slate-700" />
+            <Menu size={20} className="text-slate-700" />
           </button>
           <div className="flex-1" />
           <button className="relative p-2 hover:bg-slate-100 rounded-xl" aria-label="Notifications">
-            <Bell size={20} className="text-slate-500" />
+            <Bell size={18} className="text-slate-500" />
           </button>
           <button
             onClick={() => setIsLogoutOpen(true)}
             className="ml-2 inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
             aria-label="Log out"
           >
-            <LogOut size={16} className="text-slate-500" />
+            <LogOut size={15} className="text-slate-500" />
             <span className="hidden sm:inline">Logout</span>
           </button>
         </header>
 
-        <div className="flex-1 overflow-y-auto p-4 md:p-8 pb-20 md:pb-8">
+        <div className="flex-1 overflow-y-auto">
           {children}
         </div>
       </main>
 
-      <BottomNav 
+      <BottomNav
         items={[
-          { label: "Home", href: "/clinic/dashboard", icon: LayoutDashboard },
-          { label: "Patients", href: "/clinic/patients", icon: Users },
-          { label: "Queue", href: "/clinic/queue", icon: Clock },
-          { label: "Appts", href: "/clinic/appointments", icon: Calendar },
+          { label: "POS", href: "/cashier", icon: ShoppingCart },
+          { label: "History", href: "/cashier/history", icon: Receipt },
+          { label: "Reports", href: "/cashier/reconciliation", icon: BarChart3 },
         ]}
-        activeColor="text-sky-600"
+        activeColor="text-emerald-600"
       />
 
       <Modal isOpen={isLogoutOpen} onClose={() => setIsLogoutOpen(false)} title="Log out">
-        <p className="text-sm text-slate-600">Are you sure you want to log out?</p>
+        <p className="text-sm text-slate-600">Are you sure you want to log out of the POS terminal?</p>
         <div className="mt-6 flex items-center justify-end gap-2">
           <button
             type="button"

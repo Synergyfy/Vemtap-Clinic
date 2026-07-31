@@ -20,7 +20,7 @@ const patients = [
 ];
 
 type CheckInStep = "SCAN" | "IDENTIFY" | "PURPOSE" | "PLAN" | "VERIFYING" | "COMPLETE";
-type RegistrationStep = "PERSONAL" | "CONTACT" | "INSURANCE" | "SUCCESS";
+type RegistrationStep = "PERSONAL" | "CONTACT" | "INSURANCE" | "MEDICAL" | "REVIEW" | "SUCCESS";
 
 export default function PatientsPage() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -36,23 +36,29 @@ export default function PatientsPage() {
   const [isRegModalOpen, setIsRegModalOpen] = useState(false);
   const [regStep, setRegStep] = useState<RegistrationStep>("PERSONAL");
   const [regData, setRegData] = useState({
-    fullName: "", dob: "", gender: "", phone: "", email: "", address: "", 
-    planType: "Private", hmoProvider: "", hmoId: "", nextOfKin: "", kinPhone: ""
+    firstName: "", middleName: "", lastName: "", dob: "", age: "",
+    gender: "", maritalStatus: "", occupation: "",
+    address: "", email: "", phoneMobile: "", phoneAlternate: "",
+    emergencyName: "", emergencyRelationship: "", emergencyPhone: "",
+    planType: "Private", insuranceProvider: "", insurancePlan: "",
+    memberId: "", insuredName: "", insuredDob: "", insuredRelationship: "",
+    complaint: "", eyeHistory: "", pastSurgeries: "", lastEyeExam: "",
+    wearsGlasses: "", wearsContacts: "", currentPrescription: "",
+    diabetes: false, highBp: false, thyroid: false, otherMedical: "",
+    familyGlaucoma: false, familyMacular: false, familyCataract: false, otherFamily: "",
+    medications: "", allergies: "",
   });
 
   const [selectedPatient, setSelectedPatient] = useState<typeof patients[0] | null>(null);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [activeProfileTab, setActiveProfileTab] = useState("overview");
 
-  const openRegistration = (planType = "Private") => {
-    setRegData((current) => ({ ...current, planType }));
-    setRegStep("PERSONAL");
+  const openRegistration = () => {
     setIsRegModalOpen(true);
   };
 
   const openHmoRegistration = () => {
     setRegData((current) => ({ ...current, planType: "HMO" }));
-    setRegStep("INSURANCE");
     setIsRegModalOpen(true);
   };
 
@@ -168,7 +174,7 @@ export default function PatientsPage() {
           { label: "New Patient", icon: UserPlus, color: "text-sky-600", bg: "bg-sky-50", desc: "First-time visitor", action: () => openRegistration() },
           { label: "Returning", icon: History, color: "text-emerald-600", bg: "bg-emerald-50", desc: "Lookup record", action: () => { setCheckInStep("SCAN"); setIsCheckInModalOpen(true); } },
           { label: "HMO Patient", icon: ShieldCheck, color: "text-amber-600", bg: "bg-amber-50", desc: "Verify provider", action: openHmoRegistration },
-          { label: "Walk-in", icon: Plus, color: "text-rose-600", bg: "bg-rose-50", desc: "Immediate entry", action: () => openRegistration("Private"), id: "walk-in" },
+          { label: "Walk-in", icon: Plus, color: "text-rose-600", bg: "bg-rose-50", desc: "Immediate entry", action: () => { setRegData((d) => ({ ...d, planType: "Private" })); openRegistration(); }, id: "walk-in" },
         ].map((item) => (
           <button key={item.label} onClick={item.action} id={item.id}
             className="bg-white p-4 sm:p-6 rounded-2xl sm:rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-md transition-all group flex flex-col items-start text-left scroll-mt-24">
@@ -518,115 +524,408 @@ export default function PatientsPage() {
       </Modal>
 
       {/* Registration Modal */}
-      <Modal isOpen={isRegModalOpen} onClose={() => setIsRegModalOpen(false)} title="New Patient Registration">
-        <div className="p-0 sm:p-2 min-h-[350px] sm:min-h-[400px]">
+      <Modal isOpen={isRegModalOpen} onClose={() => setIsRegModalOpen(false)} title="" className="max-w-2xl">
+        <div className="p-0 min-h-[450px]">
+          {/* Step Progress */}
+          <div className="flex items-center gap-2 mb-6 px-6 pt-2">
+            {["PERSONAL", "CONTACT", "INSURANCE", "MEDICAL", "REVIEW"].map((step, i) => {
+              const stepIdx = ["PERSONAL", "CONTACT", "INSURANCE", "MEDICAL", "REVIEW"].indexOf(regStep);
+              const isActive = step === regStep;
+              const isDone = i < stepIdx;
+              return (
+                <div key={step} className="flex items-center gap-2 flex-1">
+                  <div className={cn(
+                    "w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-black shrink-0 transition-all",
+                    isDone ? "bg-emerald-500 text-white" : isActive ? "bg-sky-600 text-white ring-4 ring-sky-100" : "bg-slate-100 text-slate-400"
+                  )}>
+                    {isDone ? <CheckCircle2 size={14} /> : i + 1}
+                  </div>
+                  <span className={cn("text-[8px] font-black uppercase tracking-widest hidden sm:block", isActive ? "text-sky-600" : "text-slate-300")}>
+                    {step === "PERSONAL" ? "Personal" : step === "CONTACT" ? "Contact" : step === "INSURANCE" ? "Insurance" : step === "MEDICAL" ? "Medical" : "Review"}
+                  </span>
+                  {i < 4 && <div className={cn("flex-1 h-px", i < stepIdx ? "bg-emerald-300" : "bg-slate-100")} />}
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="px-6">
            <AnimatePresence mode="wait">
+              {/* STEP 1 — Personal & Contact Information */}
               {regStep === "PERSONAL" && (
-                <motion.div key="p" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-4 sm:space-y-6">
-                   <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
-                     <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-sky-600 text-white flex items-center justify-center text-[10px] sm:text-xs font-black shrink-0">1</div>
-                     <p className="text-xs sm:text-sm font-black text-slate-900">Personal Information</p>
-                   </div>
-                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                      <div className="space-y-1 sm:space-y-2">
-                        <label className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Full Name</label>
-                        <input type="text" placeholder="John Doe"
-                          className="w-full px-4 sm:px-5 py-3 sm:py-4 rounded-xl sm:rounded-2xl bg-slate-50 border border-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500/20 font-bold text-slate-900 text-sm"
-                          value={regData.fullName} onChange={(e) => setRegData({...regData, fullName: e.target.value})}/>
+                <motion.div key="p" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-4">
+                   <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Personal Information</p>
+                   <div className="grid grid-cols-3 gap-3">
+                      <div>
+                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">First Name</label>
+                        <input type="text" placeholder="John" value={regData.firstName} onChange={(e) => setRegData({...regData, firstName: e.target.value})}
+                          className="w-full h-10 px-4 rounded-xl bg-slate-50 border border-slate-100 text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500/20 placeholder:text-slate-300" />
                       </div>
-                      <div className="space-y-1 sm:space-y-2">
-                        <label className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Gender</label>
-                        <select className="w-full px-4 sm:px-5 py-3 sm:py-4 rounded-xl sm:rounded-2xl bg-slate-50 border border-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500/20 font-bold text-slate-900 appearance-none text-sm"
-                          value={regData.gender} onChange={(e) => setRegData({...regData, gender: e.target.value})}>
-                          <option value="">Select...</option><option value="male">Male</option><option value="female">Female</option>
+                      <div>
+                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Middle Name</label>
+                        <input type="text" placeholder="M." value={regData.middleName} onChange={(e) => setRegData({...regData, middleName: e.target.value})}
+                          className="w-full h-10 px-4 rounded-xl bg-slate-50 border border-slate-100 text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500/20 placeholder:text-slate-300" />
+                      </div>
+                      <div>
+                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Last Name</label>
+                        <input type="text" placeholder="Doe" value={regData.lastName} onChange={(e) => setRegData({...regData, lastName: e.target.value})}
+                          className="w-full h-10 px-4 rounded-xl bg-slate-50 border border-slate-100 text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500/20 placeholder:text-slate-300" />
+                      </div>
+                   </div>
+                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      <div>
+                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Date of Birth</label>
+                        <input type="date" value={regData.dob} onChange={(e) => {
+                          const dob = e.target.value;
+                          const age = dob ? Math.floor((new Date().getTime() - new Date(dob).getTime()) / (365.25 * 86400000)) : 0;
+                          setRegData({...regData, dob, age: String(age)});
+                        }} className="w-full h-10 px-4 rounded-xl bg-slate-50 border border-slate-100 text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500/20" />
+                      </div>
+                      <div>
+                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Age</label>
+                        <input type="text" value={regData.age} readOnly placeholder="Auto"
+                          className="w-full h-10 px-4 rounded-xl bg-slate-100 border border-slate-100 text-sm font-bold text-slate-400 cursor-not-allowed" />
+                      </div>
+                      <div>
+                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Gender</label>
+                        <select value={regData.gender} onChange={(e) => setRegData({...regData, gender: e.target.value})}
+                          className="w-full h-10 px-4 rounded-xl bg-slate-50 border border-slate-100 text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500/20 appearance-none">
+                          <option value="">Select</option><option value="Male">Male</option><option value="Female">Female</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Marital Status</label>
+                        <select value={regData.maritalStatus} onChange={(e) => setRegData({...regData, maritalStatus: e.target.value})}
+                          className="w-full h-10 px-4 rounded-xl bg-slate-50 border border-slate-100 text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500/20 appearance-none">
+                          <option value="">Select</option><option value="Single">Single</option><option value="Married">Married</option><option value="Divorced">Divorced</option><option value="Widowed">Widowed</option>
                         </select>
                       </div>
                    </div>
+                   <div>
+                     <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Occupation</label>
+                     <input type="text" placeholder="e.g. Software Engineer, Teacher" value={regData.occupation} onChange={(e) => setRegData({...regData, occupation: e.target.value})}
+                       className="w-full h-10 px-4 rounded-xl bg-slate-50 border border-slate-100 text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500/20 placeholder:text-slate-300" />
+                   </div>
                    <button onClick={() => setRegStep("CONTACT")}
-                     className="w-full py-3 sm:py-5 rounded-xl sm:rounded-2xl bg-slate-900 text-white text-[10px] sm:text-xs font-black uppercase tracking-widest hover:bg-slate-800 transition-all flex items-center justify-center gap-2">
-                     Next: Contact Details <ChevronRight size={14} />
+                     className="w-full h-11 rounded-xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all flex items-center justify-center gap-2">
+                     Next: Contact & Emergency <ChevronRight size={14} />
                    </button>
                 </motion.div>
               )}
+
+              {/* STEP 2 — Contact & Emergency */}
               {regStep === "CONTACT" && (
-                <motion.div key="c" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-4 sm:space-y-6">
-                   <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
-                     <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-sky-600 text-white flex items-center justify-center text-[10px] sm:text-xs font-black shrink-0">2</div>
-                     <p className="text-xs sm:text-sm font-black text-slate-900">Address & Contact</p>
+                <motion.div key="c" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-4">
+                   <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Contact & Emergency Details</p>
+                   <div>
+                     <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Home Address</label>
+                     <textarea rows={2} placeholder="Street, city, state, country" value={regData.address} onChange={(e) => setRegData({...regData, address: e.target.value})}
+                       className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-100 text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500/20 resize-none placeholder:text-slate-300" />
                    </div>
-                   <textarea rows={2} placeholder="Home address..."
-                     className="w-full px-4 sm:px-5 py-3 sm:py-4 rounded-xl sm:rounded-2xl bg-slate-50 border border-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500/20 font-bold text-slate-900 resize-none text-sm mb-3 sm:mb-4"
-                     value={regData.address} onChange={(e) => setRegData({...regData, address: e.target.value})}/>
-                   <div className="space-y-1 sm:space-y-2 mb-3 sm:mb-4">
-                     <label className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Phone Number</label>
-                     <input type="text" placeholder="+234 800 000 0000"
-                       className="w-full px-4 sm:px-5 py-3 sm:py-4 rounded-xl sm:rounded-2xl bg-slate-50 border border-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500/20 font-bold text-slate-900 text-sm"
-                       value={regData.phone} onChange={(e) => setRegData({...regData, phone: e.target.value})}/>
+                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Email Address</label>
+                        <input type="email" placeholder="patient@email.com" value={regData.email} onChange={(e) => setRegData({...regData, email: e.target.value})}
+                          className="w-full h-10 px-4 rounded-xl bg-slate-50 border border-slate-100 text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500/20 placeholder:text-slate-300" />
+                      </div>
+                      <div>
+                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Mobile Phone</label>
+                        <input type="tel" placeholder="+234 800 000 0000" value={regData.phoneMobile} onChange={(e) => setRegData({...regData, phoneMobile: e.target.value})}
+                          className="w-full h-10 px-4 rounded-xl bg-slate-50 border border-slate-100 text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500/20 placeholder:text-slate-300" />
+                      </div>
+                      <div>
+                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Alternate Phone</label>
+                        <input type="tel" placeholder="+234 800 000 0001" value={regData.phoneAlternate} onChange={(e) => setRegData({...regData, phoneAlternate: e.target.value})}
+                          className="w-full h-10 px-4 rounded-xl bg-slate-50 border border-slate-100 text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500/20 placeholder:text-slate-300" />
+                      </div>
                    </div>
-                   <div className="grid grid-cols-2 gap-2 sm:gap-3 pt-2 sm:pt-4">
-                      <button onClick={() => setRegStep("PERSONAL")}
-                        className="py-3 sm:py-5 rounded-xl sm:rounded-2xl bg-slate-100 text-slate-600 text-[10px] sm:text-xs font-black uppercase tracking-widest hover:bg-slate-200 transition-all">Back</button>
-                      <button onClick={() => setRegStep("INSURANCE")}
-                        className="py-3 sm:py-5 rounded-xl sm:rounded-2xl bg-slate-900 text-white text-[10px] sm:text-xs font-black uppercase tracking-widest hover:bg-slate-800 transition-all flex items-center justify-center gap-2">
+                   <div className="border-t border-slate-100 pt-4">
+                     <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-3 flex items-center gap-1.5"><AlertCircle size={12} /> Emergency Contact</p>
+                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div>
+                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Full Name</label>
+                          <input type="text" placeholder="Emergency contact" value={regData.emergencyName} onChange={(e) => setRegData({...regData, emergencyName: e.target.value})}
+                            className="w-full h-10 px-4 rounded-xl bg-slate-50 border border-slate-100 text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500/20 placeholder:text-slate-300" />
+                        </div>
+                        <div>
+                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Relationship</label>
+                          <input type="text" placeholder="Spouse, Parent, Sibling" value={regData.emergencyRelationship} onChange={(e) => setRegData({...regData, emergencyRelationship: e.target.value})}
+                            className="w-full h-10 px-4 rounded-xl bg-slate-50 border border-slate-100 text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500/20 placeholder:text-slate-300" />
+                        </div>
+                        <div>
+                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Phone</label>
+                          <input type="tel" placeholder="+234 800 000 0002" value={regData.emergencyPhone} onChange={(e) => setRegData({...regData, emergencyPhone: e.target.value})}
+                            className="w-full h-10 px-4 rounded-xl bg-slate-50 border border-slate-100 text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500/20 placeholder:text-slate-300" />
+                        </div>
+                     </div>
+                   </div>
+                   <div className="grid grid-cols-2 gap-3 pt-1">
+                      <button onClick={() => setRegStep("PERSONAL")} className="h-11 rounded-xl bg-slate-100 text-slate-600 text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 transition-all">Back</button>
+                      <button onClick={() => setRegStep("INSURANCE")} className="h-11 rounded-xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all flex items-center justify-center gap-2">
                         Next: Insurance <ChevronRight size={14} />
                       </button>
                    </div>
                 </motion.div>
               )}
+
+              {/* STEP 3 — Insurance & Billing */}
               {regStep === "INSURANCE" && (
-                <motion.div key="i" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-4 sm:space-y-6">
-                   <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
-                     <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-sky-600 text-white flex items-center justify-center text-[10px] sm:text-xs font-black shrink-0">3</div>
-                     <p className="text-xs sm:text-sm font-black text-slate-900">Insurance & HMO</p>
-                   </div>
+                <motion.div key="i" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-4">
+                   <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Insurance & Billing</p>
                    <div className="flex gap-2">
                       {["Private", "HMO"].map(type => (
                         <button key={type} onClick={() => setRegData({...regData, planType: type})}
-                          className={cn("flex-1 py-3 sm:py-4 rounded-xl sm:rounded-2xl text-[10px] font-black uppercase tracking-widest border transition-all", regData.planType === type ? "bg-sky-600 border-sky-600 text-white shadow-lg" : "bg-slate-50 border-slate-100 text-slate-400")}>{type}</button>
+                          className={cn("flex-1 h-11 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all", regData.planType === type ? "bg-sky-600 border-sky-600 text-white shadow-lg" : "bg-slate-50 border-slate-100 text-slate-400")}>{type}</button>
                       ))}
                    </div>
                    {regData.planType === "HMO" && (
-                       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                          <div className="space-y-1 sm:space-y-2">
-                            <label className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Provider</label>
-                            <input type="text" placeholder="e.g. Reliance"
-                              className="w-full px-4 sm:px-5 py-3 sm:py-4 rounded-xl sm:rounded-2xl bg-slate-50 border border-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500/20 font-bold text-slate-900 text-sm"
-                              value={regData.hmoProvider} onChange={(e) => setRegData({...regData, hmoProvider: e.target.value})} />
+                      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Insurance Provider</label>
+                            <input type="text" placeholder="e.g. AXA Mansard" value={regData.insuranceProvider} onChange={(e) => setRegData({...regData, insuranceProvider: e.target.value})}
+                              className="w-full h-10 px-4 rounded-xl bg-slate-50 border border-slate-100 text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500/20 placeholder:text-slate-300" />
                           </div>
-                          <div className="space-y-1 sm:space-y-2">
-                            <label className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">HMO ID</label>
-                            <input type="text" placeholder="Policy number"
-                              className="w-full px-4 sm:px-5 py-3 sm:py-4 rounded-xl sm:rounded-2xl bg-slate-50 border border-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500/20 font-bold text-slate-900 text-sm"
-                              value={regData.hmoId} onChange={(e) => setRegData({...regData, hmoId: e.target.value})} />
+                          <div>
+                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Plan Name</label>
+                            <input type="text" placeholder="e.g. Premium Plus" value={regData.insurancePlan} onChange={(e) => setRegData({...regData, insurancePlan: e.target.value})}
+                              className="w-full h-10 px-4 rounded-xl bg-slate-50 border border-slate-100 text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500/20 placeholder:text-slate-300" />
                           </div>
-                       </motion.div>
+                        </div>
+                        <div>
+                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Member ID / Policy Number</label>
+                          <input type="text" placeholder="e.g. AXA-1234-5678" value={regData.memberId} onChange={(e) => setRegData({...regData, memberId: e.target.value})}
+                            className="w-full h-10 px-4 rounded-xl bg-slate-50 border border-slate-100 text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500/20 placeholder:text-slate-300" />
+                        </div>
+                        <div className="border-t border-slate-100 pt-3">
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Primary Insured Details (if dependent)</p>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div>
+                              <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Full Name</label>
+                              <input type="text" placeholder="Insured name" value={regData.insuredName} onChange={(e) => setRegData({...regData, insuredName: e.target.value})}
+                                className="w-full h-10 px-4 rounded-xl bg-slate-50 border border-slate-100 text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500/20 placeholder:text-slate-300" />
+                            </div>
+                            <div>
+                              <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Date of Birth</label>
+                              <input type="date" value={regData.insuredDob} onChange={(e) => setRegData({...regData, insuredDob: e.target.value})}
+                                className="w-full h-10 px-4 rounded-xl bg-slate-50 border border-slate-100 text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500/20" />
+                            </div>
+                            <div>
+                              <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Relationship</label>
+                              <select value={regData.insuredRelationship} onChange={(e) => setRegData({...regData, insuredRelationship: e.target.value})}
+                                className="w-full h-10 px-4 rounded-xl bg-slate-50 border border-slate-100 text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500/20 appearance-none">
+                                <option value="">Select</option><option value="Self">Self</option><option value="Spouse">Spouse</option><option value="Child">Child</option><option value="Parent">Parent</option><option value="Other">Other</option>
+                              </select>
+                            </div>
+                          </div>
+                        </div>
+                      </motion.div>
                    )}
-                   <div className="grid grid-cols-2 gap-2 sm:gap-3 pt-2 sm:pt-4">
-                      <button onClick={() => setRegStep("CONTACT")}
-                        className="py-3 sm:py-5 rounded-xl sm:rounded-2xl bg-slate-100 text-slate-600 text-[10px] sm:text-xs font-black uppercase tracking-widest hover:bg-slate-200 transition-all">Back</button>
-                      <button onClick={handleRegistration} disabled={isCheckInLoading}
-                        className="py-3 sm:py-5 rounded-xl sm:rounded-2xl bg-emerald-600 text-white text-[10px] sm:text-xs font-black uppercase tracking-widest hover:bg-emerald-700 transition-all flex items-center justify-center gap-2 shadow-xl shadow-emerald-900/20 disabled:opacity-50">
-                        {isCheckInLoading ? <Loader2 size={14} className="animate-spin" /> : <>Register <CheckCircle2 size={14} /></>}
+                   <div className="grid grid-cols-2 gap-3 pt-1">
+                      <button onClick={() => setRegStep("CONTACT")} className="h-11 rounded-xl bg-slate-100 text-slate-600 text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 transition-all">Back</button>
+                      <button onClick={() => setRegStep("MEDICAL")} className="h-11 rounded-xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all flex items-center justify-center gap-2">
+                        Next: Medical History <ChevronRight size={14} />
                       </button>
                    </div>
                 </motion.div>
               )}
-              {regStep === "SUCCESS" && (
-                <motion.div key="s" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="text-center py-6 sm:py-8 space-y-4 sm:space-y-6">
-                   <div className="w-20 h-20 sm:w-24 sm:h-24 bg-emerald-50 rounded-full flex items-center justify-center mx-auto text-emerald-600 mb-4 sm:mb-6"><CheckCircle2 size={36} /></div>
-                   <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">Success!</h2>
-                   <div className="p-5 sm:p-8 rounded-2xl sm:rounded-3xl bg-slate-50 border border-slate-100 space-y-3 sm:space-y-4 max-w-sm mx-auto">
-                     <div className="text-center">
-                       <p className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest">New Patient ID</p>
-                       <p className="text-2xl sm:text-3xl font-black text-sky-600">PT-2026-9042</p>
-                       <p className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest mt-2 sm:mt-3">{regData.planType} registration ready for queue</p>
+
+              {/* STEP 4 — Medical & Ocular History */}
+              {regStep === "MEDICAL" && (
+                <motion.div key="m" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
+                   <p className="text-xs font-black text-slate-400 uppercase tracking-widest sticky top-0 bg-white py-1 z-10">Medical & Ocular History</p>
+
+                   {/* Presenting Complaint */}
+                   <div>
+                     <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Presenting Complaint</label>
+                     <textarea rows={2} placeholder="Primary reason for visit — e.g. blurry vision, redness, headaches, eye strain" value={regData.complaint} onChange={(e) => setRegData({...regData, complaint: e.target.value})}
+                       className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-100 text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500/20 resize-none placeholder:text-slate-300" />
+                   </div>
+
+                   {/* Eye History */}
+                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Eye History</label>
+                        <textarea rows={2} placeholder="Current eye conditions, past surgeries..." value={regData.eyeHistory} onChange={(e) => setRegData({...regData, eyeHistory: e.target.value})}
+                          className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-100 text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500/20 resize-none placeholder:text-slate-300" />
+                      </div>
+                      <div>
+                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Past Eye Surgeries</label>
+                        <textarea rows={2} placeholder="List any previous eye surgeries" value={regData.pastSurgeries} onChange={(e) => setRegData({...regData, pastSurgeries: e.target.value})}
+                          className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-100 text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500/20 resize-none placeholder:text-slate-300" />
+                      </div>
+                   </div>
+
+                   <div>
+                     <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Date of Last Eye Exam</label>
+                     <input type="date" value={regData.lastEyeExam} onChange={(e) => setRegData({...regData, lastEyeExam: e.target.value})}
+                       className="w-full h-10 px-4 rounded-xl bg-slate-50 border border-slate-100 text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500/20" />
+                   </div>
+
+                   {/* Glasses / Contacts */}
+                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div>
+                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Wears Glasses?</label>
+                        <select value={regData.wearsGlasses} onChange={(e) => setRegData({...regData, wearsGlasses: e.target.value})}
+                          className="w-full h-10 px-4 rounded-xl bg-slate-50 border border-slate-100 text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500/20 appearance-none">
+                          <option value="">Select</option><option value="Yes">Yes</option><option value="No">No</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Wears Contacts?</label>
+                        <select value={regData.wearsContacts} onChange={(e) => setRegData({...regData, wearsContacts: e.target.value})}
+                          className="w-full h-10 px-4 rounded-xl bg-slate-50 border border-slate-100 text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500/20 appearance-none">
+                          <option value="">Select</option><option value="Yes">Yes</option><option value="No">No</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Current Prescription</label>
+                        <input type="text" placeholder="e.g. -2.50 / -1.75" value={regData.currentPrescription} onChange={(e) => setRegData({...regData, currentPrescription: e.target.value})}
+                          className="w-full h-10 px-4 rounded-xl bg-slate-50 border border-slate-100 text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500/20 placeholder:text-slate-300" />
+                      </div>
+                   </div>
+
+                   {/* General Medical History */}
+                   <div>
+                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">General Medical History</p>
+                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        {[
+                          { key: "diabetes", label: "Diabetes" },
+                          { key: "highBp", label: "High Blood Pressure" },
+                          { key: "thyroid", label: "Thyroid Issues" },
+                        ].map((cond) => (
+                          <label key={cond.key} className="flex items-center gap-2 p-3 rounded-xl border border-slate-100 cursor-pointer hover:border-sky-200 transition-all has-[:checked]:bg-sky-50 has-[:checked]:border-sky-300">
+                            <input type="checkbox" checked={regData[cond.key as keyof typeof regData] as boolean} onChange={(e) => setRegData({...regData, [cond.key]: e.target.checked})}
+                              className="w-4 h-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500" />
+                            <span className="text-[10px] font-bold text-slate-700">{cond.label}</span>
+                          </label>
+                        ))}
+                     </div>
+                     <div className="mt-2">
+                       <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Other Medical Conditions</label>
+                       <input type="text" placeholder="e.g. Asthma, Arthritis, Heart disease" value={regData.otherMedical} onChange={(e) => setRegData({...regData, otherMedical: e.target.value})}
+                         className="w-full h-10 px-4 rounded-xl bg-slate-50 border border-slate-100 text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500/20 placeholder:text-slate-300" />
                      </div>
                    </div>
+
+                   {/* Family History */}
+                   <div>
+                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Family Eye History</p>
+                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        {[
+                          { key: "familyGlaucoma", label: "Glaucoma" },
+                          { key: "familyMacular", label: "Macular Degeneration" },
+                          { key: "familyCataract", label: "Cataracts" },
+                        ].map((cond) => (
+                          <label key={cond.key} className="flex items-center gap-2 p-3 rounded-xl border border-slate-100 cursor-pointer hover:border-sky-200 transition-all has-[:checked]:bg-sky-50 has-[:checked]:border-sky-300">
+                            <input type="checkbox" checked={regData[cond.key as keyof typeof regData] as boolean} onChange={(e) => setRegData({...regData, [cond.key]: e.target.checked})}
+                              className="w-4 h-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500" />
+                            <span className="text-[10px] font-bold text-slate-700">{cond.label}</span>
+                          </label>
+                        ))}
+                     </div>
+                     <div className="mt-2">
+                       <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Other Family History</label>
+                       <input type="text" placeholder="Other hereditary eye conditions" value={regData.otherFamily} onChange={(e) => setRegData({...regData, otherFamily: e.target.value})}
+                         className="w-full h-10 px-4 rounded-xl bg-slate-50 border border-slate-100 text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500/20 placeholder:text-slate-300" />
+                     </div>
+                   </div>
+
+                   {/* Medications & Allergies */}
+                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Current Medications</label>
+                        <textarea rows={2} placeholder="List all current prescriptions and OTC drugs" value={regData.medications} onChange={(e) => setRegData({...regData, medications: e.target.value})}
+                          className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-100 text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500/20 resize-none placeholder:text-slate-300" />
+                      </div>
+                      <div>
+                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Allergies</label>
+                        <textarea rows={2} placeholder="Drug allergies, seasonal allergies, etc." value={regData.allergies} onChange={(e) => setRegData({...regData, allergies: e.target.value})}
+                          className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-100 text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500/20 resize-none placeholder:text-slate-300" />
+                      </div>
+                   </div>
+
+                   <div className="grid grid-cols-2 gap-3 pt-1">
+                      <button onClick={() => setRegStep("INSURANCE")} className="h-11 rounded-xl bg-slate-100 text-slate-600 text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 transition-all">Back</button>
+                      <button onClick={() => setRegStep("REVIEW")} className="h-11 rounded-xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all flex items-center justify-center gap-2">
+                        Review Registration <ChevronRight size={14} />
+                      </button>
+                   </div>
+                </motion.div>
+              )}
+
+              {/* STEP 5 — Review & Submit */}
+              {regStep === "REVIEW" && (
+                <motion.div key="r" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
+                   <p className="text-xs font-black text-slate-400 uppercase tracking-widest sticky top-0 bg-white py-1 z-10">Review & Confirm</p>
+                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="p-4 rounded-xl bg-slate-50 border border-slate-100">
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Personal Details</p>
+                        <div className="space-y-1 text-[10px]">
+                          <p><span className="text-slate-400">Name:</span> <span className="font-bold text-slate-900">{regData.firstName} {regData.middleName} {regData.lastName}</span></p>
+                          <p><span className="text-slate-400">DOB:</span> <span className="font-bold text-slate-900">{regData.dob || '-'} ({regData.age || '?'} yrs)</span></p>
+                          <p><span className="text-slate-400">Gender:</span> <span className="font-bold text-slate-900">{regData.gender || '-'}</span></p>
+                          <p><span className="text-slate-400">Marital:</span> <span className="font-bold text-slate-900">{regData.maritalStatus || '-'}</span></p>
+                          <p><span className="text-slate-400">Occupation:</span> <span className="font-bold text-slate-900">{regData.occupation || '-'}</span></p>
+                        </div>
+                      </div>
+                      <div className="p-4 rounded-xl bg-slate-50 border border-slate-100">
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Contact & Emergency</p>
+                        <div className="space-y-1 text-[10px]">
+                          <p><span className="text-slate-400">Email:</span> <span className="font-bold text-slate-900">{regData.email || '-'}</span></p>
+                          <p><span className="text-slate-400">Mobile:</span> <span className="font-bold text-slate-900">{regData.phoneMobile || '-'}</span></p>
+                          <p><span className="text-slate-400">Alt Phone:</span> <span className="font-bold text-slate-900">{regData.phoneAlternate || '-'}</span></p>
+                          <p><span className="text-slate-400">Emergency:</span> <span className="font-bold text-slate-900">{regData.emergencyName || '-'} ({regData.emergencyRelationship || '-'})</span></p>
+                        </div>
+                      </div>
+                      <div className="p-4 rounded-xl bg-slate-50 border border-slate-100">
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">{regData.planType} Plan</p>
+                        <div className="space-y-1 text-[10px]">
+                          {regData.planType === "HMO" ? (
+                            <><p><span className="text-slate-400">Provider:</span> <span className="font-bold text-slate-900">{regData.insuranceProvider || '-'}</span></p>
+                              <p><span className="text-slate-400">Plan:</span> <span className="font-bold text-slate-900">{regData.insurancePlan || '-'}</span></p>
+                              <p><span className="text-slate-400">Member ID:</span> <span className="font-bold text-slate-900">{regData.memberId || '-'}</span></p>
+                              {regData.insuredName && <p><span className="text-slate-400">Insured:</span> <span className="font-bold text-slate-900">{regData.insuredName} ({regData.insuredRelationship})</span></p>}
+                            </>
+                          ) : <p className="font-bold text-emerald-600">Self-Pay</p>}
+                        </div>
+                      </div>
+                      <div className="p-4 rounded-xl bg-slate-50 border border-slate-100">
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Medical Summary</p>
+                        <div className="space-y-1 text-[10px]">
+                          <p><span className="text-slate-400">Complaint:</span> <span className="font-bold text-slate-900">{regData.complaint ? regData.complaint.slice(0, 50) + (regData.complaint.length > 50 ? '...' : '') : '-'}</span></p>
+                          <p><span className="text-slate-400">Conditions:</span> <span className="font-bold text-slate-900">{[regData.diabetes && 'Diabetes', regData.highBp && 'High BP', regData.thyroid && 'Thyroid'].filter(Boolean).join(', ') || 'None'}</span></p>
+                          <p><span className="text-slate-400">Family:</span> <span className="font-bold text-slate-900">{[regData.familyGlaucoma && 'Glaucoma', regData.familyMacular && 'Macular Deg.', regData.familyCataract && 'Cataracts'].filter(Boolean).join(', ') || 'None'}</span></p>
+                          <p><span className="text-slate-400">Glasses:</span> <span className="font-bold text-slate-900">{regData.wearsGlasses || '-'}</span> <span className="text-slate-400">Contacts:</span> <span className="font-bold text-slate-900">{regData.wearsContacts || '-'}</span></p>
+                        </div>
+                      </div>
+                   </div>
+                   <div className="flex items-center gap-3 pt-1">
+                      <button onClick={() => setRegStep("MEDICAL")} className="flex-1 h-11 rounded-xl bg-slate-100 text-slate-600 text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 transition-all">Back</button>
+                      <button onClick={handleRegistration} disabled={isCheckInLoading}
+                        className="flex-1 h-11 rounded-xl bg-emerald-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 transition-all flex items-center justify-center gap-2 shadow-xl shadow-emerald-900/20 disabled:opacity-50">
+                        {isCheckInLoading ? <Loader2 size={14} className="animate-spin" /> : <><CheckCircle2 size={14} /> Register Patient</>}
+                      </button>
+                   </div>
+                </motion.div>
+              )}
+
+              {/* SUCCESS */}
+              {regStep === "SUCCESS" && (
+                <motion.div key="s" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="text-center py-8 space-y-5">
+                   <div className="w-20 h-20 bg-emerald-50 rounded-full flex items-center justify-center mx-auto text-emerald-600"><CheckCircle2 size={36} /></div>
+                   <h2 className="text-2xl font-black text-slate-900 tracking-tight">Registration Complete</h2>
+                   <div className="p-6 rounded-2xl bg-slate-50 border border-slate-100 max-w-sm mx-auto space-y-2">
+                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">New Patient ID</p>
+                     <p className="text-2xl font-black text-sky-600">PT-2026-9042</p>
+                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-2">{regData.planType} — {regData.firstName} {regData.lastName}</p>
+                   </div>
                    <button onClick={() => setIsRegModalOpen(false)}
-                     className="w-full py-3 sm:py-5 rounded-xl sm:rounded-2xl bg-slate-900 text-white text-[10px] sm:text-xs font-black uppercase tracking-widest hover:bg-slate-800 transition-all">Done</button>
+                     className="w-full h-12 rounded-xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all max-w-xs mx-auto">Done</button>
                 </motion.div>
               )}
            </AnimatePresence>
+          </div>
         </div>
       </Modal>
     </div>

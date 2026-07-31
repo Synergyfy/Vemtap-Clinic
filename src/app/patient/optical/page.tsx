@@ -1,13 +1,16 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { Glasses, MapPin, Search, ArrowUpRight, CheckCircle2, X, FileText, Download, Loader2, FileCheck2 } from "lucide-react";
 import { usePatientStore } from "@/store/patientStore";
+import { useFormatCurrency } from "@/lib/currency";
 import jsPDF from "jspdf";
 
 export default function OpticalOrdersPage() {
-  const { orders, addNotification } = usePatientStore();
+  const { orders } = usePatientStore();
+  const format = useFormatCurrency();
   const [isInvoiceOpen, setInvoiceOpen] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
@@ -75,16 +78,16 @@ export default function OpticalOrdersPage() {
       doc.text("Item Summary", 20, 100);
       doc.setFontSize(12);
       doc.text(`Item: ${order?.type || 'Optical Order'}`, 20, 110);
-      doc.text("Frame Cost: $150.00", 20, 120);
-      doc.text("Lens Cost (Anti-glare): $100.00", 20, 130);
+      doc.text(`Frame Cost: ${format(150, { decimals: true })}`, 20, 120);
+      doc.text(`Lens Cost (Anti-glare): ${format(100, { decimals: true })}`, 20, 130);
       doc.setTextColor(13, 148, 136);
-      doc.text("HMO Coverage (Reliance): -$150.00", 20, 140);
+      doc.text(`HMO Coverage (Reliance): -${format(150, { decimals: true })}`, 20, 140);
       
       doc.line(20, 150, 190, 150);
       
       doc.setFontSize(16);
       doc.setTextColor(0, 0, 0);
-      doc.text("Total Paid: $100.00", 20, 170);
+      doc.text(`Total Paid: ${format(100, { decimals: true })}`, 20, 170);
       
       doc.save(`Invoice_${selectedOrderId}.pdf`);
 
@@ -111,9 +114,9 @@ export default function OpticalOrdersPage() {
             Track your eyewear and contact lens orders.
           </p>
         </div>
-        <button onClick={() => setShowCatalog(true)} className="bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 px-5 py-2.5 rounded-xl font-medium transition-colors shadow-sm self-start sm:self-auto flex items-center gap-2">
+        <Link href="/patient/optical/catalogue" className="bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 px-5 py-2.5 rounded-xl font-medium transition-colors shadow-sm self-start sm:self-auto flex items-center gap-2">
           <Search className="w-4 h-4" /> Browse Catalog
-        </button>
+        </Link>
       </header>
 
       {/* Active Orders Tracker */}
@@ -312,21 +315,21 @@ export default function OpticalOrdersPage() {
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-500">Frame Cost</span>
-                    <span className="font-medium text-gray-900">$150.00</span>
+                    <span className="font-medium text-gray-900">{format(150, { decimals: true })}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-500">Lens Cost (Anti-glare)</span>
-                    <span className="font-medium text-gray-900">$100.00</span>
+                    <span className="font-medium text-gray-900">{format(100, { decimals: true })}</span>
                   </div>
                   <div className="flex justify-between text-sm text-teal-600 font-medium pt-3 border-t border-gray-100">
                     <span>HMO Coverage (Reliance)</span>
-                    <span>-$150.00</span>
+                    <span>-{format(150, { decimals: true })}</span>
                   </div>
                 </div>
 
                 <div className="flex justify-between items-center bg-gray-50 p-4 rounded-2xl">
                   <span className="font-bold text-gray-900">Total Paid</span>
-                  <span className="font-bold text-2xl text-gray-900">$100.00</span>
+                  <span className="font-bold text-2xl text-gray-900">{format(100, { decimals: true })}</span>
                 </div>
                 
                 <button 
