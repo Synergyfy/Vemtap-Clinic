@@ -144,6 +144,51 @@ export default function QueuePage() {
     setNewAnnouncement("");
   };
 
+  const renderQueueCard = (item: typeof liveQueue[0]) => (
+    <div key={item.id} className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-white border border-slate-100 shadow-sm">
+      <div className="flex items-center justify-between mb-2 sm:mb-3">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-slate-900 text-white flex items-center justify-center shadow shrink-0">
+            <span className="text-[8px] font-black opacity-60 leading-none">#</span>
+            <span className="text-xs sm:text-sm font-black leading-none mt-0.5">{item.id.split('-')[1]}</span>
+          </div>
+          <div className="min-w-0">
+            <h4 className="text-sm font-black text-slate-900 truncate flex items-center gap-1.5">
+              {item.patient}
+              <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", priorityIndicators[item.priority] || "bg-slate-300")} />
+            </h4>
+            <p className="text-[8px] sm:text-[9px] text-slate-400 font-bold uppercase tracking-tight truncate">{item.type} &bull; {item.provider}</p>
+          </div>
+        </div>
+        <span className={cn("px-1.5 sm:px-2 py-0.5 rounded-full text-[7px] sm:text-[8px] font-black uppercase tracking-widest shrink-0", statusStyles[item.status] || "bg-slate-100 text-slate-600")}>
+          {item.status}
+        </span>
+      </div>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-1 text-slate-500">
+            <Timer size={11} className={cn(item.time.includes('hour') ? "text-rose-500" : "text-amber-500")} />
+            <span className="text-[10px] sm:text-xs font-black">{item.time}</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-1 h-1 rounded-full bg-sky-400" />
+            <span className="text-[9px] sm:text-[10px] font-bold text-slate-700">{item.station}</span>
+          </div>
+        </div>
+        <div className="flex items-center gap-1">
+          <button onClick={() => setShowActionModal({ item, action: 'start' })}
+            className="p-1.5 sm:p-2 rounded-lg bg-sky-50 text-sky-600 hover:bg-sky-100 transition-colors">
+            <Play size={11} />
+          </button>
+          <button onClick={() => setShowActionModal({ item, action: 'remove' })}
+            className="p-1.5 sm:p-2 rounded-lg bg-rose-50 text-rose-500 hover:bg-rose-100 transition-colors">
+            <X size={11} />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="space-y-5 sm:space-y-6 max-w-[1600px] mx-auto">
       {/* Header */}
