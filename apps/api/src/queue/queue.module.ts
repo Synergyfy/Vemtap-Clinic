@@ -1,4 +1,13 @@
 import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { QueueEntry } from '../entities/queue-entry.entity';
+import { QueueService } from './queue.service';
+import { QueueController } from './queue.controller';
 
-@Module({})
+@Module({
+  imports: [TypeOrmModule.forFeature([QueueEntry])],
+  providers: [QueueService],
+  controllers: [QueueController],
+  exports: [QueueService],
+})
 export class QueueModule {}
