@@ -4,14 +4,16 @@ import { Repository } from 'typeorm';
 import { HMO } from '../entities/hmo.entity';
 import { HMOPlan } from '../entities/hmo-plan.entity';
 import { HMOAgreement } from '../entities/hmo-agreement.entity';
+import { HMOAuthorization, AuthorizationStatus } from '../entities/hmo-authorization.entity';
 import { HMOClaim } from '../entities/hmo-claim.entity';
 import { HMOAppeal } from '../entities/hmo-appeal.entity';
 import { HMORemittance } from '../entities/hmo-remittance.entity';
 import {
   CreateHMODto, UpdateHMODto, CreateClaimDto, UpdateClaimDto,
   CreateAppealDto, UpdateAppealDto, CreateRemittanceDto, UpdateRemittanceDto,
-  HMOQueryDto, CreateHMOPlanDto, UpdateHMOPlanDto,
+  HMOQueryDto,   CreateHMOPlanDto, UpdateHMOPlanDto,
   CreateHMOAgreementDto, UpdateHMOAgreementDto, CoverageCheckDto,
+  CreateAuthorizationDto, UpdateAuthorizationDto,
 } from './dto';
 
 @Injectable()
@@ -20,6 +22,7 @@ export class HmoService {
     @InjectRepository(HMO) private hmoRepository: Repository<HMO>,
     @InjectRepository(HMOPlan) private planRepository: Repository<HMOPlan>,
     @InjectRepository(HMOAgreement) private agreementRepository: Repository<HMOAgreement>,
+    @InjectRepository(HMOAuthorization) private authRepository: Repository<HMOAuthorization>,
     @InjectRepository(HMOClaim) private claimRepository: Repository<HMOClaim>,
     @InjectRepository(HMOAppeal) private appealRepository: Repository<HMOAppeal>,
     @InjectRepository(HMORemittance) private remittanceRepository: Repository<HMORemittance>,
@@ -208,6 +211,43 @@ export class HmoService {
     if (!remittance) throw new NotFoundException('Remittance not found');
     Object.assign(remittance, dto);
     return this.remittanceRepository.save(remittance);
+  }
+
+  // --- Authorizations ---
+  async createAuthorization(dto: CreateAuthorizationDto): Promise<HMOAuthorization> {
+    const auth = this.authRepository.create({
+      ...dto,
+      serviceType: dto.serviceType as any,
+      status: AuthorizationStatus.PENDING,
+    });
+    return this.authRepository.save(auth);
+  }
+
+  async findAllAuthorizations(clinicId?: string): Promise<HMOAuthorization[]> {
+    const where: any = {};
+    if (clinicId) where.clinicId = clinicId;
+    return this.authRepository.find({ where, relations: ['patient', 'hmo', 'plan', 'requestedBy', 'approvedBy'], order: { createdAt: 'DESC' } });
+  }
+
+  async findOneAuthorization(id: string): Promise<HMOAuthorization> {
+    const auth = await this.authRepository.findOne({ where: { id }, relations: ['patient', 'hmo', 'plan', 'requestedBy', 'approvedBy', 'clinic'] });
+    if (!auth) throw new NotFoundException('Authorization not found');
+    return auth;
+  }
+
+  async updateAuthorization(id: string, dto: UpdateAuthorizationDto): Promise<HMOAuthorization> {
+    const auth = await this.findOneAuthorization(id);
+    Object.assign(auth, dto);
+    if (dto.status === 'approved') auth.approvedDate = new Date();
+    return this.authRepository.save(auth);
+  }
+
+  async getPendingAuthorizations(clinicId: string): Promise<HMOAuthorization[]> {
+    return this.authRepository.find({
+      where: { clinicId, status: AuthorizationStatus.PENDING },
+      relations: ['patient', 'hmo'],
+      order: { createdAt: 'ASC' },
+    });
   }
 
   // --- Stats ---

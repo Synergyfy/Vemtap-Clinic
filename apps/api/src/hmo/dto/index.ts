@@ -272,3 +272,51 @@ export class CoverageCheckResponseDto {
   @ApiProperty() remainingAllowance: number;
   @ApiProperty() planName: string;
 }
+
+// --- Authorization ---
+
+export class CreateAuthorizationDto {
+  @ApiProperty({ example: 'AUTH-2026-001' })
+  @IsString()
+  @MaxLength(50)
+  authorizationNumber: string;
+
+  @ApiProperty({ enum: ['consultation', 'eye_test', 'optical', 'drug', 'surgery', 'procedure'] })
+  @IsEnum(['consultation', 'eye_test', 'optical', 'drug', 'surgery', 'procedure'])
+  serviceType: string;
+
+  @ApiPropertyOptional() @IsOptional() @IsString() clinicalJustification?: string;
+
+  @ApiProperty({ example: 50000 })
+  @IsNumber()
+  estimatedCost: number;
+
+  @ApiProperty({ example: 'patient-uuid' })
+  @IsUUID()
+  patientId: string;
+
+  @ApiProperty({ example: 'hmo-uuid' })
+  @IsUUID()
+  hmoId: string;
+
+  @ApiPropertyOptional() @IsOptional() @IsUUID() planId?: string;
+  @ApiPropertyOptional() @IsOptional() @IsUUID() requestedById?: string;
+  @ApiPropertyOptional() @IsOptional() @IsDateString() expiryDate?: string;
+
+  @ApiProperty({ example: 'clinic-uuid' })
+  @IsUUID()
+  clinicId: string;
+}
+
+export class UpdateAuthorizationDto {
+  @ApiPropertyOptional({ enum: ['pending', 'submitted', 'approved', 'rejected', 'expired', 'escalated', 'cancelled'] })
+  @IsOptional()
+  @IsEnum(['pending', 'submitted', 'approved', 'rejected', 'expired', 'escalated', 'cancelled'])
+  status?: string;
+
+  @ApiPropertyOptional() @IsOptional() @IsNumber() approvedAmount?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() hmoReferenceNumber?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() hmoNotes?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() rejectionReason?: string;
+  @ApiPropertyOptional() @IsOptional() @IsUUID() approvedById?: string;
+}

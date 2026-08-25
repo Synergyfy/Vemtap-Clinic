@@ -6,6 +6,7 @@ import {
   CreateAppealDto, UpdateAppealDto, CreateRemittanceDto, UpdateRemittanceDto,
   HMOQueryDto, CreateHMOPlanDto, UpdateHMOPlanDto,
   CreateHMOAgreementDto, UpdateHMOAgreementDto, CoverageCheckDto,
+  CreateAuthorizationDto, UpdateAuthorizationDto,
 } from './dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -132,6 +133,39 @@ export class HmoController {
   @ApiOperation({ summary: 'Update claim status' })
   updateClaim(@Param('id') id: string, @Body() dto: UpdateClaimDto) {
     return this.hmoService.updateClaim(id, dto);
+  }
+
+  // --- Authorizations ---
+  @Post('authorizations')
+  @Roles(UserRole.DOCTOR, UserRole.ADMIN)
+  @ApiOperation({ summary: 'Request HMO authorization' })
+  createAuthorization(@Body() dto: CreateAuthorizationDto) {
+    return this.hmoService.createAuthorization(dto);
+  }
+
+  @Get('authorizations')
+  @ApiOperation({ summary: 'List authorizations' })
+  findAllAuthorizations(@Query('clinicId') clinicId: string) {
+    return this.hmoService.findAllAuthorizations(clinicId);
+  }
+
+  @Get('authorizations/pending')
+  @ApiOperation({ summary: 'Get pending authorizations' })
+  getPendingAuthorizations(@Query('clinicId') clinicId: string) {
+    return this.hmoService.getPendingAuthorizations(clinicId);
+  }
+
+  @Get('authorizations/:id')
+  @ApiOperation({ summary: 'Get authorization by ID' })
+  findOneAuthorization(@Param('id') id: string) {
+    return this.hmoService.findOneAuthorization(id);
+  }
+
+  @Put('authorizations/:id')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Update authorization status' })
+  updateAuthorization(@Param('id') id: string, @Body() dto: UpdateAuthorizationDto) {
+    return this.hmoService.updateAuthorization(id, dto);
   }
 
   // --- Appeals ---
