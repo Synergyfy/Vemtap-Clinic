@@ -20,6 +20,7 @@ import { ProductsModule } from './products/products.module';
 import { BillingModule } from './billing/billing.module';
 import { HmoModule } from './hmo/hmo.module';
 import { DashboardModule } from './dashboard/dashboard.module';
+import { PatientPortalModule } from './patient-portal/patient-portal.module';
 
 @Module({
   imports: [
@@ -46,6 +47,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
     BillingModule,
     HmoModule,
     DashboardModule,
+    PatientPortalModule,
   ],
 })
 export class AppModule {}

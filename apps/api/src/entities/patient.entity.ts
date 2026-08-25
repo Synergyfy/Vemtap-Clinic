@@ -67,6 +67,15 @@ export class Patient {
   @Column({ nullable: true, length: 500 })
   allergies: string;
 
+  @Column({ nullable: true, select: false })
+  patientPassword: string;
+
+  @Column({ nullable: true })
+  patientPin: string;
+
+  @Column({ default: false })
+  portalAccessEnabled: boolean;
+
   @Column({ type: 'enum', enum: ['new', 'active', 'inactive'], default: 'new' })
   status: string;
 
