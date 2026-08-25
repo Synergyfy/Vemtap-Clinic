@@ -28,3 +28,4 @@ export { ClaimBatch, ClaimBatchStatus } from './claim-batch.entity';
 export { ClaimDocument } from './claim-document.entity';
 export { HMOAppeal, HMOAppealStatus } from './hmo-appeal.entity';
 export { HMORemittance, RemittanceStatus } from './hmo-remittance.entity';
+export { Notification, NotificationType, NotificationChannel } from './notification.entity';
