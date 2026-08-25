@@ -7,6 +7,8 @@ import {
   HMOQueryDto, CreateHMOPlanDto, UpdateHMOPlanDto,
   CreateHMOAgreementDto, UpdateHMOAgreementDto, CoverageCheckDto,
   CreateAuthorizationDto, UpdateAuthorizationDto,
+  CreateClaimBatchDto, UpdateClaimBatchDto, AddClaimsToBatchDto,
+  UploadClaimDocumentDto,
 } from './dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -166,6 +168,55 @@ export class HmoController {
   @ApiOperation({ summary: 'Update authorization status' })
   updateAuthorization(@Param('id') id: string, @Body() dto: UpdateAuthorizationDto) {
     return this.hmoService.updateAuthorization(id, dto);
+  }
+
+  // --- Claims Batching ---
+  @Post('batches')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Create claim batch' })
+  createBatch(@Body() dto: CreateClaimBatchDto) {
+    return this.hmoService.createBatch(dto);
+  }
+
+  @Get('batches')
+  @ApiOperation({ summary: 'List claim batches' })
+  findAllBatches(@Query('clinicId') clinicId: string) {
+    return this.hmoService.findAllBatches(clinicId);
+  }
+
+  @Put('batches/:id/add-claims')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Add claims to batch' })
+  addClaimsToBatch(@Param('id') id: string, @Body() dto: AddClaimsToBatchDto) {
+    return this.hmoService.addClaimsToBatch(id, dto);
+  }
+
+  @Put('batches/:id')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Update batch status' })
+  updateBatch(@Param('id') id: string, @Body() dto: UpdateClaimBatchDto) {
+    return this.hmoService.updateBatch(id, dto);
+  }
+
+  // --- Claim Documents ---
+  @Post('documents')
+  @Roles(UserRole.ADMIN, UserRole.RECEPTIONIST)
+  @ApiOperation({ summary: 'Upload claim document' })
+  uploadDocument(@Body() dto: UploadClaimDocumentDto) {
+    return this.hmoService.uploadDocument(dto);
+  }
+
+  @Get('documents/:claimId')
+  @ApiOperation({ summary: 'Get documents for a claim' })
+  findDocuments(@Param('claimId') claimId: string) {
+    return this.hmoService.findDocumentsByClaim(claimId);
+  }
+
+  @Delete('documents/:id')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Delete claim document' })
+  removeDocument(@Param('id') id: string) {
+    return this.hmoService.removeDocument(id);
   }
 
   // --- Appeals ---

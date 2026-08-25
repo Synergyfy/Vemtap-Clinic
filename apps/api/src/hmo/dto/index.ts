@@ -314,9 +314,69 @@ export class UpdateAuthorizationDto {
   @IsEnum(['pending', 'submitted', 'approved', 'rejected', 'expired', 'escalated', 'cancelled'])
   status?: string;
 
-  @ApiPropertyOptional() @IsOptional() @IsNumber() approvedAmount?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() approvedAmount?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() hmoReferenceNumber?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() hmoNotes?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() rejectionReason?: string;
   @ApiPropertyOptional() @IsOptional() @IsUUID() approvedById?: string;
+}
+
+// --- Claims Batching ---
+
+export class CreateClaimBatchDto {
+  @ApiProperty({ example: 'BATCH-2026-001' })
+  @IsString()
+  @MaxLength(50)
+  batchNumber: string;
+
+  @ApiPropertyOptional() @IsOptional() @IsDateString() periodStart?: string;
+  @ApiPropertyOptional() @IsOptional() @IsDateString() periodEnd?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() notes?: string;
+
+  @ApiProperty({ example: 'hmo-uuid' })
+  @IsUUID()
+  hmoId: string;
+
+  @ApiProperty({ example: 'clinic-uuid' })
+  @IsUUID()
+  clinicId: string;
+}
+
+export class UpdateClaimBatchDto {
+  @ApiPropertyOptional({ enum: ['draft', 'submitted', 'processing', 'completed', 'rejected'] })
+  @IsOptional()
+  @IsEnum(['draft', 'submitted', 'processing', 'completed', 'rejected'])
+  status?: string;
+
+  @ApiPropertyOptional() @IsOptional() @IsNumber() approvedAmount?: number;
+  @ApiPropertyOptional() @IsOptional() @IsString() notes?: string;
+}
+
+export class AddClaimsToBatchDto {
+  @ApiProperty({ type: [String] })
+  @IsArray()
+  claimIds: string[];
+}
+
+// --- Claim Documents ---
+
+export class UploadClaimDocumentDto {
+  @ApiProperty({ example: 'receipt.pdf' })
+  @IsString()
+  fileName: string;
+
+  @ApiProperty({ example: '/uploads/receipt.pdf' })
+  @IsString()
+  fileUrl: string;
+
+  @ApiProperty({ example: 'application/pdf' })
+  @IsString()
+  fileType: string;
+
+  @ApiPropertyOptional() @IsOptional() @IsNumber() fileSize?: number;
+  @ApiPropertyOptional({ example: 'receipt' }) @IsOptional() @IsString() documentType?: string;
+
+  @ApiProperty({ example: 'claim-uuid' })
+  @IsUUID()
+  claimId: string;
 }

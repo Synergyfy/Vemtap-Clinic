@@ -24,5 +24,7 @@ export { HMOPlan } from './hmo-plan.entity';
 export { HMOAgreement } from './hmo-agreement.entity';
 export { HMOAuthorization, AuthorizationStatus, AuthorizationType } from './hmo-authorization.entity';
 export { HMOClaim, HMOClaimStatus } from './hmo-claim.entity';
+export { ClaimBatch, ClaimBatchStatus } from './claim-batch.entity';
+export { ClaimDocument } from './claim-document.entity';
 export { HMOAppeal, HMOAppealStatus } from './hmo-appeal.entity';
 export { HMORemittance, RemittanceStatus } from './hmo-remittance.entity';

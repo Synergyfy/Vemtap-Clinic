@@ -6,6 +6,8 @@ import { HMOPlan } from '../entities/hmo-plan.entity';
 import { HMOAgreement } from '../entities/hmo-agreement.entity';
 import { HMOAuthorization, AuthorizationStatus } from '../entities/hmo-authorization.entity';
 import { HMOClaim } from '../entities/hmo-claim.entity';
+import { ClaimBatch, ClaimBatchStatus } from '../entities/claim-batch.entity';
+import { ClaimDocument } from '../entities/claim-document.entity';
 import { HMOAppeal } from '../entities/hmo-appeal.entity';
 import { HMORemittance } from '../entities/hmo-remittance.entity';
 import {
@@ -14,6 +16,8 @@ import {
   HMOQueryDto,   CreateHMOPlanDto, UpdateHMOPlanDto,
   CreateHMOAgreementDto, UpdateHMOAgreementDto, CoverageCheckDto,
   CreateAuthorizationDto, UpdateAuthorizationDto,
+  CreateClaimBatchDto, UpdateClaimBatchDto, AddClaimsToBatchDto,
+  UploadClaimDocumentDto,
 } from './dto';
 
 @Injectable()
@@ -24,6 +28,8 @@ export class HmoService {
     @InjectRepository(HMOAgreement) private agreementRepository: Repository<HMOAgreement>,
     @InjectRepository(HMOAuthorization) private authRepository: Repository<HMOAuthorization>,
     @InjectRepository(HMOClaim) private claimRepository: Repository<HMOClaim>,
+    @InjectRepository(ClaimBatch) private batchRepository: Repository<ClaimBatch>,
+    @InjectRepository(ClaimDocument) private documentRepository: Repository<ClaimDocument>,
     @InjectRepository(HMOAppeal) private appealRepository: Repository<HMOAppeal>,
     @InjectRepository(HMORemittance) private remittanceRepository: Repository<HMORemittance>,
   ) {}
@@ -248,6 +254,60 @@ export class HmoService {
       relations: ['patient', 'hmo'],
       order: { createdAt: 'ASC' },
     });
+  }
+
+  // --- Claims Batching ---
+  async createBatch(dto: CreateClaimBatchDto): Promise<ClaimBatch> {
+    const batch = this.batchRepository.create({ ...dto, status: ClaimBatchStatus.DRAFT });
+    return this.batchRepository.save(batch);
+  }
+
+  async findAllBatches(clinicId?: string): Promise<ClaimBatch[]> {
+    const where: any = {};
+    if (clinicId) where.clinicId = clinicId;
+    return this.batchRepository.find({ where, relations: ['hmo'], order: { createdAt: 'DESC' } });
+  }
+
+  async addClaimsToBatch(batchId: string, dto: AddClaimsToBatchDto): Promise<ClaimBatch> {
+    const batch = await this.batchRepository.findOne({ where: { id: batchId } });
+    if (!batch) throw new NotFoundException('Batch not found');
+
+    let totalAmount = 0;
+    for (const claimId of dto.claimIds) {
+      const claim = await this.claimRepository.findOne({ where: { id: claimId } });
+      if (claim) {
+        totalAmount += Number(claim.amountClaimed);
+      }
+    }
+
+    batch.totalClaims = dto.claimIds.length;
+    batch.totalAmount = totalAmount;
+    return this.batchRepository.save(batch);
+  }
+
+  async updateBatch(id: string, dto: UpdateClaimBatchDto): Promise<ClaimBatch> {
+    const batch = await this.batchRepository.findOne({ where: { id } });
+    if (!batch) throw new NotFoundException('Batch not found');
+    Object.assign(batch, dto);
+    if (dto.status === 'submitted') batch.submittedDate = new Date();
+    if (dto.status === 'completed') batch.completedDate = new Date();
+    return this.batchRepository.save(batch);
+  }
+
+  // --- Claim Documents ---
+  async uploadDocument(dto: UploadClaimDocumentDto): Promise<ClaimDocument> {
+    const doc = this.documentRepository.create(dto);
+    return this.documentRepository.save(doc);
+  }
+
+  async findDocumentsByClaim(claimId: string): Promise<ClaimDocument[]> {
+    return this.documentRepository.find({ where: { claimId }, order: { createdAt: 'DESC' } });
+  }
+
+  async removeDocument(id: string): Promise<void> {
+    const doc = await this.documentRepository.findOne({ where: { id } });
+    if (!doc) throw new NotFoundException('Document not found');
+    await this.documentRepository.remove(doc);
   }
 
   // --- Stats ---
