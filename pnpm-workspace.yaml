@@ -1,0 +1,10 @@
+packages:
+  - 'apps/*'
+  - 'packages/*'
+
+onlyBuiltDependencies:
+  - '@scarf/scarf'
+  - 'unrs-resolver'
+allowBuilds:
+  '@scarf/scarf': false
+  unrs-resolver: false
