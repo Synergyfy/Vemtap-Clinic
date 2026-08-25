@@ -67,3 +67,6 @@ apps/api/src/
 - Always build before committing: `cd apps/api && npx nest build`
 - Never commit `node_modules/`, `dist/`, `.env`, or `.turbo/`
 - **IMPORTANT:** After finishing code changes, ALWAYS ask the user before committing. Never auto-commit.
+- **NEVER push to origin.** Only the user pushes.
+- **NEVER merge on GitHub.** Only pull and merge locally.
+- You may `git pull` but always ask the user before committing or pushing.
