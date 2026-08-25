@@ -5,6 +5,10 @@ packages:
 onlyBuiltDependencies:
   - '@scarf/scarf'
   - 'unrs-resolver'
+  - 'core-js'
+
 allowBuilds:
-  '@scarf/scarf': false
-  unrs-resolver: false
+  '@scarf/scarf': true
+  core-js: true
+  unrs-resolver: true
+  '@tailwindcss/postcss': true
