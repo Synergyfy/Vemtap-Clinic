@@ -19,6 +19,7 @@ import { OpticalModule } from './optical/optical.module';
 import { ProductsModule } from './products/products.module';
 import { BillingModule } from './billing/billing.module';
 import { HmoModule } from './hmo/hmo.module';
+import { DashboardModule } from './dashboard/dashboard.module';
 
 @Module({
   imports: [
@@ -44,6 +45,7 @@ import { HmoModule } from './hmo/hmo.module';
     ProductsModule,
     BillingModule,
     HmoModule,
+    DashboardModule,
   ],
 })
 export class AppModule {}
