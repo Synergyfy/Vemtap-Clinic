@@ -29,3 +29,8 @@ export { ClaimDocument } from './claim-document.entity';
 export { HMOAppeal, HMOAppealStatus } from './hmo-appeal.entity';
 export { HMORemittance, RemittanceStatus } from './hmo-remittance.entity';
 export { Notification, NotificationType, NotificationChannel } from './notification.entity';
+export { CashierShift, ShiftStatus } from './cashier-shift.entity';
+export { PatientDocument } from './patient-document.entity';
+export { StaffTask, TaskStatus, TaskPriority } from './staff-task.entity';
+export { PatientFeedback } from './patient-feedback.entity';
+export { AuditLog } from './audit-log.entity';

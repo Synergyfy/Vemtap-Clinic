@@ -22,6 +22,11 @@ import { HmoModule } from './hmo/hmo.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { PatientPortalModule } from './patient-portal/patient-portal.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { CashierModule } from './cashier/cashier.module';
+import { PatientDocumentsModule } from './patient-documents/patient-documents.module';
+import { StaffTasksModule } from './staff-tasks/staff-tasks.module';
+import { FeedbackModule } from './feedback/feedback.module';
+import { AuditLogsModule } from './audit-logs/audit-logs.module';
 
 @Module({
   imports: [
@@ -50,6 +55,11 @@ import { NotificationsModule } from './notifications/notifications.module';
     DashboardModule,
     PatientPortalModule,
     NotificationsModule,
+    CashierModule,
+    PatientDocumentsModule,
+    StaffTasksModule,
+    FeedbackModule,
+    AuditLogsModule,
   ],
 })
 export class AppModule {}
