@@ -66,3 +66,4 @@ apps/api/src/
 - Commit messages: `feat(api): <description>` or `fix(api): <description>`
 - Always build before committing: `cd apps/api && npx nest build`
 - Never commit `node_modules/`, `dist/`, `.env`, or `.turbo/`
+- **IMPORTANT:** After finishing code changes, ALWAYS ask the user before committing. Never auto-commit.
