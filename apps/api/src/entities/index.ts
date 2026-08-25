@@ -20,6 +20,8 @@ export { Product } from './product.entity';
 export { Invoice, InvoiceStatus } from './invoice.entity';
 export { Payment, PaymentMethod } from './payment.entity';
 export { HMO } from './hmo.entity';
+export { HMOPlan } from './hmo-plan.entity';
+export { HMOAgreement } from './hmo-agreement.entity';
 export { HMOClaim, HMOClaimStatus } from './hmo-claim.entity';
 export { HMOAppeal, HMOAppealStatus } from './hmo-appeal.entity';
 export { HMORemittance, RemittanceStatus } from './hmo-remittance.entity';

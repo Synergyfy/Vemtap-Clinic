@@ -1,21 +1,31 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { HMO } from '../entities/hmo.entity';
+import { HMOPlan } from '../entities/hmo-plan.entity';
+import { HMOAgreement } from '../entities/hmo-agreement.entity';
 import { HMOClaim } from '../entities/hmo-claim.entity';
 import { HMOAppeal } from '../entities/hmo-appeal.entity';
 import { HMORemittance } from '../entities/hmo-remittance.entity';
-import { CreateHMODto, UpdateHMODto, CreateClaimDto, UpdateClaimDto, CreateAppealDto, UpdateAppealDto, CreateRemittanceDto, UpdateRemittanceDto, HMOQueryDto } from './dto';
+import {
+  CreateHMODto, UpdateHMODto, CreateClaimDto, UpdateClaimDto,
+  CreateAppealDto, UpdateAppealDto, CreateRemittanceDto, UpdateRemittanceDto,
+  HMOQueryDto, CreateHMOPlanDto, UpdateHMOPlanDto,
+  CreateHMOAgreementDto, UpdateHMOAgreementDto, CoverageCheckDto,
+} from './dto';
 
 @Injectable()
 export class HmoService {
   constructor(
     @InjectRepository(HMO) private hmoRepository: Repository<HMO>,
+    @InjectRepository(HMOPlan) private planRepository: Repository<HMOPlan>,
+    @InjectRepository(HMOAgreement) private agreementRepository: Repository<HMOAgreement>,
     @InjectRepository(HMOClaim) private claimRepository: Repository<HMOClaim>,
     @InjectRepository(HMOAppeal) private appealRepository: Repository<HMOAppeal>,
     @InjectRepository(HMORemittance) private remittanceRepository: Repository<HMORemittance>,
   ) {}
 
+  // --- HMO CRUD ---
   async createHMO(dto: CreateHMODto): Promise<HMO> {
     const hmo = this.hmoRepository.create(dto);
     return this.hmoRepository.save(hmo);
@@ -39,6 +49,115 @@ export class HmoService {
     return this.hmoRepository.save(hmo);
   }
 
+  // --- HMO Plans ---
+  async createPlan(dto: CreateHMOPlanDto): Promise<HMOPlan> {
+    const plan = this.planRepository.create(dto);
+    return this.planRepository.save(plan);
+  }
+
+  async findAllPlans(hmoId: string): Promise<HMOPlan[]> {
+    return this.planRepository.find({ where: { hmoId }, order: { createdAt: 'DESC' } });
+  }
+
+  async findOnePlan(id: string): Promise<HMOPlan> {
+    const plan = await this.planRepository.findOne({ where: { id }, relations: ['hmo'] });
+    if (!plan) throw new NotFoundException('HMO plan not found');
+    return plan;
+  }
+
+  async updatePlan(id: string, dto: UpdateHMOPlanDto): Promise<HMOPlan> {
+    const plan = await this.findOnePlan(id);
+    Object.assign(plan, dto);
+    return this.planRepository.save(plan);
+  }
+
+  async removePlan(id: string): Promise<void> {
+    const plan = await this.findOnePlan(id);
+    await this.planRepository.remove(plan);
+  }
+
+  // --- Coverage Check ---
+  async checkCoverage(dto: CoverageCheckDto): Promise<any> {
+    const plan = await this.planRepository.findOne({ where: { hmoId: dto.hmoId, isActive: true } });
+    if (!plan) throw new NotFoundException('No active plan found for this HMO');
+
+    let coveragePercent = 0;
+    let copay = 0;
+    let allowance = 0;
+
+    switch (dto.serviceType) {
+      case 'consultation':
+        coveragePercent = Number(plan.consultationCoverage);
+        copay = Number(plan.consultationCopay);
+        break;
+      case 'eye_test':
+        coveragePercent = Number(plan.eyeTestCoverage);
+        copay = Number(plan.eyeTestCopay);
+        break;
+      case 'optical':
+        coveragePercent = Number(plan.opticalCoverage);
+        copay = Number(plan.opticalCopay);
+        allowance = Number(plan.opticalAllowance);
+        break;
+      case 'drug':
+        coveragePercent = Number(plan.drugCoverage);
+        copay = Number(plan.drugCopay);
+        allowance = Number(plan.drugAllowance);
+        break;
+      case 'surgery':
+        coveragePercent = Number(plan.surgeryCoverage);
+        copay = Number(plan.surgeryCopay);
+        break;
+    }
+
+    if (plan.excludedServices?.includes(dto.serviceType)) {
+      return {
+        covered: false, coveragePercent: 0, copayAmount: dto.serviceAmount,
+        hmoPays: 0, patientPays: dto.serviceAmount, requiresAuthorization: false,
+        remainingAllowance: 0, planName: plan.name,
+      };
+    }
+
+    const hmoPays = (dto.serviceAmount * coveragePercent) / 100;
+    const patientPays = dto.serviceAmount - hmoPays + copay;
+
+    return {
+      covered: coveragePercent > 0,
+      coveragePercent,
+      copayAmount: copay,
+      hmoPays: Math.round(hmoPays * 100) / 100,
+      patientPays: Math.round(patientPays * 100) / 100,
+      requiresAuthorization: plan.requiresAuthorization,
+      remainingAllowance: allowance,
+      planName: plan.name,
+    };
+  }
+
+  // --- HMO Agreements ---
+  async createAgreement(dto: CreateHMOAgreementDto): Promise<HMOAgreement> {
+    const agreement = this.agreementRepository.create(dto);
+    return this.agreementRepository.save(agreement);
+  }
+
+  async findAllAgreements(hmoId: string, clinicId?: string): Promise<HMOAgreement[]> {
+    const where: any = { hmoId };
+    if (clinicId) where.clinicId = clinicId;
+    return this.agreementRepository.find({ where, relations: ['hmo', 'clinic'], order: { createdAt: 'DESC' } });
+  }
+
+  async findOneAgreement(id: string): Promise<HMOAgreement> {
+    const agreement = await this.agreementRepository.findOne({ where: { id }, relations: ['hmo', 'clinic'] });
+    if (!agreement) throw new NotFoundException('HMO agreement not found');
+    return agreement;
+  }
+
+  async updateAgreement(id: string, dto: UpdateHMOAgreementDto): Promise<HMOAgreement> {
+    const agreement = await this.findOneAgreement(id);
+    Object.assign(agreement, dto);
+    return this.agreementRepository.save(agreement);
+  }
+
+  // --- Claims ---
   async createClaim(dto: CreateClaimDto): Promise<HMOClaim> {
     const claim = this.claimRepository.create({ ...dto, submittedDate: new Date() });
     return this.claimRepository.save(claim);
@@ -58,6 +177,7 @@ export class HmoService {
     return this.claimRepository.save(claim);
   }
 
+  // --- Appeals ---
   async createAppeal(dto: CreateAppealDto): Promise<HMOAppeal> {
     const appeal = this.appealRepository.create(dto);
     return this.appealRepository.save(appeal);
@@ -71,6 +191,7 @@ export class HmoService {
     return this.appealRepository.save(appeal);
   }
 
+  // --- Remittances ---
   async createRemittance(dto: CreateRemittanceDto): Promise<HMORemittance> {
     const remittance = this.remittanceRepository.create(dto);
     return this.remittanceRepository.save(remittance);
@@ -89,11 +210,14 @@ export class HmoService {
     return this.remittanceRepository.save(remittance);
   }
 
+  // --- Stats ---
   async getStats(clinicId: string) {
     const totalClaims = await this.claimRepository.count({ where: { clinicId } });
     const pendingClaims = await this.claimRepository.count({ where: { clinicId, status: 'submitted' as any } });
     const approvedClaims = await this.claimRepository.count({ where: { clinicId, status: 'approved' as any } });
     const totalRemittances = await this.remittanceRepository.count({ where: { clinicId } });
-    return { totalClaims, pendingClaims, approvedClaims, totalRemittances };
+    const totalHMOs = await this.hmoRepository.count({ where: { clinicId } });
+    const totalPlans = await this.planRepository.count();
+    return { totalHMOs, totalPlans, totalClaims, pendingClaims, approvedClaims, totalRemittances };
   }
 }

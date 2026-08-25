@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsNumber, IsUUID, IsEnum, IsDateString, MaxLength } from 'class-validator';
+import { IsString, IsOptional, IsNumber, IsUUID, IsEnum, IsDateString, IsBoolean, IsArray, MaxLength } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { HMOClaimStatus } from '../../entities/hmo-claim.entity';
 import { HMOAppealStatus } from '../../entities/hmo-appeal.entity';
@@ -128,4 +128,147 @@ export class UpdateRemittanceDto {
 export class HMOQueryDto {
   @ApiPropertyOptional() @IsOptional() @IsUUID() clinicId?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() search?: string;
+}
+
+// --- HMO Plans ---
+
+export class CreateHMOPlanDto {
+  @ApiProperty({ example: 'Basic Plan' })
+  @IsString()
+  @MaxLength(200)
+  name: string;
+
+  @ApiPropertyOptional() @IsOptional() @IsString() description?: string;
+
+  @ApiPropertyOptional() @IsOptional() @IsNumber() consultationCopay?: number;
+  @ApiPropertyOptional() @IsOptional() @IsNumber() eyeTestCopay?: number;
+  @ApiPropertyOptional() @IsOptional() @IsNumber() opticalCopay?: number;
+  @ApiPropertyOptional() @IsOptional() @IsNumber() drugCopay?: number;
+  @ApiPropertyOptional() @IsOptional() @IsNumber() surgeryCopay?: number;
+
+  @ApiPropertyOptional() @IsOptional() @IsNumber() consultationCoverage?: number;
+  @ApiPropertyOptional() @IsOptional() @IsNumber() eyeTestCoverage?: number;
+  @ApiPropertyOptional() @IsOptional() @IsNumber() opticalCoverage?: number;
+  @ApiPropertyOptional() @IsOptional() @IsNumber() drugCoverage?: number;
+  @ApiPropertyOptional() @IsOptional() @IsNumber() surgeryCoverage?: number;
+
+  @ApiPropertyOptional() @IsOptional() @IsNumber() annualLimit?: number;
+  @ApiPropertyOptional() @IsOptional() @IsNumber() monthlyLimit?: number;
+  @ApiPropertyOptional() @IsOptional() @IsNumber() opticalAllowance?: number;
+  @ApiPropertyOptional() @IsOptional() @IsNumber() drugAllowance?: number;
+
+  @ApiPropertyOptional() @IsOptional() @IsArray() excludedServices?: string[];
+  @ApiPropertyOptional() @IsOptional() @IsBoolean() requiresAuthorization?: boolean;
+
+  @ApiProperty({ example: 'hmo-uuid' })
+  @IsUUID()
+  hmoId: string;
+}
+
+export class UpdateHMOPlanDto {
+  @ApiPropertyOptional() @IsOptional() @IsString() name?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() description?: string;
+  @ApiPropertyOptional() @IsOptional() @IsNumber() consultationCopay?: number;
+  @ApiPropertyOptional() @IsOptional() @IsNumber() eyeTestCopay?: number;
+  @ApiPropertyOptional() @IsOptional() @IsNumber() opticalCopay?: number;
+  @ApiPropertyOptional() @IsOptional() @IsNumber() drugCopay?: number;
+  @ApiPropertyOptional() @IsOptional() @IsNumber() surgeryCopay?: number;
+  @ApiPropertyOptional() @IsOptional() @IsNumber() consultationCoverage?: number;
+  @ApiPropertyOptional() @IsOptional() @IsNumber() eyeTestCoverage?: number;
+  @ApiPropertyOptional() @IsOptional() @IsNumber() opticalCoverage?: number;
+  @ApiPropertyOptional() @IsOptional() @IsNumber() drugCoverage?: number;
+  @ApiPropertyOptional() @IsOptional() @IsNumber() surgeryCoverage?: number;
+  @ApiPropertyOptional() @IsOptional() @IsNumber() annualLimit?: number;
+  @ApiPropertyOptional() @IsOptional() @IsNumber() monthlyLimit?: number;
+  @ApiPropertyOptional() @IsOptional() @IsNumber() opticalAllowance?: number;
+  @ApiPropertyOptional() @IsOptional() @IsNumber() drugAllowance?: number;
+  @ApiPropertyOptional() @IsOptional() @IsArray() excludedServices?: string[];
+  @ApiPropertyOptional() @IsOptional() @IsBoolean() requiresAuthorization?: boolean;
+  @ApiPropertyOptional() @IsOptional() @IsBoolean() isActive?: boolean;
+}
+
+// --- HMO Agreements ---
+
+export class CreateHMOAgreementDto {
+  @ApiProperty({ example: 'AGR-2026-001' })
+  @IsString()
+  @MaxLength(50)
+  agreementNumber: string;
+
+  @ApiProperty({ example: '2026-01-01' })
+  @IsDateString()
+  startDate: string;
+
+  @ApiProperty({ example: '2026-12-31' })
+  @IsDateString()
+  endDate: string;
+
+  @ApiPropertyOptional({ enum: ['monthly', 'quarterly', 'bi-annually', 'annually'] })
+  @IsOptional()
+  @IsEnum(['monthly', 'quarterly', 'bi-annually', 'annually'])
+  paymentCycle?: string;
+
+  @ApiPropertyOptional({ enum: ['monthly', 'bi-weekly', 'weekly'] })
+  @IsOptional()
+  @IsEnum(['monthly', 'bi-weekly', 'weekly'])
+  claimsSubmissionSchedule?: string;
+
+  @ApiPropertyOptional() @IsOptional() @IsNumber() consultationPrice?: number;
+  @ApiPropertyOptional() @IsOptional() @IsNumber() eyeTestPrice?: number;
+  @ApiPropertyOptional() @IsOptional() @IsNumber() opticalFramePrice?: number;
+  @ApiPropertyOptional() @IsOptional() @IsNumber() lensPrice?: number;
+  @ApiPropertyOptional() @IsOptional() @IsNumber() drugMarkup?: number;
+  @ApiPropertyOptional() @IsOptional() @IsNumber() surgeryPrice?: number;
+
+  @ApiProperty({ example: 'hmo-uuid' })
+  @IsUUID()
+  hmoId: string;
+
+  @ApiProperty({ example: 'clinic-uuid' })
+  @IsUUID()
+  clinicId: string;
+}
+
+export class UpdateHMOAgreementDto {
+  @ApiPropertyOptional() @IsOptional() @IsDateString() endDate?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() paymentCycle?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() claimsSubmissionSchedule?: string;
+  @ApiPropertyOptional() @IsOptional() @IsNumber() consultationPrice?: number;
+  @ApiPropertyOptional() @IsOptional() @IsNumber() eyeTestPrice?: number;
+  @ApiPropertyOptional() @IsOptional() @IsNumber() opticalFramePrice?: number;
+  @ApiPropertyOptional() @IsOptional() @IsNumber() lensPrice?: number;
+  @ApiPropertyOptional() @IsOptional() @IsNumber() drugMarkup?: number;
+  @ApiPropertyOptional() @IsOptional() @IsNumber() surgeryPrice?: number;
+  @ApiPropertyOptional() @IsOptional() @IsBoolean() isActive?: boolean;
+}
+
+// --- Coverage Check ---
+
+export class CoverageCheckDto {
+  @ApiProperty({ example: 'patient-uuid' })
+  @IsUUID()
+  patientId: string;
+
+  @ApiProperty({ example: 'hmo-uuid' })
+  @IsUUID()
+  hmoId: string;
+
+  @ApiProperty({ enum: ['consultation', 'eye_test', 'optical', 'drug', 'surgery'] })
+  @IsEnum(['consultation', 'eye_test', 'optical', 'drug', 'surgery'])
+  serviceType: string;
+
+  @ApiProperty({ example: 15000 })
+  @IsNumber()
+  serviceAmount: number;
+}
+
+export class CoverageCheckResponseDto {
+  @ApiProperty() covered: boolean;
+  @ApiProperty() coveragePercent: number;
+  @ApiProperty() copayAmount: number;
+  @ApiProperty() hmoPays: number;
+  @ApiProperty() patientPays: number;
+  @ApiProperty() requiresAuthorization: boolean;
+  @ApiProperty() remainingAllowance: number;
+  @ApiProperty() planName: string;
 }

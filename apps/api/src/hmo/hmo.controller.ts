@@ -1,7 +1,12 @@
-import { Controller, Get, Post, Put, Body, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { HmoService } from './hmo.service';
-import { CreateHMODto, UpdateHMODto, CreateClaimDto, UpdateClaimDto, CreateAppealDto, UpdateAppealDto, CreateRemittanceDto, UpdateRemittanceDto, HMOQueryDto } from './dto';
+import {
+  CreateHMODto, UpdateHMODto, CreateClaimDto, UpdateClaimDto,
+  CreateAppealDto, UpdateAppealDto, CreateRemittanceDto, UpdateRemittanceDto,
+  HMOQueryDto, CreateHMOPlanDto, UpdateHMOPlanDto,
+  CreateHMOAgreementDto, UpdateHMOAgreementDto, CoverageCheckDto,
+} from './dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -40,6 +45,75 @@ export class HmoController {
     return this.hmoService.updateHMO(id, dto);
   }
 
+  // --- Plans ---
+  @Post('plans')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Create HMO plan' })
+  createPlan(@Body() dto: CreateHMOPlanDto) {
+    return this.hmoService.createPlan(dto);
+  }
+
+  @Get('plans/:hmoId')
+  @ApiOperation({ summary: 'List plans for an HMO' })
+  findAllPlans(@Param('hmoId') hmoId: string) {
+    return this.hmoService.findAllPlans(hmoId);
+  }
+
+  @Get('plans/detail/:id')
+  @ApiOperation({ summary: 'Get plan by ID' })
+  findOnePlan(@Param('id') id: string) {
+    return this.hmoService.findOnePlan(id);
+  }
+
+  @Put('plans/:id')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Update HMO plan' })
+  updatePlan(@Param('id') id: string, @Body() dto: UpdateHMOPlanDto) {
+    return this.hmoService.updatePlan(id, dto);
+  }
+
+  @Delete('plans/:id')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Delete HMO plan' })
+  removePlan(@Param('id') id: string) {
+    return this.hmoService.removePlan(id);
+  }
+
+  // --- Coverage Check ---
+  @Post('coverage-check')
+  @ApiOperation({ summary: 'Check coverage for a service' })
+  checkCoverage(@Body() dto: CoverageCheckDto) {
+    return this.hmoService.checkCoverage(dto);
+  }
+
+  // --- Agreements ---
+  @Post('agreements')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Create HMO agreement' })
+  createAgreement(@Body() dto: CreateHMOAgreementDto) {
+    return this.hmoService.createAgreement(dto);
+  }
+
+  @Get('agreements/:hmoId')
+  @ApiOperation({ summary: 'List agreements for an HMO' })
+  findAllAgreements(@Param('hmoId') hmoId: string, @Query('clinicId') clinicId: string) {
+    return this.hmoService.findAllAgreements(hmoId, clinicId);
+  }
+
+  @Get('agreements/detail/:id')
+  @ApiOperation({ summary: 'Get agreement by ID' })
+  findOneAgreement(@Param('id') id: string) {
+    return this.hmoService.findOneAgreement(id);
+  }
+
+  @Put('agreements/:id')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Update HMO agreement' })
+  updateAgreement(@Param('id') id: string, @Body() dto: UpdateHMOAgreementDto) {
+    return this.hmoService.updateAgreement(id, dto);
+  }
+
+  // --- Claims ---
   @Post('claims')
   @Roles(UserRole.ADMIN, UserRole.RECEPTIONIST, UserRole.DOCTOR)
   @ApiOperation({ summary: 'Submit HMO claim' })
@@ -60,6 +134,7 @@ export class HmoController {
     return this.hmoService.updateClaim(id, dto);
   }
 
+  // --- Appeals ---
   @Post('appeals')
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Submit appeal' })
@@ -74,6 +149,7 @@ export class HmoController {
     return this.hmoService.updateAppeal(id, dto);
   }
 
+  // --- Remittances ---
   @Post('remittances')
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Record remittance' })
@@ -94,6 +170,7 @@ export class HmoController {
     return this.hmoService.updateRemittance(id, dto);
   }
 
+  // --- Stats ---
   @Get('stats')
   @ApiOperation({ summary: 'Get HMO statistics' })
   getStats(@Query('clinicId') clinicId: string) {
