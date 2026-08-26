@@ -27,6 +27,7 @@ import { PatientDocumentsModule } from './patient-documents/patient-documents.mo
 import { StaffTasksModule } from './staff-tasks/staff-tasks.module';
 import { FeedbackModule } from './feedback/feedback.module';
 import { AuditLogsModule } from './audit-logs/audit-logs.module';
+import { SurgeryModule } from './surgery/surgery.module';
 
 @Module({
   imports: [
@@ -60,6 +61,7 @@ import { AuditLogsModule } from './audit-logs/audit-logs.module';
     StaffTasksModule,
     FeedbackModule,
     AuditLogsModule,
+    SurgeryModule,
   ],
 })
 export class AppModule {}

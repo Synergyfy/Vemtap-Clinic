@@ -34,3 +34,6 @@ export { PatientDocument } from './patient-document.entity';
 export { StaffTask, TaskStatus, TaskPriority } from './staff-task.entity';
 export { PatientFeedback } from './patient-feedback.entity';
 export { AuditLog } from './audit-log.entity';
+export { SurgicalProcedure, ProcedureCategory } from './surgical-procedure.entity';
+export { OperatingRoom, RoomStatus } from './operating-room.entity';
+export { SurgerySchedule, SurgeryStatus } from './surgery-schedule.entity';

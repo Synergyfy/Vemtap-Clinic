@@ -70,3 +70,16 @@ apps/api/src/
 - **NEVER push to origin.** Only the user pushes.
 - **NEVER merge on GitHub.** Only pull and merge locally.
 - You may `git pull` but always ask the user before committing or pushing.
+
+## Task Breakdown Guideline (NEW)
+
+**Before implementing any new feature, break it into small, testable steps:**
+
+1. **Entity & Migration** — Create TypeORM entity, add to barrel export, run migration
+2. **DTOs** — Create DTOs with class-validator for create/update/query
+3. **Service** — Implement business logic, unit-testable methods
+4. **Controller** — REST endpoints with guards, validation, Swagger docs
+4. **Module** — Wire everything, register in app.module.ts
+5. **Verify** — Build passes, manual test via Swagger, commit
+
+**Each step = one commit. Test at each step before proceeding.**
