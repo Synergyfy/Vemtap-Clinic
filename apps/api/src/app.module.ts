@@ -30,6 +30,7 @@ import { AuditLogsModule } from './audit-logs/audit-logs.module';
 import { SurgeryModule } from './surgery/surgery.module';
 import { ClinicalReportingModule } from './clinical-reporting/clinical-reporting.module';
 import { ReturnsModule } from './returns/returns.module';
+import { InventoryTransfersModule } from './inventory-transfers/inventory-transfers.module';
 
 @Module({
   imports: [
@@ -66,6 +67,7 @@ import { ReturnsModule } from './returns/returns.module';
     SurgeryModule,
     ClinicalReportingModule,
     ReturnsModule,
+    InventoryTransfersModule,
   ],
 })
 export class AppModule {}

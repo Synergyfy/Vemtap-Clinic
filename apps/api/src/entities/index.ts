@@ -41,3 +41,5 @@ export { ReportTemplate, ReportType, ReportFormat } from './report-template.enti
 export { GeneratedReport, ReportStatus, ReportDeliveryMethod } from './generated-report.entity';
 export { ReturnRequest, ReturnType, ReturnReason, ReturnStatus, ReturnItem } from './return-request.entity';
 export { Refund, RefundStatus, RefundMethod } from './refund.entity';
+export { TransferRequest, TransferType, TransferStatus } from './transfer-request.entity';
+export { TransferItem, ItemType } from './transfer-item.entity';
