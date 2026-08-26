@@ -1,10 +1,10 @@
-import { Injectable, ConflictException, UnauthorizedException } from '@nestjs/common';
+import { Injectable, ConflictException, UnauthorizedException, BadRequestException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
 import { User } from '../entities/user.entity';
-import { LoginDto, RegisterDto, AuthResponseDto } from './dto/auth.dto';
+import { LoginDto, RegisterDto, AuthResponseDto, RefreshTokenDto } from './dto/auth.dto';
 
 @Injectable()
 export class AuthService {
@@ -74,5 +74,22 @@ export class AuthService {
         clinicId: user.clinicId,
       },
     };
+  }
+
+  async refreshTokens(refreshToken: string): Promise<any> {
+    try {
+      const payload = this.jwtService.verify(refreshToken);
+      const user = await this.userRepository.findOne({ where: { id: payload.sub } });
+      if (!user || !user.isActive) {
+        throw new UnauthorizedException('User not found or inactive');
+      }
+      return this.generateTokens(user);
+    } catch {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+  }
+
+  async logout(userId: string): Promise<{ message: string }> {
+    return { message: 'Logged out successfully' };
   }
 }
