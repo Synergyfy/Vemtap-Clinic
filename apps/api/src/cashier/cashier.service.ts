@@ -3,13 +3,17 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CashierShift, ShiftStatus } from '../entities/cashier-shift.entity';
 import { Payment } from '../entities/payment.entity';
-import { OpenShiftDto, CloseShiftDto, ShiftQueryDto } from './dto';
+import { CashierTransaction, CashierTransactionStatus, CashierPaymentMethod } from '../entities/cashier-transaction.entity';
+import { Product } from '../entities/product.entity';
+import { OpenShiftDto, CloseShiftDto, ShiftQueryDto, CompleteTransactionDto, CreateProductDto, CashierCartItemDto } from './dto';
 
 @Injectable()
 export class CashierService {
   constructor(
     @InjectRepository(CashierShift) private shiftRepo: Repository<CashierShift>,
     @InjectRepository(Payment) private paymentRepo: Repository<Payment>,
+    @InjectRepository(CashierTransaction) private transactionRepo: Repository<CashierTransaction>,
+    @InjectRepository(Product) private productRepo: Repository<Product>,
   ) {}
 
   async openShift(dto: OpenShiftDto): Promise<CashierShift> {
@@ -92,5 +96,99 @@ export class CashierService {
       openShifts: shifts.filter(s => s.status === ShiftStatus.OPEN).length,
       closedShifts: shifts.filter(s => s.status === ShiftStatus.CLOSED).length,
     };
+  }
+
+  // ========== Transaction Methods ==========
+  async completeTransaction(dto: CompleteTransactionDto, cashierName: string): Promise<CashierTransaction> {
+    const subtotal = dto.items.reduce((sum, i) => sum + i.total, 0);
+    const total = Math.max(0, subtotal - (dto.discount || 0));
+    const paid = dto.payments.reduce((sum, p) => sum + p.amount, 0);
+    const balance = Math.max(0, total - paid);
+
+    const count = await this.transactionRepo.count({ where: { clinicId: dto.clinicId } });
+    const receiptNumber = `RCP-${String(count + 1).padStart(4, '0')}`;
+
+    const transaction = this.transactionRepo.create({
+      receiptNumber,
+      items: dto.items,
+      payments: dto.payments,
+      subtotal,
+      discount: dto.discount || 0,
+      total,
+      paid,
+      balance,
+      status: CashierTransactionStatus.COMPLETED,
+      cashierName,
+      patientName: dto.patientName,
+      note: dto.note,
+      clinicId: dto.clinicId,
+    });
+    return this.transactionRepo.save(transaction);
+  }
+
+  async findTransactions(clinicId?: string): Promise<CashierTransaction[]> {
+    const where: any = {};
+    if (clinicId) where.clinicId = clinicId;
+    return this.transactionRepo.find({ where, order: { createdAt: 'DESC' } });
+  }
+
+  async findTransactionById(id: string): Promise<CashierTransaction> {
+    const transaction = await this.transactionRepo.findOne({ where: { id } });
+    if (!transaction) throw new NotFoundException('Transaction not found');
+    return transaction;
+  }
+
+  async voidTransaction(id: string): Promise<CashierTransaction> {
+    const transaction = await this.transactionRepo.findOne({ where: { id } });
+    if (!transaction) throw new NotFoundException('Transaction not found');
+    transaction.status = CashierTransactionStatus.VOIDED;
+    return this.transactionRepo.save(transaction);
+  }
+
+  // ========== Product Methods ==========
+  async createProduct(dto: CreateProductDto): Promise<Product> {
+    const product = this.productRepo.create({
+      ...dto,
+      quantityInStock: dto.stock || 0,
+    });
+    return this.productRepo.save(product);
+  }
+
+  async findProducts(clinicId?: string): Promise<Product[]> {
+    const where: any = { isActive: true };
+    if (clinicId) where.clinicId = clinicId;
+    return this.productRepo.find({ where, order: { createdAt: 'DESC' } });
+  }
+
+  async findProductById(id: string): Promise<Product> {
+    const product = await this.productRepo.findOne({ where: { id } });
+    if (!product) throw new NotFoundException('Product not found');
+    return product;
+  }
+
+  async updateProduct(id: string, updates: Partial<Product>): Promise<Product> {
+    const product = await this.productRepo.findOne({ where: { id } });
+    if (!product) throw new NotFoundException('Product not found');
+    Object.assign(product, updates);
+    return this.productRepo.save(product);
+  }
+
+  async deleteProduct(id: string): Promise<void> {
+    const product = await this.productRepo.findOne({ where: { id } });
+    if (!product) throw new NotFoundException('Product not found');
+    await this.productRepo.remove(product);
+  }
+
+  // ========== Stats ==========
+  async getTransactionStats(clinicId: string) {
+    const transactions = await this.transactionRepo.find({ where: { clinicId, status: CashierTransactionStatus.COMPLETED } });
+    const total = transactions.reduce((sum, t) => sum + t.total, 0);
+    const byMethod: Record<string, number> = {};
+    for (const t of transactions) {
+      for (const p of t.payments) {
+        byMethod[p.method] = (byMethod[p.method] || 0) + p.amount;
+      }
+    }
+    return { totalTransactions: transactions.length, totalRevenue: total, byMethod };
   }
 }
