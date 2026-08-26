@@ -29,6 +29,7 @@ import { FeedbackModule } from './feedback/feedback.module';
 import { AuditLogsModule } from './audit-logs/audit-logs.module';
 import { SurgeryModule } from './surgery/surgery.module';
 import { ClinicalReportingModule } from './clinical-reporting/clinical-reporting.module';
+import { ReturnsModule } from './returns/returns.module';
 
 @Module({
   imports: [
@@ -64,6 +65,7 @@ import { ClinicalReportingModule } from './clinical-reporting/clinical-reporting
     AuditLogsModule,
     SurgeryModule,
     ClinicalReportingModule,
+    ReturnsModule,
   ],
 })
 export class AppModule {}

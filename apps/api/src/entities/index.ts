@@ -39,3 +39,5 @@ export { OperatingRoom, RoomStatus } from './operating-room.entity';
 export { SurgerySchedule, SurgeryStatus } from './surgery-schedule.entity';
 export { ReportTemplate, ReportType, ReportFormat } from './report-template.entity';
 export { GeneratedReport, ReportStatus, ReportDeliveryMethod } from './generated-report.entity';
+export { ReturnRequest, ReturnType, ReturnReason, ReturnStatus, ReturnItem } from './return-request.entity';
+export { Refund, RefundStatus, RefundMethod } from './refund.entity';
