@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Put, Body, Param, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { QueueService } from './queue.service';
-import { CreateQueueEntryDto, UpdateQueueEntryDto, QueueQueryDto } from './dto';
+import { CreateQueueEntryDto, UpdateQueueEntryDto, QueueQueryDto, CreateAnnouncementDto, ResetQueueDto } from './dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -57,5 +57,25 @@ export class QueueController {
   @ApiOperation({ summary: 'Cancel queue entry' })
   cancel(@Param('id') id: string) {
     return this.queueService.cancel(id);
+  }
+
+  @Post('announcements')
+  @Roles(UserRole.ADMIN, UserRole.RECEPTIONIST)
+  @ApiOperation({ summary: 'Create queue announcement' })
+  createAnnouncement(@Body() dto: CreateAnnouncementDto) {
+    return this.queueService.createAnnouncement(dto);
+  }
+
+  @Get('announcements')
+  @ApiOperation({ summary: 'List queue announcements' })
+  findAnnouncements(@Query('clinicId') clinicId: string) {
+    return this.queueService.findAnnouncements(clinicId);
+  }
+
+  @Post('reset')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Reset queue (clear all entries)' })
+  resetQueue(@Body() dto: ResetQueueDto) {
+    return this.queueService.resetQueue(dto.clinicId);
   }
 }

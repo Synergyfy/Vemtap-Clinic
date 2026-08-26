@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { QueueEntry, QueueStatus } from '../entities/queue-entry.entity';
+import { QueueAnnouncement, AnnouncementType } from '../entities/queue-announcement.entity';
 import { CreateQueueEntryDto, UpdateQueueEntryDto, QueueQueryDto } from './dto';
 
 @Injectable()
@@ -9,6 +10,8 @@ export class QueueService {
   constructor(
     @InjectRepository(QueueEntry)
     private queueRepository: Repository<QueueEntry>,
+    @InjectRepository(QueueAnnouncement)
+    private announcementRepository: Repository<QueueAnnouncement>,
   ) {}
 
   async create(dto: CreateQueueEntryDto): Promise<QueueEntry> {
@@ -66,5 +69,22 @@ export class QueueService {
     const inProgress = await this.queueRepository.count({ where: { clinicId, status: QueueStatus.IN_PROGRESS } });
     const completed = await this.queueRepository.count({ where: { clinicId, status: QueueStatus.COMPLETED } });
     return { waiting, inProgress, completed };
+  }
+
+  async createAnnouncement(data: { message: string; type?: string; targetQueueType?: string; clinicId: string; staffId?: string }): Promise<QueueAnnouncement> {
+    const announcement = this.announcementRepository.create({
+      ...data,
+      type: (data.type as AnnouncementType) || AnnouncementType.GENERAL,
+    });
+    return this.announcementRepository.save(announcement);
+  }
+
+  async findAnnouncements(clinicId: string): Promise<QueueAnnouncement[]> {
+    return this.announcementRepository.find({ where: { clinicId }, order: { createdAt: 'DESC' }, take: 50 });
+  }
+
+  async resetQueue(clinicId: string): Promise<{ deleted: number }> {
+    const result = await this.queueRepository.delete({ clinicId });
+    return { deleted: result.affected || 0 };
   }
 }

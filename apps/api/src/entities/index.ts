@@ -52,3 +52,4 @@ export { HmoApiLog, ApiLogStatus, LogDirection } from './hmo-api-log.entity';
 export { ObservationNote, ObservationCategory } from './observation-note.entity';
 export { OpticalProductionItem, ProductionStage } from './optical-production-item.entity';
 export { OpticalSale, SaleStatus, SalePaymentMethod } from './optical-sale.entity';
+export { QueueAnnouncement, AnnouncementType } from './queue-announcement.entity';
