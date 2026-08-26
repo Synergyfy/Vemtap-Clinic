@@ -33,6 +33,7 @@ import { ReturnsModule } from './returns/returns.module';
 import { InventoryTransfersModule } from './inventory-transfers/inventory-transfers.module';
 import { DebtorsModule } from './debtors/debtors.module';
 import { HmoIntegrationsModule } from './hmo-integrations/hmo-integrations.module';
+import { ObservationNotesModule } from './observation-notes/observation-notes.module';
 
 @Module({
   imports: [
@@ -72,6 +73,7 @@ import { HmoIntegrationsModule } from './hmo-integrations/hmo-integrations.modul
     InventoryTransfersModule,
     DebtorsModule,
     HmoIntegrationsModule,
+    ObservationNotesModule,
   ],
 })
 export class AppModule {}
