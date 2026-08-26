@@ -32,6 +32,7 @@ import { ClinicalReportingModule } from './clinical-reporting/clinical-reporting
 import { ReturnsModule } from './returns/returns.module';
 import { InventoryTransfersModule } from './inventory-transfers/inventory-transfers.module';
 import { DebtorsModule } from './debtors/debtors.module';
+import { HmoIntegrationsModule } from './hmo-integrations/hmo-integrations.module';
 
 @Module({
   imports: [
@@ -70,6 +71,7 @@ import { DebtorsModule } from './debtors/debtors.module';
     ReturnsModule,
     InventoryTransfersModule,
     DebtorsModule,
+    HmoIntegrationsModule,
   ],
 })
 export class AppModule {}

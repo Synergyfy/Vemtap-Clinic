@@ -47,3 +47,5 @@ export { Debtor, DebtorType, DebtorStatus } from './debtor.entity';
 export { PaymentPlan, PaymentPlanStatus } from './payment-plan.entity';
 export { PaymentPlanInstallment, InstallmentStatus } from './payment-plan-installment.entity';
 export { CollectionActivity, CollectionActivityType, CollectionOutcome } from './collection-activity.entity';
+export { HmoIntegration, HmoIntegrationProvider, IntegrationStatus, AuthType, EndpointType } from './hmo-integration.entity';
+export { HmoApiLog, ApiLogStatus, LogDirection } from './hmo-api-log.entity';
