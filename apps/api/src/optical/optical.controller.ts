@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { OpticalService } from './optical.service';
-import { CreateOpticalItemDto, UpdateOpticalItemDto, CreateLensOrderDto, UpdateLensOrderDto } from './dto';
+import { CreateOpticalItemDto, UpdateOpticalItemDto, CreateLensOrderDto, UpdateLensOrderDto, UpdateProductionStageDto, CreateProductionItemDto, CreateSaleDto, SaleQueryDto } from './dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -65,5 +65,44 @@ export class OpticalController {
   @ApiOperation({ summary: 'Update lens order status' })
   updateLensOrder(@Param('id') id: string, @Body() dto: UpdateLensOrderDto) {
     return this.opticalService.updateLensOrder(id, dto);
+  }
+
+  @Put('lens-orders/:id/production')
+  @Roles(UserRole.ADMIN, UserRole.OPTOMETRIST)
+  @ApiOperation({ summary: 'Update lens order production stage' })
+  updateProductionStage(@Param('id') id: string, @Body() dto: UpdateProductionStageDto) {
+    return this.opticalService.updateProductionStage(id, dto.stage);
+  }
+
+  @Post('production')
+  @Roles(UserRole.ADMIN, UserRole.OPTOMETRIST)
+  @ApiOperation({ summary: 'Create production item for lens order' })
+  createProductionItem(@Body() dto: CreateProductionItemDto) {
+    return this.opticalService.createProductionItem(dto);
+  }
+
+  @Get('lens-orders/:id/production')
+  @ApiOperation({ summary: 'Get production items for lens order' })
+  getProductionByLensOrder(@Param('id') lensOrderId: string) {
+    return this.opticalService.getProductionByLensOrder(lensOrderId);
+  }
+
+  @Post('sales')
+  @Roles(UserRole.ADMIN, UserRole.OPTOMETRIST, UserRole.CASHIER)
+  @ApiOperation({ summary: 'Create optical sale' })
+  createSale(@Body() dto: CreateSaleDto) {
+    return this.opticalService.createSale(dto);
+  }
+
+  @Get('sales')
+  @ApiOperation({ summary: 'List optical sales' })
+  findAllSales(@Query() query: SaleQueryDto) {
+    return this.opticalService.findAllSales(query.clinicId);
+  }
+
+  @Get('lens-orders/:id/sales')
+  @ApiOperation({ summary: 'Get sales for lens order' })
+  findSalesByLensOrder(@Param('id') lensOrderId: string) {
+    return this.opticalService.findSalesByLensOrder(lensOrderId);
   }
 }

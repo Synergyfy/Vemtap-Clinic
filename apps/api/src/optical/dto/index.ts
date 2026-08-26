@@ -1,6 +1,8 @@
 import { IsString, IsOptional, IsNumber, IsUUID, IsEnum, IsDateString, MaxLength } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { LensOrderStatus } from '../../entities/lens-order.entity';
+import { ProductionStage } from '../../entities/optical-production-item.entity';
+import { SaleStatus, SalePaymentMethod } from '../../entities/optical-sale.entity';
 
 export class CreateOpticalItemDto {
   @ApiProperty({ example: 'Ray-Ban Aviator' })
@@ -99,4 +101,39 @@ export class UpdateLensOrderDto {
   @ApiPropertyOptional({ enum: LensOrderStatus }) @IsOptional() @IsEnum(LensOrderStatus) status?: LensOrderStatus;
   @ApiPropertyOptional() @IsOptional() @IsDateString() actualDeliveryDate?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() notes?: string;
+}
+
+export class UpdateProductionStageDto {
+  @ApiProperty({ enum: ProductionStage })
+  @IsEnum(ProductionStage)
+  stage: ProductionStage;
+}
+
+export class CreateProductionItemDto {
+  @ApiProperty() @IsUUID() lensOrderId: string;
+  @ApiPropertyOptional() @IsOptional() @IsUUID() inventoryItemId?: string;
+  @ApiProperty() @IsUUID() clinicId: string;
+}
+
+export class CreateSaleDto {
+  @ApiPropertyOptional() @IsOptional() @IsUUID() patientId?: string;
+  @ApiPropertyOptional() @IsOptional() @IsUUID() inventoryItemId?: string;
+  @ApiPropertyOptional() @IsOptional() @IsUUID() lensOrderId?: string;
+  @ApiProperty({ example: 1 })
+  @IsNumber()
+  quantity: number;
+  @ApiProperty({ example: 15000 })
+  @IsNumber()
+  unitPrice: number;
+  @ApiProperty({ enum: SalePaymentMethod })
+  @IsEnum(SalePaymentMethod)
+  paymentMethod: SalePaymentMethod;
+  @ApiPropertyOptional() @IsOptional() @IsString() paymentReference?: string;
+  @ApiPropertyOptional() @IsOptional() @IsUUID() cashierId?: string;
+  @ApiProperty() @IsUUID() clinicId: string;
+}
+
+export class SaleQueryDto {
+  @ApiPropertyOptional() @IsOptional() @IsUUID() clinicId?: string;
+  @ApiPropertyOptional() @IsOptional() @IsUUID() lensOrderId?: string;
 }
