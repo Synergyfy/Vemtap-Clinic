@@ -43,3 +43,7 @@ export { ReturnRequest, ReturnType, ReturnReason, ReturnStatus, ReturnItem } fro
 export { Refund, RefundStatus, RefundMethod } from './refund.entity';
 export { TransferRequest, TransferType, TransferStatus } from './transfer-request.entity';
 export { TransferItem, ItemType } from './transfer-item.entity';
+export { Debtor, DebtorType, DebtorStatus } from './debtor.entity';
+export { PaymentPlan, PaymentPlanStatus } from './payment-plan.entity';
+export { PaymentPlanInstallment, InstallmentStatus } from './payment-plan-installment.entity';
+export { CollectionActivity, CollectionActivityType, CollectionOutcome } from './collection-activity.entity';

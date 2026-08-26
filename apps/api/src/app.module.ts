@@ -31,6 +31,7 @@ import { SurgeryModule } from './surgery/surgery.module';
 import { ClinicalReportingModule } from './clinical-reporting/clinical-reporting.module';
 import { ReturnsModule } from './returns/returns.module';
 import { InventoryTransfersModule } from './inventory-transfers/inventory-transfers.module';
+import { DebtorsModule } from './debtors/debtors.module';
 
 @Module({
   imports: [
@@ -68,6 +69,7 @@ import { InventoryTransfersModule } from './inventory-transfers/inventory-transf
     ClinicalReportingModule,
     ReturnsModule,
     InventoryTransfersModule,
+    DebtorsModule,
   ],
 })
 export class AppModule {}
