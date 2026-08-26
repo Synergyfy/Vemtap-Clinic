@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { DrugsService } from './drugs.service';
-import { CreateDrugDto, UpdateDrugDto, DispenseDrugDto, DrugQueryDto } from './dto';
+import { CreateDrugDto, UpdateDrugDto, DispenseDrugDto, DrugQueryDto, AdjustStockDto } from './dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -58,5 +58,19 @@ export class DrugsController {
   @ApiOperation({ summary: 'Dispense drug to patient' })
   dispense(@Body() dto: DispenseDrugDto) {
     return this.drugsService.dispense(dto);
+  }
+
+  @Post(':id/deduct')
+  @Roles(UserRole.PHARMACIST)
+  @ApiOperation({ summary: 'Deduct stock from drug' })
+  deductStock(@Param('id') id: string, @Body() dto: AdjustStockDto) {
+    return this.drugsService.deductStock(id, dto.quantity);
+  }
+
+  @Post(':id/restock')
+  @Roles(UserRole.PHARMACIST, UserRole.ADMIN)
+  @ApiOperation({ summary: 'Restock drug' })
+  restock(@Param('id') id: string, @Body() dto: AdjustStockDto) {
+    return this.drugsService.restock(id, dto.quantity);
   }
 }

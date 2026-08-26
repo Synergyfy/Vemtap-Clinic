@@ -70,6 +70,21 @@ export class DrugsService {
       .andWhere('drug.quantityInStock <= drug.reorderLevel')
       .getMany();
   }
+
+  async deductStock(id: string, quantity: number): Promise<Drug> {
+    const drug = await this.findOne(id);
+    if (drug.quantityInStock < quantity) {
+      throw new BadRequestException('Insufficient stock');
+    }
+    drug.quantityInStock -= quantity;
+    return this.drugRepository.save(drug);
+  }
+
+  async restock(id: string, quantity: number): Promise<Drug> {
+    const drug = await this.findOne(id);
+    drug.quantityInStock += quantity;
+    return this.drugRepository.save(drug);
+  }
 }
 
 

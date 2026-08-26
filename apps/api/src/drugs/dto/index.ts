@@ -107,3 +107,9 @@ export class DrugQueryDto {
   @ApiPropertyOptional() @IsOptional() @IsString() category?: string;
   @ApiPropertyOptional() @IsOptional() @IsBoolean() lowStock?: boolean;
 }
+
+export class AdjustStockDto {
+  @ApiProperty({ example: 5 })
+  @IsNumber()
+  quantity: number;
+}

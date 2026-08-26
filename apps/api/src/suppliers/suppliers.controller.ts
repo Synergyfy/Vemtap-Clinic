@@ -66,4 +66,11 @@ export class SuppliersController {
   updateOrder(@Param('id') id: string, @Body() dto: UpdatePurchaseOrderDto) {
     return this.suppliersService.updateOrder(id, dto);
   }
+
+  @Post('orders/:id/deliver')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Mark purchase order as delivered' })
+  deliverOrder(@Param('id') id: string) {
+    return this.suppliersService.deliverOrder(id);
+  }
 }

@@ -1,8 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Supplier } from '../entities/supplier.entity';
-import { PurchaseOrder } from '../entities/purchase-order.entity';
+import { PurchaseOrder, PurchaseOrderStatus } from '../entities/purchase-order.entity';
 import { CreateSupplierDto, UpdateSupplierDto, CreatePurchaseOrderDto, UpdatePurchaseOrderDto, SupplierQueryDto } from './dto';
 
 @Injectable()
@@ -58,6 +58,19 @@ export class SuppliersService {
     const order = await this.orderRepository.findOne({ where: { id } });
     if (!order) throw new NotFoundException('Purchase order not found');
     Object.assign(order, dto);
+    return this.orderRepository.save(order);
+  }
+
+  async deliverOrder(id: string): Promise<PurchaseOrder> {
+    const order = await this.orderRepository.findOne({ where: { id } });
+    if (!order) throw new NotFoundException('Purchase order not found');
+
+    if (order.status === PurchaseOrderStatus.RECEIVED) {
+      throw new BadRequestException('Order already received');
+    }
+
+    order.status = PurchaseOrderStatus.RECEIVED;
+    order.actualDeliveryDate = new Date();
     return this.orderRepository.save(order);
   }
 }
