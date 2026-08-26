@@ -34,6 +34,7 @@ import { InventoryTransfersModule } from './inventory-transfers/inventory-transf
 import { DebtorsModule } from './debtors/debtors.module';
 import { HmoIntegrationsModule } from './hmo-integrations/hmo-integrations.module';
 import { ObservationNotesModule } from './observation-notes/observation-notes.module';
+import { CurrencyModule } from './currency/currency.module';
 
 @Module({
   imports: [
@@ -74,6 +75,7 @@ import { ObservationNotesModule } from './observation-notes/observation-notes.mo
     DebtorsModule,
     HmoIntegrationsModule,
     ObservationNotesModule,
+    CurrencyModule,
   ],
 })
 export class AppModule {}
