@@ -37,3 +37,5 @@ export { AuditLog } from './audit-log.entity';
 export { SurgicalProcedure, ProcedureCategory } from './surgical-procedure.entity';
 export { OperatingRoom, RoomStatus } from './operating-room.entity';
 export { SurgerySchedule, SurgeryStatus } from './surgery-schedule.entity';
+export { ReportTemplate, ReportType, ReportFormat } from './report-template.entity';
+export { GeneratedReport, ReportStatus, ReportDeliveryMethod } from './generated-report.entity';
