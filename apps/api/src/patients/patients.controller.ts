@@ -58,4 +58,14 @@ export class PatientsController {
   findByHMO(@Param('hmoName') hmoName: string, @Query('clinicId') clinicId: string) {
     return this.patientsService.findByHMO(hmoName, clinicId);
   }
+
+  @Get(':id/hmo-eligibility')
+  @ApiOperation({ summary: 'Check patient HMO eligibility for a service' })
+  checkHMOEligibility(
+    @Param('id') id: string,
+    @Query('serviceType') serviceType: string,
+    @Query('serviceAmount') serviceAmount: number,
+  ) {
+    return this.patientsService.checkHMOEligibility(id, serviceType, serviceAmount);
+  }
 }

@@ -1,6 +1,7 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
 import { Clinic } from './clinic.entity';
 import { Branch } from './branch.entity';
+import { HMO } from './hmo.entity';
 
 @Entity('patients')
 export class Patient {
@@ -45,6 +46,10 @@ export class Patient {
 
   @Column({ nullable: true })
   hmoId: string;
+
+  @ManyToOne(() => HMO, { nullable: true })
+  @JoinColumn({ name: 'hmoId' })
+  hmo: HMO;
 
   @Column({ nullable: true, length: 100 })
   hmoName: string;
