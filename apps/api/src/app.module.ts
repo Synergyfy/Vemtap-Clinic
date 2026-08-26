@@ -35,6 +35,7 @@ import { DebtorsModule } from './debtors/debtors.module';
 import { HmoIntegrationsModule } from './hmo-integrations/hmo-integrations.module';
 import { ObservationNotesModule } from './observation-notes/observation-notes.module';
 import { CurrencyModule } from './currency/currency.module';
+import { FileUploadModule } from './file-upload/file-upload.module';
 
 @Module({
   imports: [
@@ -76,6 +77,7 @@ import { CurrencyModule } from './currency/currency.module';
     HmoIntegrationsModule,
     ObservationNotesModule,
     CurrencyModule,
+    FileUploadModule,
   ],
 })
 export class AppModule {}
