@@ -4,11 +4,11 @@ import { HmoService } from './hmo.service';
 import {
   CreateHMODto, UpdateHMODto, CreateClaimDto, UpdateClaimDto,
   CreateAppealDto, UpdateAppealDto, CreateRemittanceDto, UpdateRemittanceDto,
-  HMOQueryDto, CreateHMOPlanDto, UpdateHMOPlanDto,
+  HMOQueryDto,   CreateHMOPlanDto, UpdateHMOPlanDto,
   CreateHMOAgreementDto, UpdateHMOAgreementDto, CoverageCheckDto,
   CreateAuthorizationDto, UpdateAuthorizationDto,
   CreateClaimBatchDto, UpdateClaimBatchDto, AddClaimsToBatchDto,
-  UploadClaimDocumentDto,
+  UploadClaimDocumentDto, MatchRemittanceDto, AgingReportDto,
 } from './dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -253,6 +253,25 @@ export class HmoController {
   @ApiOperation({ summary: 'Update remittance' })
   updateRemittance(@Param('id') id: string, @Body() dto: UpdateRemittanceDto) {
     return this.hmoService.updateRemittance(id, dto);
+  }
+
+  @Put('remittances/:id/match')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Match remittance to claims' })
+  matchRemittance(@Param('id') id: string, @Body() dto: MatchRemittanceDto) {
+    return this.hmoService.matchRemittance(id, dto.claimIds);
+  }
+
+  @Get('aging')
+  @ApiOperation({ summary: 'Get HMO aging report' })
+  getAgingReport(@Query() query: AgingReportDto) {
+    return this.hmoService.getAgingReport(query);
+  }
+
+  @Get('totals')
+  @ApiOperation({ summary: 'Get HMO totals by HMO' })
+  getHMOTotals(@Query('clinicId') clinicId: string) {
+    return this.hmoService.getHMOTotals(clinicId);
   }
 
   // --- Stats ---

@@ -9,7 +9,7 @@ import { HMOClaim } from '../entities/hmo-claim.entity';
 import { ClaimBatch, ClaimBatchStatus } from '../entities/claim-batch.entity';
 import { ClaimDocument } from '../entities/claim-document.entity';
 import { HMOAppeal } from '../entities/hmo-appeal.entity';
-import { HMORemittance } from '../entities/hmo-remittance.entity';
+import { HMORemittance, RemittanceStatus } from '../entities/hmo-remittance.entity';
 import {
   CreateHMODto, UpdateHMODto, CreateClaimDto, UpdateClaimDto,
   CreateAppealDto, UpdateAppealDto, CreateRemittanceDto, UpdateRemittanceDto,
@@ -212,13 +212,6 @@ export class HmoService {
     return this.remittanceRepository.find({ where, relations: ['hmo'], order: { createdAt: 'DESC' } });
   }
 
-  async updateRemittance(id: string, dto: UpdateRemittanceDto): Promise<HMORemittance> {
-    const remittance = await this.remittanceRepository.findOne({ where: { id } });
-    if (!remittance) throw new NotFoundException('Remittance not found');
-    Object.assign(remittance, dto);
-    return this.remittanceRepository.save(remittance);
-  }
-
   // --- Authorizations ---
   async createAuthorization(dto: CreateAuthorizationDto): Promise<HMOAuthorization> {
     const auth = this.authRepository.create({
@@ -311,6 +304,73 @@ export class HmoService {
   }
 
   // --- Stats ---
+  async updateRemittance(id: string, dto: UpdateRemittanceDto): Promise<HMORemittance> {
+    const remittance = await this.remittanceRepository.findOne({ where: { id } });
+    if (!remittance) throw new NotFoundException('Remittance not found');
+    Object.assign(remittance, dto);
+    return this.remittanceRepository.save(remittance);
+  }
+
+  async matchRemittance(id: string, claimIds: string[]): Promise<HMORemittance> {
+    const remittance = await this.remittanceRepository.findOne({ where: { id } });
+    if (!remittance) throw new NotFoundException('Remittance not found');
+    remittance.matchedClaimIds = claimIds;
+    remittance.status = RemittanceStatus.RECONCILED;
+    return this.remittanceRepository.save(remittance);
+  }
+
+  async getAgingReport(query: { clinicId?: string; asOfDate?: string }): Promise<any[]> {
+    const date = query.asOfDate ? new Date(query.asOfDate) : new Date();
+    const remittances = await this.remittanceRepository.find({ where: { clinicId: query.clinicId } });
+    const claims = await this.claimRepository.find({ where: { clinicId: query.clinicId } });
+
+    const buckets = [
+      { label: 'Current', min: 0, max: 30 },
+      { label: '31-60 days', min: 31, max: 60 },
+      { label: '61-90 days', min: 61, max: 90 },
+      { label: '91-120 days', min: 91, max: 120 },
+      { label: '121+ days', min: 121, max: Infinity },
+    ];
+
+    const result = buckets.map(bucket => {
+      const bucketClaims = claims.filter(c => {
+        const days = Math.floor((new Date().getTime() - new Date(c.submittedDate).getTime()) / (1000 * 60 * 60 * 24));
+        return days >= bucket.min && days <= bucket.max;
+      });
+      return {
+        bucket: bucket.label,
+        range: bucket.min === 0 ? `0-${bucket.max} days` : bucket.max === Infinity ? `${bucket.min}+ days` : `${bucket.min}-${bucket.max} days`,
+        count: bucketClaims.length,
+        total: bucketClaims.reduce((sum, c) => sum + Number(c.amountClaimed), 0),
+      };
+    });
+
+    return result;
+  }
+
+  async getHMOTotals(clinicId: string): Promise<any[]> {
+    const hmOs = await this.hmoRepository.find({ where: { clinicId } });
+    const remittances = await this.remittanceRepository.find({ where: { clinicId } });
+    const claims = await this.claimRepository.find({ where: { clinicId } });
+
+    return hmOs.map(hmo => {
+      const hmoClaims = claims.filter(c => c.hmoId === hmo.id);
+      const hmoRemits = remittances.filter(r => r.hmoId === hmo.id);
+      const totalClaimed = hmoClaims.reduce((sum, c) => sum + Number(c.amountClaimed), 0);
+      const totalPaid = hmoRemits.filter(r => r.status === 'reconciled').reduce((sum, r) => sum + Number(r.netAmount), 0);
+      const outstanding = totalClaimed - totalPaid;
+      return {
+        hmoId: hmo.id,
+        hmoName: hmo.name,
+        totalClaims: hmoClaims.length,
+        totalClaimed,
+        totalPaid,
+        outstanding,
+        collectionRate: totalClaimed > 0 ? (totalPaid / totalClaimed) * 100 : 0,
+      };
+    });
+  }
+
   async getStats(clinicId: string) {
     const totalClaims = await this.claimRepository.count({ where: { clinicId } });
     const pendingClaims = await this.claimRepository.count({ where: { clinicId, status: 'submitted' as any } });

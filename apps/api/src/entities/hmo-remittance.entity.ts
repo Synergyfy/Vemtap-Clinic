@@ -32,6 +32,9 @@ export class HMORemittance {
   @Column({ type: 'text', nullable: true })
   claimsBreakdown: string;
 
+  @Column({ type: 'simple-json', nullable: true })
+  matchedClaimIds: string[];
+
   @Column({ type: 'date', nullable: true })
   periodStart: Date;
 

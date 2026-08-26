@@ -380,3 +380,15 @@ export class UploadClaimDocumentDto {
   @IsUUID()
   claimId: string;
 }
+
+export class MatchRemittanceDto {
+  @ApiProperty({ type: [String] })
+  @IsArray()
+  @IsUUID(undefined, { each: true })
+  claimIds: string[];
+}
+
+export class AgingReportDto {
+  @ApiPropertyOptional() @IsOptional() @IsUUID() clinicId?: string;
+  @ApiPropertyOptional() @IsOptional() @IsDateString() asOfDate?: string;
+}
