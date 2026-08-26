@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AppointmentsService } from './appointments.service';
-import { CreateAppointmentDto, UpdateAppointmentDto, AppointmentQueryDto } from './dto';
+import { CreateAppointmentDto, UpdateAppointmentDto, AppointmentQueryDto, CalendarViewDto } from './dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -25,6 +25,12 @@ export class AppointmentsController {
   @ApiOperation({ summary: 'List appointments' })
   findAll(@Query() query: AppointmentQueryDto) {
     return this.appointmentsService.findAll(query);
+  }
+
+  @Get('calendar')
+  @ApiOperation({ summary: 'Get calendar view of appointments' })
+  getCalendar(@Query() query: CalendarViewDto) {
+    return this.appointmentsService.getCalendarView(query.clinicId, query.startDate, query.endDate);
   }
 
   @Get('today')

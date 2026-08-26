@@ -66,3 +66,9 @@ export class AppointmentQueryDto {
   @ApiPropertyOptional() @IsOptional() @IsDateString() startDate?: string;
   @ApiPropertyOptional() @IsOptional() @IsDateString() endDate?: string;
 }
+
+export class CalendarViewDto {
+  @ApiProperty() @IsUUID() clinicId: string;
+  @ApiProperty({ example: '2026-01-01' }) @IsDateString() startDate: string;
+  @ApiProperty({ example: '2026-01-31' }) @IsDateString() endDate: string;
+}

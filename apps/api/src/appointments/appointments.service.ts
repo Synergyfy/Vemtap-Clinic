@@ -102,4 +102,30 @@ export class AppointmentsService {
     const cancelled = await this.appointmentRepository.count({ where: { clinicId, status: AppointmentStatus.CANCELLED } });
     return { total, scheduled, completed, cancelled };
   }
+
+  async getCalendarView(clinicId: string, startDate: string, endDate: string) {
+    const appointments = await this.appointmentRepository.find({
+      where: {
+        clinicId,
+        appointmentDate: Between(new Date(startDate), new Date(endDate)),
+      },
+      relations: ['patient', 'staff'],
+      order: { appointmentDate: 'ASC', appointmentTime: 'ASC' },
+    });
+
+    const calendar: Record<string, any[]> = {};
+    for (const appt of appointments) {
+      const dateKey = new Date(appt.appointmentDate).toISOString().split('T')[0];
+      if (!calendar[dateKey]) calendar[dateKey] = [];
+      calendar[dateKey].push({
+        id: appt.id,
+        time: appt.appointmentTime,
+        patient: appt.patient ? `${appt.patient.firstName} ${appt.patient.lastName}` : 'Unknown',
+        staff: appt.staff ? `${appt.staff.firstName} ${appt.staff.lastName}` : 'Unknown',
+        status: appt.status,
+        type: appt.type,
+      });
+    }
+    return calendar;
+  }
 }
