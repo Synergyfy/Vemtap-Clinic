@@ -6,7 +6,12 @@
     "dev": "next dev -p 3000",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "eslint .",
+    "format": "prettier --write \"**/*.{ts,tsx,json,md}\"",
+    "db:generate": "echo \"No database for web app\"",
+    "db:migrate": "echo \"No database for web app\"",
+    "db:push": "echo \"No database for web app\"",
+    "db:studio": "echo \"No database for web app\""
   },
   "dependencies": {
     "@base-ui/react": "^1.0.0",
@@ -30,6 +35,8 @@
     "@types/node": "^24.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^16.3.3",
     "typescript": "^5.7.3"
   }
 }

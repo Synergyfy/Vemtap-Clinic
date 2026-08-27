@@ -12,3 +12,8 @@ allowBuilds:
   core-js: true
   unrs-resolver: true
   '@tailwindcss/postcss': true
+
+peerDependencyRules:
+  ignoreMissing:
+    - '@nestjs/microservices'
+    - '@nestjs/websockets'
