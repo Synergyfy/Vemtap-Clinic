@@ -7,6 +7,30 @@
 
 ---
 
+## Auth System Overview (Updated)
+
+**Backend uses dual-token architecture with HTTP-only cookies:**
+
+| Token | Type | Expiry | Storage | Transport |
+|-------|------|--------|---------|-----------|
+| Access Token | JWT | 1h | Memory (React state) | `Authorization: Bearer <token>` header |
+| Refresh Token | Opaque (48-byte base64url) | 7d | **HTTP-only cookie** (`vemtap_refresh_token`) | Auto-sent to `/api/auth/refresh` |
+
+**Key security features:**
+- Refresh token stored as SHA-256 hash in DB, never in plaintext
+- Token rotation on each refresh (old revoked, new issued)
+- Theft detection: reuse of rotated token → revokes ALL user sessions
+- Password change/reset/account deactivation → revokes all sessions
+- No user enumeration (dummy bcrypt on missing user)
+
+**Frontend implications:**
+- **No localStorage for refresh token** — cookie is HTTP-only
+- **Access token in memory** — lost on page refresh, re-fetched via `/api/auth/refresh`
+- **All requests need `credentials: 'include'`** — to send/receive cookies
+- **No manual refresh logic** — interceptor calls `/api/auth/refresh` on 401, cookie auto-sent
+
+---
+
 ## Phase 1: Foundation Layer (Do First)
 
 ### Step 1.1 — Environment Config
@@ -24,22 +48,25 @@ pnpm add -D @tanstack/react-query-devtools
 ```
 
 **Why these:**
-- `axios` — interceptors for auth token injection, refresh logic, error handling
+- `axios` — interceptors for auth token injection, 401 handling, error handling
 - `@tanstack/react-query` — server state cache, background refetch, optimistic updates, loading/error states
 
 ### Step 1.3 — Create API Client (`lib/api.ts`)
 Axios instance with:
 - Base URL from `NEXT_PUBLIC_API_URL`
-- Request interceptor: attach `Authorization: Bearer <token>` from localStorage
-- Response interceptor: on 401, call `/api/auth/refresh` with stored refresh token; on failure, redirect to `/login`
+- **`withCredentials: true`** — critical for cookie auth
+- Request interceptor: attach `Authorization: Bearer <accessToken>` from memory (React state)
+- Response interceptor: on 401, call `POST /api/auth/refresh` (cookie auto-sent); retry original request with new access token; on failure, redirect to `/login`
 - Timeout: 30s
 - Default headers: `Content-Type: application/json`
 
-### Step 1.4 — Create Auth Service (`lib/auth.ts`)
-- `getStoredToken()` / `setStoredToken()` / `clearStoredToken()` — read/write JWT from localStorage
-- `getUserFromToken()` — decode JWT payload (id, email, role, clinicId)
-- `isTokenExpired()` — check expiry before request
-- Token storage keys: `vemtap_access_token`, `vemtap_refresh_token`, `vemtap_user`
+### Step 1.4 — Create Auth State (`lib/auth-state.ts`)
+**In-memory only (no localStorage):**
+- `accessToken: string | null` — JWT in memory
+- `user: AuthUser | null` — `{ userId, email, roles[], clinicId }`
+- `isAuthenticated: boolean`
+- `setAuth(accessToken, user)` / `clearAuth()` — update state
+- `getAccessToken()` — for interceptor
 
 ### Step 1.5 — Create React Query Provider (`components/providers/query-provider.tsx`)
 Wrap app in `QueryClientProvider` with default options:
@@ -48,13 +75,16 @@ Wrap app in `QueryClientProvider` with default options:
 - `refetchOnWindowFocus: false` for non-critical queries
 
 ### Step 1.6 — Create Auth Context (`lib/auth-context.tsx`)
-- `AuthProvider` — manages `{ user, token, isAuthenticated, login(), logout(), register() }`
-- On mount: check localStorage for token, validate with `/api/auth/profile`, hydrate user
-- Expose `useAuth()` hook
+- `AuthProvider` — manages `{ user, isAuthenticated, login(), logout(), register(), checkAuth() }`
+- On mount: call `POST /api/auth/refresh` (via axios with `credentials: include`) to restore session; on success, hydrate `accessToken` + `user` in memory
+- `login(email, password)` → `POST /api/auth/login` → returns `{ accessToken, user }`; sets access token in memory; cookie auto-set by backend
+- `register(...)` → `POST /api/auth/register`
+- `logout()` → `POST /api/auth/logout` (cookie auto-sent) → clear in-memory state
+- `checkAuth()` → calls `/api/auth/profile` to validate access token
 
 ### Step 1.7 — Create Role Guard (`components/auth/role-guard.tsx`)
 - `<RoleGuard roles={['admin', 'doctor']}>` — wraps pages, redirects unauthorized users
-- Uses `useAuth().user.role`
+- Uses `useAuth().user.roles`
 
 ### Step 1.8 — Update Root Layout
 - Add `<QueryProvider>` and `<AuthProvider>` to `app/layout.tsx`
@@ -65,7 +95,7 @@ Wrap app in `QueryClientProvider` with default options:
 
 ### Step 2.1 — Login Page (`app/login/page.tsx`)
 - Replace mock auth with `POST /api/auth/login`
-- Store tokens + user in localStorage
+- On success: store `accessToken` + `user` in memory via `AuthContext`
 - Redirect to role-based dashboard after login
 
 ### Step 2.2 — Register Page (`app/register/page.tsx`)
@@ -74,12 +104,17 @@ Wrap app in `QueryClientProvider` with default options:
 
 ### Step 2.3 — Profile Page
 - `GET /api/auth/profile` for current user data
-- Logout: `POST /api/auth/logout`, clear tokens, redirect to `/login`
+- Logout: `POST /api/auth/logout` (with `credentials: include`), clear in-memory state, redirect to `/login`
 
-### Step 2.4 — Token Refresh
-- In API interceptor: if 401, call `POST /api/auth/refresh` with refresh token
-- Retry original request with new access token
-- On refresh failure: clear tokens, redirect to `/login`
+### Step 2.4 — Password Change / Reset
+- `PUT /api/auth/password` — change password (revokes all sessions, user must re-login)
+- `POST /api/auth/reset-password` — reset via email token
+
+### Step 2.5 — Session Restoration (Critical)
+- On app load: `AuthProvider` calls `POST /api/auth/refresh` automatically
+- Backend reads refresh token from cookie, issues new access token + rotates refresh token
+- Frontend stores new access token in memory, updates user
+- If refresh fails (401/403): clear state, redirect to `/login`
 
 ---
 
@@ -273,7 +308,7 @@ Wrap app in `QueryClientProvider` with default options:
 
 ### Step 6.1 — WebSocket Queue Updates
 - Install `socket.io-client`
-- Create `lib/socket.ts` — connect to `/queue` namespace
+- Create `lib/socket.ts` — connect to `/queue` namespace with `auth: { token: accessToken }`
 - `useQueueSocket()` hook — listen for entry updates, call-next, announcements
 - Update `queue-display/` pages for realtime TV board
 
@@ -380,7 +415,7 @@ export function useCreatePatient() {
 | Phase | Steps | Estimated Scope |
 |-------|-------|----------------|
 | **1. Foundation** | 8 steps | ~10 files to create |
-| **2. Auth** | 4 steps | ~5 files to modify |
+| **2. Auth** | 5 steps | ~8 files to modify |
 | **3. Core Clinical** | 6 modules | ~30 files (services + hooks + pages) |
 | **4. Domain-Specific** | 6 modules | ~35 files |
 | **5. Supporting** | 13 modules | ~40 files |
@@ -392,8 +427,8 @@ export function useCreatePatient() {
 
 ## Priority Order (Recommended Start)
 
-1. **Phase 1** — Foundation (must do first)
-2. **Phase 2** — Auth (everything depends on this)
+1. **Phase 1** — Foundation (must do first, includes cookie-aware axios)
+2. **Phase 2** — Auth (everything depends on this, includes session restoration)
 3. **Phase 3.1** — Patients (simplest, validates the pattern)
 4. **Phase 3.6** — Dashboard (high visibility)
 5. **Phase 4.1** — Pharmacy (complex, high value)
