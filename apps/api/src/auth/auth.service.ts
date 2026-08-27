@@ -1,10 +1,24 @@
-import { Injectable, ConflictException, UnauthorizedException, BadRequestException } from '@nestjs/common';
+import { Injectable, ConflictException, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
 import { User } from '../entities/user.entity';
-import { LoginDto, RegisterDto, AuthResponseDto, RefreshTokenDto } from './dto/auth.dto';
+import { LoginDto, RegisterDto } from './dto/auth.dto';
+
+export interface TokenPair {
+  accessToken: string;
+  refreshToken: string;
+}
+
+export interface AuthUser {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  role: string;
+  clinicId: string;
+}
 
 @Injectable()
 export class AuthService {
@@ -14,7 +28,7 @@ export class AuthService {
     private jwtService: JwtService,
   ) {}
 
-  async register(dto: RegisterDto): Promise<AuthResponseDto> {
+  async register(dto: RegisterDto): Promise<{ tokens: TokenPair; user: AuthUser }> {
     const existing = await this.userRepository.findOne({ where: { email: dto.email } });
     if (existing) {
       throw new ConflictException('Email already exists');
@@ -30,7 +44,7 @@ export class AuthService {
     return this.generateTokens(saved);
   }
 
-  async login(dto: LoginDto): Promise<AuthResponseDto> {
+  async login(dto: LoginDto): Promise<{ tokens: TokenPair; user: AuthUser }> {
     const user = await this.userRepository.findOne({
       where: { email: dto.email },
       select: ['id', 'firstName', 'lastName', 'email', 'password', 'role', 'clinicId', 'isActive'],
@@ -57,26 +71,7 @@ export class AuthService {
     return result;
   }
 
-  private generateTokens(user: User): AuthResponseDto {
-    const payload = { sub: user.id, email: user.email, role: user.role };
-    const accessToken = this.jwtService.sign(payload);
-    const refreshToken = this.jwtService.sign(payload, { expiresIn: '7d' });
-
-    return {
-      accessToken,
-      refreshToken,
-      user: {
-        id: user.id,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
-        role: user.role,
-        clinicId: user.clinicId,
-      },
-    };
-  }
-
-  async refreshTokens(refreshToken: string): Promise<any> {
+  async refreshTokens(refreshToken: string): Promise<{ tokens: TokenPair; user: AuthUser }> {
     try {
       const payload = this.jwtService.verify(refreshToken);
       const user = await this.userRepository.findOne({ where: { id: payload.sub } });
@@ -89,7 +84,25 @@ export class AuthService {
     }
   }
 
-  async logout(userId: string): Promise<{ message: string }> {
+  async logout(): Promise<{ message: string }> {
     return { message: 'Logged out successfully' };
+  }
+
+  private generateTokens(user: User): { tokens: TokenPair; user: AuthUser } {
+    const payload = { sub: user.id, email: user.email, role: user.role };
+    const accessToken = this.jwtService.sign(payload);
+    const refreshToken = this.jwtService.sign(payload, { expiresIn: '7d' });
+
+    return {
+      tokens: { accessToken, refreshToken },
+      user: {
+        id: user.id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        role: user.role,
+        clinicId: user.clinicId,
+      },
+    };
   }
 }

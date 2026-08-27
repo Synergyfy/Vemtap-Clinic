@@ -9,6 +9,19 @@ import { MedicalRecord } from '../entities/medical-record.entity';
 import { Invoice } from '../entities/invoice.entity';
 import { PatientLoginDto, PatientRegisterDto, BookAppointmentDto, UpdatePatientProfileDto } from './dto';
 
+export interface PatientTokenPair {
+  accessToken: string;
+}
+
+export interface PatientAuthUser {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  clinicId: string;
+}
+
 @Injectable()
 export class PatientPortalService {
   constructor(
@@ -19,7 +32,7 @@ export class PatientPortalService {
     private jwtService: JwtService,
   ) {}
 
-  async register(dto: PatientRegisterDto) {
+  async register(dto: PatientRegisterDto): Promise<{ tokens: PatientTokenPair; patient: PatientAuthUser }> {
     const existing = await this.patientRepo.findOne({ where: { email: dto.email } });
     if (existing) throw new ConflictException('Email already registered');
 
@@ -41,7 +54,7 @@ export class PatientPortalService {
     return this.generateToken(saved);
   }
 
-  async login(dto: PatientLoginDto) {
+  async login(dto: PatientLoginDto): Promise<{ tokens: PatientTokenPair; patient: PatientAuthUser }> {
     const patient = await this.patientRepo.findOne({
       where: { email: dto.email },
       select: ['id', 'firstName', 'lastName', 'email', 'phone', 'patientPassword', 'clinicId', 'portalAccessEnabled'],
@@ -110,11 +123,11 @@ export class PatientPortalService {
     });
   }
 
-  private generateToken(patient: Patient) {
+  private generateToken(patient: Patient): { tokens: PatientTokenPair; patient: PatientAuthUser } {
     const payload = { sub: patient.id, email: patient.email, type: 'patient' };
     const accessToken = this.jwtService.sign(payload);
     return {
-      accessToken,
+      tokens: { accessToken },
       patient: {
         id: patient.id,
         firstName: patient.firstName,

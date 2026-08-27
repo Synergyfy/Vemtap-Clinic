@@ -1,8 +1,25 @@
-import { Controller, Get, Post, Put, Body, Param, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Put, Body, Res, Req, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { Response, Request as ExpressRequest } from 'express';
 import { PatientPortalService } from './patient-portal.service';
 import { PatientLoginDto, PatientRegisterDto, BookAppointmentDto, UpdatePatientProfileDto } from './dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { COOKIE_CONFIG } from '../auth/cookie.config';
+
+interface JwtPayload {
+  sub: string;
+  email: string;
+  type: string;
+}
+
+const PATIENT_ACCESS_COOKIE = 'vemtap_patient_access_token';
+const ACCESS_TOKEN_OPTIONS = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'lax' as const,
+  path: '/',
+  maxAge: 15 * 60 * 1000, // 15 minutes
+};
 
 @ApiTags('Patient Portal')
 @Controller('patient-portal')
@@ -11,21 +28,34 @@ export class PatientPortalController {
 
   @Post('register')
   @ApiOperation({ summary: 'Patient self-registration' })
-  register(@Body() dto: PatientRegisterDto) {
-    return this.portalService.register(dto);
+  async register(@Body() dto: PatientRegisterDto, @Res({ passthrough: true }) res: Response) {
+    const { tokens, patient } = await this.portalService.register(dto);
+    this.setAccessCookie(res, tokens.accessToken);
+    return { patient };
   }
 
   @Post('login')
   @ApiOperation({ summary: 'Patient login' })
-  login(@Body() dto: PatientLoginDto) {
-    return this.portalService.login(dto);
+  async login(@Body() dto: PatientLoginDto, @Res({ passthrough: true }) res: Response) {
+    const { tokens, patient } = await this.portalService.login(dto);
+    this.setAccessCookie(res, tokens.accessToken);
+    return { patient };
+  }
+
+  @Post('logout')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Patient logout' })
+  async logout(@Res({ passthrough: true }) res: Response) {
+    res.clearCookie(PATIENT_ACCESS_COOKIE, { path: '/' });
+    return { message: 'Logged out successfully' };
   }
 
   @Get('profile')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get patient profile' })
-  getProfile(@Request() req: any) {
+  getProfile(@Req() req: ExpressRequest & { user: JwtPayload }) {
     return this.portalService.getProfile(req.user.sub);
   }
 
@@ -33,7 +63,7 @@ export class PatientPortalController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update patient profile' })
-  updateProfile(@Request() req: any, @Body() dto: UpdatePatientProfileDto) {
+  updateProfile(@Req() req: ExpressRequest & { user: JwtPayload }, @Body() dto: UpdatePatientProfileDto) {
     return this.portalService.updateProfile(req.user.sub, dto);
   }
 
@@ -41,7 +71,7 @@ export class PatientPortalController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Book an appointment' })
-  bookAppointment(@Request() req: any, @Body() dto: BookAppointmentDto) {
+  bookAppointment(@Req() req: ExpressRequest & { user: JwtPayload }, @Body() dto: BookAppointmentDto) {
     return this.portalService.bookAppointment(req.user.sub, dto);
   }
 
@@ -49,7 +79,7 @@ export class PatientPortalController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get my appointments' })
-  getMyAppointments(@Request() req: any) {
+  getMyAppointments(@Req() req: ExpressRequest & { user: JwtPayload }) {
     return this.portalService.getMyAppointments(req.user.sub);
   }
 
@@ -57,7 +87,7 @@ export class PatientPortalController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get my medical records' })
-  getMyRecords(@Request() req: any) {
+  getMyRecords(@Req() req: ExpressRequest & { user: JwtPayload }) {
     return this.portalService.getMyRecords(req.user.sub);
   }
 
@@ -65,7 +95,11 @@ export class PatientPortalController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get my billing history' })
-  getMyBilling(@Request() req: any) {
+  getMyBilling(@Req() req: ExpressRequest & { user: JwtPayload }) {
     return this.portalService.getMyBilling(req.user.sub);
+  }
+
+  private setAccessCookie(res: Response, token: string) {
+    res.cookie(PATIENT_ACCESS_COOKIE, token, ACCESS_TOKEN_OPTIONS);
   }
 }

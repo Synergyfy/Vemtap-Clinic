@@ -35,22 +35,29 @@ export class RegisterDto {
   clinicId: string;
 }
 
+export class AuthUserDto {
+  @ApiProperty()
+  id: string;
+
+  @ApiProperty()
+  firstName: string;
+
+  @ApiProperty()
+  lastName: string;
+
+  @ApiProperty()
+  email: string;
+
+  @ApiProperty()
+  role: string;
+
+  @ApiProperty()
+  clinicId: string;
+}
+
 export class AuthResponseDto {
   @ApiProperty()
-  accessToken: string;
-
-  @ApiProperty()
-  refreshToken: string;
-
-  @ApiProperty()
-  user: {
-    id: string;
-    firstName: string;
-    lastName: string;
-    email: string;
-    role: string;
-    clinicId: string;
-  };
+  user: AuthUserDto;
 }
 
 export class RefreshTokenDto {
