@@ -8,12 +8,14 @@ import {
   User, Building2, MapPin, CreditCard, 
   CheckCircle2, ArrowRight, ArrowLeft, 
   ShieldCheck, Globe, Zap, Users, QrCode,
-  Eye, EyeOff
+  Eye, EyeOff, Loader2, AlertCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/auth-context";
 
-const steps = ["Account", "Clinic Info", "Branch Setup", "Plan"];
+const steps = ["Account", "Clinic"];
 
 export default function RegisterPage() {
   const [currentStep, setCurrentStep] = useState(0);
@@ -21,27 +23,55 @@ export default function RegisterPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [formData, setFormData] = useState({
     // Account
+    firstName: "",
+    lastName: "",
     email: "",
     password: "",
     confirmPassword: "",
-    fullName: "",
-    // Clinic Info
-    clinicName: "",
-    clinicType: "eye-clinic",
-    country: "Nigeria",
-    // Branch
-    branchName: "Main Branch",
-    address: "",
-    phone: "",
-    // Plan
-    selectedPlan: "growth",
+    // Clinic
+    clinicId: "",
   });
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { register, isAuthenticated } = useAuth();
+  const router = useRouter();
 
   const nextStep = () => setCurrentStep((prev) => Math.min(prev + 1, steps.length - 1));
   const prevStep = () => setCurrentStep((prev) => Math.max(prev - 1, 0));
 
   const updateForm = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+    if (error) setError(null);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (formData.password !== formData.confirmPassword) {
+      setError("Passwords do not match");
+      return;
+    }
+    if (!formData.clinicId) {
+      setError("Please select a clinic");
+      return;
+    }
+
+    setError(null);
+    setIsSubmitting(true);
+
+    try {
+      await register({
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        password: formData.password,
+        clinicId: formData.clinicId,
+      });
+      router.push("/clinic/dashboard");
+    } catch (err: any) {
+      setError(err?.response?.data?.message ?? "Registration failed. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const renderStep = () => {
@@ -56,20 +86,39 @@ export default function RegisterPage() {
           >
             <div className="text-center mb-10">
               <h2 className="text-3xl font-bold text-brand-navy mb-2">Create Your Account</h2>
-              <p className="text-slate-500 text-sm">Start your 14-day free trial. No credit card required.</p>
+              <p className="text-slate-500 text-sm">Join the Vemtap Health ecosystem.</p>
             </div>
             <div className="space-y-4">
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-slate-700">Full Name</label>
-                <div className="relative">
-                  <User className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-                  <input
-                    type="text"
-                    value={formData.fullName}
-                    onChange={(e) => updateForm("fullName", e.target.value)}
-                    className="w-full pl-14 pr-6 py-4 rounded-2xl bg-slate-50 border border-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-blue/50"
-                    placeholder="John Doe"
-                  />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-slate-700">First Name</label>
+                  <div className="relative">
+                    <User className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+                    <input
+                      type="text"
+                      value={formData.firstName}
+                      onChange={(e) => updateForm("firstName", e.target.value)}
+                      className="w-full pl-14 pr-6 py-4 rounded-2xl bg-slate-50 border border-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-blue/50"
+                      placeholder="John"
+                      required
+                      disabled={isSubmitting}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-slate-700">Last Name</label>
+                  <div className="relative">
+                    <User className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+                    <input
+                      type="text"
+                      value={formData.lastName}
+                      onChange={(e) => updateForm("lastName", e.target.value)}
+                      className="w-full pl-14 pr-6 py-4 rounded-2xl bg-slate-50 border border-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-blue/50"
+                      placeholder="Doe"
+                      required
+                      disabled={isSubmitting}
+                    />
+                  </div>
                 </div>
               </div>
               <div className="space-y-2">
@@ -80,6 +129,8 @@ export default function RegisterPage() {
                   onChange={(e) => updateForm("email", e.target.value)}
                   className="w-full px-6 py-4 rounded-2xl bg-slate-50 border border-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-blue/50"
                   placeholder="john@clinic.com"
+                  required
+                  disabled={isSubmitting}
                 />
               </div>
               <div className="space-y-2">
@@ -91,11 +142,15 @@ export default function RegisterPage() {
                     onChange={(e) => updateForm("password", e.target.value)}
                     className="w-full px-6 py-4 rounded-2xl bg-slate-50 border border-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-blue/50"
                     placeholder="••••••••"
+                    required
+                    disabled={isSubmitting}
+                    minLength={6}
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-400 hover:text-brand-blue transition-colors"
+                    disabled={isSubmitting}
                   >
                     {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                   </button>
@@ -110,11 +165,14 @@ export default function RegisterPage() {
                     onChange={(e) => updateForm("confirmPassword", e.target.value)}
                     className="w-full px-6 py-4 rounded-2xl bg-slate-50 border border-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-blue/50"
                     placeholder="••••••••"
+                    required
+                    disabled={isSubmitting}
                   />
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                     className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-400 hover:text-brand-blue transition-colors"
+                    disabled={isSubmitting}
                   >
                     {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                   </button>
@@ -122,12 +180,12 @@ export default function RegisterPage() {
               </div>
             </div>
             <Button 
-              variant="primary" 
+              variant="default" 
               className="w-full py-5 text-lg font-bold rounded-2xl mt-4" 
               onClick={nextStep} 
-              disabled={!formData.email || !formData.password || formData.password !== formData.confirmPassword}
+              disabled={!formData.firstName || !formData.lastName || !formData.email || !formData.password || formData.password !== formData.confirmPassword || isSubmitting}
             >
-              Continue to Clinic Setup
+              Continue to Clinic Selection
             </Button>
             <p className="text-center text-sm text-slate-500">
               Already have an account? <Link href="/login" className="text-brand-blue font-bold">Login</Link>
@@ -143,201 +201,52 @@ export default function RegisterPage() {
             className="space-y-6"
           >
             <div className="text-center mb-10">
-              <h2 className="text-3xl font-bold text-brand-navy mb-2">Clinic Information</h2>
-              <p className="text-slate-500 text-sm">Tell us about your healthcare facility.</p>
+              <h2 className="text-3xl font-bold text-brand-navy mb-2">Select Your Clinic</h2>
+              <p className="text-slate-500 text-sm">Choose the clinic you belong to.</p>
             </div>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-slate-700">Clinic Name</label>
-                <div className="relative">
-                  <Building2 className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-                  <input
-                    type="text"
-                    value={formData.clinicName}
-                    onChange={(e) => updateForm("clinicName", e.target.value)}
-                    className="w-full pl-14 pr-6 py-4 rounded-2xl bg-slate-50 border border-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-blue/50"
-                    placeholder="Vision Eye Clinic"
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-slate-700">Clinic Type</label>
-                <select
-                  value={formData.clinicType}
-                  onChange={(e) => updateForm("clinicType", e.target.value)}
-                  className="w-full px-6 py-4 rounded-2xl bg-slate-50 border border-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-blue/50"
-                >
-                  <option value="eye-clinic">General Eye Clinic</option>
-                  <option value="optical">Optical Center</option>
-                  <option value="ophthalmology">Ophthalmology Hospital</option>
-                  <option value="specialist">Specialist Center</option>
-                </select>
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-slate-700">Country</label>
-                <div className="relative">
-                  <Globe className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-                  <input
-                    type="text"
-                    value={formData.country}
-                    onChange={(e) => updateForm("country", e.target.value)}
-                    className="w-full pl-14 pr-6 py-4 rounded-2xl bg-slate-50 border border-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-blue/50"
-                    placeholder="Nigeria"
-                  />
-                </div>
-              </div>
-            </div>
-            <div className="flex gap-4 pt-4">
-              <Button variant="outline" className="flex-1 py-4 rounded-2xl" onClick={prevStep}>Back</Button>
-              <Button variant="primary" className="flex-1 py-4 rounded-2xl font-bold" onClick={nextStep} disabled={!formData.clinicName}>Continue</Button>
-            </div>
-          </motion.div>
-        );
-      case 2:
-        return (
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            className="space-y-6"
-          >
-            <div className="text-center mb-10">
-              <h2 className="text-3xl font-bold text-brand-navy mb-2">First Branch Setup</h2>
-              <p className="text-slate-500 text-sm">Enter the details for your main location.</p>
-            </div>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-slate-700">Branch Name</label>
-                <input
-                  type="text"
-                  value={formData.branchName}
-                  onChange={(e) => updateForm("branchName", e.target.value)}
-                  className="w-full px-6 py-4 rounded-2xl bg-slate-50 border border-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-blue/50"
-                  placeholder="Main Branch"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-slate-700">Physical Address</label>
-                <div className="relative">
-                  <MapPin className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-                  <input
-                    type="text"
-                    value={formData.address}
-                    onChange={(e) => updateForm("address", e.target.value)}
-                    className="w-full pl-14 pr-6 py-4 rounded-2xl bg-slate-50 border border-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-blue/50"
-                    placeholder="123 Health Ave, Lagos"
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-slate-700">Branch Phone</label>
-                <input
-                  type="tel"
-                  value={formData.phone}
-                  onChange={(e) => updateForm("phone", e.target.value)}
-                  className="w-full px-6 py-4 rounded-2xl bg-slate-50 border border-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-blue/50"
-                  placeholder="+234 ..."
-                />
-              </div>
-            </div>
-            <div className="flex gap-4 pt-4">
-              <Button variant="outline" className="flex-1 py-4 rounded-2xl" onClick={prevStep}>Back</Button>
-              <Button variant="primary" className="flex-1 py-4 rounded-2xl font-bold" onClick={nextStep} disabled={!formData.address || !formData.phone}>Continue</Button>
-            </div>
-          </motion.div>
-        );
-      case 3:
-        return (
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            className="space-y-6"
-          >
-            <div className="text-center mb-10">
-              <h2 className="text-3xl font-bold text-brand-navy mb-2">Choose Your Plan</h2>
-              <p className="text-slate-500 text-sm">Select a plan to complete your registration.</p>
-            </div>
-            <div className="grid grid-cols-1 gap-3 mb-6">
-              {[
-                { id: "starter", title: "Starter", price: "$120/mo", desc: "Single branch focus." },
-                { id: "growth", title: "Growth", price: "$240/mo", desc: "Advanced workflows & OCR." },
-                { id: "enterprise", title: "Enterprise", price: "Custom", desc: "Custom chains & groups." },
-              ].map((plan) => (
-                <button
-                  key={plan.id}
-                  onClick={() => updateForm("selectedPlan", plan.id)}
-                  className={`p-5 rounded-2xl border-2 flex items-center justify-between transition-all ${formData.selectedPlan === plan.id ? "border-brand-blue bg-brand-soft-blue shadow-md" : "border-slate-100 hover:border-brand-blue/30"}`}
-                >
-                  <div className="text-left">
-                    <div className="font-bold text-brand-navy">{plan.title}</div>
-                    <div className="text-xs text-slate-500">{plan.desc}</div>
-                  </div>
-                  <div className="text-right">
-                    <div className="font-bold text-brand-blue">{plan.price}</div>
-                    {formData.selectedPlan === plan.id && <CheckCircle2 className="text-brand-blue inline-block ml-2" size={16} />}
-                  </div>
-                </button>
-              ))}
-            </div>
-            <div className="flex gap-4 pt-4">
-              <Button variant="outline" className="flex-1 py-4 rounded-2xl" onClick={prevStep}>Back</Button>
-              <Button variant="primary" className="flex-1 py-4 rounded-2xl font-bold" onClick={() => setCurrentStep(4)}>Complete Setup</Button>
-            </div>
-          </motion.div>
-        );
-      case 4:
-        return (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="text-center py-6"
-          >
-            <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-8 shadow-inner">
-              <CheckCircle2 size={48} />
-            </div>
-            <h2 className="text-4xl font-bold text-brand-navy mb-4">Registration Complete!</h2>
-            <p className="text-lg text-slate-500 mb-8 max-w-md mx-auto">
-              Welcome to Vemtap Health, <span className="font-bold text-brand-blue">{formData.fullName}</span>! Your clinic dashboard is ready.
-            </p>
             
-            <div className="grid grid-cols-2 gap-4 mb-10 text-left">
-              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100">
-                <div className="text-[10px] font-bold text-slate-400 uppercase mb-2">Branch Status</div>
-                <div className="flex items-center gap-2 font-bold text-brand-navy text-sm">
-                  <div className="w-2 h-2 rounded-full bg-emerald-500" /> {formData.branchName} Active
-                </div>
+            {error && (
+              <div className="mb-6 flex items-center gap-3 p-4 bg-red-50 border border-red-100 rounded-2xl text-red-700 text-sm" role="alert">
+                <AlertCircle size={18} className="flex-shrink-0" />
+                <p>{error}</p>
               </div>
-              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100">
-                <div className="text-[10px] font-bold text-slate-400 uppercase mb-2">QR Generated</div>
-                <div className="flex items-center gap-2 font-bold text-brand-navy text-sm">
-                  <QrCode size={16} className="text-brand-blue" /> Check-in Ready
-                </div>
+            )}
+
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-slate-700">Clinic</label>
+                <select
+                  value={formData.clinicId}
+                  onChange={(e) => updateForm("clinicId", e.target.value)}
+                  className="w-full px-6 py-4 rounded-2xl bg-slate-50 border border-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-blue/50"
+                  required
+                  disabled={isSubmitting}
+                >
+                  <option value="">Select a clinic...</option>
+                  <option value="clinic-1">Vemtap Eye Clinic - Lagos</option>
+                  <option value="clinic-2">Vision Care Center - Abuja</option>
+                  <option value="clinic-3">Eye Specialist Hospital - Port Harcourt</option>
+                </select>
               </div>
             </div>
 
-            <Link href="/dashboard">
-              <Button variant="primary" size="lg" className="w-full py-5 rounded-2xl font-black text-xl gap-3 shadow-2xl shadow-brand-blue/30">
-                Enter My Dashboard <ArrowRight size={24} />
+            <div className="flex gap-4 pt-4">
+              <Button variant="outline" className="flex-1 py-4 rounded-2xl" onClick={prevStep} disabled={isSubmitting}>Back</Button>
+              <Button 
+                variant="default" 
+                className="flex-1 py-4 rounded-2xl font-bold" 
+                onClick={handleSubmit}
+                disabled={!formData.clinicId || isSubmitting}
+              >
+                {isSubmitting ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <Loader2 size={20} className="animate-spin" />
+                    Creating Account...
+                  </span>
+                ) : (
+                  "Complete Registration"
+                )}
               </Button>
-            </Link>
-            
-            <div className="mt-8 pt-8 border-t border-slate-100">
-              <p className="text-sm text-slate-400 mb-4">What's next?</p>
-              <div className="flex justify-center gap-6">
-                <div className="flex flex-col items-center gap-2">
-                  <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-400"><Users size={18} /></div>
-                  <span className="text-[10px] font-bold text-slate-500 uppercase">Invite Staff</span>
-                </div>
-                <div className="flex flex-col items-center gap-2">
-                  <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-400"><ShieldCheck size={18} /></div>
-                  <span className="text-[10px] font-bold text-slate-500 uppercase">Verify HMOs</span>
-                </div>
-                <div className="flex flex-col items-center gap-2">
-                  <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-400"><CreditCard size={18} /></div>
-                  <span className="text-[10px] font-bold text-slate-500 uppercase">Billing Setup</span>
-                </div>
-              </div>
             </div>
           </motion.div>
         );
@@ -345,6 +254,11 @@ export default function RegisterPage() {
         return null;
     }
   };
+
+  if (isAuthenticated) {
+    router.push("/clinic/dashboard");
+    return null;
+  }
 
   return (
     <main className="min-h-screen bg-slate-50 flex flex-col">
