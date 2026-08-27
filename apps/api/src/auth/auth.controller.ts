@@ -1,83 +1,117 @@
-import { Controller, Post, Get, Body, Res, Req, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { Controller, Post, Get, Put, Body, Res, Req, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
 import { Response, Request } from 'express';
+import { ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
-import { LoginDto, RegisterDto } from './dto/auth.dto';
+import { LoginDto, RegisterDto, ChangePasswordDto, ResetPasswordDto, RefreshTokenDto, AuthUserDto, AuthResponseDto } from './dto/auth.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
-import {
-  COOKIE_CONFIG,
-  ACCESS_TOKEN_OPTIONS,
-  REFRESH_TOKEN_OPTIONS,
-} from './cookie.config';
+import { getRefreshCookieOptions, getClearedRefreshCookieOptions, REFRESH_COOKIE_NAME } from './utils/refresh-cookie.util';
 
 @ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly configService: ConfigService,
+  ) {}
 
   @Post('register')
   @ApiOperation({ summary: 'Register a new user' })
-  async register(@Body() dto: RegisterDto, @Res({ passthrough: true }) res: Response) {
-    const { tokens, user } = await this.authService.register(dto);
-    this.setAccessCookie(res, tokens.accessToken);
+  async register(
+    @Body() dto: RegisterDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<AuthResponseDto> {
+    const { tokens, user } = await this.authService.register(dto, {
+      userAgent: req.headers['user-agent'],
+      ip: req.ip,
+    });
     this.setRefreshCookie(res, tokens.refreshToken);
-    return { user };
+    return { accessToken: tokens.accessToken, user };
   }
 
   @Post('login')
   @ApiOperation({ summary: 'Login with email and password' })
-  async login(@Body() dto: LoginDto, @Res({ passthrough: true }) res: Response) {
-    const { tokens, user } = await this.authService.login(dto);
-    this.setAccessCookie(res, tokens.accessToken);
+  async login(
+    @Body() dto: LoginDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<AuthResponseDto> {
+    const { tokens, user } = await this.authService.login(dto, {
+      userAgent: req.headers['user-agent'],
+      ip: req.ip,
+    });
     this.setRefreshCookie(res, tokens.refreshToken);
-    return { user };
+    return { accessToken: tokens.accessToken, user };
   }
 
   @Post('refresh')
-  @ApiOperation({ summary: 'Refresh access token using refresh token cookie' })
-  async refresh(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
-    const refreshToken = req.cookies?.[COOKIE_CONFIG.REFRESH_TOKEN];
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Refresh access token using refresh token from cookie' })
+  async refresh(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<AuthResponseDto | Response> {
+    const refreshToken = req.cookies?.[REFRESH_COOKIE_NAME];
     if (!refreshToken) {
-      return res.status(401).json({ message: 'Refresh token not found' });
+      return res.status(HttpStatus.UNAUTHORIZED).json({ message: 'Refresh token not found' });
     }
-    const { tokens, user } = await this.authService.refreshTokens(refreshToken);
-    this.setAccessCookie(res, tokens.accessToken);
+
+    const { tokens, user } = await this.authService.refreshTokens(refreshToken, {
+      userAgent: req.headers['user-agent'],
+      ip: req.ip,
+    });
     this.setRefreshCookie(res, tokens.refreshToken);
-    return { user };
+    return { accessToken: tokens.accessToken, user };
   }
 
   @Post('logout')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Logout user — clears auth cookies' })
-  async logout(@Res({ passthrough: true }) res: Response) {
-    this.clearAccessCookie(res);
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Logout user — revokes refresh token and clears cookie' })
+  async logout(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const refreshToken = req.cookies?.[REFRESH_COOKIE_NAME];
+    await this.authService.logout(refreshToken ?? '');
     this.clearRefreshCookie(res);
-    return this.authService.logout();
+    return { message: 'Logged out successfully' };
+  }
+
+  @Put('password')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Change password — revokes all user sessions' })
+  async changePassword(
+    @CurrentUser('userId') userId: string,
+    @Body() dto: ChangePasswordDto,
+  ) {
+    return this.authService.changePassword(userId, dto);
+  }
+
+  @Post('reset-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Reset password via email token — revokes all sessions' })
+  async resetPassword(@Body() dto: ResetPasswordDto) {
+    return this.authService.resetPassword(dto);
   }
 
   @Get('profile')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get current user profile' })
-  getProfile(@CurrentUser('id') userId: string) {
-    return this.authService.getProfile(userId);
-  }
-
-  private setAccessCookie(res: Response, token: string) {
-    res.cookie(COOKIE_CONFIG.ACCESS_TOKEN, token, ACCESS_TOKEN_OPTIONS);
+  getProfile(@CurrentUser() user: AuthUserDto) {
+    return user;
   }
 
   private setRefreshCookie(res: Response, token: string) {
-    res.cookie(COOKIE_CONFIG.REFRESH_TOKEN, token, REFRESH_TOKEN_OPTIONS);
-  }
-
-  private clearAccessCookie(res: Response) {
-    res.clearCookie(COOKIE_CONFIG.ACCESS_TOKEN, { path: '/' });
+    res.cookie(REFRESH_COOKIE_NAME, token, getRefreshCookieOptions(this.configService));
   }
 
   private clearRefreshCookie(res: Response) {
-    res.clearCookie(COOKIE_CONFIG.REFRESH_TOKEN, { path: '/api/auth/refresh' });
+    res.cookie(REFRESH_COOKIE_NAME, '', getClearedRefreshCookieOptions());
   }
 }

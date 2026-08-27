@@ -35,21 +35,47 @@ export class RegisterDto {
   clinicId: string;
 }
 
+export class ChangePasswordDto {
+  @ApiProperty()
+  @IsString()
+  @MinLength(6)
+  currentPassword: string;
+
+  @ApiProperty()
+  @IsString()
+  @MinLength(6)
+  newPassword: string;
+}
+
+export class ResetPasswordDto {
+  @ApiProperty({ example: 'john@vemtap.com' })
+  @IsEmail()
+  email: string;
+
+  @ApiProperty()
+  @IsString()
+  @MinLength(6)
+  newPassword: string;
+
+  @ApiProperty({ example: 'reset-token-from-email' })
+  @IsString()
+  token: string;
+}
+
+export class RefreshTokenDto {
+  @ApiProperty({ example: 'opaque-refresh-token' })
+  refreshToken: string;
+}
+
 export class AuthUserDto {
   @ApiProperty()
-  id: string;
-
-  @ApiProperty()
-  firstName: string;
-
-  @ApiProperty()
-  lastName: string;
+  userId: string;
 
   @ApiProperty()
   email: string;
 
   @ApiProperty()
-  role: string;
+  roles: string[];
 
   @ApiProperty()
   clinicId: string;
@@ -57,10 +83,8 @@ export class AuthUserDto {
 
 export class AuthResponseDto {
   @ApiProperty()
-  user: AuthUserDto;
-}
+  accessToken: string;
 
-export class RefreshTokenDto {
-  @ApiProperty({ example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...' })
-  refreshToken: string;
+  @ApiProperty()
+  user: AuthUserDto;
 }

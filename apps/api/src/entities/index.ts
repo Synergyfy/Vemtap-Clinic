@@ -56,3 +56,4 @@ export { QueueAnnouncement, AnnouncementType } from './queue-announcement.entity
 export { CashierTransaction, CashierTransactionStatus, CashierPaymentEntry, CashierCartItem, CashierPaymentMethod } from './cashier-transaction.entity';
 export { CurrencyConfig, CurrencyCode } from './currency-config.entity';
 export { FileUpload, FileCategory } from './file-upload.entity';
+export { RefreshToken } from './refresh-token.entity';
