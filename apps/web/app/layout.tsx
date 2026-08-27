@@ -3,6 +3,8 @@ import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { ModalProvider } from "@/lib/modal-context";
 import { ModalManager } from "@/components/popups/modal-manager";
+import { QueryProvider } from "@/components/providers/query-provider";
+import { AuthProvider } from "@/lib/auth-context";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   variable: "--font-sans",
@@ -24,10 +26,14 @@ export default function RootLayout({
       <body
         className={`${plusJakartaSans.variable} font-sans antialiased min-h-screen flex flex-col selection:bg-brand-blue/20 selection:text-brand-blue`}
       >
-        <ModalProvider>
-          {children}
-          <ModalManager />
-        </ModalProvider>
+        <QueryProvider>
+          <AuthProvider>
+            <ModalProvider>
+              {children}
+              <ModalManager />
+            </ModalProvider>
+          </AuthProvider>
+        </QueryProvider>
       </body>
     </html>
   );
