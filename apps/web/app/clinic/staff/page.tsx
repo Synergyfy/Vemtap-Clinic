@@ -1,30 +1,55 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/app/clinic/_components/page-header";
-import { clinicStaff, clinicShifts as initialShifts, clinicRolePermissions as initialPermissions, formatNGN, type ClinicShift } from "@/app/clinic/_mock/clinic-data";
+import { clinicShifts as initialShifts, clinicRolePermissions as initialPermissions, type ClinicShift } from "@/app/clinic/_mock/clinic-data";
 import { useModals } from "@/lib/modal-context";
 import { cn } from "@/lib/utils";
 import { CalendarDays, Users, ShieldCheck, TrendingUp, Clock, Plus, Trash2, CheckCircle2 } from "lucide-react";
 import { Modal } from "@/components/ui/modal";
 import { Tooltip } from "@/components/ui/tooltip";
+import { useStaff, useCreateStaff, useUpdateStaff, useDeleteStaff, Staff, StaffQueryParams, StaffRole } from "@/hooks/useStaff";
+import { useAuth } from "@/lib/auth-context";
+import { toast } from "sonner";
 
 type TabType = "team" | "shifts" | "permissions";
 
 export default function StaffPage() {
+  const { user } = useAuth();
   const { openModal } = useModals();
   const [activeTab, setActiveTab] = useState<TabType>("team");
   
-  // Interactive State for Shifts
+  // Staff API
+  const queryParams: StaffQueryParams = {
+    clinicId: user?.clinicId,
+    page: 1,
+    limit: 100,
+    sortBy: "createdAt",
+    sortOrder: "DESC",
+  };
+
+  const { 
+    data: staffResponse, 
+    isLoading: isStaffLoading, 
+    refetch: refetchStaff 
+  } = useStaff(queryParams);
+
+  const createStaffMutation = useCreateStaff();
+  const updateStaffMutation = useUpdateStaff();
+  const deleteStaffMutation = useDeleteStaff();
+
+  const staff = staffResponse?.data || [];
+
+// Interactive State for Shifts
   const [roster, setRoster] = useState<ClinicShift[]>(initialShifts);
   const [isShiftModalOpen, setIsShiftModalOpen] = useState(false);
   const [newShift, setNewShift] = useState({
-    staffName: clinicStaff[0]?.name || "",
-    role: clinicStaff[0]?.role || "",
+    staffName: "",
+    role: "",
     day: "Monday",
     shift: "Morning" as const
   });
@@ -56,8 +81,16 @@ export default function StaffPage() {
   const [weekOffset, setWeekOffset] = useState(0);
 
   // Edit Staff State
-  const [editStaff, setEditStaff] = useState<typeof clinicStaff[0] | null>(null);
-  const [editForm, setEditForm] = useState({ name: "", role: "", department: "", phone: "", email: "", status: "" });
+  const [editStaff, setEditStaff] = useState<Staff | null>(null);
+  const [editForm, setEditForm] = useState({ 
+    firstName: "", 
+    lastName: "", 
+    role: "", 
+    department: "", 
+    phone: "", 
+    email: "", 
+    isActive: true 
+  });
 
   // Assign Shift Modal State
   const [assignModal, setAssignModal] = useState<{ day: string; timeSlot: string } | null>(null);
@@ -70,6 +103,16 @@ export default function StaffPage() {
   // Permissions Saved State
   const [permissionsSaved, setPermissionsSaved] = useState(false);
 
+  // Filtered staff
+  const filteredStaff = useMemo(() => {
+    return staff.filter(s => {
+      const matchesRole = !filterRole || s.role === filterRole;
+      const matchesDepartment = !filterDepartment || s.department === filterDepartment;
+      const matchesStatus = !filterStatus || (s.isActive ? "Active" : "Inactive") === filterStatus;
+      return matchesRole && matchesDepartment && matchesStatus;
+    });
+  }, [staff, filterRole, filterDepartment, filterStatus]);
+
   const togglePermission = (role: string, perm: string) => {
     setPermissionsMap(prev => {
       const current = prev[role] || [];
@@ -80,13 +123,62 @@ export default function StaffPage() {
     });
   };
 
+  const handleEditStaff = (staffMember: Staff) => {
+    setEditStaff(staffMember);
+    setEditForm({
+      firstName: staffMember.firstName,
+      lastName: staffMember.lastName,
+      role: staffMember.role,
+      department: staffMember.department || "",
+      phone: staffMember.phone,
+      email: staffMember.email,
+      isActive: staffMember.isActive,
+    });
+  };
+
+  const handleSaveStaff = async () => {
+    if (!editStaff) return;
+    
+    try {
+      await updateStaffMutation.mutateAsync({
+        id: editStaff.id,
+        data: {
+          firstName: editForm.firstName,
+          lastName: editForm.lastName,
+          role: editForm.role as StaffRole,
+          department: editForm.department,
+          phone: editForm.phone,
+          email: editForm.email,
+          isActive: editForm.isActive,
+        },
+      });
+      toast.success("Staff member updated successfully");
+      setEditStaff(null);
+      refetchStaff();
+    } catch (error) {
+      toast.error("Failed to update staff member");
+      console.error("Update staff error:", error);
+    }
+  };
+
+  const handleDeleteStaff = async (staffMember: Staff) => {
+    try {
+      await deleteStaffMutation.mutateAsync(staffMember.id);
+      toast.success("Staff member deleted");
+      refetchStaff();
+    } catch (error) {
+      toast.error("Failed to delete staff member");
+      console.error("Delete staff error:", error);
+    }
+  };
+
   return (
     <div className="space-y-8">
       <PageHeader
         title="Staff Management"
         description="Oversee your clinical team, coordinate shift schedules, and manage role-based access control."
         actions={[
-          { label: "Add Staff Member", onClick: () => openModal("staff"), variant: "primary" },
+          { label: "Add Staff Member", onClick: () => setEditStaff({} as Staff), variant: "primary" },
           { label: "Schedule Shift", onClick: () => setIsShiftModalOpen(true), variant: "outline" },
         ]}
       />
@@ -94,9 +186,9 @@ export default function StaffPage() {
       {/* Analytics Overview */}
       <div className="grid grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-4">
         {[
-          { label: "Total Team", value: clinicStaff.length, sub: "Active members", icon: Users, color: "text-blue-600" },
+          { label: "Total Team", value: staff.length, sub: "Active members", icon: Users, color: "text-blue-600" },
           { label: "Productivity", value: "88%", sub: "+4% from last week", icon: TrendingUp, color: "text-emerald-600" },
-          { label: "On Duty Now", value: 6, sub: "Across all branches", icon: Clock, color: "text-amber-600" },
+          { label: "On Duty Now", value: staff.filter(s => s.isActive).length, sub: "Across all branches", icon: Clock, color: "text-amber-600" },
           { label: "Open Shifts", value: 2, sub: "For upcoming week", icon: CalendarDays, color: "text-rose-600" },
         ].map((stat, i) => (
           <Card key={i} className="border-none shadow-sm bg-white overflow-hidden">
@@ -140,7 +232,7 @@ export default function StaffPage() {
       </div>
 
       <div className="space-y-6">
-        {activeTab === "team" && (
+{activeTab === "team" && (
           <Card className="border-none shadow-sm rounded-3xl overflow-hidden">
             <CardHeader className="border-b border-slate-50 px-4 sm:px-8 py-4 sm:py-6">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -151,7 +243,7 @@ export default function StaffPage() {
                       <span className="hidden sm:inline uppercase tracking-wider">Filter</span>
                     </Button>
                     <Button variant="outline" size="sm" className="rounded-xl font-bold text-xs" onClick={() => {
-                      const csv = "Name,Role,Department,Status\n" + clinicStaff.map(s => `${s.name},${s.role},${s.department},${s.status}`).join("\n");
+                      const csv = "Name,Role,Department,Status\n" + staff.map(s => `${s.firstName} ${s.lastName},${s.role},${s.department || ""},${s.isActive ? "Active" : "Inactive"}`).join("\n");
                       const blob = new Blob([csv], {type:"text/csv"});
                       const url = URL.createObjectURL(blob);
                       const a = document.createElement("a");
@@ -169,7 +261,7 @@ export default function StaffPage() {
                 <div className="flex flex-wrap gap-3 px-8 py-4 bg-slate-50 border-t border-slate-100">
                   <select value={filterRole} onChange={e => setFilterRole(e.target.value)} className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 outline-none">
                     <option value="">All Roles</option>
-                    <option>Doctor</option><option>Nurse</option><option>Receptionist</option><option>Optometrist</option><option>Optician</option><option>Pharmacist</option><option>Cashier</option>
+                    <option>doctor</option><option>nurse</option><option>receptionist</option><option>optometrist</option><option>optician</option><option>pharmacist</option><option>cashier</option><option>lab_technician</option><option>admin</option>
                   </select>
                   <select value={filterDepartment} onChange={e => setFilterDepartment(e.target.value)} className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 outline-none">
                     <option value="">All Departments</option>
@@ -186,26 +278,28 @@ export default function StaffPage() {
             <CardContent className="p-0">
                {/* Mobile: card list */}
                <div className="md:hidden divide-y divide-slate-100">
-                 {clinicStaff.filter(s => !filterRole || s.role === filterRole).filter(s => !filterDepartment || s.department === filterDepartment).filter(s => !filterStatus || s.status === filterStatus).map((staff) => (
-                   <div key={staff.id} className="p-4">
+                 {filteredStaff.map((staffMember) => (
+                   <div key={staffMember.id} className="p-4">
                      <div className="flex items-start justify-between gap-3">
                        <div className="flex items-center gap-3 min-w-0">
                          <div className="w-9 h-9 rounded-full bg-sky-100 flex items-center justify-center text-sky-700 font-bold text-xs shrink-0">
-                           {staff.name.split(' ').map(n => n[0]).join('')}
+                           {staffMember.firstName[0]}{staffMember.lastName[0]}
                          </div>
                          <div className="min-w-0">
-                           <p className="font-bold text-slate-900 text-sm truncate">{staff.name}</p>
-                           <p className="text-[10px] text-slate-500 truncate">{staff.role} • {staff.department}</p>
+                           <p className="font-bold text-slate-900 text-sm truncate">{staffMember.firstName} {staffMember.lastName}</p>
+                           <p className="text-[10px] text-slate-500 truncate">{staffMember.role} • {staffMember.department || ""}</p>
                          </div>
                        </div>
                        <div className="shrink-0 flex flex-col items-end gap-1">
-                         <Badge className={cn("rounded-lg px-2 py-0.5 text-[10px] font-black uppercase", staff.status === "Active" ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500")}>{staff.status}</Badge>
-                         <button onClick={() => { setEditStaff(staff); setEditForm({ name: staff.name, role: staff.role, department: staff.department, phone: "", email: staff.email, status: staff.status }); }} className="text-[10px] font-bold text-sky-600">Edit</button>
+                         <Badge className={cn("rounded-lg px-2 py-0.5 text-[10px] font-black uppercase", staffMember.isActive ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500")}>
+                           {staffMember.isActive ? "Active" : "Inactive"}
+                         </Badge>
+                         <button onClick={() => handleEditStaff(staffMember)} className="text-[10px] font-bold text-sky-600">Edit</button>
                        </div>
                      </div>
                    </div>
                  ))}
-                 {clinicStaff.filter(s => !filterRole || s.role === filterRole).filter(s => !filterDepartment || s.department === filterDepartment).filter(s => !filterStatus || s.status === filterStatus).length === 0 && (
+                 {filteredStaff.length === 0 && (
                    <p className="p-8 text-center text-sm text-slate-500">No staff members match filters.</p>
                  )}
                </div>
@@ -222,21 +316,21 @@ export default function StaffPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {clinicStaff.filter(s => !filterRole || s.role === filterRole).filter(s => !filterDepartment || s.department === filterDepartment).filter(s => !filterStatus || s.status === filterStatus).map((staff) => (
-                    <TableRow key={staff.id} className="hover:bg-slate-50/50 border-slate-50">
+                  {filteredStaff.map((staffMember) => (
+                    <TableRow key={staffMember.id} className="hover:bg-slate-50/50 border-slate-50">
                       <TableCell className="px-8 py-4">
                         <div className="flex items-center gap-3">
                           <div className="w-9 h-9 rounded-full bg-sky-100 flex items-center justify-center text-sky-700 font-bold text-xs">
-                            {staff.name.split(' ').map(n => n[0]).join('')}
+                            {staffMember.firstName[0]}{staffMember.lastName[0]}
                           </div>
                           <div>
-                            <p className="font-bold text-slate-900 text-sm">{staff.name}</p>
-                            <p className="text-xs text-slate-500">{staff.email}</p>
+                            <p className="font-bold text-slate-900 text-sm">{staffMember.firstName} {staffMember.lastName}</p>
+                            <p className="text-xs text-slate-500">{staffMember.email}</p>
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell className="py-4 font-medium text-slate-600 text-sm">{staff.role}</TableCell>
-                      <TableCell className="py-4 text-slate-500 text-sm">{staff.department}</TableCell>
+                      <TableCell className="py-4 font-medium text-slate-600 text-sm">{staffMember.role}</TableCell>
+                      <TableCell className="py-4 text-slate-500 text-sm">{staffMember.department || ""}</TableCell>
                       <TableCell className="py-4">
                         <div className="flex items-center gap-2">
                            <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden max-w-[80px]">
@@ -246,18 +340,23 @@ export default function StaffPage() {
                         </div>
                       </TableCell>
                       <TableCell className="py-4">
-                        <Badge className={cn("rounded-lg px-2 py-0.5 text-[10px] font-black uppercase tracking-wider", staff.status === "Active" ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500")}>{staff.status}</Badge>
+                        <Badge className={cn("rounded-lg px-2 py-0.5 text-[10px] font-black uppercase tracking-wider", staffMember.isActive ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500")}>
+                          {staffMember.isActive ? "Active" : "Inactive"}
+                        </Badge>
                       </TableCell>
                       <TableCell className="px-8 py-4 text-right">
-                         <Button variant="ghost" size="sm" className="font-bold text-sky-600 hover:text-sky-700 hover:bg-sky-50 rounded-xl" onClick={() => { setEditStaff(staff); setEditForm({ name: staff.name, role: staff.role, department: staff.department, phone: "", email: staff.email, status: staff.status }); }}>Edit</Button>
+                        <div className="flex items-center justify-end gap-2">
+                          <Button variant="ghost" size="sm" className="font-bold text-sky-600 hover:text-sky-700 hover:bg-sky-50 rounded-xl" onClick={() => handleEditStaff(staffMember)}>Edit</Button>
+                          <Button variant="ghost" size="sm" className="font-bold text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded-xl" onClick={() => handleDeleteStaff(staffMember)}>Delete</Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
                </Table></div>
              </CardContent>
-          </Card>
-        )}
+           </Card>
+         )}
 
         {activeTab === "shifts" && (
           <div className="grid grid-cols-1 lg:grid-cols-7 gap-6">
@@ -446,11 +545,11 @@ export default function StaffPage() {
                             className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 outline-none"
                             value={newShift.staffName}
                             onChange={(e) => {
-                            const staff = clinicStaff.find(s => s.name === e.target.value);
-                            setNewShift({...newShift, staffName: e.target.value, role: staff?.role || ""});
+                            const selectedStaff = staff.find(s => `${s.firstName} ${s.lastName}` === e.target.value);
+                            setNewShift({...newShift, staffName: e.target.value, role: selectedStaff?.role || ""});
                             }}
                         >
-                            {clinicStaff.map(s => <option key={s.id}>{s.name}</option>)}
+                            {staff.map(s => <option key={s.id}>{s.firstName} {s.lastName}</option>)}
                         </select>
                       </Tooltip>
                   </div>
@@ -493,15 +592,29 @@ export default function StaffPage() {
       {/* Edit Staff Modal */}
       <Modal isOpen={!!editStaff} onClose={() => setEditStaff(null)} title="Edit Staff Member">
         <div className="space-y-4 py-2">
-          <div>
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Name</label>
-            <input value={editForm.name} onChange={e => setEditForm({...editForm, name: e.target.value})} className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 outline-none" />
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">First Name</label>
+              <input value={editForm.firstName} onChange={e => setEditForm({...editForm, firstName: e.target.value})} className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 outline-none" />
+            </div>
+            <div>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Last Name</label>
+              <input value={editForm.lastName} onChange={e => setEditForm({...editForm, lastName: e.target.value})} className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 outline-none" />
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Role</label>
               <select value={editForm.role} onChange={e => setEditForm({...editForm, role: e.target.value})} className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 outline-none">
-                <option>Doctor</option><option>Nurse</option><option>Receptionist</option><option>Optometrist</option><option>Optician</option><option>Pharmacist</option><option>Cashier</option>
+                <option value="doctor">Doctor</option>
+                <option value="nurse">Nurse</option>
+                <option value="receptionist">Receptionist</option>
+                <option value="optometrist">Optometrist</option>
+                <option value="optician">Optician</option>
+                <option value="pharmacist">Pharmacist</option>
+                <option value="cashier">Cashier</option>
+                <option value="lab_technician">Lab Technician</option>
+                <option value="admin">Admin</option>
               </select>
             </div>
             <div>
@@ -521,15 +634,14 @@ export default function StaffPage() {
           </div>
           <div>
             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Status</label>
-            <select value={editForm.status} onChange={e => setEditForm({...editForm, status: e.target.value as "Active" | "Inactive"})} className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 outline-none">
-              <option>Active</option><option>Inactive</option>
+            <select value={editForm.isActive ? "Active" : "Inactive"} onChange={e => setEditForm({...editForm, isActive: e.target.value === "Active"})} className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 outline-none">
+              <option value="Active">Active</option>
+              <option value="Inactive">Inactive</option>
             </select>
           </div>
           <div className="flex justify-end gap-2 pt-4 border-t border-slate-50">
             <button onClick={() => setEditStaff(null)} className="rounded-full border px-4 py-2 text-sm font-bold text-slate-600 hover:bg-slate-50">Cancel</button>
-            <button onClick={() => {
-              setEditStaff(null);
-            }} className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-700">Save</button>
+            <button onClick={handleSaveStaff} className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-700">Save</button>
           </div>
         </div>
       </Modal>
@@ -540,7 +652,7 @@ export default function StaffPage() {
           <div>
             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Staff Member</label>
             <select className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 outline-none">
-              {clinicStaff.map(s => <option key={s.id}>{s.name}</option>)}
+              {staff.map(s => <option key={s.id}>{s.firstName} {s.lastName}</option>)}
             </select>
           </div>
           <div>

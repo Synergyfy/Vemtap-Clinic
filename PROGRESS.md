@@ -42,7 +42,7 @@ Integrating the NestJS API backend (~210 endpoints, 32 modules) with the Next.js
 |--------|---------------|----------------|----------|--------|
 | 3.1 Patients | `POST/GET/PUT/DELETE /api/patients` | `reception/patients/`, `clinic/patients/`, `patient/` | HIGH | ✅ DONE |
 | 3.2 Appointments | `POST/GET/PUT/DELETE /api/appointments` + `/calendar`, `/today`, `/available-slots`, `/stats` | `reception/appointments/`, `clinic/appointments/`, `doctor/appointments/`, `patient/appointments/` | HIGH | ✅ DONE |
-| 3.3 Staff | `POST/GET/PUT/DELETE /api/staff` | `clinic/staff/`, `admin/` | MEDIUM | NOT STARTED |
+| 3.3 Staff | `POST/GET/PUT/DELETE /api/staff` | `clinic/staff/`, `admin/` | MEDIUM | ✅ DONE |
 | 3.4 Queue | `POST/GET/PUT /api/queue` + `/next`, `/stats`, `/announcements`, `/reset` | `reception/queue/`, `clinic/queue/`, `queue-display/` | HIGH | NOT STARTED |
 | 3.5 Branches | `POST/GET/PUT/DELETE /api/branches` | `clinic/branches/`, `admin/clinics/` | MEDIUM | NOT STARTED |
 | 3.6 Dashboard | `GET /api/dashboard`, `/revenue`, `/appointments`, `/hmo` | All `*/dashboard/` pages | HIGH | NOT STARTED |
@@ -102,6 +102,7 @@ Integrating the NestJS API backend (~210 endpoints, 32 modules) with the Next.js
 | `ab6381f` | feat(web): Phase 2 - Auth module integration | **Phase 2** |
 | *(pending)* | feat(web): Phase 3.1 - Patients module integration | **Phase 3** |
 | *(pending)* | feat(web): Phase 3.2 - Appointments module integration | **Phase 3** |
+| *(pending)* | feat(web): Phase 3.3 - Staff module integration | **Phase 3** |
 
 ---
 
@@ -145,7 +146,19 @@ Integrating the NestJS API backend (~210 endpoints, 32 modules) with the Next.js
 - [x] Pagination works
 - [x] Search/debounce works
 
-### Phase 3.3+ (Each Module)
+### Phase 3.3 Staff ✅
+- [x] Build passes
+- [x] TypeScript passes
+- [x] Service file created (`services/staff.service.ts`)
+- [x] Hooks created (`hooks/useStaff.ts`)
+- [x] Pages refactored to use API (`clinic/staff/page.tsx`)
+- [x] Mock store data removed
+- [x] Error handling (toast)
+- [x] Loading states
+- [x] Pagination works
+- [x] Search/debounce works
+
+### Phase 3.4+ (Each Module)
 - [ ] Build passes
 - [ ] TypeScript passes
 - [ ] Service file created (`services/<module>.service.ts`)
@@ -161,6 +174,6 @@ Integrating the NestJS API backend (~210 endpoints, 32 modules) with the Next.js
 
 ## Current Status Summary
 - **Backend:** 32 modules, ~210 endpoints, dual-token auth with HTTP-only cookies
-- **Frontend:** Phase 1, 2, 3.1 & 3.2 complete — auth foundation + auth pages + patients + appointments modules integrated
-- **Next:** Phase 3.3 (Staff module)
+- **Frontend:** Phase 1, 2, 3.1, 3.2 & 3.3 complete — auth foundation + auth pages + patients + appointments + staff modules integrated
+- **Next:** Phase 3.4 (Queue module)
 - **Blockers:** None (macOS file descriptor limit during build is system-level, not code)
