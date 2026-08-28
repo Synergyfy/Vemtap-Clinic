@@ -1,4 +1,6 @@
-import React from "react";
+"use client";
+
+import React, { useMemo } from "react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -6,93 +8,113 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { cn } from "@/lib/utils";
 import { Calendar, Clock, DollarSign, Eye, Users } from "lucide-react";
 import { PageHeader } from "@/app/clinic/_components/page-header";
+import { useAuth } from "@/lib/auth-context";
 import {
-  clinicAppointmentsToday,
-  clinicHmoClaims,
-  clinicInvoicesToday,
-  clinicOpticalOrders,
-  clinicPharmacyItems,
-  clinicQueue,
-  clinicStaffOnDuty,
-  formatNGN,
-} from "@/app/clinic/_mock/clinic-data";
-
-const revenueTrend = [
-  { day: "Mon", amount: 98000 },
-  { day: "Tue", amount: 142000 },
-  { day: "Wed", amount: 121000 },
-  { day: "Thu", amount: 88000 },
-  { day: "Fri", amount: 157000 },
-  { day: "Sat", amount: 110000 },
-  { day: "Sun", amount: 76000 },
-];
+  useDashboardOverview,
+  useDashboardRevenue,
+  useDashboardHMOAnalytics,
+} from "@/hooks/useDashboard";
+import { useQueue } from "@/hooks/useQueue";
+import { useStaff } from "@/hooks/useStaff";
 
 function statusBadge(status: string) {
-  if (status === "Urgent") return <Badge className="bg-rose-600 text-white">Urgent</Badge>;
-  if (status === "In-service") return <Badge className="bg-amber-600 text-white">In service</Badge>;
-  if (status === "Waiting") return <Badge variant="secondary">Waiting</Badge>;
-  if (status === "Done") return <Badge className="bg-emerald-600 text-white">Done</Badge>;
-  if (status === "Checked-in") return <Badge className="bg-sky-600 text-white">Checked-in</Badge>;
-  if (status === "In-progress") return <Badge className="bg-amber-600 text-white">In progress</Badge>;
-  if (status === "Scheduled") return <Badge variant="outline">Scheduled</Badge>;
-  if (status === "Completed") return <Badge className="bg-emerald-600 text-white">Completed</Badge>;
-  if (status === "Cancelled") return <Badge className="bg-slate-200 text-slate-700">Cancelled</Badge>;
-  if (status === "Draft") return <Badge variant="outline">Draft</Badge>;
-  if (status === "In production") return <Badge className="bg-amber-600 text-white">In production</Badge>;
-  if (status === "Ready") return <Badge className="bg-emerald-600 text-white">Ready</Badge>;
-  if (status === "Dispensed") return <Badge className="bg-slate-200 text-slate-700">Dispensed</Badge>;
-  if (status === "On duty") return <Badge className="bg-emerald-600 text-white">On duty</Badge>;
-  if (status === "Break") return <Badge className="bg-amber-600 text-white">Break</Badge>;
-  if (status === "Off duty") return <Badge className="bg-slate-200 text-slate-700">Off duty</Badge>;
+  const s = status?.toLowerCase();
+  if (s === "urgent") return <Badge className="bg-rose-600 text-white">Urgent</Badge>;
+  if (s === "in_progress" || s === "in-progress" || s === "in-progress") return <Badge className="bg-amber-600 text-white">In progress</Badge>;
+  if (s === "waiting") return <Badge variant="secondary">Waiting</Badge>;
+  if (s === "completed" || s === "done") return <Badge className="bg-emerald-600 text-white">Done</Badge>;
+  if (s === "checked-in" || s === "checked_in") return <Badge className="bg-sky-600 text-white">Checked-in</Badge>;
+  if (s === "scheduled") return <Badge variant="outline">Scheduled</Badge>;
+  if (s === "cancelled") return <Badge className="bg-slate-200 text-slate-700">Cancelled</Badge>;
+  if (s === "in_production" || s === "in production") return <Badge className="bg-amber-600 text-white">In production</Badge>;
+  if (s === "ready") return <Badge className="bg-emerald-600 text-white">Ready</Badge>;
+  if (s === "dispensed") return <Badge className="bg-slate-200 text-slate-700">Dispensed</Badge>;
+  if (s === "on_duty" || s === "on duty") return <Badge className="bg-emerald-600 text-white">On duty</Badge>;
+  if (s === "break") return <Badge className="bg-amber-600 text-white">Break</Badge>;
+  if (s === "off_duty" || s === "off duty") return <Badge className="bg-slate-200 text-slate-700">Off duty</Badge>;
+  if (s === "submitted") return <Badge className="bg-sky-600 text-white">Submitted</Badge>;
+  if (s === "approved") return <Badge className="bg-emerald-600 text-white">Approved</Badge>;
+  if (s === "settled") return <Badge className="bg-emerald-600 text-white">Settled</Badge>;
+  if (s === "denied" || s === "rejected") return <Badge className="bg-rose-600 text-white">Rejected</Badge>;
   return <Badge variant="outline">{status}</Badge>;
 }
 
+function formatNGN(value: number) {
+  return new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 }).format(value);
+}
+
+function computeWaitMinutes(createdAt: string): number {
+  const diff = Date.now() - new Date(createdAt).getTime();
+  return Math.max(0, Math.round(diff / 60000));
+}
+
+function getPatientName(patient: { firstName: string; lastName: string } | undefined): string {
+  if (!patient) return "Unknown Patient";
+  return `${patient.firstName} ${patient.lastName}`;
+}
+
 export default function ClinicDashboard() {
+  const { user } = useAuth();
+  const clinicId = user?.clinicId || null;
+
   const todayISO = new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Lagos" }).format(new Date());
-  const activeQueueCount = clinicQueue.filter((q) => q.status !== "Done").length;
-  const todayPatients = clinicAppointmentsToday.length;
-  const revenuePaid = clinicInvoicesToday.filter((i) => i.status === "Paid").reduce((acc, i) => acc + i.amount, 0);
-  const openOpticalOrders = clinicOpticalOrders.filter((o) => o.status !== "Dispensed").length;
 
-  const lowStock = clinicPharmacyItems.filter((i) => i.stock <= i.reorderLevel).length;
-  const queriedClaims = clinicHmoClaims.filter((c) => c.status === "Queried").length;
+  const sevenDaysAgo = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 7);
+    return d.toISOString().split("T")[0];
+  }, []);
 
-  const privateRevenue = clinicInvoicesToday
-    .filter((i) => i.payerType === "Private" && i.status !== "Voided")
-    .reduce((acc, i) => acc + i.amount, 0);
-  const hmoRevenue = clinicInvoicesToday
-    .filter((i) => i.payerType === "HMO" && i.status !== "Voided")
-    .reduce((acc, i) => acc + i.amount, 0);
-  const revenueTotal = privateRevenue + hmoRevenue;
-  const privatePct = revenueTotal ? Math.round((privateRevenue / revenueTotal) * 100) : 0;
-  const hmoPct = revenueTotal ? 100 - privatePct : 0;
+  const { data: overview, isLoading: overviewLoading } = useDashboardOverview(clinicId);
+  const { data: revenueData } = useDashboardRevenue(clinicId, sevenDaysAgo, todayISO);
+  const { data: hmoAnalytics } = useDashboardHMOAnalytics(clinicId);
+  const { data: queueResponse } = useQueue({ clinicId: clinicId || undefined, limit: 10 });
+  const { data: staffResponse } = useStaff({ clinicId: clinicId || undefined, isActive: true, limit: 10 });
 
-  const pendingInvoices = clinicInvoicesToday.filter((i) => i.status === "Pending").length;
-  const longWaitQueue = clinicQueue.filter((q) => q.status !== "Done" && q.waitMinutes >= 15).length;
-  const overdueOpticalOrders = clinicOpticalOrders.filter((o) => o.status !== "Dispensed" && o.dueISO < todayISO).length;
+  const queueEntries = queueResponse?.data || [];
+  const staffList = staffResponse?.data || [];
 
-  const maxRevenue = Math.max(...revenueTrend.map((r) => r.amount));
+  const maxRevenue = useMemo(() => {
+    if (!revenueData || revenueData.length === 0) return 1;
+    return Math.max(...revenueData.map((r) => r.collected || 0), 1);
+  }, [revenueData]);
+
+  const totalRevenueCollected = useMemo(() => {
+    if (!revenueData) return 0;
+    return revenueData.reduce((sum, r) => sum + (r.collected || 0), 0);
+  }, [revenueData]);
+
+  const totalRevenueOutstanding = overview?.revenue?.outstanding || 0;
+
+  const hmoSubmittedClaims = useMemo(() => {
+    if (!hmoAnalytics?.byStatus) return 0;
+    return hmoAnalytics.byStatus.reduce((sum, s) => sum + Number(s.count || 0), 0);
+  }, [hmoAnalytics]);
+
+  const hmoPendingClaims = overview?.hmo?.pendingClaims || 0;
 
   return (
     <div className="space-y-8">
       <PageHeader
         title="Clinic Dashboard"
-        description="Operational overview for today: patients, queue, appointments, revenue, HMO, optical, staff, and alerts."
+        description="Operational overview for today: patients, queue, appointments, revenue, HMO, staff, and alerts."
         actions={[
           { label: "Register patient", href: "/clinic/patients", variant: "primary" },
           { label: "Create appointment", href: "/clinic/appointments" },
           { label: "Verify HMO", href: "/clinic/hmo" },
           { label: "Create invoice", href: "/clinic/finance" },
-          { label: "Add lens order", href: "/clinic/optical" },
         ]}
       />
 
+      {/* KPI Cards */}
       <div className="grid grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-4">
         <Card>
           <CardContent className="p-3 sm:p-6 flex items-center justify-between gap-2">
             <div className="min-w-0">
               <p className="text-[11px] sm:text-sm font-medium text-slate-500">Today&apos;s patients</p>
-              <p className="mt-1 text-xl sm:text-2xl font-bold text-slate-900 tabular-nums">{todayPatients}</p>
+              <p className="mt-1 text-xl sm:text-2xl font-bold text-slate-900 tabular-nums">
+                {overviewLoading ? "—" : overview?.patients?.total ?? 0}
+              </p>
             </div>
             <div className="p-2 sm:p-3 rounded-xl bg-slate-100 text-sky-700 shrink-0">
               <Users size={20} />
@@ -103,7 +125,9 @@ export default function ClinicDashboard() {
           <CardContent className="p-3 sm:p-6 flex items-center justify-between gap-2">
             <div className="min-w-0">
               <p className="text-[11px] sm:text-sm font-medium text-slate-500">Active queue</p>
-              <p className="mt-1 text-xl sm:text-2xl font-bold text-slate-900 tabular-nums">{activeQueueCount}</p>
+              <p className="mt-1 text-xl sm:text-2xl font-bold text-slate-900 tabular-nums">
+                {overviewLoading ? "—" : (overview?.queue?.waiting ?? 0) + (overview?.queue?.inProgress ?? 0)}
+              </p>
             </div>
             <div className="p-2 sm:p-3 rounded-xl bg-slate-100 text-amber-700 shrink-0">
               <Clock size={20} />
@@ -113,8 +137,10 @@ export default function ClinicDashboard() {
         <Card>
           <CardContent className="p-3 sm:p-6 flex items-center justify-between gap-2">
             <div className="min-w-0">
-              <p className="text-[11px] sm:text-sm font-medium text-slate-500">Revenue (paid)</p>
-              <p className="mt-1 text-xl sm:text-2xl font-bold text-slate-900 tabular-nums truncate">{formatNGN(revenuePaid)}</p>
+              <p className="text-[11px] sm:text-sm font-medium text-slate-500">Revenue (today)</p>
+              <p className="mt-1 text-xl sm:text-2xl font-bold text-slate-900 tabular-nums truncate">
+                {overviewLoading ? "—" : formatNGN(overview?.revenue?.today ?? 0)}
+              </p>
             </div>
             <div className="p-2 sm:p-3 rounded-xl bg-slate-100 text-emerald-700 shrink-0">
               <DollarSign size={20} />
@@ -124,8 +150,10 @@ export default function ClinicDashboard() {
         <Card>
           <CardContent className="p-3 sm:p-6 flex items-center justify-between gap-2">
             <div className="min-w-0">
-              <p className="text-[11px] sm:text-sm font-medium text-slate-500">Open optical orders</p>
-              <p className="mt-1 text-xl sm:text-2xl font-bold text-slate-900 tabular-nums">{openOpticalOrders}</p>
+              <p className="text-[11px] sm:text-sm font-medium text-slate-500">Staff on duty</p>
+              <p className="mt-1 text-xl sm:text-2xl font-bold text-slate-900 tabular-nums">
+                {overviewLoading ? "—" : overview?.staff?.onDuty ?? 0}
+              </p>
             </div>
             <div className="p-2 sm:p-3 rounded-xl bg-slate-100 text-purple-700 shrink-0">
               <Eye size={20} />
@@ -134,149 +162,7 @@ export default function ClinicDashboard() {
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
-          <CardHeader className="flex-row items-center justify-between">
-            <CardTitle>Optical orders</CardTitle>
-            <Link href="/clinic/optical" className="text-sm font-medium text-sky-700 hover:text-sky-800">
-              View all
-            </Link>
-          </CardHeader>
-          <CardContent>
-            {/* Mobile: compact card list */}
-            <div className="md:hidden space-y-2">
-              {clinicOpticalOrders.slice(0, 4).map((o) => (
-                <div key={o.id} className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 p-3">
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-slate-900 truncate">{o.patientName}</p>
-                    <p className="text-xs text-slate-500 truncate">{o.lens} • {o.frame}</p>
-                  </div>
-                  <div className="shrink-0 flex items-center gap-2">
-                    <span className="text-[10px] font-medium text-slate-400 tabular-nums whitespace-nowrap">{o.dueISO}</span>
-                    {statusBadge(o.status)}
-                  </div>
-                </div>
-              ))}
-            </div>
-            {/* Desktop: full table */}
-            <div className="hidden md:block overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Patient</TableHead>
-                    <TableHead>Lens</TableHead>
-                    <TableHead>Frame</TableHead>
-                    <TableHead>Due</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {clinicOpticalOrders.map((o) => (
-                    <TableRow key={o.id}>
-                      <TableCell className="font-medium">{o.patientName}</TableCell>
-                      <TableCell>{o.lens}</TableCell>
-                      <TableCell>{o.frame}</TableCell>
-                      <TableCell className="tabular-nums">{o.dueISO}</TableCell>
-                      <TableCell>{statusBadge(o.status)}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex-row items-center justify-between">
-            <CardTitle>Staff on duty</CardTitle>
-            <Link href="/clinic/settings" className="text-sm font-medium text-sky-700 hover:text-sky-800">
-              Manage staff
-            </Link>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {clinicStaffOnDuty.slice(0, 7).map((s) => (
-              <div key={s.id} className="rounded-xl border border-slate-200 p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="font-semibold text-slate-900 truncate">{s.name}</p>
-                    <p className="mt-0.5 text-sm text-slate-500 truncate">
-                      {s.role} • {s.department}
-                    </p>
-                  </div>
-                  <div className="shrink-0 text-right">
-                    <p className="text-sm font-medium text-slate-700">{s.shift}</p>
-                    <div className="mt-2">{statusBadge(s.status)}</div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card>
-        <CardHeader className="flex-row items-center justify-between">
-          <CardTitle>Alerts</CardTitle>
-          <div className="hidden sm:flex items-center gap-3">
-            <Link href="/clinic/queue" className="text-sm font-medium text-sky-700 hover:text-sky-800">
-              Queue
-            </Link>
-            <Link href="/clinic/pharmacy" className="text-sm font-medium text-sky-700 hover:text-sky-800">
-              Pharmacy
-            </Link>
-            <Link href="/clinic/hmo" className="text-sm font-medium text-sky-700 hover:text-sky-800">
-              HMO
-            </Link>
-            <Link href="/clinic/optical" className="text-sm font-medium text-sky-700 hover:text-sky-800">
-              Optical
-            </Link>
-            <Link href="/clinic/finance" className="text-sm font-medium text-sky-700 hover:text-sky-800">
-              Billing
-            </Link>
-          </div>
-        </CardHeader>
-        <CardContent className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <div className="rounded-xl border border-slate-200 p-4">
-            <p className="text-sm font-semibold text-slate-900">Pharmacy stock</p>
-            <p className="mt-1 text-sm text-slate-500">{lowStock} item(s) at/below reorder level</p>
-          </div>
-          <div className="rounded-xl border border-slate-200 p-4">
-            <p className="text-sm font-semibold text-slate-900">HMO claims</p>
-            <p className="mt-1 text-sm text-slate-500">{queriedClaims} queried claim(s) require action</p>
-          </div>
-          <div className="rounded-xl border border-slate-200 p-4">
-            <p className="text-sm font-semibold text-slate-900">Billing</p>
-            <p className="mt-1 text-sm text-slate-500">{pendingInvoices} pending invoice(s) today</p>
-          </div>
-          <div className="rounded-xl border border-slate-200 p-4">
-            <p className="text-sm font-semibold text-slate-900">Queue wait</p>
-            <p className="mt-1 text-sm text-slate-500">{longWaitQueue} patient(s) waiting 15+ minutes</p>
-          </div>
-          <div className="rounded-xl border border-slate-200 p-4">
-            <p className="text-sm font-semibold text-slate-900">Optical pickups</p>
-            <p className="mt-1 text-sm text-slate-500">
-              {clinicOpticalOrders.filter((o) => o.status === "Ready").length} order(s) ready for pickup
-            </p>
-          </div>
-          <div className="rounded-xl border border-slate-200 p-4">
-            <p className="text-sm font-semibold text-slate-900">Optical overdue</p>
-            <p className="mt-1 text-sm text-slate-500">{overdueOpticalOrders} order(s) past due date</p>
-          </div>
-          <div className="rounded-xl border border-slate-200 p-4">
-            <p className="text-sm font-semibold text-slate-900">Appointments</p>
-            <p className="mt-1 text-sm text-slate-500">
-              {clinicAppointmentsToday.filter((a) => a.status === "Scheduled").length} scheduled remaining
-            </p>
-          </div>
-          <div className="rounded-xl border border-slate-200 p-4">
-            <p className="text-sm font-semibold text-slate-900">Priority cases</p>
-            <p className="mt-1 text-sm text-slate-500">
-              {clinicQueue.filter((q) => q.priority === "Urgent" && q.status !== "Done").length} urgent in queue
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-
+      {/* Queue Overview + Staff */}
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <CardHeader className="flex-row items-center justify-between">
@@ -286,44 +172,50 @@ export default function ClinicDashboard() {
             </Link>
           </CardHeader>
           <CardContent>
-            {/* Mobile: compact card list */}
             <div className="md:hidden space-y-2">
-              {clinicQueue.slice(0, 4).map((q) => (
+              {queueEntries.slice(0, 4).map((q) => (
                 <div key={q.id} className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 p-3">
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold text-slate-900 truncate">{q.patientName}</p>
-                    <p className="text-xs text-slate-500 truncate">{q.stage}</p>
+                    <p className="text-sm font-semibold text-slate-900 truncate">{getPatientName(q.patient)}</p>
+                    <p className="text-xs text-slate-500 truncate">{q.station || "Unassigned"}</p>
                   </div>
                   <div className="shrink-0 flex items-center gap-2">
-                    <span className="text-[10px] font-medium text-slate-400 tabular-nums">{q.waitMinutes}m</span>
-                    {statusBadge(q.priority)}
+                    <span className="text-[10px] font-medium text-slate-400 tabular-nums">{computeWaitMinutes(q.createdAt)}m</span>
+                    {statusBadge(q.priority || "Normal")}
                     {statusBadge(q.status)}
                   </div>
                 </div>
               ))}
+              {queueEntries.length === 0 && (
+                <p className="text-sm text-slate-400 text-center py-4">No patients in queue</p>
+              )}
             </div>
-            {/* Desktop: full table */}
             <div className="hidden md:block overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Patient</TableHead>
-                    <TableHead>Stage</TableHead>
+                    <TableHead>Station</TableHead>
                     <TableHead>Priority</TableHead>
                     <TableHead>Wait</TableHead>
                     <TableHead>Status</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {clinicQueue.map((q) => (
+                  {queueEntries.map((q) => (
                     <TableRow key={q.id}>
-                      <TableCell className="font-medium">{q.patientName}</TableCell>
-                      <TableCell>{q.stage}</TableCell>
-                      <TableCell>{statusBadge(q.priority)}</TableCell>
-                      <TableCell className="tabular-nums">{q.waitMinutes}m</TableCell>
+                      <TableCell className="font-medium">{getPatientName(q.patient)}</TableCell>
+                      <TableCell>{q.station || "Unassigned"}</TableCell>
+                      <TableCell>{statusBadge(q.priority || "Normal")}</TableCell>
+                      <TableCell className="tabular-nums">{computeWaitMinutes(q.createdAt)}m</TableCell>
                       <TableCell>{statusBadge(q.status)}</TableCell>
                     </TableRow>
                   ))}
+                  {queueEntries.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center text-slate-400">No patients in queue</TableCell>
+                    </TableRow>
+                  )}
                 </TableBody>
               </Table>
             </div>
@@ -332,35 +224,64 @@ export default function ClinicDashboard() {
 
         <Card>
           <CardHeader className="flex-row items-center justify-between">
-            <CardTitle>Today&apos;s appointments</CardTitle>
-            <Link href="/clinic/appointments" className="text-sm font-medium text-sky-700 hover:text-sky-800">
-              View all
+            <CardTitle>Staff on duty</CardTitle>
+            <Link href="/clinic/staff" className="text-sm font-medium text-sky-700 hover:text-sky-800">
+              Manage staff
             </Link>
           </CardHeader>
           <CardContent className="space-y-3">
-            {clinicAppointmentsToday.slice(0, 6).map((a) => (
-              <div key={a.id} className="rounded-xl border border-slate-200 p-4">
+            {staffList.slice(0, 7).map((s) => (
+              <div key={s.id} className="rounded-xl border border-slate-200 p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="font-semibold text-slate-900 truncate">{a.patientName}</p>
-                    <p className="mt-0.5 text-sm text-slate-500 truncate">
-                      {a.service} • {a.provider}
-                    </p>
+                    <p className="font-semibold text-slate-900 truncate">{s.firstName} {s.lastName}</p>
+                    <p className="mt-0.5 text-sm text-slate-500 truncate">{s.role}</p>
                   </div>
                   <div className="shrink-0 text-right">
-                    <div className="inline-flex items-center gap-2">
-                      <Calendar size={16} className="text-slate-400" />
-                      <span className="text-sm font-medium text-slate-700 tabular-nums">{a.startTime}</span>
-                    </div>
-                    <div className="mt-2">{statusBadge(a.status)}</div>
+                    <div className="mt-2">{statusBadge(s.isActive ? "On duty" : "Off duty")}</div>
                   </div>
                 </div>
               </div>
             ))}
+            {staffList.length === 0 && (
+              <p className="text-sm text-slate-400 text-center py-4">No staff on duty</p>
+            )}
           </CardContent>
         </Card>
       </div>
 
+      {/* Alerts */}
+      <Card>
+        <CardHeader className="flex-row items-center justify-between">
+          <CardTitle>Alerts</CardTitle>
+          <div className="hidden sm:flex items-center gap-3">
+            <Link href="/clinic/queue" className="text-sm font-medium text-sky-700 hover:text-sky-800">Queue</Link>
+            <Link href="/clinic/pharmacy" className="text-sm font-medium text-sky-700 hover:text-sky-800">Pharmacy</Link>
+            <Link href="/clinic/hmo" className="text-sm font-medium text-sky-700 hover:text-sky-800">HMO</Link>
+            <Link href="/clinic/finance" className="text-sm font-medium text-sky-700 hover:text-sky-800">Billing</Link>
+          </div>
+        </CardHeader>
+        <CardContent className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="rounded-xl border border-slate-200 p-4">
+            <p className="text-sm font-semibold text-slate-900">Pharmacy stock</p>
+            <p className="mt-1 text-sm text-slate-500">{overview?.pharmacy?.lowStock ?? 0} item(s) low stock</p>
+          </div>
+          <div className="rounded-xl border border-slate-200 p-4">
+            <p className="text-sm font-semibold text-slate-900">HMO claims</p>
+            <p className="mt-1 text-sm text-slate-500">{hmoPendingClaims} pending claim(s)</p>
+          </div>
+          <div className="rounded-xl border border-slate-200 p-4">
+            <p className="text-sm font-semibold text-slate-900">Revenue outstanding</p>
+            <p className="mt-1 text-sm text-slate-500">{formatNGN(totalRevenueOutstanding)}</p>
+          </div>
+          <div className="rounded-xl border border-slate-200 p-4">
+            <p className="text-sm font-semibold text-slate-900">Queue waiting</p>
+            <p className="mt-1 text-sm text-slate-500">{overview?.queue?.waiting ?? 0} patient(s) waiting</p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Revenue + HMO */}
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <CardHeader className="flex-row items-center justify-between">
@@ -372,43 +293,39 @@ export default function ClinicDashboard() {
           <CardContent>
             <p className="text-sm text-slate-500">Revenue trend (last 7 days)</p>
             <div className="mt-4 grid grid-cols-7 gap-3 items-end">
-              {revenueTrend.map((r) => {
-                const height = Math.max(10, Math.round((r.amount / maxRevenue) * 100));
+              {(revenueData || []).map((r) => {
+                const dayLabel = new Date(r.date).toLocaleDateString("en", { weekday: "short" });
+                const height = Math.max(10, Math.round(((r.collected || 0) / maxRevenue) * 100));
                 return (
-                  <div key={r.day} className="flex flex-col items-center gap-2">
+                  <div key={r.date} className="flex flex-col items-center gap-2">
                     <div
                       className={cn("w-full rounded-lg bg-sky-600/20 border border-sky-600/20", "relative overflow-hidden")}
                       style={{ height: 140 }}
-                      title={formatNGN(r.amount)}
+                      title={formatNGN(r.collected || 0)}
                     >
                       <div className="absolute inset-x-0 bottom-0 bg-sky-600" style={{ height: `${height}%` }} />
                     </div>
-                    <p className="text-xs text-slate-500">{r.day}</p>
+                    <p className="text-xs text-slate-500">{dayLabel}</p>
                   </div>
                 );
               })}
+              {(!revenueData || revenueData.length === 0) && (
+                <p className="col-span-7 text-sm text-slate-400 text-center py-8">No revenue data available</p>
+              )}
             </div>
 
             <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
               <div className="rounded-xl border border-slate-200 p-4">
-                <p className="text-sm text-slate-500">Paid invoices (today)</p>
-                <p className="mt-1 text-xl font-bold text-slate-900 tabular-nums">
-                  {clinicInvoicesToday.filter((i) => i.status === "Paid").length}
-                </p>
+                <p className="text-sm text-slate-500">Collected (7d)</p>
+                <p className="mt-1 text-xl font-bold text-slate-900 tabular-nums">{formatNGN(totalRevenueCollected)}</p>
               </div>
               <div className="rounded-xl border border-slate-200 p-4">
-                <p className="text-sm text-slate-500">Pending invoices (today)</p>
-                <p className="mt-1 text-xl font-bold text-slate-900 tabular-nums">
-                  {clinicInvoicesToday.filter((i) => i.status === "Pending").length}
-                </p>
+                <p className="text-sm text-slate-500">Outstanding</p>
+                <p className="mt-1 text-xl font-bold text-slate-900 tabular-nums">{formatNGN(totalRevenueOutstanding)}</p>
               </div>
               <div className="rounded-xl border border-slate-200 p-4">
-                <p className="text-sm text-slate-500">Average ticket (paid)</p>
-                <p className="mt-1 text-xl font-bold text-slate-900 tabular-nums">
-                  {formatNGN(
-                    Math.round(revenuePaid / Math.max(1, clinicInvoicesToday.filter((i) => i.status === "Paid").length))
-                  )}
-                </p>
+                <p className="text-sm text-slate-500">Today&apos;s revenue</p>
+                <p className="mt-1 text-xl font-bold text-slate-900 tabular-nums">{formatNGN(overview?.revenue?.today ?? 0)}</p>
               </div>
             </div>
           </CardContent>
@@ -416,59 +333,37 @@ export default function ClinicDashboard() {
 
         <Card>
           <CardHeader>
-            <CardTitle>HMO vs private analytics</CardTitle>
+            <CardTitle>HMO analytics</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="rounded-xl border border-slate-200 p-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-sm font-semibold text-slate-900">Today (invoices)</p>
-                  <p className="mt-1 text-sm text-slate-500">Share of billed revenue</p>
+                  <p className="text-sm font-semibold text-slate-900">Total claims</p>
+                  <p className="mt-1 text-sm text-slate-500">{hmoSubmittedClaims} claim(s) submitted</p>
                 </div>
-                <p className="text-sm font-semibold text-slate-900 tabular-nums">{formatNGN(revenueTotal)}</p>
-              </div>
-
-              <div className="mt-4 h-3 w-full overflow-hidden rounded-full bg-slate-100">
-                <div className="h-full bg-sky-600" style={{ width: `${privatePct}%` }} />
-              </div>
-
-              <div className="mt-3 flex items-center justify-between text-sm">
-                <div className="flex items-center gap-2">
-                  <span className="inline-block h-2.5 w-2.5 rounded-full bg-sky-600" />
-                  <span className="text-slate-700">Private</span>
-                  <span className="text-slate-500 tabular-nums">{privatePct}%</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="inline-block h-2.5 w-2.5 rounded-full bg-emerald-600" />
-                  <span className="text-slate-700">HMO</span>
-                  <span className="text-slate-500 tabular-nums">{hmoPct}%</span>
-                </div>
-              </div>
-
-              <div className="mt-4 grid grid-cols-2 gap-3">
-                <div className="rounded-lg bg-slate-50 p-3">
-                  <p className="text-xs text-slate-500">Private total</p>
-                  <p className="mt-1 text-sm font-semibold text-slate-900 tabular-nums">{formatNGN(privateRevenue)}</p>
-                </div>
-                <div className="rounded-lg bg-slate-50 p-3">
-                  <p className="text-xs text-slate-500">HMO total</p>
-                  <p className="mt-1 text-sm font-semibold text-slate-900 tabular-nums">{formatNGN(hmoRevenue)}</p>
-                </div>
-              </div>
-
-              <div className="mt-4 flex items-center justify-between">
-                <Link href="/clinic/finance" className="text-sm font-medium text-sky-700 hover:text-sky-800">
-                  Open finance
-                </Link>
-                <Link href="/clinic/hmo" className="text-sm font-medium text-sky-700 hover:text-sky-800">
-                  Open HMO
-                </Link>
               </div>
             </div>
 
+            {hmoAnalytics?.byStatus && hmoAnalytics.byStatus.length > 0 && (
+              <div className="space-y-2">
+                {hmoAnalytics.byStatus.map((s) => (
+                  <div key={s.status} className="flex items-center justify-between rounded-lg bg-slate-50 p-3">
+                    <div className="flex items-center gap-2">
+                      {statusBadge(s.status)}
+                      <span className="text-xs text-slate-500">{s.count} claim(s)</span>
+                    </div>
+                    <span className="text-xs font-semibold text-slate-700 tabular-nums">
+                      {formatNGN(Number(s.totalClaimed || 0))}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+
             <div className="rounded-xl border border-slate-200 p-4">
-              <p className="text-sm font-semibold text-slate-900">Claims needing attention</p>
-              <p className="mt-1 text-sm text-slate-500">{queriedClaims} queried claim(s) require action</p>
+              <p className="text-sm font-semibold text-slate-900">Pending claims</p>
+              <p className="mt-1 text-sm text-slate-500">{hmoPendingClaims} claim(s) need attention</p>
               <div className="mt-3">
                 <Link href="/clinic/hmo" className="text-sm font-medium text-sky-700 hover:text-sky-800">
                   Review claims

@@ -45,7 +45,7 @@ Integrating the NestJS API backend (~210 endpoints, 32 modules) with the Next.js
 | 3.3 Staff | `POST/GET/PUT/DELETE /api/staff` | `clinic/staff/`, `admin/` | MEDIUM | ✅ DONE |
 | 3.4 Queue | `POST/GET/PUT /api/queue` + `/next`, `/stats`, `/announcements`, `/reset` | `reception/queue/`, `clinic/queue/`, `queue-display/` | HIGH | ✅ DONE |
 | 3.5 Branches | `POST/GET/PUT/DELETE /api/branches` | `clinic/branches/`, `admin/clinics/` | MEDIUM | NOT STARTED |
-| 3.6 Dashboard | `GET /api/dashboard`, `/revenue`, `/appointments`, `/hmo` | All `*/dashboard/` pages | HIGH | NOT STARTED |
+| 3.6 Dashboard | `GET /api/dashboard`, `/revenue`, `/appointments`, `/hmo` | All `*/dashboard/` pages | HIGH | ✅ DONE (clinic dashboard) |
 
 ### 🔄 Phase 4: Domain-Specific Modules — **NOT STARTED**
 | Module | API Endpoints | Pages Affected |
@@ -104,6 +104,7 @@ Integrating the NestJS API backend (~210 endpoints, 32 modules) with the Next.js
 | *(pending)* | feat(web): Phase 3.2 - Appointments module integration | **Phase 3** |
 | *(pending)* | feat(web): Phase 3.3 - Staff module integration | **Phase 3** |
 | *(pending)* | feat(web): Phase 3.4 - Queue module integration | **Phase 3** |
+| *(pending)* | feat(web): Phase 3.6 - Dashboard module integration | **Phase 3** |
 
 ---
 
@@ -189,6 +190,6 @@ Integrating the NestJS API backend (~210 endpoints, 32 modules) with the Next.js
 
 ## Current Status Summary
 - **Backend:** 32 modules, ~210 endpoints, dual-token auth with HTTP-only cookies
-- **Frontend:** Phase 1, 2, 3.1, 3.2, 3.3 & 3.4 complete — auth foundation + auth pages + patients + appointments + staff + queue modules integrated
-- **Next:** Phase 3.5 (Branches) or Phase 3.6 (Dashboard)
+- **Frontend:** Phase 1, 2, 3.1–3.4, 3.6 complete — auth + patients + appointments + staff + queue + clinic dashboard integrated
+- **Next:** Phase 3.5 (Branches) or Phase 4 (Domain modules)
 - **Blockers:** None (macOS file descriptor limit during build is system-level, not code)
