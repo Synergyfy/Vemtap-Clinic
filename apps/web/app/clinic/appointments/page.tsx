@@ -7,28 +7,26 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/app/clinic/_components/page-header";
 import { Modal } from "@/components/ui/modal";
-import {
-  clinicAppointmentsMissed,
-  clinicAppointmentsToday,
-  clinicAppointmentsUpcoming,
-  type ClinicAppointment,
-} from "@/app/clinic/_mock/clinic-data";
+import { useAppointments, useCreateAppointment, useUpdateAppointment, useTodayAppointments, Appointment, AppointmentQueryParams, AppointmentStatus } from "@/hooks/useAppointments";
+import { useAuth } from "@/lib/auth-context";
+import { toast } from "sonner";
 
 type AppointmentsTab = "Calendar" | "Upcoming" | "Follow-ups" | "Walk-ins" | "Missed";
 
 function statusBadge(status: string) {
-  if (status === "Checked-in") return <Badge className="bg-sky-600 text-white">Checked-in</Badge>;
-  if (status === "In-progress") return <Badge className="bg-amber-600 text-white">In progress</Badge>;
-  if (status === "Completed") return <Badge className="bg-emerald-600 text-white">Completed</Badge>;
-  if (status === "Cancelled") return <Badge className="bg-slate-200 text-slate-700">Cancelled</Badge>;
-  if (status === "Missed") return <Badge className="bg-rose-600 text-white">Missed</Badge>;
+  if (status === "scheduled") return <Badge variant="outline">Scheduled</Badge>;
+  if (status === "confirmed") return <Badge className="bg-sky-100 text-sky-700">Confirmed</Badge>;
+  if (status === "in_progress") return <Badge className="bg-amber-600 text-white">In progress</Badge>;
+  if (status === "completed") return <Badge className="bg-emerald-600 text-white">Completed</Badge>;
+  if (status === "cancelled") return <Badge className="bg-slate-200 text-slate-700">Cancelled</Badge>;
+  if (status === "no_show") return <Badge className="bg-rose-600 text-white">Missed</Badge>;
   return <Badge variant="outline">Scheduled</Badge>;
 }
 
-function kindBadge(kind?: ClinicAppointment["kind"]) {
-  if (kind === "Walk-in") return <Badge className="bg-purple-600 text-white">Walk-in</Badge>;
-  if (kind === "Follow-up") return <Badge className="bg-emerald-600 text-white">Follow-up</Badge>;
-  if (kind === "Regular") return <Badge variant="outline">Regular</Badge>;
+function kindBadge(kind?: string) {
+  if (kind === "emergency") return <Badge className="bg-purple-600 text-white">Walk-in</Badge>;
+  if (kind === "follow_up") return <Badge className="bg-emerald-600 text-white">Follow-up</Badge>;
+  if (kind === "consultation") return <Badge variant="outline">Regular</Badge>;
   return <Badge variant="outline">Regular</Badge>;
 }
 
@@ -51,10 +49,6 @@ function weekdayShort(iso: string) {
 function monthYearLabel(iso: string) {
   const d = new Date(iso + "T00:00:00");
   return new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric" }).format(d);
-}
-
-function weekdayHeader() {
-  return ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
 }
 
 function addDays(iso: string, days: number) {
@@ -84,9 +78,8 @@ function daysInMonth(iso: string) {
 }
 
 function mondayStartIndex(iso: string) {
-  // Monday=0 ... Sunday=6
   const d = new Date(iso + "T00:00:00");
-  const js = d.getDay(); // Sun=0 ... Sat=6
+  const js = d.getDay();
   return (js + 6) % 7;
 }
 
@@ -95,12 +88,31 @@ function formatDayNumber(iso: string) {
 }
 
 export default function AppointmentsPage() {
+  const { user } = useAuth();
   const todayISO = React.useMemo(() => toISODate(new Date()), []);
   const [tab, setTab] = React.useState<AppointmentsTab>("Calendar");
 
-  const [todayAppointments, setTodayAppointments] = React.useState<ClinicAppointment[]>(clinicAppointmentsToday);
-  const [upcomingAppointments, setUpcomingAppointments] = React.useState<ClinicAppointment[]>(clinicAppointmentsUpcoming);
-  const [missedAppointments, setMissedAppointments] = React.useState<ClinicAppointment[]>(clinicAppointmentsMissed);
+  const queryParams: AppointmentQueryParams = {
+    clinicId: user?.clinicId,
+    page: 1,
+    limit: 100,
+    sortBy: "appointmentDate",
+    sortOrder: "ASC",
+  };
+
+  const { 
+    data: appointmentsResponse, 
+    isLoading: isAppointmentsLoading, 
+    refetch: refetchAppointments 
+  } = useAppointments(queryParams);
+
+  const { data: todayResponse } = useTodayAppointments(user?.clinicId || null);
+
+  const createAppointmentMutation = useCreateAppointment();
+  const updateAppointmentMutation = useUpdateAppointment();
+
+  const appointments = appointmentsResponse?.data || [];
+  const todayAppointments = todayResponse?.appointments || [];
 
   const [isNewOpen, setIsNewOpen] = React.useState(false);
   const [isRescheduleOpen, setIsRescheduleOpen] = React.useState(false);
@@ -109,56 +121,55 @@ export default function AppointmentsPage() {
   const [selectedDayISO, setSelectedDayISO] = React.useState<string>(todayISO);
   const [form, setForm] = React.useState({
     patientName: "",
+    patientId: "",
     dateISO: todayISO,
     startTime: "09:00",
-    service: "Consultation" as ClinicAppointment["service"],
+    service: "Consultation",
     provider: "Dr. A. Bello",
-    kind: "Regular" as NonNullable<ClinicAppointment["kind"]>,
+    kind: "consultation",
     reason: "",
+    type: "consultation",
   });
 
-  const scheduled = todayAppointments.filter((a) => a.status === "Scheduled").length;
-  const checkedIn = todayAppointments.filter((a) => a.status === "Checked-in").length;
-  const inProgress = todayAppointments.filter((a) => a.status === "In-progress").length;
+  const scheduled = todayAppointments.filter((a) => a.status === "scheduled").length;
+  const checkedIn = todayAppointments.filter((a) => a.status === "in_progress").length;
+  const inProgress = todayAppointments.filter((a) => a.status === "in_progress").length;
 
-  const followUpsCount =
-    todayAppointments.filter((a) => a.kind === "Follow-up").length +
-    upcomingAppointments.filter((a) => a.kind === "Follow-up").length;
-  const walkInsCount =
-    todayAppointments.filter((a) => a.kind === "Walk-in").length + upcomingAppointments.filter((a) => a.kind === "Walk-in").length;
+  const followUpsCount = todayAppointments.filter((a) => a.type === "follow_up").length;
+  const walkInsCount = todayAppointments.filter((a) => a.type === "emergency").length;
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.patientName.trim()) return;
-    const nextId = `A-${1000 + todayAppointments.length + upcomingAppointments.length + missedAppointments.length + 1}`;
-    const newAppointment: ClinicAppointment = {
-      id: nextId,
-      patientId: "P-NEW",
-      patientName: form.patientName.trim(),
-      dateISO: form.dateISO,
-      startTime: form.startTime,
-      endTime: "",
-      service: form.service,
-      provider: form.provider,
-      kind: form.kind,
-      reason: form.reason.trim() ? form.reason.trim() : undefined,
-      createdISO: new Date().toISOString(),
-      status: "Scheduled",
-    };
-
-    if (form.dateISO === todayISO) setTodayAppointments((prev) => [newAppointment, ...prev]);
-    else setUpcomingAppointments((prev) => [newAppointment, ...prev]);
-
-    setIsNewOpen(false);
-    setForm({
-      patientName: "",
-      dateISO: todayISO,
-      startTime: "09:00",
-      service: "Consultation",
-      provider: "Dr. A. Bello",
-      kind: "Regular",
-      reason: "",
-    });
+    if (!form.patientName.trim() || !form.patientId || !user) return;
+    
+    try {
+      await createAppointmentMutation.mutateAsync({
+        appointmentDate: form.dateISO,
+        appointmentTime: form.startTime,
+        type: form.type as any,
+        reason: form.reason,
+        patientId: form.patientId,
+        branchId: user.clinicId,
+        clinicId: user.clinicId,
+      });
+      toast.success("Appointment created successfully");
+      setIsNewOpen(false);
+      setForm({
+        patientName: "",
+        patientId: "",
+        dateISO: todayISO,
+        startTime: "09:00",
+        service: "Consultation",
+        provider: "Dr. A. Bello",
+        kind: "Regular",
+        reason: "",
+        type: "consultation",
+      });
+      refetchAppointments();
+    } catch (error) {
+      toast.error("Failed to create appointment");
+      console.error("Create error:", error);
+    }
   };
 
   const openReschedule = (id: string) => {
@@ -166,66 +177,43 @@ export default function AppointmentsPage() {
     setIsRescheduleOpen(true);
   };
 
-  const reschedule = (e: React.FormEvent) => {
+  const reschedule = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!rescheduleTargetId) return;
-    if (!form.patientName.trim()) return;
+    if (!rescheduleTargetId || !form.patientId || !user) return;
 
-    const moveAppointment = (items: ClinicAppointment[]) => {
-      const idx = items.findIndex((a) => a.id === rescheduleTargetId);
-      if (idx === -1) return { nextItems: items, moved: null as ClinicAppointment | null };
-      const target = items[idx];
-      const nextItems = [...items.slice(0, idx), ...items.slice(idx + 1)];
-      return { nextItems, moved: target };
-    };
-
-    const fromToday = moveAppointment(todayAppointments);
-    const fromUpcoming = fromToday.moved ? { nextItems: upcomingAppointments, moved: fromToday.moved } : moveAppointment(upcomingAppointments);
-    const fromMissed = fromUpcoming.moved ? { nextItems: missedAppointments, moved: fromUpcoming.moved } : moveAppointment(missedAppointments);
-
-    setTodayAppointments(fromToday.nextItems);
-    setUpcomingAppointments(fromUpcoming.nextItems);
-    setMissedAppointments(fromMissed.nextItems);
-
-    const original = fromMissed.moved;
-    if (!original) return;
-
-    const nextId = `A-${1000 + todayAppointments.length + upcomingAppointments.length + missedAppointments.length + 1}`;
-    const rescheduled: ClinicAppointment = {
-      ...original,
-      id: nextId,
-      patientName: form.patientName.trim(),
-      dateISO: form.dateISO,
-      startTime: form.startTime,
-      service: form.service,
-      provider: form.provider,
-      kind: form.kind,
-      reason: form.reason.trim() ? form.reason.trim() : original.reason,
-      status: "Scheduled",
-      createdISO: new Date().toISOString(),
-      rescheduledFromId: original.id,
-    };
-
-    if (rescheduled.dateISO === todayISO) setTodayAppointments((prev) => [rescheduled, ...prev]);
-    else setUpcomingAppointments((prev) => [rescheduled, ...prev]);
-
-    setIsRescheduleOpen(false);
-    setRescheduleTargetId(null);
+    try {
+      await updateAppointmentMutation.mutateAsync({
+        id: rescheduleTargetId,
+        data: {
+          appointmentDate: form.dateISO,
+          appointmentTime: form.startTime,
+          type: form.type as any,
+          reason: form.reason,
+        },
+      });
+      toast.success("Appointment rescheduled successfully");
+      setIsRescheduleOpen(false);
+      setRescheduleTargetId(null);
+      refetchAppointments();
+    } catch (error) {
+      toast.error("Failed to reschedule appointment");
+      console.error("Reschedule error:", error);
+    }
   };
 
   const allAppointments = React.useMemo(
-    () => [...todayAppointments, ...upcomingAppointments, ...missedAppointments],
-    [missedAppointments, todayAppointments, upcomingAppointments]
+    () => [...appointments],
+    [appointments]
   );
 
   const appointmentsByISODate = React.useMemo(() => {
-    const map = new Map<string, ClinicAppointment[]>();
+    const map = new Map<string, Appointment[]>();
     for (const a of allAppointments) {
-      const iso = a.dateISO ?? todayISO;
+      const iso = a.appointmentDate.split("T")[0];
       map.set(iso, [...(map.get(iso) ?? []), a]);
     }
     for (const [iso, list] of map.entries()) {
-      list.sort((a, b) => a.startTime.localeCompare(b.startTime));
+      list.sort((a, b) => (a.appointmentTime || "").localeCompare(b.appointmentTime || ""));
       map.set(iso, list);
     }
     return map;
@@ -245,7 +233,6 @@ export default function AppointmentsPage() {
       cells.push({ iso: dayISO, inMonth: true });
     }
 
-    // pad to full weeks
     while (cells.length % 7 !== 0) cells.push({ iso: null, inMonth: false });
     return cells;
   }, [calendarMonthISO]);
@@ -255,12 +242,11 @@ export default function AppointmentsPage() {
     return list;
   }, [appointmentsByISODate, selectedDayISO]);
 
-  const statusAccent = (status: ClinicAppointment["status"]) => {
-    if (status === "Checked-in") return "border-l-sky-500";
-    if (status === "In-progress") return "border-l-amber-500";
-    if (status === "Completed") return "border-l-emerald-500";
-    if (status === "Cancelled") return "border-l-slate-300";
-    if (status === "Missed") return "border-l-rose-500";
+  const statusAccent = (status: string) => {
+    if (status === "in_progress") return "border-l-sky-500";
+    if (status === "completed") return "border-l-emerald-500";
+    if (status === "cancelled") return "border-l-slate-300";
+    if (status === "no_show") return "border-l-rose-500";
     return "border-l-slate-300";
   };
 
@@ -306,7 +292,9 @@ export default function AppointmentsPage() {
         <Card>
           <CardContent className="p-3 sm:p-6">
             <p className="text-sm font-medium text-slate-500">Missed</p>
-            <p className="mt-1 text-2xl font-bold text-slate-900">{missedAppointments.length}</p>
+            <p className="mt-1 text-2xl font-bold text-slate-900">
+              {todayAppointments.filter((a) => a.status === "no_show").length}
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -435,13 +423,15 @@ export default function AppointmentsPage() {
                           type="button"
                           onClick={() => {
                             setForm({
-                              patientName: a.patientName,
-                              dateISO: a.dateISO ?? todayISO,
-                              startTime: a.startTime,
-                              service: a.service,
-                              provider: a.provider,
-                              kind: (a.kind ?? "Regular") as NonNullable<ClinicAppointment["kind"]>,
-                              reason: a.reason ?? "",
+                              patientName: a.patient?.firstName ? `${a.patient.firstName} ${a.patient.lastName}` : "",
+                              patientId: a.patientId,
+                              dateISO: a.appointmentDate.split("T")[0],
+                              startTime: a.appointmentTime || "09:00",
+                              service: a.reason || a.type,
+                              provider: a.staff?.firstName ? `${a.staff.firstName} ${a.staff.lastName}` : "",
+                              kind: a.type,
+                              reason: a.notes || "",
+                              type: a.type,
                             });
                             openReschedule(a.id);
                           }}
@@ -455,25 +445,22 @@ export default function AppointmentsPage() {
                         >
                           <div className="flex items-start justify-between gap-2">
                             <div className="min-w-0">
-                              <p className="text-sm font-semibold text-slate-900 tabular-nums">{a.startTime}</p>
-                              <p className="mt-1 truncate text-sm font-medium text-slate-900">{a.patientName}</p>
+                              <p className="text-sm font-semibold text-slate-900 tabular-nums">{a.appointmentTime || "TBD"}</p>
+                              <p className="mt-1 truncate text-sm font-medium text-slate-900">
+                                {a.patient?.firstName ? `${a.patient.firstName} ${a.patient.lastName}` : "Unknown Patient"}
+                              </p>
                               <p className="mt-0.5 truncate text-xs text-slate-500">
-                                {a.service} • {a.provider}
+                                {a.reason || a.type} • {a.staff?.firstName ? `${a.staff.firstName} ${a.staff.lastName}` : "TBD"}
                               </p>
                             </div>
                             <div className="shrink-0 space-y-2 text-right">
                               <div>{statusBadge(a.status)}</div>
-                              <div className="flex justify-end">{kindBadge(a.kind)}</div>
+                              <div className="flex justify-end">{kindBadge(a.type)}</div>
                             </div>
                           </div>
-                          {a.reason ? (
+                          {a.notes ? (
                             <p className="mt-2 line-clamp-2 text-xs text-slate-500">
-                              <span className="font-medium text-slate-600">Reason:</span> {a.reason}
-                            </p>
-                          ) : null}
-                          {a.rescheduledFromId ? (
-                            <p className="mt-2 text-[11px] text-slate-400">
-                              Rescheduled from <span className="font-medium">{a.rescheduledFromId}</span>
+                              <span className="font-medium text-slate-600">Reason:</span> {a.notes}
                             </p>
                           ) : null}
                         </button>
@@ -481,7 +468,7 @@ export default function AppointmentsPage() {
                     ) : (
                       <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-4">
                         <p className="text-sm font-medium text-slate-700">No appointments</p>
-                        <p className="mt-1 text-xs text-slate-500">Use “New appointment” to add one.</p>
+                        <p className="mt-1 text-xs text-slate-500">Use "New appointment" to add one.</p>
                       </div>
                     )}
                   </div>
@@ -496,7 +483,9 @@ export default function AppointmentsPage() {
         <Card>
           <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <CardTitle className="text-base sm:text-lg font-bold">Upcoming appointments</CardTitle>
-            <p className="text-xs sm:text-sm text-slate-500">{upcomingAppointments.length} scheduled</p>
+            <p className="text-xs sm:text-sm text-slate-500">
+              {appointments.filter(a => a.appointmentDate.split("T")[0] > todayISO && a.status === "scheduled").length} scheduled
+            </p>
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto">
@@ -514,41 +503,45 @@ export default function AppointmentsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {upcomingAppointments.map((a) => (
-                  <TableRow key={a.id}>
-                    <TableCell className="tabular-nums">{a.dateISO}</TableCell>
-                    <TableCell className="font-medium tabular-nums">{a.startTime}</TableCell>
-                    <TableCell>
-                      <Link href="/clinic/patients" className="text-sky-700 hover:text-sky-800">
-                        {a.patientName}
-                      </Link>
-                    </TableCell>
-                    <TableCell>{kindBadge(a.kind)}</TableCell>
-                    <TableCell>{a.service}</TableCell>
-                    <TableCell>{a.provider}</TableCell>
-                    <TableCell>{statusBadge(a.status)}</TableCell>
-                    <TableCell className="text-right">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setForm({
-                            patientName: a.patientName,
-                            dateISO: a.dateISO ?? todayISO,
-                            startTime: a.startTime,
-                            service: a.service,
-                            provider: a.provider,
-                            kind: (a.kind ?? "Regular") as NonNullable<ClinicAppointment["kind"]>,
-                            reason: a.reason ?? "",
-                          });
-                          openReschedule(a.id);
-                        }}
-                        className="text-sm font-medium text-sky-700 hover:text-sky-800"
-                      >
-                        Reschedule
-                      </button>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {appointments
+                  .filter(a => a.appointmentDate.split("T")[0] > todayISO && a.status === "scheduled")
+                  .map((a) => (
+                    <TableRow key={a.id}>
+                      <TableCell className="tabular-nums">{a.appointmentDate.split("T")[0]}</TableCell>
+                      <TableCell className="font-medium tabular-nums">{a.appointmentTime || "TBD"}</TableCell>
+                      <TableCell>
+                        <Link href="/clinic/patients" className="text-sky-700 hover:text-sky-800">
+                          {a.patient?.firstName ? `${a.patient.firstName} ${a.patient.lastName}` : "Unknown Patient"}
+                        </Link>
+                      </TableCell>
+                      <TableCell>{kindBadge(a.type)}</TableCell>
+                      <TableCell>{a.reason || a.type}</TableCell>
+                      <TableCell>{a.staff?.firstName ? `${a.staff.firstName} ${a.staff.lastName}` : "TBD"}</TableCell>
+                      <TableCell>{statusBadge(a.status)}</TableCell>
+                      <TableCell className="text-right">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setForm({
+                              patientName: a.patient?.firstName ? `${a.patient.firstName} ${a.patient.lastName}` : "",
+                              patientId: a.patientId,
+                              dateISO: a.appointmentDate.split("T")[0],
+                              startTime: a.appointmentTime || "09:00",
+                              service: a.reason || a.type,
+                              provider: a.staff?.firstName ? `${a.staff.firstName} ${a.staff.lastName}` : "",
+                              kind: a.type,
+                              reason: a.notes || "",
+                              type: a.type,
+                            });
+                            openReschedule(a.id);
+                          }}
+                          className="text-sm font-medium text-sky-700 hover:text-sky-800"
+                        >
+                          Reschedule
+                        </button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
               </TableBody>
             </Table>
             </div>
@@ -560,7 +553,9 @@ export default function AppointmentsPage() {
         <Card>
           <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <CardTitle className="text-base sm:text-lg font-bold">Follow-ups</CardTitle>
-            <p className="text-xs sm:text-sm text-slate-500">{followUpsCount} total</p>
+            <p className="text-xs sm:text-sm text-slate-500">
+              {appointments.filter(a => a.type === "follow_up").length} total
+            </p>
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto">
@@ -577,28 +572,30 @@ export default function AppointmentsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {[...todayAppointments, ...upcomingAppointments]
-                  .filter((a) => a.kind === "Follow-up")
+                {appointments
+                  .filter((a) => a.type === "follow_up")
                   .map((a) => (
                     <TableRow key={a.id}>
-                      <TableCell className="tabular-nums">{a.dateISO ?? todayISO}</TableCell>
-                      <TableCell className="font-medium tabular-nums">{a.startTime}</TableCell>
-                      <TableCell>{a.patientName}</TableCell>
-                      <TableCell>{a.reason ?? "—"}</TableCell>
-                      <TableCell>{a.service}</TableCell>
+                      <TableCell className="tabular-nums">{a.appointmentDate.split("T")[0]}</TableCell>
+                      <TableCell className="font-medium tabular-nums">{a.appointmentTime || "TBD"}</TableCell>
+                      <TableCell>{a.patient?.firstName ? `${a.patient.firstName} ${a.patient.lastName}` : "Unknown Patient"}</TableCell>
+                      <TableCell>{a.notes ?? "—"}</TableCell>
+                      <TableCell>{a.reason || a.type}</TableCell>
                       <TableCell>{statusBadge(a.status)}</TableCell>
                       <TableCell className="text-right">
                         <button
                           type="button"
                           onClick={() => {
                             setForm({
-                              patientName: a.patientName,
-                              dateISO: a.dateISO ?? todayISO,
-                              startTime: a.startTime,
-                              service: a.service,
-                              provider: a.provider,
-                              kind: (a.kind ?? "Follow-up") as NonNullable<ClinicAppointment["kind"]>,
-                              reason: a.reason ?? "",
+                              patientName: a.patient?.firstName ? `${a.patient.firstName} ${a.patient.lastName}` : "",
+                              patientId: a.patientId,
+                              dateISO: a.appointmentDate.split("T")[0],
+                              startTime: a.appointmentTime || "09:00",
+                              service: a.reason || a.type,
+                              provider: a.staff?.firstName ? `${a.staff.firstName} ${a.staff.lastName}` : "",
+                              kind: a.type,
+                              reason: a.notes || "",
+                              type: a.type,
                             });
                             openReschedule(a.id);
                           }}
@@ -607,8 +604,8 @@ export default function AppointmentsPage() {
                           Reschedule
                         </button>
                       </TableCell>
-                  </TableRow>
-                ))}
+                    </TableRow>
+                  ))}
               </TableBody>
             </Table>
             </div>
@@ -620,7 +617,9 @@ export default function AppointmentsPage() {
         <Card>
           <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <CardTitle className="text-base sm:text-lg font-bold">Walk-ins</CardTitle>
-            <p className="text-xs sm:text-sm text-slate-500">{walkInsCount} total</p>
+            <p className="text-xs sm:text-sm text-slate-500">
+              {appointments.filter(a => a.type === "emergency").length} total
+            </p>
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto">
@@ -637,28 +636,30 @@ export default function AppointmentsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {[...todayAppointments, ...upcomingAppointments]
-                  .filter((a) => a.kind === "Walk-in")
+                {appointments
+                  .filter((a) => a.type === "emergency")
                   .map((a) => (
                     <TableRow key={a.id}>
-                      <TableCell className="tabular-nums">{a.dateISO ?? todayISO}</TableCell>
-                      <TableCell className="font-medium tabular-nums">{a.startTime}</TableCell>
-                      <TableCell>{a.patientName}</TableCell>
-                      <TableCell>{a.reason ?? "—"}</TableCell>
-                      <TableCell>{a.service}</TableCell>
+                      <TableCell className="tabular-nums">{a.appointmentDate.split("T")[0]}</TableCell>
+                      <TableCell className="font-medium tabular-nums">{a.appointmentTime || "TBD"}</TableCell>
+                      <TableCell>{a.patient?.firstName ? `${a.patient.firstName} ${a.patient.lastName}` : "Unknown Patient"}</TableCell>
+                      <TableCell>{a.notes ?? "—"}</TableCell>
+                      <TableCell>{a.reason || a.type}</TableCell>
                       <TableCell>{statusBadge(a.status)}</TableCell>
                       <TableCell className="text-right">
                         <button
                           type="button"
                           onClick={() => {
                             setForm({
-                              patientName: a.patientName,
-                              dateISO: a.dateISO ?? todayISO,
-                              startTime: a.startTime,
-                              service: a.service,
-                              provider: a.provider,
-                              kind: (a.kind ?? "Walk-in") as NonNullable<ClinicAppointment["kind"]>,
-                              reason: a.reason ?? "",
+                              patientName: a.patient?.firstName ? `${a.patient.firstName} ${a.patient.lastName}` : "",
+                              patientId: a.patientId,
+                              dateISO: a.appointmentDate.split("T")[0],
+                              startTime: a.appointmentTime || "09:00",
+                              service: a.reason || a.type,
+                              provider: a.staff?.firstName ? `${a.staff.firstName} ${a.staff.lastName}` : "",
+                              kind: a.type,
+                              reason: a.notes || "",
+                              type: a.type,
                             });
                             openReschedule(a.id);
                           }}
@@ -667,8 +668,8 @@ export default function AppointmentsPage() {
                           Reschedule
                         </button>
                       </TableCell>
-                  </TableRow>
-                ))}
+                    </TableRow>
+                  ))}
               </TableBody>
             </Table>
             </div>
@@ -680,7 +681,9 @@ export default function AppointmentsPage() {
         <Card>
           <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <CardTitle className="text-base sm:text-lg font-bold">Missed appointments</CardTitle>
-            <p className="text-xs sm:text-sm text-slate-500">{missedAppointments.length} missed</p>
+            <p className="text-xs sm:text-sm text-slate-500">
+              {appointments.filter(a => a.status === "no_show").length} missed
+            </p>
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto">
@@ -698,37 +701,41 @@ export default function AppointmentsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {missedAppointments.map((a) => (
-                  <TableRow key={a.id}>
-                    <TableCell className="tabular-nums">{a.dateISO}</TableCell>
-                    <TableCell className="font-medium tabular-nums">{a.startTime}</TableCell>
-                    <TableCell>{a.patientName}</TableCell>
-                    <TableCell>{kindBadge(a.kind)}</TableCell>
-                    <TableCell>{a.service}</TableCell>
-                    <TableCell>{a.provider}</TableCell>
-                    <TableCell>{statusBadge(a.status)}</TableCell>
-                    <TableCell className="text-right">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setForm({
-                            patientName: a.patientName,
-                            dateISO: todayISO,
-                            startTime: a.startTime,
-                            service: a.service,
-                            provider: a.provider,
-                            kind: (a.kind ?? "Regular") as NonNullable<ClinicAppointment["kind"]>,
-                            reason: a.reason ?? "",
-                          });
-                          openReschedule(a.id);
-                        }}
-                        className="text-sm font-medium text-sky-700 hover:text-sky-800"
-                      >
-                        Reschedule
-                      </button>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {appointments
+                  .filter((a) => a.status === "no_show")
+                  .map((a) => (
+                    <TableRow key={a.id}>
+                      <TableCell className="tabular-nums">{a.appointmentDate.split("T")[0]}</TableCell>
+                      <TableCell className="font-medium tabular-nums">{a.appointmentTime || "TBD"}</TableCell>
+                      <TableCell>{a.patient?.firstName ? `${a.patient.firstName} ${a.patient.lastName}` : "Unknown Patient"}</TableCell>
+                      <TableCell>{kindBadge(a.type)}</TableCell>
+                      <TableCell>{a.reason || a.type}</TableCell>
+                      <TableCell>{a.staff?.firstName ? `${a.staff.firstName} ${a.staff.lastName}` : "TBD"}</TableCell>
+                      <TableCell>{statusBadge(a.status)}</TableCell>
+                      <TableCell className="text-right">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setForm({
+                              patientName: a.patient?.firstName ? `${a.patient.firstName} ${a.patient.lastName}` : "",
+                              patientId: a.patientId,
+                              dateISO: todayISO,
+                              startTime: a.appointmentTime || "09:00",
+                              service: a.reason || a.type,
+                              provider: a.staff?.firstName ? `${a.staff.firstName} ${a.staff.lastName}` : "",
+                              kind: a.type,
+                              reason: a.notes || "",
+                              type: a.type,
+                            });
+                            openReschedule(a.id);
+                          }}
+                          className="text-sm font-medium text-sky-700 hover:text-sky-800"
+                        >
+                          Reschedule
+                        </button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
               </TableBody>
             </Table>
             </div>
@@ -748,6 +755,16 @@ export default function AppointmentsPage() {
               required
             />
           </div>
+          <div>
+            <label className="text-sm font-medium text-slate-700">Patient ID</label>
+            <input
+              value={form.patientId}
+              onChange={(e) => setForm((p) => ({ ...p, patientId: e.target.value }))}
+              className="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none focus:border-sky-300 focus:ring-2 focus:ring-sky-100"
+              placeholder="e.g., PT-2024-001"
+              required
+            />
+          </div>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div>
               <label className="text-sm font-medium text-slate-700">Date</label>
@@ -764,12 +781,14 @@ export default function AppointmentsPage() {
               <label className="text-sm font-medium text-slate-700">Type</label>
               <select
                 value={form.kind}
-                onChange={(e) => setForm((p) => ({ ...p, kind: e.target.value as NonNullable<ClinicAppointment["kind"]> }))}
+                onChange={(e) => setForm((p) => ({ ...p, kind: e.target.value, type: e.target.value as any }))}
                 className="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none focus:border-sky-300 focus:ring-2 focus:ring-sky-100"
               >
-                <option value="Regular">Regular</option>
-                <option value="Follow-up">Follow-up</option>
-                <option value="Walk-in">Walk-in</option>
+                <option value="consultation">Consultation</option>
+                <option value="follow_up">Follow-up</option>
+                <option value="emergency">Walk-in</option>
+                <option value="eye_test">Eye Test</option>
+                <option value="surgery">Surgery</option>
               </select>
             </div>
           </div>
@@ -788,7 +807,7 @@ export default function AppointmentsPage() {
               <label className="text-sm font-medium text-slate-700">Service</label>
               <select
                 value={form.service}
-                onChange={(e) => setForm((p) => ({ ...p, service: e.target.value as ClinicAppointment["service"] }))}
+                onChange={(e) => setForm((p) => ({ ...p, service: e.target.value }))}
                 className="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none focus:border-sky-300 focus:ring-2 focus:ring-sky-100"
               >
                 <option value="Consultation">Consultation</option>
@@ -880,7 +899,7 @@ export default function AppointmentsPage() {
               <label className="text-sm font-medium text-slate-700">Service</label>
               <select
                 value={form.service}
-                onChange={(e) => setForm((p) => ({ ...p, service: e.target.value as ClinicAppointment["service"] }))}
+                onChange={(e) => setForm((p) => ({ ...p, service: e.target.value }))}
                 className="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none focus:border-sky-300 focus:ring-2 focus:ring-sky-100"
               >
                 <option value="Consultation">Consultation</option>
@@ -893,12 +912,14 @@ export default function AppointmentsPage() {
               <label className="text-sm font-medium text-slate-700">Type</label>
               <select
                 value={form.kind}
-                onChange={(e) => setForm((p) => ({ ...p, kind: e.target.value as NonNullable<ClinicAppointment["kind"]> }))}
+                onChange={(e) => setForm((p) => ({ ...p, kind: e.target.value, type: e.target.value as any }))}
                 className="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none focus:border-sky-300 focus:ring-2 focus:ring-sky-100"
               >
-                <option value="Regular">Regular</option>
-                <option value="Follow-up">Follow-up</option>
-                <option value="Walk-in">Walk-in</option>
+                <option value="consultation">Consultation</option>
+                <option value="follow_up">Follow-up</option>
+                <option value="emergency">Walk-in</option>
+                <option value="eye_test">Eye Test</option>
+                <option value="surgery">Surgery</option>
               </select>
             </div>
           </div>
@@ -942,4 +963,8 @@ export default function AppointmentsPage() {
       </Modal>
     </div>
   );
+}
+
+function weekdayHeader() {
+  return ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
 }

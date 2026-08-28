@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
+import { Toaster } from "sonner";
 import "./globals.css";
 import { ModalProvider } from "@/lib/modal-context";
 import { ModalManager } from "@/components/popups/modal-manager";
@@ -31,6 +32,7 @@ export default function RootLayout({
             <ModalProvider>
               {children}
               <ModalManager />
+              <Toaster position="top-right" />
             </ModalProvider>
           </AuthProvider>
         </QueryProvider>

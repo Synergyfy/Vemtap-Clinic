@@ -37,15 +37,15 @@ Integrating the NestJS API backend (~210 endpoints, 32 modules) with the Next.js
 
 ## In Progress / Next Up
 
-### 🔄 Phase 3: Core Clinical Modules — **NOT STARTED**
-| Module | API Endpoints | Pages Affected | Priority |
-|--------|---------------|----------------|----------|
-| 3.1 Patients | `POST/GET/PUT/DELETE /api/patients` | `reception/patients/`, `clinic/patients/`, `patient/` | HIGH |
-| 3.2 Appointments | `POST/GET/PUT/DELETE /api/appointments` + `/calendar`, `/today`, `/available-slots`, `/stats` | `reception/appointments/`, `clinic/appointments/`, `patient/appointments/` | HIGH |
-| 3.3 Staff | `POST/GET/PUT/DELETE /api/staff` | `clinic/staff/`, `admin/` | MEDIUM |
-| 3.4 Queue | `POST/GET/PUT /api/queue` + `/next`, `/stats`, `/announcements`, `/reset` | `reception/queue/`, `clinic/queue/`, `queue-display/` | HIGH |
-| 3.5 Branches | `POST/GET/PUT/DELETE /api/branches` | `clinic/branches/`, `admin/clinics/` | MEDIUM |
-| 3.6 Dashboard | `GET /api/dashboard`, `/revenue`, `/appointments`, `/hmo` | All `*/dashboard/` pages | HIGH |
+### 🔄 Phase 3: Core Clinical Modules — **IN PROGRESS**
+| Module | API Endpoints | Pages Affected | Priority | Status |
+|--------|---------------|----------------|----------|--------|
+| 3.1 Patients | `POST/GET/PUT/DELETE /api/patients` | `reception/patients/`, `clinic/patients/`, `patient/` | HIGH | ✅ DONE |
+| 3.2 Appointments | `POST/GET/PUT/DELETE /api/appointments` + `/calendar`, `/today`, `/available-slots`, `/stats` | `reception/appointments/`, `clinic/appointments/`, `doctor/appointments/`, `patient/appointments/` | HIGH | ✅ DONE |
+| 3.3 Staff | `POST/GET/PUT/DELETE /api/staff` | `clinic/staff/`, `admin/` | MEDIUM | NOT STARTED |
+| 3.4 Queue | `POST/GET/PUT /api/queue` + `/next`, `/stats`, `/announcements`, `/reset` | `reception/queue/`, `clinic/queue/`, `queue-display/` | HIGH | NOT STARTED |
+| 3.5 Branches | `POST/GET/PUT/DELETE /api/branches` | `clinic/branches/`, `admin/clinics/` | MEDIUM | NOT STARTED |
+| 3.6 Dashboard | `GET /api/dashboard`, `/revenue`, `/appointments`, `/hmo` | All `*/dashboard/` pages | HIGH | NOT STARTED |
 
 ### 🔄 Phase 4: Domain-Specific Modules — **NOT STARTED**
 | Module | API Endpoints | Pages Affected |
@@ -100,6 +100,8 @@ Integrating the NestJS API backend (~210 endpoints, 32 modules) with the Next.js
 | `c3c758d` | docs: update API integration plan for dual-token cookie auth | Docs |
 | `1e8b53e` | feat(web): Phase 1 - Foundation layer | **Phase 1** |
 | `ab6381f` | feat(web): Phase 2 - Auth module integration | **Phase 2** |
+| *(pending)* | feat(web): Phase 3.1 - Patients module integration | **Phase 3** |
+| *(pending)* | feat(web): Phase 3.2 - Appointments module integration | **Phase 3** |
 
 ---
 
@@ -119,7 +121,31 @@ Integrating the NestJS API backend (~210 endpoints, 32 modules) with the Next.js
 - [ ] Manual test: Profile → change password → logout
 - [ ] Manual test: Session restoration on page refresh
 
-### Phase 3+ (Each Module)
+### Phase 3.1 Patients ✅
+- [x] Build passes
+- [x] TypeScript passes
+- [x] Service file created (`services/patients.service.ts`)
+- [x] Hooks created (`hooks/usePatients.ts`)
+- [x] Pages refactored to use API (`reception/patients/page.tsx`)
+- [x] Mock store data removed
+- [x] Error handling (toast)
+- [x] Loading states
+- [x] Pagination works
+- [x] Search/debounce works
+
+### Phase 3.2 Appointments ✅
+- [x] Build passes
+- [x] TypeScript passes
+- [x] Service file created (`services/appointments.service.ts`)
+- [x] Hooks created (`hooks/useAppointments.ts`)
+- [x] Pages refactored to use API (`reception/appointments/page.tsx`, `clinic/appointments/page.tsx`, `doctor/appointments/page.tsx`)
+- [x] Mock store data removed
+- [x] Error handling (toast)
+- [x] Loading states
+- [x] Pagination works
+- [x] Search/debounce works
+
+### Phase 3.3+ (Each Module)
 - [ ] Build passes
 - [ ] TypeScript passes
 - [ ] Service file created (`services/<module>.service.ts`)
@@ -135,6 +161,6 @@ Integrating the NestJS API backend (~210 endpoints, 32 modules) with the Next.js
 
 ## Current Status Summary
 - **Backend:** 32 modules, ~210 endpoints, dual-token auth with HTTP-only cookies
-- **Frontend:** Phase 1 & 2 complete — auth foundation + auth pages integrated
-- **Next:** Phase 3.1 (Patients module) — simplest clinical module to validate pattern
+- **Frontend:** Phase 1, 2, 3.1 & 3.2 complete — auth foundation + auth pages + patients + appointments modules integrated
+- **Next:** Phase 3.3 (Staff module)
 - **Blockers:** None (macOS file descriptor limit during build is system-level, not code)

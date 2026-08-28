@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import {
   AlertCircle, CalendarDays, CheckCircle2, Clock, Plus, Search, UserCheck,
   Phone, ShieldCheck, Ban, CalendarClock, LogIn, X, ChevronRight, ArrowRight
@@ -8,6 +8,9 @@ import {
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Modal } from "@/components/ui/modal";
+import { useAppointments, useCreateAppointment, useUpdateAppointment, useTodayAppointments, Appointment, AppointmentQueryParams, AppointmentStatus, TodayAppointmentsResponse } from "@/hooks/useAppointments";
+import { useAuth } from "@/lib/auth-context";
+import { toast } from "sonner";
 
 type Booking = {
   id: string;
@@ -17,14 +20,8 @@ type Booking = {
   purpose: string;
   plan: string;
   status: string;
+  rawStatus: AppointmentStatus;
 };
-
-const initialBookings: Booking[] = [
-  { id: "APT-1042", patient: "Chidimma Okoro", patientId: "PT-2024-001", time: "09:00 AM", purpose: "Eye consultation", plan: "HMO", status: "Arrived" },
-  { id: "APT-1043", patient: "Babatunde Lawal", patientId: "PT-2024-002", time: "10:30 AM", purpose: "Lens purchase", plan: "Private", status: "Scheduled" },
-  { id: "APT-1044", patient: "Yuki Tanaka", patientId: "PT-2024-003", time: "11:15 AM", purpose: "Follow-up", plan: "HMO", status: "Confirmed" },
-  { id: "APT-1045", patient: "Sarah Mensah", patientId: "PT-2024-004", time: "12:00 PM", purpose: "Emergency care", plan: "Private", status: "Priority" },
-];
 
 const purposeOptions = [
   "Eye consultation", "Eye test", "Lens purchase", "Frame selection",
@@ -38,16 +35,76 @@ const statusStyles: Record<string, string> = {
   Priority: "bg-rose-100 text-rose-700",
   Rescheduled: "bg-amber-100 text-amber-700",
   Cancelled: "bg-slate-200 text-slate-500",
+  "In Progress": "bg-blue-100 text-blue-700",
+  Completed: "bg-emerald-100 text-emerald-700",
+  "No Show": "bg-slate-200 text-slate-500",
 };
 
-export default function AppointmentsPage() {
-  const [bookings, setBookings] = useState(initialBookings);
-  const [query, setQuery] = useState("");
-  const [selectedBookingId, setSelectedBookingId] = useState(initialBookings[0].id);
-  const [statusFilter, setStatusFilter] = useState("All");
-  const [toast, setToast] = useState("");
+function mapApiAppointmentToBooking(appointment: Appointment): Booking {
+  const statusMap: Record<AppointmentStatus, string> = {
+    scheduled: "Scheduled",
+    confirmed: "Confirmed",
+    in_progress: "In Progress",
+    completed: "Completed",
+    cancelled: "Cancelled",
+    no_show: "No Show",
+  };
 
-  const [newBooking, setNewBooking] = useState({ patient: "", phone: "", purpose: "Eye consultation", time: "02:00 PM" });
+  const time = appointment.appointmentTime 
+    ? formatTime(appointment.appointmentTime)
+    : formatDateTime(appointment.appointmentDate);
+
+  const patientName = appointment.patient 
+    ? `${appointment.patient.firstName} ${appointment.patient.lastName}`
+    : "Unknown Patient";
+
+  const patientType = appointment.patient?.patientType === "hmo" ? "HMO" : "Private";
+  const hmoName = appointment.patient?.hmoName || "Self-Pay";
+
+  return {
+    id: appointment.id,
+    patient: patientName,
+    patientId: appointment.patientId,
+    time,
+    purpose: appointment.reason || appointment.type,
+    plan: patientType === "HMO" ? hmoName : "Self-Pay",
+    status: statusMap[appointment.status] || appointment.status,
+    rawStatus: appointment.status,
+  };
+}
+
+function formatTime(timeStr: string): string {
+  const [hours, minutes] = timeStr.split(":");
+  const hour = parseInt(hours, 10);
+  const ampm = hour >= 12 ? "PM" : "AM";
+  const displayHour = hour % 12 || 12;
+  return `${displayHour}:${minutes} ${ampm}`;
+}
+
+function formatDateTime(dateStr: string): string {
+  const date = new Date(dateStr);
+  const hours = date.getHours();
+  const minutes = date.getMinutes().toString().padStart(2, "0");
+  const ampm = hours >= 12 ? "PM" : "AM";
+  const displayHour = hours % 12 || 12;
+  return `${displayHour}:${minutes} ${ampm}`;
+}
+
+export default function AppointmentsPage() {
+  const { user } = useAuth();
+  const [query, setQuery] = useState("");
+  const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState("All");
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const [newBooking, setNewBooking] = useState({ 
+    patientId: "", 
+    phone: "", 
+    purpose: "Eye consultation", 
+    time: "02:00 PM",
+    date: new Date().toISOString().split('T')[0],
+    type: "consultation" as const,
+  });
 
   // Modal states
   const [showDetail, setShowDetail] = useState(false);
@@ -59,7 +116,40 @@ export default function AppointmentsPage() {
   const [rescheduleTime, setRescheduleTime] = useState("10:00");
   const [rescheduleReason, setRescheduleReason] = useState("Patient request");
 
+  const queryParams: AppointmentQueryParams = {
+    clinicId: user?.clinicId,
+    branchId: undefined,
+    page: currentPage,
+    limit: 20,
+    sortBy: "appointmentDate",
+    sortOrder: "DESC",
+  };
+
+  const { 
+    data: appointmentsResponse, 
+    isLoading: isAppointmentsLoading, 
+    error: appointmentsError,
+    refetch: refetchAppointments 
+  } = useAppointments(queryParams);
+
+  const { data: todayResponse } = useTodayAppointments(user?.clinicId || null);
+
+  const createAppointmentMutation = useCreateAppointment();
+  const updateAppointmentMutation = useUpdateAppointment();
+
+  const bookings = useMemo(() => 
+    appointmentsResponse?.data.map(mapApiAppointmentToBooking) || [], 
+    [appointmentsResponse?.data]
+  );
+
   const selectedBooking = bookings.find((b) => b.id === selectedBookingId) ?? bookings[0];
+
+  // Auto-select first booking if none selected
+  useEffect(() => {
+    if (!selectedBookingId && bookings.length > 0) {
+      setSelectedBookingId(bookings[0].id);
+    }
+  }, [bookings, selectedBookingId]);
 
   const filteredBookings = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -70,42 +160,114 @@ export default function AppointmentsPage() {
     });
   }, [bookings, query, statusFilter]);
 
-  const arrivedCount = bookings.filter((b) => b.status === "Arrived").length;
+  const arrivedCount = bookings.filter((b) => b.status === "Arrived" || b.rawStatus === "in_progress").length;
   const priorityCount = bookings.filter((b) => b.status === "Priority").length;
+  const totalCount = bookings.length;
+  const scheduledCount = bookings.filter((b) => b.rawStatus === "scheduled").length;
+  const confirmedCount = bookings.filter((b) => b.rawStatus === "confirmed").length;
 
-  const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 3000); };
+  const updateBookingStatus = async (status: string) => {
+    if (!selectedBooking) return;
+    
+    const statusMap: Record<string, AppointmentStatus> = {
+      Scheduled: "scheduled",
+      Confirmed: "confirmed",
+      "In Progress": "in_progress",
+      Arrived: "in_progress",
+      Completed: "completed",
+      Cancelled: "cancelled",
+      "No Show": "no_show",
+      Rescheduled: "scheduled",
+    };
 
-  const updateBookingStatus = (status: string) => {
-    setBookings((current) =>
-      current.map((b) => (b.id === selectedBooking.id ? { ...b, status } : b))
-    );
+    try {
+      await updateAppointmentMutation.mutateAsync({
+        id: selectedBooking.id,
+        data: { status: statusMap[status] || "scheduled" },
+      });
+      toast.success(`Appointment marked as ${status}`);
+      refetchAppointments();
+    } catch (error) {
+      toast.error("Failed to update appointment");
+      console.error("Update error:", error);
+    }
   };
 
-  const createMockBooking = () => {
-    if (!newBooking.patient.trim()) return;
-    const nextBooking: Booking = {
-      id: `APT-${1042 + bookings.length}`,
-      patient: newBooking.patient,
-      patientId: "Walk-in",
-      time: newBooking.time,
-      purpose: newBooking.purpose,
-      plan: "Private",
-      status: "Scheduled",
-    };
-    setBookings((current) => [nextBooking, ...current]);
-    setSelectedBookingId(nextBooking.id);
-    setNewBooking({ patient: "", phone: "", purpose: "Eye consultation", time: "02:00 PM" });
-    showToast("Booking created");
+  const handleCreateBooking = async () => {
+    if (!newBooking.patientId || !user) return;
+    
+    try {
+      await createAppointmentMutation.mutateAsync({
+        appointmentDate: newBooking.date,
+        appointmentTime: newBooking.time,
+        type: newBooking.type as any,
+        reason: newBooking.purpose,
+        patientId: newBooking.patientId,
+        branchId: user.clinicId, // using clinicId as fallback for branchId
+        clinicId: user.clinicId,
+      });
+      toast.success("Appointment created successfully");
+      setNewBooking({ patientId: "", phone: "", purpose: "Eye consultation", time: "02:00 PM", date: new Date().toISOString().split('T')[0], type: "consultation" });
+      refetchAppointments();
+    } catch (error) {
+      toast.error("Failed to create appointment");
+      console.error("Create error:", error);
+    }
+  };
+
+  const handleMarkArrived = async () => {
+    if (!selectedBooking) return;
+    try {
+      await updateAppointmentMutation.mutateAsync({
+        id: selectedBooking.id,
+        data: { status: "in_progress" },
+      });
+      toast.success(`${selectedBooking.patient} marked as arrived & sent to ${arrivedStation}`);
+      setShowArrived(false);
+      refetchAppointments();
+    } catch (error) {
+      toast.error("Failed to mark arrived");
+      console.error("Arrived error:", error);
+    }
+  };
+
+  const handleReschedule = async () => {
+    if (!selectedBooking) return;
+    try {
+      await updateAppointmentMutation.mutateAsync({
+        id: selectedBooking.id,
+        data: { 
+          appointmentDate: rescheduleDate,
+          appointmentTime: rescheduleTime,
+        },
+      });
+      toast.success(`${selectedBooking.patient} rescheduled to ${rescheduleDate} ${rescheduleTime}`);
+      setShowReschedule(false);
+      refetchAppointments();
+    } catch (error) {
+      toast.error("Failed to reschedule appointment");
+      console.error("Reschedule error:", error);
+    }
+  };
+
+  const handleCancel = async () => {
+    if (!selectedBooking) return;
+    try {
+      await updateAppointmentMutation.mutateAsync({
+        id: selectedBooking.id,
+        data: { status: "cancelled" },
+      });
+      toast.success(`Appointment cancelled for ${selectedBooking.patient}`);
+      setShowCancel(false);
+      refetchAppointments();
+    } catch (error) {
+      toast.error("Failed to cancel appointment");
+      console.error("Cancel error:", error);
+    }
   };
 
   return (
     <div className="space-y-5 sm:space-y-8 max-w-[1600px] mx-auto">
-      {toast && (
-        <div className="fixed top-6 right-6 z-50 px-5 sm:px-6 py-3 sm:py-4 rounded-xl sm:rounded-2xl bg-slate-900 text-white text-xs font-black shadow-2xl flex items-center gap-3 animate-in slide-in-from-top-2 z-[100]">
-          <CheckCircle2 size={16} className="text-emerald-400" /> {toast}
-        </div>
-      )}
-
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">Appointments</h1>
@@ -176,73 +338,85 @@ export default function AppointmentsPage() {
 
         {/* Sidebar */}
         <aside className="space-y-5 sm:space-y-8">
-          {/* Arrival Actions */}
-          <section className="bg-white border border-slate-100 rounded-2xl sm:rounded-[3rem] shadow-sm p-5 sm:p-8">
-            <div className="flex items-start justify-between gap-4 mb-5 sm:mb-8">
-              <div>
-                <h2 className="text-lg sm:text-xl font-black text-slate-900">Arrival Actions</h2>
-                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Selected appointment</p>
+          {selectedBooking && (
+            <>
+            {/* Arrival Actions */}
+            <section className="bg-white border border-slate-100 rounded-2xl sm:rounded-[3rem] shadow-sm p-5 sm:p-8">
+              <div className="flex items-start justify-between gap-4 mb-5 sm:mb-8">
+                <div>
+                  <h2 className="text-lg sm:text-xl font-black text-slate-900">Arrival Actions</h2>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Selected appointment</p>
+                </div>
+                <CheckCircle2 size={24} className="text-emerald-500 shrink-0" />
               </div>
-              <CheckCircle2 size={24} className="text-emerald-500 shrink-0" />
-            </div>
-            <div className="space-y-3 sm:space-y-4">
-              <div className="p-4 sm:p-5 rounded-xl sm:rounded-2xl bg-slate-50 border border-slate-100">
-                <p className="text-[9px] sm:text-[10px] text-slate-400 font-black uppercase tracking-widest mb-1">Selected Patient</p>
-                <p className="text-base sm:text-lg font-black text-slate-900 truncate">{selectedBooking.patient}</p>
-                <p className="text-xs font-bold text-slate-500 mt-1">{selectedBooking.time} &bull; {selectedBooking.purpose}</p>
-                <div className="flex gap-1.5 mt-2 flex-wrap">
-                  <span className={cn("px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest", statusStyles[selectedBooking.status] || "bg-slate-100 text-slate-600")}>{selectedBooking.status}</span>
-                  <span className={cn("px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest", selectedBooking.plan === "HMO" ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700")}>{selectedBooking.plan}</span>
+              <div className="space-y-3 sm:space-y-4">
+                <div className="p-4 sm:p-5 rounded-xl sm:rounded-2xl bg-slate-50 border border-slate-100">
+                  <p className="text-[9px] sm:text-[10px] text-slate-400 font-black uppercase tracking-widest mb-1">Selected Patient</p>
+                  <p className="text-base sm:text-lg font-black text-slate-900 truncate">{selectedBooking.patient}</p>
+                  <p className="text-xs font-bold text-slate-500 mt-1">{selectedBooking.time} &bull; {selectedBooking.purpose}</p>
+                  <div className="flex gap-1.5 mt-2 flex-wrap">
+                    <span className={cn("px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest", statusStyles[selectedBooking.status] || "bg-slate-100 text-slate-600")}>{selectedBooking.status}</span>
+                    <span className={cn("px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest", selectedBooking.plan === "HMO" ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700")}>{selectedBooking.plan}</span>
+                  </div>
+                </div>
+                {selectedBooking.status !== "Arrived" && selectedBooking.status !== "Cancelled" && (
+                  <button onClick={() => setShowArrived(true)}
+                    className="w-full py-3 sm:py-4 rounded-xl sm:rounded-2xl bg-emerald-600 text-white text-[10px] sm:text-xs font-black uppercase tracking-widest hover:bg-emerald-700 transition-all flex items-center justify-center gap-2">
+                    <UserCheck size={14} /> Mark Arrived & Check-In
+                  </button>
+                )}
+                <button onClick={() => setShowReschedule(true)}
+                  className="w-full py-3 sm:py-4 rounded-xl sm:rounded-2xl bg-white border border-slate-200 text-slate-600 text-[10px] sm:text-xs font-black uppercase tracking-widest hover:bg-slate-50 transition-all flex items-center justify-center gap-2">
+                  <CalendarClock size={14} /> Reschedule
+                </button>
+                <button onClick={() => setShowCancel(true)}
+                  className="w-full py-3 sm:py-4 rounded-xl sm:rounded-2xl bg-white border border-rose-200 text-rose-600 text-[10px] sm:text-xs font-black uppercase tracking-widest hover:bg-rose-50 transition-all flex items-center justify-center gap-2">
+                  <Ban size={14} /> Cancel Appointment
+                </button>
+              </div>
+            </section>
+
+            {/* New Booking */}
+            <motion.section initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+              className="bg-slate-900 text-white rounded-2xl sm:rounded-[3rem] p-5 sm:p-8 shadow-xl shadow-slate-900/20">
+              <div className="flex items-center gap-3 mb-4 sm:mb-6">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-white/10 flex items-center justify-center"><Plus size={18} /></div>
+                <div>
+                  <h2 className="text-base sm:text-lg font-black">New Booking</h2>
+                  <p className="text-[9px] sm:text-[10px] text-white/50 font-black uppercase tracking-widest">Frontdesk</p>
                 </div>
               </div>
-              {selectedBooking.status !== "Arrived" && selectedBooking.status !== "Cancelled" && (
-                <button onClick={() => setShowArrived(true)}
-                  className="w-full py-3 sm:py-4 rounded-xl sm:rounded-2xl bg-emerald-600 text-white text-[10px] sm:text-xs font-black uppercase tracking-widest hover:bg-emerald-700 transition-all flex items-center justify-center gap-2">
-                  <UserCheck size={14} /> Mark Arrived & Check-In
+              <div className="space-y-2 sm:space-y-3">
+                <input value={newBooking.patientId} onChange={(e) => setNewBooking({ ...newBooking, patientId: e.target.value })} placeholder="Patient ID"
+                  className="w-full px-4 sm:px-5 py-3 sm:py-4 rounded-xl sm:rounded-2xl bg-white/10 border border-white/10 focus:outline-none text-sm font-bold placeholder:text-white/30" />
+                <input value={newBooking.phone} onChange={(e) => setNewBooking({ ...newBooking, phone: e.target.value })} placeholder="Phone number"
+                  className="w-full px-4 sm:px-5 py-3 sm:py-4 rounded-xl sm:rounded-2xl bg-white/10 border border-white/10 focus:outline-none text-sm font-bold placeholder:text-white/30" />
+                <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                  <select value={newBooking.purpose} onChange={(e) => setNewBooking({ ...newBooking, purpose: e.target.value })}
+                    className="px-3 sm:px-4 py-3 sm:py-4 rounded-xl sm:rounded-2xl bg-white/10 border border-white/10 focus:outline-none text-[10px] sm:text-xs font-bold">
+                    {purposeOptions.map((p) => <option key={p} value={p} className="text-slate-900">{p}</option>)}
+                  </select>
+                  <select value={newBooking.time} onChange={(e) => setNewBooking({ ...newBooking, time: e.target.value })}
+                    className="px-3 sm:px-4 py-3 sm:py-4 rounded-xl sm:rounded-2xl bg-white/10 border border-white/10 focus:outline-none text-[10px] sm:text-xs font-bold">
+                    {["08:00 AM","09:00 AM","10:00 AM","11:00 AM","12:00 PM","01:00 PM","02:00 PM","03:00 PM","04:00 PM"].map(t => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                </div>
+                <input type="date" value={newBooking.date} onChange={(e) => setNewBooking({ ...newBooking, date: e.target.value })}
+                  className="w-full px-4 sm:px-5 py-3 sm:py-4 rounded-xl sm:rounded-2xl bg-white/10 border border-white/10 focus:outline-none text-sm font-bold placeholder:text-white/30" />
+                <button onClick={handleCreateBooking} disabled={!newBooking.patientId.trim()}
+                  className="w-full py-3 sm:py-4 rounded-xl sm:rounded-2xl bg-white text-slate-900 text-[10px] sm:text-xs font-black uppercase tracking-widest hover:bg-sky-50 transition-all disabled:opacity-50">
+                  Create Booking
                 </button>
-              )}
-              <button onClick={() => setShowReschedule(true)}
-                className="w-full py-3 sm:py-4 rounded-xl sm:rounded-2xl bg-white border border-slate-200 text-slate-600 text-[10px] sm:text-xs font-black uppercase tracking-widest hover:bg-slate-50 transition-all flex items-center justify-center gap-2">
-                <CalendarClock size={14} /> Reschedule
-              </button>
-              <button onClick={() => setShowCancel(true)}
-                className="w-full py-3 sm:py-4 rounded-xl sm:rounded-2xl bg-white border border-rose-200 text-rose-600 text-[10px] sm:text-xs font-black uppercase tracking-widest hover:bg-rose-50 transition-all flex items-center justify-center gap-2">
-                <Ban size={14} /> Cancel Appointment
-              </button>
-            </div>
-          </section>
-
-          {/* New Booking */}
-          <motion.section initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-            className="bg-slate-900 text-white rounded-2xl sm:rounded-[3rem] p-5 sm:p-8 shadow-xl shadow-slate-900/20">
-            <div className="flex items-center gap-3 mb-4 sm:mb-6">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-white/10 flex items-center justify-center"><Plus size={18} /></div>
-              <div>
-                <h2 className="text-base sm:text-lg font-black">New Booking</h2>
-                <p className="text-[9px] sm:text-[10px] text-white/50 font-black uppercase tracking-widest">Frontdesk</p>
               </div>
+            </motion.section>
+            </>
+          )}
+          {!selectedBooking && (
+            <div className="bg-white border border-slate-100 rounded-2xl sm:rounded-[3rem] shadow-sm p-5 sm:p-8 text-center">
+              <CalendarDays size={32} className="mx-auto mb-3 opacity-40" />
+              <p className="text-sm font-bold text-slate-400">Select an appointment to view details</p>
             </div>
-            <div className="space-y-2 sm:space-y-3">
-              <input value={newBooking.patient} onChange={(e) => setNewBooking({ ...newBooking, patient: e.target.value })} placeholder="Patient name"
-                className="w-full px-4 sm:px-5 py-3 sm:py-4 rounded-xl sm:rounded-2xl bg-white/10 border border-white/10 focus:outline-none text-sm font-bold placeholder:text-white/30" />
-              <input value={newBooking.phone} onChange={(e) => setNewBooking({ ...newBooking, phone: e.target.value })} placeholder="Phone number"
-                className="w-full px-4 sm:px-5 py-3 sm:py-4 rounded-xl sm:rounded-2xl bg-white/10 border border-white/10 focus:outline-none text-sm font-bold placeholder:text-white/30" />
-              <div className="grid grid-cols-2 gap-2 sm:gap-3">
-                <select value={newBooking.purpose} onChange={(e) => setNewBooking({ ...newBooking, purpose: e.target.value })}
-                  className="px-3 sm:px-4 py-3 sm:py-4 rounded-xl sm:rounded-2xl bg-white/10 border border-white/10 focus:outline-none text-[10px] sm:text-xs font-bold">
-                  {purposeOptions.map((p) => <option key={p} value={p} className="text-slate-900">{p}</option>)}
-                </select>
-                <select value={newBooking.time} onChange={(e) => setNewBooking({ ...newBooking, time: e.target.value })}
-                  className="px-3 sm:px-4 py-3 sm:py-4 rounded-xl sm:rounded-2xl bg-white/10 border border-white/10 focus:outline-none text-[10px] sm:text-xs font-bold">
-                  {["08:00 AM","09:00 AM","10:00 AM","11:00 AM","12:00 PM","01:00 PM","02:00 PM","03:00 PM","04:00 PM"].map(t => <option key={t} value={t}>{t}</option>)}
-                </select>
-              </div>
-              <button onClick={createMockBooking} disabled={!newBooking.patient.trim()}
-                className="w-full py-3 sm:py-4 rounded-xl sm:rounded-2xl bg-white text-slate-900 text-[10px] sm:text-xs font-black uppercase tracking-widest hover:bg-sky-50 transition-all disabled:opacity-50">
-                Create Booking
-              </button>
-            </div>
-          </motion.section>
+          )}
         </aside>
       </div>
 
@@ -287,6 +461,7 @@ export default function AppointmentsPage() {
 
       {/* ====== ARRIVED MODAL ====== */}
       <Modal isOpen={showArrived} onClose={() => setShowArrived(false)} title="Mark Arrived & Check-In">
+        {selectedBooking && (
         <div className="space-y-4 sm:space-y-5">
           <div className="p-4 sm:p-5 rounded-xl sm:rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center gap-3 sm:gap-4">
             <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-emerald-100 flex items-center justify-center text-emerald-700 shrink-0"><UserCheck size={24} /></div>
@@ -306,7 +481,7 @@ export default function AppointmentsPage() {
             </select>
           </div>
           <div className="flex flex-col gap-2">
-            <button onClick={() => { updateBookingStatus("Arrived"); setShowArrived(false); showToast(`${selectedBooking.patient} arrived & sent to ${arrivedStation}`); }}
+            <button onClick={handleMarkArrived}
               className="w-full py-3 sm:py-4 rounded-xl sm:rounded-2xl bg-emerald-600 text-white text-[10px] sm:text-xs font-black uppercase tracking-widest hover:bg-emerald-700 flex items-center justify-center gap-2">
               <CheckCircle2 size={14} /> Confirm Arrival
             </button>
@@ -314,10 +489,12 @@ export default function AppointmentsPage() {
               className="w-full py-3 sm:py-4 rounded-xl sm:rounded-2xl border border-slate-200 text-slate-600 text-[10px] sm:text-xs font-black uppercase tracking-widest hover:bg-slate-50">Cancel</button>
           </div>
         </div>
+        )}
       </Modal>
 
       {/* ====== RESCHEDULE MODAL ====== */}
       <Modal isOpen={showReschedule} onClose={() => setShowReschedule(false)} title="Reschedule Appointment">
+        {selectedBooking && (
         <div className="space-y-4 sm:space-y-5">
           <div className="p-4 rounded-xl sm:rounded-2xl bg-amber-50 border border-amber-100 text-xs sm:text-sm text-amber-800 font-medium">
             Reschedule <strong>{selectedBooking.patient}</strong> &mdash; {selectedBooking.time}, {selectedBooking.purpose}
@@ -342,15 +519,17 @@ export default function AppointmentsPage() {
               <option>Other</option>
             </select>
           </div>
-          <button onClick={() => { updateBookingStatus("Rescheduled"); setShowReschedule(false); showToast(`${selectedBooking.patient} rescheduled to ${rescheduleDate} ${rescheduleTime}`); }}
+          <button onClick={handleReschedule}
             className="w-full py-3 sm:py-4 rounded-xl sm:rounded-2xl bg-amber-600 text-white text-[10px] sm:text-xs font-black uppercase tracking-widest hover:bg-amber-700 flex items-center justify-center gap-2">
             <CalendarClock size={14} /> Confirm Reschedule
           </button>
         </div>
+        )}
       </Modal>
 
       {/* ====== CANCEL MODAL ====== */}
       <Modal isOpen={showCancel} onClose={() => setShowCancel(false)} title="Cancel Appointment">
+        {selectedBooking && (
         <div className="space-y-4 sm:space-y-5 text-center">
           <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-rose-50 flex items-center justify-center mx-auto">
             <Ban size={28} className="text-rose-500" />
@@ -360,12 +539,13 @@ export default function AppointmentsPage() {
             <p className="text-xs sm:text-sm text-slate-500 mt-1"><strong>{selectedBooking.patient}</strong> &bull; {selectedBooking.time}</p>
           </div>
           <div className="flex flex-col gap-2">
-            <button onClick={() => { updateBookingStatus("Cancelled"); setShowCancel(false); showToast(`Appointment cancelled for ${selectedBooking.patient}`); }}
+            <button onClick={handleCancel}
               className="w-full py-3 sm:py-4 rounded-xl sm:rounded-2xl bg-rose-600 text-white text-[10px] sm:text-xs font-black uppercase tracking-widest hover:bg-rose-700">Yes, Cancel</button>
             <button onClick={() => setShowCancel(false)}
               className="w-full py-3 sm:py-4 rounded-xl sm:rounded-2xl border border-slate-200 text-slate-600 text-[10px] sm:text-xs font-black uppercase tracking-widest hover:bg-slate-50">Keep Appointment</button>
           </div>
         </div>
+        )}
       </Modal>
     </div>
   );

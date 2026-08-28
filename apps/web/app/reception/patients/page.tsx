@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { 
   Users, Search, UserPlus, Filter, MoreHorizontal, ChevronRight,
   ShieldCheck, User, History, Phone, Mail, MapPin, Calendar,
@@ -11,20 +11,64 @@ import {
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { Modal } from "@/components/ui/modal";
-
-const patients = [
-  { id: "PT-2024-001", name: "Chidimma Okoro", phone: "+234 802 345 6789", email: "chidimma.o@gmail.com", type: "HMO", provider: "Reliance Health", lastVisit: "2 days ago", status: "Active" },
-  { id: "PT-2024-002", name: "Babatunde Lawal", phone: "+234 810 987 6543", email: "b.lawal@yahoo.com", type: "Private", provider: "Self-Pay", lastVisit: "1 week ago", status: "Active" },
-  { id: "PT-2024-003", name: "Yuki Tanaka", phone: "+234 905 123 4567", email: "yuki.t@tanaka.jp", type: "HMO", provider: "Axa Mansard", lastVisit: "Today", status: "Active" },
-  { id: "PT-2024-004", name: "Sarah Mensah", phone: "+234 703 555 0192", email: "s.mensah@outlook.com", type: "Private", provider: "Self-Pay", lastVisit: "1 month ago", status: "Inactive" },
-];
+import { usePatients, useCreatePatient, Patient, PatientQueryParams } from "@/hooks/usePatients";
+import { useAuth } from "@/lib/auth-context";
+import { toast } from "sonner";
 
 type CheckInStep = "SCAN" | "IDENTIFY" | "PURPOSE" | "PLAN" | "VERIFYING" | "COMPLETE";
 type RegistrationStep = "PERSONAL" | "CONTACT" | "INSURANCE" | "MEDICAL" | "REVIEW" | "SUCCESS";
 
+function mapApiPatientToUI(patient: Patient) {
+  return {
+    id: patient.id,
+    name: `${patient.firstName} ${patient.lastName}`,
+    phone: patient.phone,
+    email: patient.email || "-",
+    type: patient.patientType === "hmo" ? "HMO" : "Private",
+    provider: patient.hmoName || (patient.patientType === "hmo" ? "HMO" : "Self-Pay"),
+    lastVisit: formatRelativeTime(patient.updatedAt),
+    status: patient.status === "active" ? "Active" : patient.status === "inactive" ? "Inactive" : "New",
+  };
+}
+
+function formatRelativeTime(dateString: string): string {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  
+  if (diffDays === 0) return "Today";
+  if (diffDays === 1) return "Yesterday";
+  if (diffDays < 7) return `${diffDays} days ago`;
+  if (diffDays < 30) return `${Math.floor(diffDays / 7)} week${Math.floor(diffDays / 7) > 1 ? 's' : ''} ago`;
+  return `${Math.floor(diffDays / 30)} month${Math.floor(diffDays / 30) > 1 ? 's' : ''} ago`;
+}
+
 export default function PatientsPage() {
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState("All");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const queryParams: PatientQueryParams = {
+    search: searchQuery || undefined,
+    patientType: filterType === "HMO" ? "hmo" : filterType === "Private" ? "private" : undefined,
+    page: currentPage,
+    limit: 10,
+    sortBy: "createdAt",
+    sortOrder: "DESC",
+    clinicId: user?.clinicId,
+  };
+
+  const { 
+    data: patientsResponse, 
+    isLoading: isPatientsLoading, 
+    error: patientsError,
+    refetch: refetchPatients 
+  } = usePatients(queryParams);
+
+  const createPatientMutation = useCreatePatient();
 
   const [isCheckInModalOpen, setIsCheckInModalOpen] = useState(false);
   const [checkInStep, setCheckInStep] = useState<CheckInStep>("SCAN");
@@ -49,9 +93,18 @@ export default function PatientsPage() {
     medications: "", allergies: "",
   });
 
-  const [selectedPatient, setSelectedPatient] = useState<typeof patients[0] | null>(null);
+  const [selectedPatient, setSelectedPatient] = useState<ReturnType<typeof mapApiPatientToUI> | null>(null);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [activeProfileTab, setActiveProfileTab] = useState("overview");
+
+  const patients = patientsResponse?.data.map(mapApiPatientToUI) || [];
+
+  const filteredPatients = patients.filter(p => {
+    const q = searchQuery.toLowerCase();
+    const matchesSearch = !q || [p.name, p.id, p.phone, p.email, p.provider].join(" ").toLowerCase().includes(q);
+    const matchesFilter = filterType === "All" || p.type === filterType;
+    return matchesSearch && matchesFilter;
+  });
 
   const openRegistration = () => {
     setIsRegModalOpen(true);
@@ -88,12 +141,49 @@ export default function PatientsPage() {
     }, 2500);
   };
 
-  const handleRegistration = () => {
+  const handleRegistration = async () => {
+    if (!user) return;
+    
     setIsCheckInLoading(true);
-    setTimeout(() => {
-      setIsCheckInLoading(false);
+    try {
+      const dob = new Date(regData.dob);
+      const age = dob ? Math.floor((new Date().getTime() - dob.getTime()) / (365.25 * 86400000)) : 0;
+      
+      const patientData = {
+        firstName: regData.firstName,
+        lastName: regData.lastName,
+        dateOfBirth: regData.dob,
+        gender: (regData.gender as 'male' | 'female' | 'other') || 'other',
+        phone: regData.phoneMobile,
+        email: regData.email || undefined,
+        address: regData.address || undefined,
+        city: undefined,
+        state: undefined,
+        nationality: undefined,
+        occupation: regData.occupation || undefined,
+        patientType: (regData.planType === "HMO" ? "hmo" : "private") as 'private' | 'hmo',
+        hmoId: regData.planType === "HMO" ? regData.insuranceProvider : undefined,
+        hmoName: regData.planType === "HMO" ? regData.insuranceProvider : undefined,
+        hmoNumber: regData.planType === "HMO" ? regData.memberId : undefined,
+        emergencyContact: regData.emergencyName || undefined,
+        emergencyPhone: regData.emergencyPhone || undefined,
+        bloodGroup: undefined,
+        genotype: undefined,
+        allergies: regData.allergies || undefined,
+        clinicId: user.clinicId,
+        branchId: user.clinicId, // Will need branchId from context
+      };
+
+      await createPatientMutation.mutateAsync(patientData);
+      toast.success("Patient registered successfully!");
       setRegStep("SUCCESS");
-    }, 1500);
+      refetchPatients();
+    } catch (error) {
+      toast.error("Failed to register patient. Please try again.");
+      console.error("Registration error:", error);
+    } finally {
+      setIsCheckInLoading(false);
+    }
   };
 
   const purposes = [
@@ -105,13 +195,6 @@ export default function PatientsPage() {
     { id: "followup", label: "Follow-up", icon: Clock, desc: "Review progress" },
     { id: "emergency", label: "Emergency", icon: AlertCircle, desc: "Urgent care", color: "text-rose-500" },
   ];
-
-  const filteredPatients = patients.filter(p => {
-    const q = searchQuery.toLowerCase();
-    const matchesSearch = !q || [p.name, p.id, p.phone, p.email, p.provider].join(" ").toLowerCase().includes(q);
-    const matchesFilter = filterType === "All" || p.type === filterType;
-    return matchesSearch && matchesFilter;
-  });
 
   const renderPatientCard = (patient: typeof patients[0]) => (
     <button key={patient.id} onClick={() => { setSelectedPatient(patient); setIsProfileModalOpen(true); }}
