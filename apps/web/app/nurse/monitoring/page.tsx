@@ -1,13 +1,13 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Modal } from "@/components/ui/modal";
 import { Heart, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { PageHeader } from "@/app/clinic/_components/page-header";
-import { useNurseStore } from "@/app/nurse/_mock/nurse-store";
+import { useNurseQueue, useClinicNotes } from "@/hooks/useNurse";
 
 function severityBadge(severity: string) {
   if (severity === "High") return <Badge className="bg-rose-600 text-white">High</Badge>;
@@ -23,21 +23,27 @@ function statusBadge(status: string) {
 }
 
 export default function NurseMonitoring() {
-  const assignedPatients = useNurseStore((s) => s.assignedPatients);
-  const monitoringAlerts = useNurseStore((s) => s.monitoringAlerts);
-  const observationNotes = useNurseStore((s) => s.observationNotes);
-  const acknowledgeAlert = useNurseStore((s) => s.acknowledgeAlert);
-  const markFollowUpDone = useNurseStore((s) => s.markFollowUpDone);
+  const { data: queueEntries = [] } = useNurseQueue();
+  const { data: notes = [] } = useClinicNotes();
 
-  const [confirmId, setConfirmId] = useState<string | null>(null);
+  const underObservation = queueEntries.filter((e) => e.status === "in_progress");
 
-  const underObservation = assignedPatients.filter((p) => p.status === "Under Observation");
-  const openAlerts = monitoringAlerts.filter((a) => a.status === "Open");
+  const alerts = useMemo(() => {
+    return notes
+      .filter((n) => n.category === "adverse_reaction" || n.category === "allergy")
+      .map((n) => ({
+        id: n.id,
+        patientName: `${n.patient?.firstName} ${n.patient?.lastName}`,
+        patientId: n.patientId,
+        alert: n.note,
+        severity: n.category === "adverse_reaction" ? "High" : "Medium",
+        timestamp: new Date(n.createdAt).toLocaleString(),
+        status: "Open" as const,
+        category: n.category,
+      }));
+  }, [notes]);
 
-  const handleAcknowledge = (alertId: string) => {
-    acknowledgeAlert(alertId);
-    setConfirmId(null);
-  };
+  const openAlerts = alerts.filter((a) => a.status === "Open");
 
   return (
     <div className="space-y-6 md:space-y-8">
@@ -57,7 +63,7 @@ export default function NurseMonitoring() {
           </CardHeader>
           <CardContent className="p-0">
             <div className="md:hidden divide-y divide-slate-100">
-              {monitoringAlerts.map((a) => (
+              {alerts.map((a) => (
                 <div key={a.id} className="p-4">
                   <div className="flex items-start justify-between gap-3 mb-2">
                     <div className="min-w-0 flex-1">
@@ -71,15 +77,11 @@ export default function NurseMonitoring() {
                       {statusBadge(a.status)}
                       <span className="text-[10px] text-slate-400">{a.timestamp}</span>
                     </div>
-                    {a.status === "Open" ? (
-                      <button onClick={() => setConfirmId(a.id)} className="rounded-lg bg-cyan-600 px-3 py-1.5 text-[10px] font-bold text-white">Acknowledge</button>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 text-[10px] text-emerald-600 font-medium"><CheckCircle2 size={12} />Done</span>
-                    )}
+                    <span className="inline-flex items-center gap-1 text-[10px] text-emerald-600 font-medium"><CheckCircle2 size={12} />Noted</span>
                   </div>
                 </div>
               ))}
-              {monitoringAlerts.length === 0 && <p className="text-center text-sm text-slate-500 py-6">No alerts to display.</p>}
+              {alerts.length === 0 && <p className="text-center text-sm text-slate-500 py-6">No alerts to display.</p>}
             </div>
             <div className="hidden md:block overflow-x-auto">
               <Table>
@@ -90,27 +92,19 @@ export default function NurseMonitoring() {
                     <TableHead>Severity</TableHead>
                     <TableHead>Time</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {monitoringAlerts.map((a) => (
+                  {alerts.map((a) => (
                     <TableRow key={a.id}>
                       <TableCell className="font-medium text-slate-900 whitespace-nowrap">{a.patientName}</TableCell>
-                      <TableCell className="text-sm text-slate-600">{a.alert}</TableCell>
+                      <TableCell className="text-sm text-slate-600 max-w-xs truncate">{a.alert}</TableCell>
                       <TableCell>{severityBadge(a.severity)}</TableCell>
                       <TableCell className="text-xs text-slate-400 tabular-nums whitespace-nowrap">{a.timestamp}</TableCell>
                       <TableCell>{statusBadge(a.status)}</TableCell>
-                      <TableCell className="text-right">
-                        {a.status === "Open" ? (
-                          <button onClick={() => setConfirmId(a.id)} className="inline-flex items-center justify-center rounded-lg bg-cyan-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-cyan-700 whitespace-nowrap">Acknowledge</button>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 text-xs text-emerald-600 font-medium"><CheckCircle2 size={14} />Done</span>
-                        )}
-                      </TableCell>
                     </TableRow>
                   ))}
-                  {monitoringAlerts.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-sm text-slate-500 py-6">No alerts to display.</TableCell></TableRow>}
+                  {alerts.length === 0 && <TableRow><TableCell colSpan={5} className="text-center text-sm text-slate-500 py-6">No alerts to display.</TableCell></TableRow>}
                 </TableBody>
               </Table>
             </div>
@@ -125,13 +119,13 @@ export default function NurseMonitoring() {
             </CardTitle>
           </CardHeader>
           <CardContent className="p-4 sm:p-6 space-y-4">
-            {underObservation.map((p) => (
-              <div key={p.id} className="rounded-xl border border-slate-200 p-4">
-                <p className="font-semibold text-slate-900">{p.patientName}</p>
-                <p className="mt-1 text-xs text-slate-500">{p.purpose}</p>
+            {underObservation.map((e) => (
+              <div key={e.id} className="rounded-xl border border-slate-200 p-4">
+                <p className="font-semibold text-slate-900">{e.patient?.firstName} {e.patient?.lastName}</p>
+                <p className="mt-1 text-xs text-slate-500">{e.notes || e.station || "General"}</p>
                 <div className="mt-3 flex items-center justify-between">
-                  <span className="text-xs text-slate-400">{p.age}yrs / {p.gender}</span>
-                  <Badge className={p.priority === "Urgent" ? "bg-rose-600 text-white" : "bg-slate-100 text-slate-700"}>{p.priority}</Badge>
+                  <span className="text-xs text-slate-400">Ticket #{e.ticketNumber}</span>
+                  <Badge className="bg-slate-100 text-slate-700">{e.priority || "Normal"}</Badge>
                 </div>
               </div>
             ))}
@@ -143,26 +137,21 @@ export default function NurseMonitoring() {
       <Card id="notes">
         <CardHeader className="flex-row items-center justify-between px-4 sm:px-6 py-3 sm:py-4">
           <CardTitle className="text-base sm:text-lg">Observation Timeline</CardTitle>
-          <Badge variant="secondary">{observationNotes.length} entries</Badge>
+          <Badge variant="secondary">{notes.length} entries</Badge>
         </CardHeader>
         <CardContent className="p-0">
           <div className="md:hidden divide-y divide-slate-100">
-            {observationNotes.map((o) => (
+            {notes.map((o) => (
               <div key={o.id} className="p-4">
                 <div className="flex items-center justify-between gap-2 mb-1">
-                  <p className="font-medium text-slate-900 text-sm truncate">{o.patientName}</p>
-                  <span className="text-[10px] text-slate-400 tabular-nums shrink-0">{o.timestamp}</span>
+                  <p className="font-medium text-slate-900 text-sm truncate">{o.patient?.firstName} {o.patient?.lastName}</p>
+                  <span className="text-[10px] text-slate-400 tabular-nums shrink-0">{new Date(o.createdAt).toLocaleString()}</span>
                 </div>
                 <p className="text-xs text-slate-600 mb-2">{o.note}</p>
-                <Badge
-                  variant="outline"
-                  className={o.category === "Medication" ? "border-sky-300 text-sky-700 text-[10px]" : o.category === "Procedure" ? "border-violet-300 text-violet-700 text-[10px]" : "border-slate-300 text-slate-600 text-[10px]"}
-                >
-                  {o.category}
-                </Badge>
+                <Badge variant="outline" className="text-[10px]">{o.category}</Badge>
               </div>
             ))}
-            {observationNotes.length === 0 && <p className="text-center text-sm text-slate-500 py-6">No observations yet.</p>}
+            {notes.length === 0 && <p className="text-center text-sm text-slate-500 py-6">No observations yet.</p>}
           </div>
           <div className="hidden md:block overflow-x-auto">
             <Table>
@@ -175,14 +164,12 @@ export default function NurseMonitoring() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {observationNotes.map((o) => (
+                {notes.map((o) => (
                   <TableRow key={o.id}>
-                    <TableCell className="text-xs text-slate-400 tabular-nums whitespace-nowrap">{o.timestamp}</TableCell>
-                    <TableCell className="font-medium text-slate-900 whitespace-nowrap">{o.patientName}</TableCell>
+                    <TableCell className="text-xs text-slate-400 tabular-nums whitespace-nowrap">{new Date(o.createdAt).toLocaleString()}</TableCell>
+                    <TableCell className="font-medium text-slate-900 whitespace-nowrap">{o.patient?.firstName} {o.patient?.lastName}</TableCell>
                     <TableCell className="text-sm text-slate-600 max-w-xs">{o.note}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className={o.category === "Medication" ? "border-sky-300 text-sky-700" : o.category === "Procedure" ? "border-violet-300 text-violet-700" : "border-slate-300 text-slate-600"}>{o.category}</Badge>
-                    </TableCell>
+                    <TableCell><Badge variant="outline" className="text-[10px]">{o.category}</Badge></TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -190,16 +177,6 @@ export default function NurseMonitoring() {
           </div>
         </CardContent>
       </Card>
-
-      <Modal isOpen={!!confirmId} onClose={() => setConfirmId(null)} title="Acknowledge Alert">
-        <p className="text-sm text-slate-600">
-          Are you sure you want to acknowledge this alert? It will be marked as acknowledged.
-        </p>
-        <div className="mt-6 flex items-center justify-end gap-2">
-          <button type="button" onClick={() => setConfirmId(null)} className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-5 py-2.5 text-sm font-medium text-slate-900 hover:bg-slate-50">Cancel</button>
-          <button type="button" onClick={() => confirmId && handleAcknowledge(confirmId)} className="inline-flex items-center justify-center rounded-full bg-amber-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-amber-700">Acknowledge</button>
-        </div>
-      </Modal>
     </div>
   );
 }

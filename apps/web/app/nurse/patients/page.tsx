@@ -8,57 +8,53 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Modal } from "@/components/ui/modal";
 import { Users, User, Calendar, Activity, ClipboardList, AlertTriangle, ArrowRight, Clock } from "lucide-react";
 import { PageHeader } from "@/app/clinic/_components/page-header";
-import { useNurseStore } from "@/app/nurse/_mock/nurse-store";
-import type { AssignedPatient } from "@/app/nurse/_mock/nurse-data";
+import { useNurseQueue, useCompleteQueueEntry, useClinicNotes } from "@/hooks/useNurse";
 
 function statusBadge(status: string) {
-  if (status === "Urgent") return <Badge className="bg-rose-600 text-white">Urgent</Badge>;
-  if (status === "Under Observation") return <Badge className="bg-amber-600 text-white">Under Observation</Badge>;
-  if (status === "Waiting") return <Badge variant="secondary">Waiting</Badge>;
-  if (status === "Completed") return <Badge className="bg-emerald-600 text-white">Completed</Badge>;
-  if (status === "Normal") return <Badge className="bg-sky-600 text-white">Normal</Badge>;
+  if (status === "urgent") return <Badge className="bg-rose-600 text-white">Urgent</Badge>;
+  if (status === "in_progress") return <Badge className="bg-amber-600 text-white">Under Observation</Badge>;
+  if (status === "waiting") return <Badge variant="secondary">Waiting</Badge>;
+  if (status === "completed") return <Badge className="bg-emerald-600 text-white">Completed</Badge>;
   return <Badge variant="outline">{status}</Badge>;
 }
 
-function PatientCard({ p, onDetail, action }: { p: AssignedPatient; onDetail: (p: AssignedPatient) => void; action: React.ReactNode }) {
+function PatientCard({ entry, onDetail, action }: { entry: any; onDetail: (e: any) => void; action: React.ReactNode }) {
   return (
     <div className="p-4">
       <div className="flex items-center justify-between gap-3 mb-2">
         <div className="min-w-0 flex-1">
-          <button onClick={() => onDetail(p)} className="font-medium text-slate-900 hover:text-cyan-700 transition-colors text-sm truncate text-left">{p.patientName}</button>
-          <p className="text-[10px] text-slate-400">{p.age}yrs / {p.gender}</p>
+          <button onClick={() => onDetail(entry)} className="font-medium text-slate-900 hover:text-cyan-700 transition-colors text-sm truncate text-left">
+            {entry.patient?.firstName} {entry.patient?.lastName}
+          </button>
+          <p className="text-[10px] text-slate-400">Ticket #{entry.ticketNumber}</p>
         </div>
         {action}
       </div>
       <div className="flex items-center gap-2 flex-wrap">
-        <span className="text-[10px] text-slate-500 truncate">{p.purpose}</span>
+        <span className="text-[10px] text-slate-500 truncate">{entry.notes || entry.station || "General"}</span>
         <span className="text-slate-200">|</span>
-        {statusBadge(p.priority)}
+        {statusBadge(entry.status)}
       </div>
     </div>
   );
 }
 
 export default function NursePatients() {
-  const assignedPatients = useNurseStore((s) => s.assignedPatients);
-  const observationNotes = useNurseStore((s) => s.observationNotes);
-  const monitoringAlerts = useNurseStore((s) => s.monitoringAlerts);
-  const markPatientCompleted = useNurseStore((s) => s.markPatientCompleted);
+  const { data: queueEntries = [], isLoading } = useNurseQueue();
+  const { data: notes = [] } = useClinicNotes();
+  const completeEntry = useCompleteQueueEntry();
 
-  const [detailPatient, setDetailPatient] = useState<AssignedPatient | null>(null);
+  const [detailEntry, setDetailEntry] = useState<any>(null);
 
-  const waiting = assignedPatients.filter((p) => p.status === "Waiting");
-  const underObservation = assignedPatients.filter((p) => p.status === "Under Observation");
-  const completed = assignedPatients.filter((p) => p.status === "Completed");
+  const waiting = queueEntries.filter((e) => e.status === "waiting");
+  const underObservation = queueEntries.filter((e) => e.status === "in_progress");
+  const completed = queueEntries.filter((e) => e.status === "completed");
 
-  const patientNotes = detailPatient
-    ? observationNotes.filter((n) => n.patientId === detailPatient.patientId)
-    : [];
-  const patientAlerts = detailPatient
-    ? monitoringAlerts.filter((a) => a.patientId === detailPatient.patientId)
+  const patientNotes = detailEntry
+    ? notes.filter((n) => n.patientId === detailEntry.patientId)
     : [];
 
-  function renderTable(title: string, icon: React.ReactNode, badge: React.ReactNode, data: AssignedPatient[], emptyText: string, actionFn: (p: AssignedPatient) => React.ReactNode) {
+  function renderTable(title: string, icon: React.ReactNode, badge: React.ReactNode, data: any[], emptyText: string, actionFn: (e: any) => React.ReactNode) {
     return (
       <Card>
         <CardHeader className="flex-row items-center justify-between px-4 sm:px-6 py-3 sm:py-4">
@@ -70,8 +66,8 @@ export default function NursePatients() {
         </CardHeader>
         <CardContent className="p-0">
           <div className="md:hidden divide-y divide-slate-100">
-            {data.map((p) => (
-              <PatientCard key={p.id} p={p} onDetail={setDetailPatient} action={actionFn(p)} />
+            {data.map((e) => (
+              <PatientCard key={e.id} entry={e} onDetail={setDetailEntry} action={actionFn(e)} />
             ))}
             {data.length === 0 && <p className="text-center text-sm text-slate-500 py-6">{emptyText}</p>}
           </div>
@@ -81,22 +77,22 @@ export default function NursePatients() {
                 <TableRow>
                   <TableHead>Patient</TableHead>
                   <TableHead>Purpose</TableHead>
-                  <TableHead>Priority</TableHead>
+                  <TableHead>Ticket #</TableHead>
                   <TableHead className="text-right">Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {data.map((p) => (
-                  <TableRow key={p.id}>
+                {data.map((e) => (
+                  <TableRow key={e.id}>
                     <TableCell>
-                      <button onClick={() => setDetailPatient(p)} className="font-medium text-slate-900 hover:text-cyan-700 transition-colors text-left whitespace-nowrap">
-                        {p.patientName}
+                      <button onClick={() => setDetailEntry(e)} className="font-medium text-slate-900 hover:text-cyan-700 transition-colors text-left whitespace-nowrap">
+                        {e.patient?.firstName} {e.patient?.lastName}
                       </button>
-                      <p className="text-xs text-slate-400">{p.age}yrs / {p.gender}</p>
+                      <p className="text-xs text-slate-400">Ticket #{e.ticketNumber}</p>
                     </TableCell>
-                    <TableCell className="text-sm text-slate-600 whitespace-nowrap">{p.purpose}</TableCell>
-                    <TableCell>{statusBadge(p.priority)}</TableCell>
-                    <TableCell className="text-right">{actionFn(p)}</TableCell>
+                    <TableCell className="text-sm text-slate-600 whitespace-nowrap">{e.notes || e.station || "General"}</TableCell>
+                    <TableCell className="text-sm text-slate-500">#{e.ticketNumber}</TableCell>
+                    <TableCell className="text-right">{actionFn(e)}</TableCell>
                   </TableRow>
                 ))}
                 {data.length === 0 && (
@@ -107,6 +103,14 @@ export default function NursePatients() {
           </div>
         </CardContent>
       </Card>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-slate-400 text-sm font-medium">Loading patients...</div>
+      </div>
     );
   }
 
@@ -124,9 +128,9 @@ export default function NursePatients() {
           <Badge variant="secondary">{waiting.length}</Badge>,
           waiting,
           "No waiting patients.",
-          (p) => (
+          (e) => (
             <Link
-              href={`/nurse/vitals?patient=${p.patientId}`}
+              href={`/nurse/vitals?patient=${e.patientId}`}
               className="inline-flex items-center justify-center rounded-lg bg-cyan-600 px-3 py-1.5 text-[10px] sm:text-xs font-medium text-white hover:bg-cyan-700 whitespace-nowrap"
             >
               Record Vitals
@@ -140,16 +144,16 @@ export default function NursePatients() {
           <Badge className="bg-amber-600 text-white">{underObservation.length}</Badge>,
           underObservation,
           "No patients under observation.",
-          (p) => (
+          (e) => (
             <div className="flex items-center justify-end gap-1">
               <button
-                onClick={() => markPatientCompleted(p.patientId)}
+                onClick={() => completeEntry.mutate(e.id)}
                 className="inline-flex items-center justify-center rounded-lg bg-emerald-600 px-3 py-1.5 text-[10px] sm:text-xs font-medium text-white hover:bg-emerald-700 whitespace-nowrap"
               >
                 Mark Done
               </button>
               <Link
-                href={`/nurse/monitoring?patient=${p.patientId}`}
+                href={`/nurse/monitoring?patient=${e.patientId}`}
                 className="inline-flex items-center justify-center rounded-lg border border-slate-200 px-3 py-1.5 text-[10px] sm:text-xs font-medium text-slate-700 hover:bg-slate-50 whitespace-nowrap"
               >
                 Monitor
@@ -164,9 +168,9 @@ export default function NursePatients() {
           <Badge className="bg-emerald-600 text-white">{completed.length}</Badge>,
           completed,
           "No completed patients.",
-          (p) => (
+          (e) => (
             <Link
-              href={`/nurse/treatment?patient=${p.patientId}`}
+              href={`/nurse/treatment?patient=${e.patientId}`}
               className="inline-flex items-center justify-center rounded-lg border border-slate-200 px-3 py-1.5 text-[10px] sm:text-xs font-medium text-slate-700 hover:bg-slate-50 whitespace-nowrap"
             >
               View Notes
@@ -175,63 +179,40 @@ export default function NursePatients() {
         )}
       </div>
 
-      <Modal isOpen={!!detailPatient} onClose={() => setDetailPatient(null)} title="Patient Details">
-        {detailPatient && (
+      <Modal isOpen={!!detailEntry} onClose={() => setDetailEntry(null)} title="Patient Details">
+        {detailEntry && (
           <div className="space-y-5">
             <div className="flex items-center gap-4 pb-4 border-b border-slate-100">
               <div className="w-14 h-14 rounded-full bg-cyan-50 flex items-center justify-center text-cyan-700 font-bold text-lg">
                 <User size={24} />
               </div>
               <div>
-                <h4 className="text-lg font-bold text-slate-900">{detailPatient.patientName}</h4>
-                <p className="text-sm text-slate-500">
-                  {detailPatient.age} years / {detailPatient.gender}
-                </p>
+                <h4 className="text-lg font-bold text-slate-900">{detailEntry.patient?.firstName} {detailEntry.patient?.lastName}</h4>
+                <p className="text-sm text-slate-500">Ticket #{detailEntry.ticketNumber}</p>
                 <div className="mt-1 flex gap-2">
-                  {statusBadge(detailPatient.status)}
-                  {statusBadge(detailPatient.priority)}
+                  {statusBadge(detailEntry.status)}
                 </div>
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div className="rounded-xl bg-slate-50 p-3">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Patient ID</p>
-                <p className="mt-0.5 text-sm font-bold text-slate-900">{detailPatient.patientId}</p>
-              </div>
-              <div className="rounded-xl bg-slate-50 p-3">
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Purpose</p>
-                <p className="mt-0.5 text-sm font-bold text-slate-900">{detailPatient.purpose}</p>
+                <p className="mt-0.5 text-sm font-bold text-slate-900">{detailEntry.notes || detailEntry.station || "General"}</p>
               </div>
               <div className="rounded-xl bg-slate-50 p-3">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Assigned At</p>
-                <p className="mt-0.5 text-sm font-bold text-slate-900">{detailPatient.assignedAt}</p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Station</p>
+                <p className="mt-0.5 text-sm font-bold text-slate-900">{detailEntry.station || "N/A"}</p>
               </div>
               <div className="rounded-xl bg-slate-50 p-3">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Assignment</p>
-                <p className="mt-0.5 text-sm font-bold text-slate-900">{detailPatient.id}</p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Queue Entry</p>
+                <p className="mt-0.5 text-sm font-bold text-slate-900 font-mono">{detailEntry.id.slice(0, 8)}</p>
+              </div>
+              <div className="rounded-xl bg-slate-50 p-3">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Patient ID</p>
+                <p className="mt-0.5 text-sm font-bold text-slate-900 font-mono">{detailEntry.patientId.slice(0, 8)}</p>
               </div>
             </div>
-
-            {patientAlerts.length > 0 && (
-              <div>
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1">
-                  <AlertTriangle size={12} />
-                  Alerts
-                </p>
-                {patientAlerts.map((a) => (
-                  <div key={a.id} className="rounded-xl border border-rose-200 bg-rose-50/30 p-3 mb-2">
-                    <p className="text-sm font-medium text-slate-900">{a.alert}</p>
-                    <div className="mt-1 flex items-center gap-2">
-                      <Badge className={a.severity === "High" ? "bg-rose-600 text-white" : a.severity === "Medium" ? "bg-amber-600 text-white" : "bg-slate-100 text-slate-700"}>
-                        {a.severity}
-                      </Badge>
-                      <span className="text-xs text-slate-400">{a.timestamp}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
 
             {patientNotes.length > 0 && (
               <div>
@@ -242,17 +223,17 @@ export default function NursePatients() {
                 {patientNotes.slice(0, 3).map((n) => (
                   <div key={n.id} className="rounded-xl border border-slate-200 p-3 mb-2">
                     <p className="text-xs text-slate-600">{n.note}</p>
-                    <p className="mt-1 text-[10px] text-slate-400">{n.timestamp} &bull; {n.category}</p>
+                    <p className="mt-1 text-[10px] text-slate-400">{new Date(n.createdAt).toLocaleString()} &bull; {n.category}</p>
                   </div>
                 ))}
               </div>
             )}
 
-            {detailPatient.status === "Under Observation" && (
+            {detailEntry.status === "in_progress" && (
               <button
                 onClick={() => {
-                  markPatientCompleted(detailPatient.patientId);
-                  setDetailPatient(null);
+                  completeEntry.mutate(detailEntry.id);
+                  setDetailEntry(null);
                 }}
                 className="w-full inline-flex items-center justify-center rounded-xl bg-emerald-600 px-6 py-3 text-sm font-bold text-white hover:bg-emerald-700 transition-colors"
               >
@@ -260,9 +241,9 @@ export default function NursePatients() {
               </button>
             )}
 
-            {detailPatient.status === "Waiting" && (
+            {detailEntry.status === "waiting" && (
               <Link
-                href={`/nurse/vitals?patient=${detailPatient.patientId}`}
+                href={`/nurse/vitals?patient=${detailEntry.patientId}`}
                 className="w-full inline-flex items-center justify-center rounded-xl bg-cyan-600 px-6 py-3 text-sm font-bold text-white hover:bg-cyan-700 transition-colors"
               >
                 Record Vitals
