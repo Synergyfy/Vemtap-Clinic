@@ -2,68 +2,91 @@
 
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { CreditCard, ShieldCheck, FileText, ArrowUpRight, X, Loader2, CheckCircle2, Download } from "lucide-react";
-import { usePatientStore } from "@/store/patientStore";
+import { CreditCard, ShieldCheck, FileText, X, Loader2, CheckCircle2, Download } from "lucide-react";
+import { usePatientBilling, useMakePayment, Invoice } from "@/hooks/usePatientPortal";
 import { useFormatCurrency } from "@/lib/currency";
 import jsPDF from "jspdf";
 
+function getStatusBadge(status: string) {
+  switch (status) {
+    case "paid":
+      return <span className="text-xs font-semibold px-2 py-1 rounded-md bg-green-50 text-green-700">Paid</span>;
+    case "partially_paid":
+      return <span className="text-xs font-semibold px-2 py-1 rounded-md bg-blue-50 text-blue-700">Partial</span>;
+    case "pending":
+      return <span className="text-xs font-semibold px-2 py-1 rounded-md bg-amber-50 text-amber-700">Pending</span>;
+    case "overdue":
+      return <span className="text-xs font-semibold px-2 py-1 rounded-md bg-red-50 text-red-700">Overdue</span>;
+    case "cancelled":
+      return <span className="text-xs font-semibold px-2 py-1 rounded-md bg-gray-50 text-gray-500">Cancelled</span>;
+    default:
+      return <span className="text-xs font-semibold px-2 py-1 rounded-md bg-gray-50 text-gray-700">{status}</span>;
+  }
+}
+
 export default function BillingPage() {
-  const { invoices, outstandingBalance, payInvoice } = usePatientStore();
-  const format = useFormatCurrency();
-  
+  const { data: invoices = [], isLoading } = usePatientBilling();
+  const makePayment = useMakePayment();
+  const formatCurrency = useFormatCurrency();
+
   const [isPaymentOpen, setPaymentOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
-  const [payingInvoiceId, setPayingInvoiceId] = useState<string | null>(null);
+  const [invoiceToPay, setInvoiceToPay] = useState<Invoice | null>(null);
 
-  // We find the first unpaid invoice to pay. In a real app we might allow selecting which one to pay.
-  const unpaidInvoices = invoices.filter(inv => inv.status === 'Unpaid');
-  const invoiceToPay = unpaidInvoices.length > 0 ? unpaidInvoices[0] : null;
+  const unpaidInvoices = invoices.filter((inv) => inv.status === "pending" || inv.status === "overdue");
+  const outstandingBalance = unpaidInvoices.reduce((sum, inv) => sum + inv.balance, 0);
+  const firstUnpaid = unpaidInvoices.length > 0 ? unpaidInvoices[0] : null;
+
+  const handlePayClick = (inv?: Invoice) => {
+    setInvoiceToPay(inv || firstUnpaid);
+    setPaymentOpen(true);
+  };
 
   const handlePayment = () => {
     if (!invoiceToPay) return;
     setIsProcessing(true);
-    setTimeout(() => {
-      payInvoice(invoiceToPay.id);
-      setIsProcessing(false);
-      setPaymentSuccess(true);
-      setTimeout(() => {
-        setPaymentOpen(false);
-        setPaymentSuccess(false);
-      }, 2000);
-    }, 2000);
+    makePayment.mutate(
+      { invoiceId: invoiceToPay.id, amount: invoiceToPay.balance, paymentMethod: "card" },
+      {
+        onSuccess: () => {
+          setIsProcessing(false);
+          setPaymentSuccess(true);
+          setTimeout(() => {
+            setPaymentOpen(false);
+            setPaymentSuccess(false);
+            setInvoiceToPay(null);
+          }, 2000);
+        },
+        onError: () => {
+          setIsProcessing(false);
+        },
+      }
+    );
   };
 
-  const handleDownloadInvoice = (inv: any) => {
+  const handleDownloadInvoice = (inv: Invoice) => {
     const doc = new jsPDF();
     doc.setFontSize(22);
     doc.setTextColor(13, 148, 136);
     doc.text("Vemtap Clinic - Invoice", 20, 20);
     doc.setFontSize(12);
     doc.setTextColor(0, 0, 0);
-    doc.text(`Invoice #${inv.id}`, 20, 30);
-    doc.text(`Date: ${inv.date}`, 20, 40);
-    doc.text(`Billed To: Alex Carter`, 20, 60);
-    doc.text(`Description: ${inv.desc}`, 20, 80);
-    doc.text(`Amount Due: ${format(inv.amount, { decimals: true })}`, 20, 90);
-    if (inv.hmoCovered > 0) {
-      doc.text(`HMO Covered: ${format(inv.hmoCovered, { decimals: true })}`, 20, 100);
-    }
-    doc.line(20, 110, 190, 110);
+    doc.text(`Invoice #${inv.invoiceNumber}`, 20, 30);
+    doc.text(`Date: ${new Date(inv.createdAt).toLocaleDateString()}`, 20, 40);
+    doc.text(`Amount Due: ${formatCurrency(inv.balance, { decimals: true })}`, 20, 60);
+    doc.text(`Total: ${formatCurrency(inv.totalAmount, { decimals: true })}`, 20, 70);
+    doc.line(20, 80, 190, 80);
     doc.setFontSize(16);
-    doc.text(`Status: ${inv.status}`, 20, 130);
-    doc.save(`${inv.id}.pdf`);
+    doc.text(`Status: ${inv.status.toUpperCase()}`, 20, 100);
+    doc.save(`${inv.invoiceNumber}.pdf`);
   };
 
   return (
     <div className="space-y-6 relative">
       <header className="mb-8">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
-          Billing & HMO
-        </h1>
-        <p className="text-sm sm:text-base text-gray-500 mt-1">
-          Manage your payments, invoices, and insurance coverage.
-        </p>
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Billing & HMO</h1>
+        <p className="text-sm sm:text-base text-gray-500 mt-1">Manage your payments, invoices, and insurance coverage.</p>
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -73,24 +96,20 @@ export default function BillingPage() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}
-            className={`${outstandingBalance > 0 ? 'bg-red-500' : 'bg-teal-600'} rounded-3xl p-6 text-white shadow-lg relative overflow-hidden`}
+            className={`${outstandingBalance > 0 ? "bg-red-500" : "bg-teal-600"} rounded-3xl p-6 text-white shadow-lg relative overflow-hidden`}
           >
-            <div className="absolute -right-10 -top-10 w-40 h-40 bg-white/10 rounded-full blur-2xl"></div>
+            <div className="absolute -right-10 -top-10 w-40 h-40 bg-white/10 rounded-full blur-2xl" />
             <div className="relative z-10">
               <h2 className="text-white/90 font-medium mb-1">Outstanding Balance</h2>
-              <p className="text-3xl font-bold mb-6">{format(outstandingBalance, { decimals: true })}</p>
-              
-              {outstandingBalance > 0 ? (
+              <p className="text-3xl font-bold mb-6">{formatCurrency(outstandingBalance, { decimals: true })}</p>
+
+              {outstandingBalance > 0 && firstUnpaid ? (
                 <>
                   <div className="bg-white/10 p-4 rounded-2xl backdrop-blur-md mb-6">
-                    <p className="text-sm mb-1">Invoice {invoiceToPay?.id}</p>
-                    <p className="text-xs text-white/80">{invoiceToPay?.desc}</p>
+                    <p className="text-sm mb-1">Invoice {firstUnpaid.invoiceNumber}</p>
+                    <p className="text-xs text-white/80">Due {firstUnpaid.dueDate ? new Date(firstUnpaid.dueDate).toLocaleDateString() : "N/A"}</p>
                   </div>
-
-                  <button 
-                    onClick={() => setPaymentOpen(true)}
-                    className={`w-full bg-white text-red-600 font-bold py-3 rounded-xl hover:bg-red-50 transition-colors shadow-sm`}
-                  >
+                  <button onClick={() => handlePayClick(firstUnpaid)} className="w-full bg-white text-red-600 font-bold py-3 rounded-xl hover:bg-red-50 transition-colors shadow-sm">
                     Pay Now
                   </button>
                 </>
@@ -115,7 +134,7 @@ export default function BillingPage() {
               </div>
               <h3 className="font-bold text-gray-900">HMO Coverage</h3>
             </div>
-            
+
             <div className="space-y-4">
               <div>
                 <p className="text-xs text-gray-500 uppercase font-semibold">Provider</p>
@@ -126,18 +145,18 @@ export default function BillingPage() {
                 <p className="font-bold text-gray-900">Premium Care</p>
               </div>
               <div>
-                <p className="text-xs text-gray-500 uppercase font-semibold">Enrollee ID</p>
-                <p className="font-bold text-gray-900 tracking-wide">RL-8942-X</p>
+                <p className="text-xs text-gray-500 uppercase font-semibold">Status</p>
+                <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-black uppercase tracking-widest">Active</span>
               </div>
             </div>
-            
+
             <div className="mt-6 pt-6 border-t border-gray-100">
               <div className="flex justify-between items-center text-sm mb-2">
                 <span className="text-gray-500">Optical Limit</span>
-                <span className="font-semibold text-teal-600">{format(150)} / {format(300)}</span>
+                <span className="font-semibold text-teal-600">{"\u20A6"}150,000 / {"\u20A6"}300,000</span>
               </div>
               <div className="w-full bg-gray-100 rounded-full h-2">
-                <div className="bg-teal-500 h-2 rounded-full w-1/2"></div>
+                <div className="bg-teal-500 h-2 rounded-full w-1/2" />
               </div>
             </div>
           </motion.div>
@@ -154,44 +173,49 @@ export default function BillingPage() {
             <h2 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
               <CreditCard className="w-5 h-5 text-gray-400" /> Payment History
             </h2>
-            
-            <div className="space-y-4">
-              {invoices.map((inv, idx) => (
-                <div key={idx} className="flex flex-col sm:flex-row justify-between gap-4 p-4 rounded-2xl border border-gray-100 hover:border-teal-100 transition-colors group">
-                  <div className="flex items-start gap-3">
-                    <div className="bg-gray-50 p-2 rounded-xl group-hover:bg-teal-50 transition-colors mt-1">
-                      <FileText className="w-5 h-5 text-gray-400 group-hover:text-teal-600" />
+
+            {isLoading ? (
+              <div className="space-y-4">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="h-20 bg-gray-100 rounded-2xl animate-pulse" />
+                ))}
+              </div>
+            ) : invoices.length === 0 ? (
+              <div className="text-center py-12 text-gray-500">
+                <FileText className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                <p>No invoices yet</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {invoices.map((inv) => (
+                  <div key={inv.id} className="flex flex-col sm:flex-row justify-between gap-4 p-4 rounded-2xl border border-gray-100 hover:border-teal-100 transition-colors group">
+                    <div className="flex items-start gap-3">
+                      <div className="bg-gray-50 p-2 rounded-xl group-hover:bg-teal-50 transition-colors mt-1">
+                        <FileText className="w-5 h-5 text-gray-400 group-hover:text-teal-600" />
+                      </div>
+                      <div>
+                        <p className="font-bold text-gray-900">{inv.invoiceNumber}</p>
+                        <p className="text-sm text-gray-500">{new Date(inv.createdAt).toLocaleDateString()}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-bold text-gray-900">{inv.desc}</p>
-                      <p className="text-sm text-gray-500">{inv.date} • {inv.id}</p>
-                      {inv.hmoCovered > 0 && (
-                        <p className="text-xs text-teal-600 font-medium mt-1">HMO Covered: {format(inv.hmoCovered, { decimals: true })}</p>
-                      )}
+                    <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-2 border-t sm:border-t-0 border-gray-100 pt-3 sm:pt-0">
+                      <span className="font-bold text-lg text-gray-900">{formatCurrency(inv.totalAmount, { decimals: true })}</span>
+                      <div className="flex gap-2 items-center">
+                        <button onClick={() => handleDownloadInvoice(inv)} className="p-1 text-gray-400 hover:text-teal-600 transition-colors" title="Download Invoice">
+                          <Download className="w-4 h-4" />
+                        </button>
+                        {(inv.status === "pending" || inv.status === "overdue") && (
+                          <button onClick={() => handlePayClick(inv)} className="text-xs font-semibold px-3 py-1 rounded-lg bg-teal-50 text-teal-700 hover:bg-teal-100 transition-colors">
+                            Pay
+                          </button>
+                        )}
+                        {getStatusBadge(inv.status)}
+                      </div>
                     </div>
                   </div>
-                  <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-2 border-t sm:border-t-0 border-gray-100 pt-3 sm:pt-0">
-                    <span className="font-bold text-lg text-gray-900">{format(inv.amount, { decimals: true })}</span>
-                    <div className="flex gap-2 items-center">
-                      <button 
-                        onClick={() => handleDownloadInvoice(inv)}
-                        className="p-1 text-gray-400 hover:text-teal-600 transition-colors"
-                        title="Download Invoice"
-                      >
-                        <Download className="w-4 h-4" />
-                      </button>
-                      <span className={`text-xs font-semibold px-2 py-1 rounded-md ${
-                        inv.status === "Paid" ? "bg-green-50 text-green-700" : 
-                        inv.status === "Covered" ? "bg-teal-50 text-teal-700" :
-                        "bg-amber-50 text-amber-700"
-                      }`}>
-                        {inv.status}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </motion.div>
         </div>
       </div>
@@ -200,12 +224,12 @@ export default function BillingPage() {
       <AnimatePresence>
         {isPaymentOpen && invoiceToPay && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               className="absolute inset-0 bg-gray-900/40 backdrop-blur-sm"
               onClick={() => !isProcessing && setPaymentOpen(false)}
             />
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
               className="relative bg-white rounded-3xl p-6 md:p-8 w-full max-w-md shadow-2xl overflow-hidden"
             >
@@ -217,14 +241,14 @@ export default function BillingPage() {
                       <button onClick={() => setPaymentOpen(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors"><X className="w-5 h-5 text-gray-500" /></button>
                     )}
                   </div>
-                  
+
                   <div className="mb-6 bg-gray-50 p-4 rounded-2xl flex justify-between items-center">
                     <div>
                       <p className="text-sm text-gray-500">Amount Due</p>
-                      <p className="text-2xl font-bold text-gray-900">{format(invoiceToPay.amount, { decimals: true })}</p>
+                      <p className="text-2xl font-bold text-gray-900">{formatCurrency(invoiceToPay.balance, { decimals: true })}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-xs text-gray-400">{invoiceToPay.id}</p>
+                      <p className="text-xs text-gray-400">{invoiceToPay.invoiceNumber}</p>
                     </div>
                   </div>
 
@@ -243,16 +267,13 @@ export default function BillingPage() {
                         <input type="text" placeholder="123" className="w-full border border-gray-300 rounded-xl p-3 bg-white text-gray-900 outline-none focus:ring-2 focus:ring-teal-500" />
                       </div>
                     </div>
-                    
-                    <button 
-                      onClick={handlePayment} 
-                      disabled={isProcessing}
-                      className="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-3.5 rounded-xl transition-colors mt-6 flex justify-center items-center gap-2"
-                    >
+
+                    <button onClick={handlePayment} disabled={isProcessing}
+                      className="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-3.5 rounded-xl transition-colors mt-6 flex justify-center items-center gap-2 disabled:opacity-50">
                       {isProcessing ? (
                         <><Loader2 className="w-5 h-5 animate-spin" /> Processing...</>
                       ) : (
-                        `Pay ${format(invoiceToPay.amount, { decimals: true })}`
+                        `Pay ${formatCurrency(invoiceToPay.balance, { decimals: true })}`
                       )}
                     </button>
                     <p className="text-xs text-center text-gray-400 mt-4 flex justify-center items-center gap-1">
@@ -262,7 +283,7 @@ export default function BillingPage() {
                 </>
               ) : (
                 <div className="text-center py-8">
-                  <motion.div 
+                  <motion.div
                     initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", bounce: 0.5 }}
                     className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6"
                   >

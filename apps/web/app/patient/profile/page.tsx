@@ -3,13 +3,19 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { User, Shield, MapPin, Bell, LogOut, ChevronRight, CheckCircle2, Building2, Phone, Mail, CalendarDays } from "lucide-react";
+import { User, Shield, MapPin, Bell, LogOut, ChevronRight, CheckCircle2, Building2 } from "lucide-react";
 import { Modal } from "@/components/ui/modal";
+import { usePatientProfile, useUpdateProfile } from "@/hooks/usePatientPortal";
+import { useAuth } from "@/lib/auth-context";
 
 const branches = ["Main Branch", "Downtown Clinic", "Ikeja Mall", "Victoria Island", "Lekki Phase 1"];
 
 export default function ProfilePage() {
   const router = useRouter();
+  const { user } = useAuth();
+  const { data: profile, isLoading } = usePatientProfile();
+  const updateProfile = useUpdateProfile();
+
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [smsEnabled, setSmsEnabled] = useState(true);
   const [whatsappEnabled, setWhatsappEnabled] = useState(false);
@@ -20,9 +26,8 @@ export default function ProfilePage() {
   const [preferredBranch, setPreferredBranch] = useState("Main Branch");
   const [toast, setToast] = useState("");
 
-  const [personalInfo, setPersonalInfo] = useState({
-    name: "Alex Carter", email: "alex.carter@email.com", phone: "+234 802 123 4567", dob: "1990-05-14"
-  });
+  const [editPhone, setEditPhone] = useState("");
+  const [editAddress, setEditAddress] = useState("");
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 3000); };
 
@@ -34,6 +39,27 @@ export default function ProfilePage() {
     setShowLogoutModal(false);
     router.replace("/login");
   };
+
+  const handleSaveProfile = () => {
+    updateProfile.mutate(
+      { phone: editPhone, address: editAddress },
+      {
+        onSuccess: () => {
+          setShowPersonalInfo(false);
+          showToast("Profile updated");
+        },
+      }
+    );
+  };
+
+  const openPersonalInfo = () => {
+    setEditPhone(profile?.phone || "");
+    setEditAddress(profile?.address || "");
+    setShowPersonalInfo(true);
+  };
+
+  const displayName = profile ? `${profile.firstName} ${profile.lastName}` : "Patient";
+  const initials = profile ? `${profile.firstName.charAt(0)}${profile.lastName.charAt(0)}` : "P";
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
@@ -55,17 +81,17 @@ export default function ProfilePage() {
         <div className="md:col-span-1 space-y-4">
           <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 flex flex-col items-center text-center">
             <div className="w-24 h-24 rounded-full bg-teal-100 flex items-center justify-center mb-4">
-              <span className="text-4xl font-bold text-teal-700">{personalInfo.name.charAt(0)}</span>
+              <span className="text-4xl font-bold text-teal-700">{initials}</span>
             </div>
-            <h2 className="text-xl font-bold text-gray-900">{personalInfo.name}</h2>
-            <p className="text-gray-500 text-sm">Patient ID: VC-2024-91</p>
+            <h2 className="text-xl font-bold text-gray-900">{displayName}</h2>
+            <p className="text-gray-500 text-sm">Patient</p>
             <div className="mt-4 inline-flex items-center gap-1.5 px-3 py-1 bg-green-50 text-green-700 rounded-full text-xs font-semibold border border-green-100">
               <Shield className="w-3.5 h-3.5" /> HMO Verified
             </div>
           </div>
 
           <div className="bg-white rounded-3xl p-4 shadow-sm border border-gray-100 space-y-1">
-            <button onClick={() => setShowPersonalInfo(true)} className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-gray-50 transition-colors group">
+            <button onClick={openPersonalInfo} className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-gray-50 transition-colors group">
               <div className="flex items-center gap-3 text-gray-700 group-hover:text-teal-600">
                 <User className="w-5 h-5" />
                 <span className="font-medium text-sm">Personal Info</span>
@@ -164,27 +190,30 @@ export default function ProfilePage() {
         <div className="space-y-4">
           <div className="space-y-1">
             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Full Name</label>
-            <input value={personalInfo.name} onChange={(e) => setPersonalInfo({ ...personalInfo, name: e.target.value })}
-              className="w-full p-3 rounded-xl bg-slate-50 border border-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500/10 font-bold text-slate-900 text-sm" />
+            <input value={displayName} disabled
+              className="w-full p-3 rounded-xl bg-slate-50 border border-slate-100 font-bold text-slate-900 text-sm opacity-60 cursor-not-allowed" />
           </div>
           <div className="space-y-1">
             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Email</label>
-            <input value={personalInfo.email} onChange={(e) => setPersonalInfo({ ...personalInfo, email: e.target.value })}
-              className="w-full p-3 rounded-xl bg-slate-50 border border-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500/10 font-bold text-slate-900 text-sm" />
+            <input value={profile?.email || ""} disabled
+              className="w-full p-3 rounded-xl bg-slate-50 border border-slate-100 font-bold text-slate-900 text-sm opacity-60 cursor-not-allowed" />
           </div>
           <div className="space-y-1">
             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Phone</label>
-            <input value={personalInfo.phone} onChange={(e) => setPersonalInfo({ ...personalInfo, phone: e.target.value })}
+            <input value={editPhone} onChange={(e) => setEditPhone(e.target.value)}
               className="w-full p-3 rounded-xl bg-slate-50 border border-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500/10 font-bold text-slate-900 text-sm" />
           </div>
           <div className="space-y-1">
-            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Date of Birth</label>
-            <input type="date" value={personalInfo.dob} onChange={(e) => setPersonalInfo({ ...personalInfo, dob: e.target.value })}
+            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Address</label>
+            <input value={editAddress} onChange={(e) => setEditAddress(e.target.value)}
+              placeholder="Enter your address"
               className="w-full p-3 rounded-xl bg-slate-50 border border-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500/10 font-bold text-slate-900 text-sm" />
           </div>
           <div className="flex flex-col gap-2 pt-2">
-            <button onClick={() => { setShowPersonalInfo(false); showToast("Personal info updated"); }}
-              className="w-full py-3.5 rounded-xl bg-teal-600 text-white text-sm font-bold hover:bg-teal-700 transition-colors">Save Changes</button>
+            <button onClick={handleSaveProfile} disabled={updateProfile.isPending}
+              className="w-full py-3.5 rounded-xl bg-teal-600 text-white text-sm font-bold hover:bg-teal-700 transition-colors disabled:opacity-50">
+              {updateProfile.isPending ? "Saving..." : "Save Changes"}
+            </button>
             <button onClick={() => setShowPersonalInfo(false)}
               className="w-full py-3.5 rounded-xl border border-slate-200 text-slate-600 text-sm font-bold hover:bg-slate-50 transition-colors">Cancel</button>
           </div>

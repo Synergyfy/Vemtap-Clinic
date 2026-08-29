@@ -2,55 +2,54 @@
 
 import React from "react";
 import { motion } from "framer-motion";
-import { Bell, Calendar, Activity, Info } from "lucide-react";
+import { Bell, Calendar, Activity, Info, CheckCircle, AlertTriangle } from "lucide-react";
+import {
+  usePatientNotifications,
+  useMarkAllNotificationsRead,
+  useMarkNotificationRead,
+  Notification,
+} from "@/hooks/usePatientPortal";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+
+function getNotifIcon(type: string) {
+  switch (type) {
+    case "appointment": return { icon: Calendar, color: "text-blue-600", bg: "bg-blue-50" };
+    case "queue": return { icon: Activity, color: "text-amber-600", bg: "bg-amber-50" };
+    case "prescription": return { icon: CheckCircle, color: "text-green-600", bg: "bg-green-50" };
+    case "billing": return { icon: Info, color: "text-purple-600", bg: "bg-purple-50" };
+    case "hmo": return { icon: AlertTriangle, color: "text-orange-600", bg: "bg-orange-50" };
+    case "follow_up": return { icon: Bell, color: "text-teal-600", bg: "bg-teal-50" };
+    default: return { icon: Bell, color: "text-gray-500", bg: "bg-gray-100" };
+  }
+}
+
+function timeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "Just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d ago`;
+  return new Date(dateStr).toLocaleDateString();
+}
 
 export default function NotificationsPage() {
-  const notifications = [
-    {
-      id: 1,
-      type: "reminder",
-      title: "Appointment Reminder",
-      message: "You have a Comprehensive Eye Exam today at 10:30 AM with Dr. Sarah Jenkins.",
-      time: "2 hours ago",
-      read: false,
-      icon: Calendar,
-      color: "text-blue-600",
-      bg: "bg-blue-50"
-    },
-    {
-      id: 2,
-      type: "alert",
-      title: "Lens Order Update",
-      message: "Your lens order #VO-8421 has entered production.",
-      time: "Yesterday",
-      read: false,
-      icon: Activity,
-      color: "text-amber-600",
-      bg: "bg-amber-50"
-    },
-    {
-      id: 3,
-      type: "info",
-      title: "Invoice Available",
-      message: "Invoice INV-2026-89 for your consultation fee is now available.",
-      time: "2 days ago",
-      read: true,
-      icon: Info,
-      color: "text-gray-500",
-      bg: "bg-gray-100"
-    },
-    {
-      id: 4,
-      type: "reminder",
-      title: "Time for a checkup!",
-      message: "It's been a year since your last visit. Schedule a routine eye exam today to maintain optimal eye health.",
-      time: "1 week ago",
-      read: true,
-      icon: Bell,
-      color: "text-teal-600",
-      bg: "bg-teal-50"
+  const { data: notifications = [], isLoading } = usePatientNotifications();
+  const markAllRead = useMarkAllNotificationsRead();
+  const markRead = useMarkNotificationRead();
+
+  const handleMarkAll = () => {
+    markAllRead.mutate();
+  };
+
+  const handleNotifClick = (notif: Notification) => {
+    if (!notif.isRead) {
+      markRead.mutate(notif.id);
     }
-  ];
+  };
 
   return (
     <div className="space-y-6 max-w-3xl mx-auto">
@@ -63,48 +62,72 @@ export default function NotificationsPage() {
             Stay updated on your appointments and orders.
           </p>
         </div>
-        <button className="text-sm font-medium text-teal-600 hover:text-teal-700 transition-colors">
+        <Button
+          variant="ghost"
+          className="text-sm font-medium text-teal-600 hover:text-teal-700"
+          onClick={handleMarkAll}
+          disabled={markAllRead.isPending}
+        >
           Mark all as read
-        </button>
+        </Button>
       </header>
 
-      <div className="space-y-3">
-        {notifications.map((notif, idx) => (
-          <motion.div
-            key={notif.id}
-            initial={{ opacity: 0, x: -10 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.2, delay: idx * 0.05 }}
-            className={`p-4 sm:p-5 rounded-2xl flex gap-4 transition-colors cursor-pointer border ${
-              notif.read ? "bg-white border-gray-100 hover:border-gray-200" : "bg-blue-50/30 border-blue-100 hover:bg-blue-50/50"
-            }`}
-          >
-            <div className={`p-3 rounded-xl h-fit shrink-0 ${notif.bg}`}>
-              <notif.icon className={`w-6 h-6 ${notif.color}`} />
-            </div>
-            
-            <div className="flex-1">
-              <div className="flex justify-between items-start mb-1">
-                <h3 className={`font-bold ${notif.read ? "text-gray-800" : "text-gray-900"}`}>
-                  {notif.title}
-                </h3>
-                <span className="text-xs text-gray-400 whitespace-nowrap ml-2">
-                  {notif.time}
-                </span>
-              </div>
-              <p className={`text-sm ${notif.read ? "text-gray-500" : "text-gray-700 font-medium"}`}>
-                {notif.message}
-              </p>
-            </div>
-            
-            {!notif.read && (
-              <div className="flex items-center justify-center shrink-0 w-3">
-                <div className="w-2 h-2 rounded-full bg-blue-600"></div>
-              </div>
-            )}
-          </motion.div>
-        ))}
-      </div>
+      {isLoading ? (
+        <div className="space-y-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-20 bg-gray-100 rounded-2xl animate-pulse" />
+          ))}
+        </div>
+      ) : notifications.length === 0 ? (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <Bell className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+            <p className="text-gray-500">No notifications yet</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-3">
+          {notifications.map((notif, idx) => {
+            const { icon: Icon, color, bg } = getNotifIcon(notif.type);
+            return (
+              <motion.div
+                key={notif.id}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.2, delay: idx * 0.05 }}
+                onClick={() => handleNotifClick(notif)}
+                className={`p-4 sm:p-5 rounded-2xl flex gap-4 transition-colors cursor-pointer border ${
+                  notif.isRead ? "bg-white border-gray-100 hover:border-gray-200" : "bg-blue-50/30 border-blue-100 hover:bg-blue-50/50"
+                }`}
+              >
+                <div className={`p-3 rounded-xl h-fit shrink-0 ${bg}`}>
+                  <Icon className={`w-6 h-6 ${color}`} />
+                </div>
+                
+                <div className="flex-1">
+                  <div className="flex justify-between items-start mb-1">
+                    <h3 className={`font-bold ${notif.isRead ? "text-gray-800" : "text-gray-900"}`}>
+                      {notif.title}
+                    </h3>
+                    <span className="text-xs text-gray-400 whitespace-nowrap ml-2">
+                      {timeAgo(notif.createdAt)}
+                    </span>
+                  </div>
+                  <p className={`text-sm ${notif.isRead ? "text-gray-500" : "text-gray-700 font-medium"}`}>
+                    {notif.message}
+                  </p>
+                </div>
+                
+                {!notif.isRead && (
+                  <div className="flex items-center justify-center shrink-0 w-3">
+                    <div className="w-2 h-2 rounded-full bg-blue-600" />
+                  </div>
+                )}
+              </motion.div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
