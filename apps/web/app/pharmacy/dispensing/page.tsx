@@ -1,297 +1,256 @@
 "use client";
 
-import React, { useState, Suspense } from "react";
+import React, { useState, useMemo, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Modal } from "@/components/ui/modal";
-import { ClipboardList, Pill, CheckCircle2, AlertTriangle, User } from "lucide-react";
+import { ClipboardList, Pill, CheckCircle2, AlertTriangle, User, Search } from "lucide-react";
 import { PageHeader } from "@/app/clinic/_components/page-header";
-import { usePharmacyStore } from "@/app/pharmacy/_mock/pharmacy-store";
-import type { Prescription } from "@/app/pharmacy/_mock/pharmacy-data";
+import { useAuth } from "@/lib/auth-context";
+import { useAllPrescriptions, useDrugs, useDispenseDrug } from "@/hooks/usePharmacy";
+import type { Prescription, Drug } from "@/hooks/usePharmacy";
 
-function statusBadge(status: string) {
-  if (status === "Active") return <Badge className="bg-sky-600 text-white">Active</Badge>;
-  if (status === "Dispensing") return <Badge className="bg-amber-600 text-white">Dispensing</Badge>;
-  if (status === "Picked Up") return <Badge className="bg-emerald-600 text-white">Picked Up</Badge>;
-  if (status === "Cancelled") return <Badge className="bg-rose-600 text-white">Cancelled</Badge>;
-  return <Badge variant="outline">{status}</Badge>;
+function getPatientName(rx: Prescription, patientMap: Map<string, string>): string {
+  const patient = rx.medicalRecord?.patient;
+  if (patient) return `${patient.firstName} ${patient.lastName}`;
+  if (rx.medicalRecord?.patientId) return patientMap.get(rx.medicalRecord.patientId) || "Unknown Patient";
+  return "Unknown Patient";
+}
+
+function getDoctorName(rx: Prescription): string {
+  const staff = rx.prescribedBy;
+  if (staff) return `Dr. ${staff.firstName} ${staff.lastName}`;
+  return "Unknown Doctor";
 }
 
 function DispensingContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const selectedRx = searchParams.get("rx");
+  const selectedRxId = searchParams.get("rx");
 
-  const prescriptions = usePharmacyStore((s) => s.prescriptions);
-  const drugs = usePharmacyStore((s) => s.drugs);
-  const dispensingRecords = usePharmacyStore((s) => s.dispensingRecords);
-  const updateRxStatus = usePharmacyStore((s) => s.updateRxStatus);
-  const dispenseDrug = usePharmacyStore((s) => s.dispenseDrug);
-  const confirmPickup = usePharmacyStore((s) => s.confirmPickup);
-  const deductDrug = usePharmacyStore((s) => s.deductDrug);
+  const { user } = useAuth();
+  const clinicId = user?.clinicId || null;
+
+  const { data: prescriptions = [], isLoading: rxLoading } = useAllPrescriptions(clinicId);
+  const { data: drugs = [] } = useDrugs(clinicId);
+  const dispenseMutation = useDispenseDrug();
 
   const [dispenseModal, setDispenseModal] = useState<Prescription | null>(null);
-  const [pickupModal, setPickupModal] = useState<Prescription | null>(null);
   const [selectedDrugId, setSelectedDrugId] = useState("");
   const [dispenseQty, setDispenseQty] = useState(1);
   const [dispenseNote, setDispenseNote] = useState("");
+  const [search, setSearch] = useState("");
+  const [toast, setToast] = useState("");
 
-  const openRx = prescriptions.filter((r) => r.status === "Active" || r.status === "Dispensing");
-  const recentDispensing = [...dispensingRecords].sort((a, b) => new Date(b.dispensedAt).getTime() - new Date(a.dispensedAt).getTime()).slice(0, 5);
+  const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 3000); };
 
-  const selectedPrescription = selectedRx ? prescriptions.find((r) => r.id === selectedRx) : null;
+  const patientMap = useMemo(() => {
+    const map = new Map<string, string>();
+    prescriptions.forEach((rx) => {
+      const p = rx.medicalRecord?.patient;
+      if (p && rx.medicalRecord?.patientId) {
+        map.set(rx.medicalRecord.patientId, `${p.firstName} ${p.lastName}`);
+      }
+    });
+    return map;
+  }, [prescriptions]);
 
-  const handleDispense = () => {
-    if (!dispenseModal || !selectedDrugId || dispenseQty <= 0) return;
-    const drug = drugs.find((d) => d.id === selectedDrugId);
-    if (!drug || drug.quantity < dispenseQty) return;
+  const activePrescriptions = useMemo(() => {
+    let result = prescriptions.filter((r) => r.isActive);
+    if (search) {
+      const q = search.toLowerCase();
+      result = result.filter((r) =>
+        r.medication.toLowerCase().includes(q) ||
+        getPatientName(r, patientMap).toLowerCase().includes(q)
+      );
+    }
+    return result;
+  }, [prescriptions, search, patientMap]);
 
-    dispenseDrug(dispenseModal.id, dispenseModal.patientName, [{ drugName: drug.name, qty: dispenseQty }]);
-    deductDrug(drug.id, dispenseQty);
-    setDispenseModal(null);
-    setSelectedDrugId("");
-    setDispenseQty(1);
-    setDispenseNote("");
-    router.push("/pharmacy/dispensing");
-  };
+  const selectedPrescription = selectedRxId ? prescriptions.find((r) => r.id === selectedRxId) : null;
 
-  const handlePickup = () => {
-    if (!pickupModal) return;
-    const rec = dispensingRecords.find((r) => r.prescriptionId === pickupModal.id);
-    if (!rec) return;
-    confirmPickup(rec.id);
-    setPickupModal(null);
-    router.push("/pharmacy/dispensing");
+  const matchedDrug = selectedDrugId ? drugs.find((d) => d.id === selectedDrugId) : null;
+
+  const handleDispense = async () => {
+    if (!dispenseModal || !selectedDrugId || dispenseQty <= 0 || !clinicId) return;
+    const patientId = dispenseModal.medicalRecord?.patientId;
+    if (!patientId) {
+      showToast("Cannot determine patient for this prescription");
+      return;
+    }
+
+    try {
+      await dispenseMutation.mutateAsync({
+        drugId: selectedDrugId,
+        patientId,
+        quantityDispensed: dispenseQty,
+        clinicId,
+        notes: dispenseNote || undefined,
+      });
+      showToast(`Dispensed ${matchedDrug?.name || "drug"} successfully`);
+      setDispenseModal(null);
+      setSelectedDrugId("");
+      setDispenseQty(1);
+      setDispenseNote("");
+      router.push("/pharmacy/dispensing");
+    } catch {
+      showToast("Failed to dispense drug");
+    }
   };
 
   return (
     <div className="space-y-6 md:space-y-8">
-      <PageHeader title="Dispensing Center" description="Dispense drugs and confirm patient pickup." />
-
-      {selectedPrescription && selectedPrescription.status === "Picked Up" && (
-        <Card className="border-emerald-200 bg-emerald-50/80">
-          <CardContent className="p-4 flex items-center gap-3">
-            <CheckCircle2 size={20} className="text-emerald-600" />
-            <div>
-              <p className="font-bold text-emerald-800">Prescription Complete</p>
-              <p className="text-sm text-emerald-700">{selectedPrescription.patientName} — {selectedPrescription.id} has been picked up.</p>
-            </div>
-          </CardContent>
-        </Card>
+      {toast && (
+        <div className="fixed top-4 right-4 z-[200] bg-emerald-600 text-white px-4 py-3 rounded-xl shadow-lg flex items-center gap-2">
+          <span className="text-sm font-bold">{toast}</span>
+        </div>
       )}
 
-      {selectedPrescription && selectedPrescription.status === "Cancelled" && (
-        <Card className="border-rose-200 bg-rose-50/80">
-          <CardContent className="p-4 flex items-center gap-3">
-            <AlertTriangle size={20} className="text-rose-600" />
-            <div>
-              <p className="font-bold text-rose-800">Prescription Cancelled</p>
-              <p className="text-sm text-rose-700">{selectedPrescription.patientName} — {selectedPrescription.id} has been cancelled.</p>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      <PageHeader title="Dispensing Center" description="Dispense drugs to patients based on prescriptions." />
 
-      {selectedPrescription && (selectedPrescription.status === "Active" || selectedPrescription.status === "Dispensing") && (
+      {selectedPrescription && selectedPrescription.isActive && (
         <Card>
           <CardHeader className="flex-row items-center justify-between">
             <CardTitle className="flex items-center gap-2">
-              <ClipboardList size={18} /> Active Dispensing Session
+              <ClipboardList size={18} /> Active Prescription
             </CardTitle>
-            <Badge className={selectedPrescription.status === "Active" ? "bg-sky-600 text-white" : "bg-amber-600 text-white"}>
-              {selectedPrescription.status}
-            </Badge>
+            <Badge className="bg-emerald-600 text-white">Active</Badge>
           </CardHeader>
           <CardContent>
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
                 <div className="flex items-center gap-2">
                   <User size={16} className="text-slate-400" />
-                  <span className="font-bold text-slate-900">{selectedPrescription.patientName}</span>
-                  <span className="text-xs text-slate-400 font-mono">{selectedPrescription.id}</span>
+                  <span className="font-bold text-slate-900">{getPatientName(selectedPrescription, patientMap)}</span>
                 </div>
                 <div className="mt-2 grid grid-cols-2 sm:grid-cols-3 gap-3">
                   <div className="rounded-xl bg-slate-50 px-3 py-2">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase">Medication</p>
+                    <p className="text-sm text-slate-900">{selectedPrescription.medication}</p>
+                  </div>
+                  <div className="rounded-xl bg-slate-50 px-3 py-2">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase">Dosage</p>
+                    <p className="text-sm text-slate-900">{selectedPrescription.dosage}</p>
+                  </div>
+                  <div className="rounded-xl bg-slate-50 px-3 py-2">
                     <p className="text-[10px] font-bold text-slate-400 uppercase">Doctor</p>
-                    <p className="text-sm text-slate-900">{selectedPrescription.doctor}</p>
-                  </div>
-                  <div className="rounded-xl bg-slate-50 px-3 py-2">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase">Date</p>
-                    <p className="text-sm text-slate-900">{selectedPrescription.date}</p>
-                  </div>
-                  <div className="rounded-xl bg-slate-50 px-3 py-2">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase">Items</p>
-                    <p className="text-sm text-slate-900">{selectedPrescription.drugs.length}</p>
+                    <p className="text-sm text-slate-900">{getDoctorName(selectedPrescription)}</p>
                   </div>
                 </div>
               </div>
-              <div className="flex gap-2">
-                {selectedPrescription.status === "Active" && (
-                  <button onClick={() => setDispenseModal(selectedPrescription)}
-                    className="inline-flex items-center justify-center rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-emerald-700 transition-colors">
-                    <Pill size={16} className="mr-1.5" /> Start Dispensing
-                  </button>
-                )}
-                {selectedPrescription.status === "Dispensing" && (
-                  <>
-                    <button onClick={() => setDispenseModal(selectedPrescription)}
-                      className="inline-flex items-center justify-center rounded-xl bg-amber-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-amber-700 transition-colors">
-                      Add More Drugs
-                    </button>
-                    <button onClick={() => setPickupModal(selectedPrescription)}
-                      className="inline-flex items-center justify-center rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-emerald-700 transition-colors">
-                      <CheckCircle2 size={16} className="mr-1.5" /> Confirm Pickup
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-
-            <div className="mt-4 p-4 rounded-xl bg-slate-50">
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Prescribed Drugs</p>
-              <div className="space-y-2">
-                {selectedPrescription.drugs.map((d, i) => {
-                  const matched = drugs.find((dd) => dd.name === d.drugName);
-                  return (
-                    <div key={i} className="flex items-center justify-between">
-                      <div>
-                        <span className="text-sm font-bold text-slate-900">{d.drugName}</span>
-                        <span className="text-xs text-slate-500 ml-2">Dosage: {d.dosage}</span>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <span className="text-sm text-slate-700">Qty: {d.qty}</span>
-                        {matched && <Badge className={matched.quantity >= d.qty ? "bg-emerald-600 text-white" : "bg-rose-600 text-white"}>
-                          Stock: {matched.quantity}
-                        </Badge>}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+              <button onClick={() => setDispenseModal(selectedPrescription)}
+                className="inline-flex items-center justify-center rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-emerald-700 transition-colors">
+                <Pill size={16} className="mr-1.5" /> Dispense
+              </button>
             </div>
           </CardContent>
         </Card>
       )}
 
-      <div className="grid grid-cols-1 gap-4 md:gap-8 lg:grid-cols-2">
-        <Card>
-          <CardHeader className="flex-row items-center justify-between">
-            <CardTitle>Prescriptions to Dispense</CardTitle>
-            <Badge className="bg-sky-600 text-white">{openRx.length}</Badge>
-          </CardHeader>
-          <CardContent className="p-0 sm:p-6">
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Patient</TableHead>
-                    <TableHead>Doctor</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Action</TableHead>
+      <Card>
+        <CardHeader className="flex-row items-center justify-between">
+          <CardTitle>Prescriptions to Dispense</CardTitle>
+          <div className="relative w-48 md:w-64">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input type="text" placeholder="Search medication or patient..."
+              value={search} onChange={(e) => setSearch(e.target.value)}
+              className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm outline-none focus:border-emerald-500 transition-colors" />
+          </div>
+        </CardHeader>
+        <CardContent className="p-0 sm:p-6">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Patient</TableHead>
+                  <TableHead>Medication</TableHead>
+                  <TableHead>Dosage</TableHead>
+                  <TableHead>Frequency</TableHead>
+                  <TableHead>Doctor</TableHead>
+                  <TableHead className="text-right">Action</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {rxLoading ? (
+                  <TableRow><TableCell colSpan={6} className="text-center text-sm text-slate-500 py-6">Loading prescriptions...</TableCell></TableRow>
+                ) : activePrescriptions.map((rx) => (
+                  <TableRow key={rx.id} className={selectedRxId === rx.id ? "bg-emerald-50" : ""}>
+                    <TableCell>
+                      <button onClick={() => router.push(`/pharmacy/dispensing?rx=${rx.id}`)}
+                        className="font-medium text-slate-900 hover:text-emerald-700 transition-colors text-left whitespace-nowrap">
+                        {getPatientName(rx, patientMap)}
+                      </button>
+                    </TableCell>
+                    <TableCell className="font-medium text-slate-900">{rx.medication}</TableCell>
+                    <TableCell className="text-sm text-slate-600">{rx.dosage}</TableCell>
+                    <TableCell className="text-sm text-slate-600">{rx.frequency}</TableCell>
+                    <TableCell className="text-sm text-slate-600">{getDoctorName(rx)}</TableCell>
+                    <TableCell className="text-right">
+                      <button onClick={() => router.push(`/pharmacy/dispensing?rx=${rx.id}`)}
+                        className="inline-flex items-center justify-center rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700 transition-colors">
+                        Select
+                      </button>
+                    </TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {openRx.map((rx) => (
-                    <TableRow key={rx.id} className={selectedRx === rx.id ? "bg-emerald-50" : ""}>
-                      <TableCell>
-                        <button onClick={() => router.push(`/pharmacy/dispensing?rx=${rx.id}`)}
-                          className="font-medium text-slate-900 hover:text-emerald-700 transition-colors text-left whitespace-nowrap">
-                          {rx.patientName}
-                        </button>
-                        <p className="text-xs text-slate-400 font-mono">{rx.id}</p>
-                      </TableCell>
-                      <TableCell className="text-sm text-slate-600">{rx.doctor}</TableCell>
-                      <TableCell>{statusBadge(rx.status)}</TableCell>
-                      <TableCell className="text-right">
-                        <button onClick={() => router.push(`/pharmacy/dispensing?rx=${rx.id}`)}
-                          className="inline-flex items-center justify-center rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700 transition-colors">
-                          Select
-                        </button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  {openRx.length === 0 && <TableRow><TableCell colSpan={4} className="text-center text-sm text-slate-500 py-6">No open prescriptions.</TableCell></TableRow>}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
+                ))}
+                {!rxLoading && activePrescriptions.length === 0 && (
+                  <TableRow><TableCell colSpan={6} className="text-center text-sm text-slate-500 py-6">No active prescriptions to dispense.</TableCell></TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent Dispensing Records</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0 sm:p-6">
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Patient</TableHead>
-                    <TableHead>Drugs</TableHead>
-                    <TableHead>Pharmacist</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {recentDispensing.map((rec) => (
-                    <TableRow key={rec.id}>
-                      <TableCell className="text-sm font-medium text-slate-900">{rec.patientName}</TableCell>
-                      <TableCell className="text-sm text-slate-600">{rec.drugs.map((d) => `${d.drugName} x${d.qty}`).join(", ")}</TableCell>
-                      <TableCell className="text-xs text-slate-500">{rec.dispensedBy}</TableCell>
-                      <TableCell className="text-xs text-slate-500">{rec.dispensedAt}</TableCell>
-                      <TableCell>
-                        <Badge className={rec.status === "Picked Up" ? "bg-emerald-600 text-white" : "bg-amber-600 text-white"}>
-                          {rec.status}
-                        </Badge>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  {recentDispensing.length === 0 && <TableRow><TableCell colSpan={5} className="text-center text-sm text-slate-500 py-6">No dispensing records yet.</TableCell></TableRow>}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Modal isOpen={!!dispenseModal} onClose={() => { setDispenseModal(null); setSelectedDrugId(""); setDispenseQty(1); setDispenseNote(""); }} title="Dispense Drugs">
+      <Modal isOpen={!!dispenseModal} onClose={() => { setDispenseModal(null); setSelectedDrugId(""); setDispenseQty(1); setDispenseNote(""); }} title="Dispense Drug">
         {dispenseModal && (
           <div className="space-y-5">
-            <p className="text-sm text-slate-600">Dispensing for <strong>{dispenseModal.patientName}</strong> ({dispenseModal.id})</p>
+            <p className="text-sm text-slate-600">Dispensing for <strong>{getPatientName(dispenseModal, patientMap)}</strong></p>
+
+            <div className="rounded-xl bg-slate-50 p-3">
+              <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Prescribed Medication</p>
+              <p className="text-sm font-bold text-slate-900">{dispenseModal.medication} — {dispenseModal.dosage} ({dispenseModal.frequency})</p>
+            </div>
 
             <div>
-              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Select Drug</label>
-              <div className="mt-1.5 grid grid-cols-2 gap-2">
-                {dispenseModal.drugs.map((d, i) => {
-                  const matched = drugs.find((dd) => dd.name === d.drugName);
-                  const available = matched ? matched.quantity : 0;
-                  const disabled = available < 1;
-                  return (
-                    <button key={i} onClick={() => { setSelectedDrugId(matched?.id || ""); setDispenseQty(d.qty); }}
-                      disabled={disabled}
-                      className={`rounded-xl border p-3 text-left transition-colors ${
-                        selectedDrugId === matched?.id
-                          ? "border-emerald-500 bg-emerald-50"
-                          : "border-slate-200 hover:border-emerald-300"
-                      } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}>
-                      <p className="text-sm font-bold text-slate-900">{d.drugName}</p>
-                      <p className="text-xs text-slate-500">Rx qty: {d.qty} • Stock: {available}</p>
-                    </button>
-                  );
-                })}
+              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Select Drug from Inventory</label>
+              <div className="mt-1.5 space-y-2 max-h-48 overflow-y-auto">
+                {drugs.filter((d) => d.quantityInStock > 0).map((d) => (
+                  <button key={d.id} onClick={() => { setSelectedDrugId(d.id); setDispenseQty(1); }}
+                    className={`w-full rounded-xl border p-3 text-left transition-colors ${
+                      selectedDrugId === d.id
+                        ? "border-emerald-500 bg-emerald-50"
+                        : "border-slate-200 hover:border-emerald-300"
+                    }`}>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-bold text-slate-900">{d.name}</p>
+                        <p className="text-xs text-slate-500">{d.dosageForm || ""} {d.strength || ""}</p>
+                      </div>
+                      <Badge className="bg-emerald-600 text-white">Stock: {d.quantityInStock}</Badge>
+                    </div>
+                  </button>
+                ))}
+                {drugs.filter((d) => d.quantityInStock > 0).length === 0 && (
+                  <p className="text-sm text-slate-500 text-center py-4">No drugs in stock</p>
+                )}
               </div>
             </div>
 
-            <div>
-              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Quantity to Dispense</label>
-              <input type="number" min={1}
-                value={dispenseQty || ""}
-                onChange={(e) => setDispenseQty(parseInt(e.target.value) || 0)}
-                className="mt-1.5 w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm outline-none focus:border-emerald-500 bg-white" />
-            </div>
+            {matchedDrug && (
+              <div>
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Quantity to Dispense</label>
+                <input type="number" min={1} max={matchedDrug.quantityInStock}
+                  value={dispenseQty || ""}
+                  onChange={(e) => setDispenseQty(parseInt(e.target.value) || 0)}
+                  className="mt-1.5 w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm outline-none focus:border-emerald-500 bg-white" />
+                {dispenseQty > matchedDrug.quantityInStock && (
+                  <p className="mt-1 text-xs text-rose-600">Insufficient stock (available: {matchedDrug.quantityInStock})</p>
+                )}
+              </div>
+            )}
 
             <div>
               <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Note (optional)</label>
@@ -303,27 +262,10 @@ function DispensingContent() {
             <div className="flex items-center justify-end gap-2">
               <button onClick={() => { setDispenseModal(null); setSelectedDrugId(""); setDispenseQty(1); setDispenseNote(""); }}
                 className="rounded-full border border-slate-200 bg-white px-5 py-2.5 text-sm font-medium text-slate-900 hover:bg-slate-50">Cancel</button>
-              <button onClick={handleDispense} disabled={!selectedDrugId || dispenseQty <= 0}
-                className="rounded-full bg-emerald-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed">Confirm Dispense</button>
-            </div>
-          </div>
-        )}
-      </Modal>
-
-      <Modal isOpen={!!pickupModal} onClose={() => setPickupModal(null)} title="Confirm Pickup">
-        {pickupModal && (
-          <div className="space-y-5">
-            <div className="flex items-center gap-4 pb-4 border-b border-slate-100">
-              <div className="w-14 h-14 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-700"><User size={24} /></div>
-              <div>
-                <h4 className="text-lg font-bold text-slate-900">{pickupModal.patientName}</h4>
-                <p className="text-sm text-slate-500">{pickupModal.id}</p>
-              </div>
-            </div>
-            <p className="text-sm text-slate-600">Confirm that the patient has picked up their prescription? This will finalize the dispensing process.</p>
-            <div className="flex items-center justify-end gap-2">
-              <button onClick={() => setPickupModal(null)} className="rounded-full border border-slate-200 bg-white px-5 py-2.5 text-sm font-medium text-slate-900 hover:bg-slate-50">Cancel</button>
-              <button onClick={handlePickup} className="rounded-full bg-emerald-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-emerald-700">Confirm Pickup</button>
+              <button onClick={handleDispense} disabled={!selectedDrugId || dispenseQty <= 0 || dispenseQty > (matchedDrug?.quantityInStock || 0) || dispenseMutation.isPending}
+                className="rounded-full bg-emerald-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                {dispenseMutation.isPending ? "Dispensing..." : "Confirm Dispense"}
+              </button>
             </div>
           </div>
         )}
