@@ -1,33 +1,78 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import { 
-  CalendarDays, 
-  Clock, 
-  Glasses, 
-  Bell, 
-  ChevronRight, 
-  FileText, 
-  CreditCard, 
-  User, 
-  Plus, 
+import {
+  CalendarDays,
+  Clock,
+  Glasses,
+  ChevronRight,
+  FileText,
+  CreditCard,
+  Plus,
   ArrowRight,
   ShieldCheck,
   CheckCircle2
 } from "lucide-react";
 import Link from "next/link";
-import { usePatientStore } from "@/store/patientStore";
+import { useAuth } from "@/lib/auth-context";
+import {
+  usePatientAppointments,
+  usePatientLensOrders,
+} from "@/hooks/usePatientDashboard";
+
+function getStaffName(staff: { firstName: string; lastName: string } | undefined): string {
+  if (!staff) return "Doctor TBD";
+  return `Dr. ${staff.firstName} ${staff.lastName}`;
+}
+
+function getAppointmentType(status: string): string {
+  const s = status?.toLowerCase();
+  if (s === "scheduled" || s === "confirmed") return "Upcoming";
+  if (s === "in_progress") return "In Progress";
+  if (s === "completed") return "Completed";
+  if (s === "cancelled") return "Cancelled";
+  return status;
+}
+
+function getOpticalProgress(status: string): number {
+  const s = status?.toLowerCase();
+  if (s === "pending") return 25;
+  if (s === "processing") return 65;
+  if (s === "ready") return 100;
+  if (s === "delivered") return 100;
+  return 10;
+}
 
 export default function PatientDashboard() {
-  const { appointments, orders, notifications, outstandingBalance, invoices, addNotification } = usePatientStore();
+  const { user } = useAuth();
+  const patientId = user?.userId || null;
+  const clinicId = user?.clinicId || null;
+
+  const { data: appointments = [], isLoading: apptsLoading } = usePatientAppointments(patientId, clinicId);
+  const { data: lensOrders = [], isLoading: ordersLoading } = usePatientLensOrders(patientId, clinicId);
+
   const [checkedIn, setCheckedIn] = useState(false);
   const [toast, setToast] = useState("");
-  
-  const upcomingAppt = appointments.find(a => a.status === 'upcoming');
-  const activeOrder = orders.find(o => o.status !== 'Delivered') || orders[0];
-  const recentNotifs = notifications.slice(0, 3);
-  const latestInvoice = invoices[0];
+
+  const upcomingAppt = useMemo(() =>
+    appointments.find((a) => a.status === "scheduled" || a.status === "confirmed"),
+    [appointments]
+  );
+
+  const activeOrder = useMemo(() =>
+    lensOrders.find((o) => o.status !== "delivered") || lensOrders[0],
+    [lensOrders]
+  );
+
+  const recentAppts = useMemo(() => appointments.slice(0, 3), [appointments]);
+
+  const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 3000); };
+
+  const handleCheckIn = () => {
+    setCheckedIn(true);
+    showToast("Checked in successfully");
+  };
 
   const quickActions = [
     { label: "Book Appointment", icon: Plus, href: "/patient/appointments", color: "bg-teal-50 text-teal-600" },
@@ -35,19 +80,6 @@ export default function PatientDashboard() {
     { label: "Pay Bills", icon: CreditCard, href: "/patient/billing", color: "bg-orange-50 text-orange-600" },
     { label: "Optical Orders", icon: Glasses, href: "/patient/optical", color: "bg-purple-50 text-purple-600" },
   ];
-
-  const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 3000); };
-
-  const handleCheckIn = () => {
-    setCheckedIn(true);
-    addNotification({
-      title: "Checked In",
-      message: "You've checked in for your appointment at 10:30 AM. Please wait to be called.",
-      time: "Just now",
-      type: "appointment",
-    });
-    showToast("Checked in successfully");
-  };
 
   return (
     <div className="space-y-8 pb-10">
@@ -59,20 +91,21 @@ export default function PatientDashboard() {
       <header className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
-            Welcome back, Alex
+            Welcome back
           </h1>
           <p className="text-sm sm:text-base text-gray-500 mt-1 font-medium">
-            You have an appointment today at 10:30 AM.
+            {upcomingAppt
+              ? `You have an appointment ${upcomingAppt.appointmentTime ? `at ${upcomingAppt.appointmentTime}` : `on ${upcomingAppt.appointmentDate}`}.`
+              : "No upcoming appointments."}
           </p>
         </div>
         <Link href="/patient/profile">
           <div className="w-12 h-12 rounded-full bg-teal-100 border-2 border-white shadow-sm flex items-center justify-center text-teal-700 font-bold hover:scale-105 transition-transform cursor-pointer">
-            AS
+            {user?.email?.[0]?.toUpperCase() || "U"}
           </div>
         </Link>
       </header>
 
-      {/* Primary Focus: Upcoming Appointment & Queue */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
           {upcomingAppt ? (
@@ -84,44 +117,31 @@ export default function PatientDashboard() {
             >
               <div className="absolute -right-10 -top-10 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
               <div className="absolute -left-20 -bottom-20 w-80 h-80 bg-teal-500/30 rounded-full blur-3xl"></div>
-              
+
               <div className="relative z-10">
                 <div className="flex justify-between items-center mb-8">
                   <div className="flex items-center gap-2 bg-white/20 rounded-full px-4 py-1.5 text-xs font-bold uppercase tracking-widest backdrop-blur-md border border-white/20">
                     <div className="w-2 h-2 rounded-full bg-white animate-pulse"></div>
-                    <span>Active Session</span>
-                  </div>
-                  <div className="text-teal-100 text-sm font-medium">
-                    {upcomingAppt.location}
+                    <span>{getAppointmentType(upcomingAppt.status)}</span>
                   </div>
                 </div>
-                
+
                 <h2 className="text-3xl font-extrabold mb-2 leading-tight">{upcomingAppt.type}</h2>
-                <p className="text-teal-50 text-lg mb-8 opacity-90">{upcomingAppt.doctor}</p>
-                
+                <p className="text-teal-50 text-lg mb-8 opacity-90">{getStaffName(upcomingAppt.staff)}</p>
+
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-white/10 p-5 rounded-3xl backdrop-blur-md border border-white/10">
-                    <p className="text-xs text-teal-100 uppercase tracking-widest font-bold mb-1 opacity-80">Arrival Time</p>
-                    <p className="text-xl font-black">10:15 AM</p>
+                    <p className="text-xs text-teal-100 uppercase tracking-widest font-bold mb-1 opacity-80">Date</p>
+                    <p className="text-xl font-black">{upcomingAppt.appointmentDate}</p>
                   </div>
                   <div className="bg-white/10 p-5 rounded-3xl backdrop-blur-md border border-white/10">
-                    <p className="text-xs text-teal-100 uppercase tracking-widest font-bold mb-1 opacity-80">Queue Spot</p>
-                    <p className="text-xl font-black italic">#03 <span className="text-sm font-normal opacity-60">/ 12</span></p>
+                    <p className="text-xs text-teal-100 uppercase tracking-widest font-bold mb-1 opacity-80">Time</p>
+                    <p className="text-xl font-black">{upcomingAppt.appointmentTime || "—"}</p>
                   </div>
                 </div>
               </div>
 
-              <div className="relative z-10 mt-8 pt-6 border-t border-white/10 flex justify-between items-center">
-                <div className="flex -space-x-2">
-                  {[1,2,3].map(i => (
-                    <div key={i} className="w-8 h-8 rounded-full border-2 border-teal-600 bg-teal-400 flex items-center justify-center text-[10px] font-bold">
-                      {i}
-                    </div>
-                  ))}
-                  <div className="pl-3 text-xs text-teal-100 font-medium self-center">
-                    2 patients ahead of you
-                  </div>
-                </div>
+              <div className="relative z-10 mt-8 pt-6 border-t border-white/10 flex justify-end">
                 <button onClick={handleCheckIn} disabled={checkedIn}
                   className={`px-6 py-2.5 rounded-2xl font-bold text-sm shadow-lg transition-all ${checkedIn ? 'bg-emerald-100 text-emerald-700' : 'bg-white text-teal-700 hover:bg-teal-50'}`}>
                   {checkedIn ? 'Checked In' : 'Check In'}
@@ -142,7 +162,6 @@ export default function PatientDashboard() {
           )}
         </div>
 
-        {/* Quick Actions & Notifications */}
         <div className="space-y-6">
           <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-gray-100">
             <h3 className="font-bold text-gray-900 mb-4 px-2 text-sm uppercase tracking-widest">Quick Actions</h3>
@@ -160,26 +179,30 @@ export default function PatientDashboard() {
 
           <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-gray-100 flex-1">
             <div className="flex items-center justify-between mb-4 px-2">
-              <h3 className="font-bold text-gray-900 text-sm uppercase tracking-widest">Recent Alerts</h3>
-              <Link href="/patient/notifications" className="text-teal-600 text-xs font-bold hover:underline">View All</Link>
+              <h3 className="font-bold text-gray-900 text-sm uppercase tracking-widest">Recent Appointments</h3>
+              <Link href="/patient/appointments" className="text-teal-600 text-xs font-bold hover:underline">View All</Link>
             </div>
             <div className="space-y-4">
-              {recentNotifs.map((n) => (
-                <div key={n.id} className="flex gap-4 p-2 rounded-xl hover:bg-gray-50 transition-colors group cursor-pointer">
-                  <div className={`mt-1 w-2 h-2 rounded-full flex-shrink-0 ${n.unread ? 'bg-orange-500' : 'bg-gray-300'}`} />
+              {recentAppts.map((a) => (
+                <div key={a.id} className="flex gap-4 p-2 rounded-xl hover:bg-gray-50 transition-colors">
+                  <div className={`mt-1 w-2 h-2 rounded-full flex-shrink-0 ${
+                    a.status === "completed" ? "bg-emerald-500" : a.status === "scheduled" ? "bg-orange-500" : "bg-gray-300"
+                  }`} />
                   <div>
-                    <p className="text-sm font-bold text-gray-900 leading-none mb-1">{n.title}</p>
-                    <p className="text-xs text-gray-500 line-clamp-1">{n.message}</p>
+                    <p className="text-sm font-bold text-gray-900 leading-none mb-1">{a.type}</p>
+                    <p className="text-xs text-gray-500">{a.appointmentDate} &bull; {getStaffName(a.staff)}</p>
                   </div>
                 </div>
               ))}
+              {recentAppts.length === 0 && !apptsLoading && (
+                <p className="text-xs text-gray-400 text-center py-4">No appointments yet</p>
+              )}
             </div>
           </div>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Optical Orders Section */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -205,12 +228,12 @@ export default function PatientDashboard() {
             <div className="space-y-6">
               <div className="flex justify-between items-end">
                 <div>
-                  <p className="text-sm font-black text-gray-900 mb-1">{activeOrder.id}</p>
-                  <p className="text-xs text-gray-500 line-clamp-1">{activeOrder.type}</p>
+                  <p className="text-sm font-black text-gray-900 mb-1">{activeOrder.id.slice(0, 8)}</p>
+                  <p className="text-xs text-gray-500 line-clamp-1">{activeOrder.lensType}</p>
                 </div>
                 <div className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter ${
-                  activeOrder.status === 'Ready' ? 'bg-green-100 text-green-700' : 
-                  activeOrder.status === 'Production' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'
+                  activeOrder.status === "ready" ? "bg-green-100 text-green-700" :
+                  activeOrder.status === "processing" ? "bg-amber-100 text-amber-700" : "bg-blue-100 text-blue-700"
                 }`}>
                   {activeOrder.status}
                 </div>
@@ -218,8 +241,8 @@ export default function PatientDashboard() {
 
               <div className="relative pt-1">
                 <div className="overflow-hidden h-3 mb-4 text-xs flex rounded-full bg-gray-100">
-                  <div 
-                    style={{ width: activeOrder.status === 'Ready' ? "100%" : activeOrder.status === 'Production' ? "65%" : "25%" }} 
+                  <div
+                    style={{ width: `${getOpticalProgress(activeOrder.status)}%` }}
                     className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-blue-500 transition-all duration-1000"
                   ></div>
                 </div>
@@ -233,7 +256,7 @@ export default function PatientDashboard() {
               <div className="bg-gray-50 rounded-2xl p-4 flex items-center gap-3">
                 <Clock className="w-4 h-4 text-gray-400" />
                 <p className="text-xs font-medium text-gray-600">
-                  Estimated pickup: <span className="text-gray-900 font-bold">{activeOrder.estimatedPickup}</span>
+                  Estimated pickup: <span className="text-gray-900 font-bold">{activeOrder.expectedDeliveryDate || "TBD"}</span>
                 </p>
               </div>
             </div>
@@ -244,7 +267,6 @@ export default function PatientDashboard() {
           )}
         </motion.div>
 
-        {/* Financial & HMO Section */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -270,7 +292,7 @@ export default function PatientDashboard() {
             <div className="bg-orange-50 rounded-[2rem] p-6 border border-orange-100 flex justify-between items-center">
               <div>
                 <p className="text-xs text-orange-700 uppercase tracking-widest font-bold mb-1">Outstanding Balance</p>
-                <p className="text-3xl font-black text-orange-900">₦{outstandingBalance.toLocaleString()}</p>
+                <p className="text-3xl font-black text-orange-900">₦0</p>
               </div>
               <button className="bg-orange-600 text-white p-3 rounded-2xl shadow-lg shadow-orange-600/20 hover:bg-orange-700 transition-colors">
                 <ArrowRight className="w-6 h-6" />
@@ -284,7 +306,7 @@ export default function PatientDashboard() {
                 </div>
                 <div>
                   <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">HMO Status</p>
-                  <p className="text-xs font-bold text-gray-900">Active (Reliance)</p>
+                  <p className="text-xs font-bold text-gray-900">Active</p>
                 </div>
               </div>
               <div className="bg-gray-50 rounded-2xl p-4 flex items-center gap-3">
@@ -292,8 +314,8 @@ export default function PatientDashboard() {
                   <FileText className="w-4 h-4 text-blue-600" />
                 </div>
                 <div>
-                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">Last Invoice</p>
-                  <p className="text-xs font-bold text-gray-900">{latestInvoice?.id || "None"}</p>
+                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">Appointments</p>
+                  <p className="text-xs font-bold text-gray-900">{appointments.length} total</p>
                 </div>
               </div>
             </div>

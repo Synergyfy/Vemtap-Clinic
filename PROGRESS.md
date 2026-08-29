@@ -45,7 +45,7 @@ Integrating the NestJS API backend (~210 endpoints, 32 modules) with the Next.js
 | 3.3 Staff | `POST/GET/PUT/DELETE /api/staff` | `clinic/staff/`, `admin/` | MEDIUM | ✅ DONE |
 | 3.4 Queue | `POST/GET/PUT /api/queue` + `/next`, `/stats`, `/announcements`, `/reset` | `reception/queue/`, `clinic/queue/`, `queue-display/` | HIGH | ✅ DONE |
 | 3.5 Branches | `POST/GET/PUT/DELETE /api/branches` | `clinic/branches/`, `admin/clinics/` | MEDIUM | NOT STARTED |
-| 3.6 Dashboard | `GET /api/dashboard`, `/revenue`, `/appointments`, `/hmo` | All `*/dashboard/` pages | HIGH | ✅ DONE (clinic dashboard) |
+| 3.6 Dashboard | `GET /api/dashboard`, `/revenue`, `/appointments`, `/hmo` | All `*/dashboard/` pages | HIGH | ✅ DONE (all 7 dashboards) |
 
 ### 🔄 Phase 4: Domain-Specific Modules — **NOT STARTED**
 | Module | API Endpoints | Pages Affected |
@@ -104,7 +104,9 @@ Integrating the NestJS API backend (~210 endpoints, 32 modules) with the Next.js
 | *(pending)* | feat(web): Phase 3.2 - Appointments module integration | **Phase 3** |
 | *(pending)* | feat(web): Phase 3.3 - Staff module integration | **Phase 3** |
 | *(pending)* | feat(web): Phase 3.4 - Queue module integration | **Phase 3** |
-| *(pending)* | feat(web): Phase 3.6 - Dashboard module integration | **Phase 3** |
+| `e50a3ec` | feat(web): Phase 3.6 - Clinic dashboard integration | **Phase 3** |
+| `cd1ba69` | feat(web): Doctor dashboard integration | **Phase 3** |
+| *(pending)* | feat(web): Nurse + Pharmacy + Optician + Patient dashboards | **Phase 3** |
 
 ---
 
@@ -174,6 +176,19 @@ Integrating the NestJS API backend (~210 endpoints, 32 modules) with the Next.js
 - [x] Announcements work
 - [x] Stats computed from API data
 
+### Phase 3.6 All Dashboards ✅
+- [x] Build passes
+- [x] TypeScript passes
+- [x] Clinic dashboard — `services/dashboard.service.ts` + `hooks/useDashboard.ts` + `clinic/dashboard/page.tsx`
+- [x] Doctor dashboard — `services/doctor-dashboard.service.ts` + `hooks/useDoctorDashboard.ts` + `doctor/dashboard/page.tsx`
+- [x] Nurse dashboard — `services/nurse-dashboard.service.ts` + `hooks/useNurseDashboard.ts` + `nurse/dashboard/page.tsx`
+- [x] Pharmacy dashboard — `services/pharmacy-dashboard.service.ts` + `hooks/usePharmacyDashboard.ts` + `pharmacy/dashboard/page.tsx`
+- [x] Optician dashboard — `services/optician-dashboard.service.ts` + `hooks/useOpticianDashboard.ts` + `optician/dashboard/page.tsx`
+- [x] Patient dashboard — `services/patient-dashboard.service.ts` + `hooks/usePatientDashboard.ts` + `patient/dashboard/page.tsx`
+- [x] Admin dashboard — already self-contained (SaaS platform admin, no backend endpoints needed)
+- [x] All mock stores removed from dashboard pages
+- [x] Loading states on all dashboards
+
 ### Phase 3.5+ (Each Module)
 - [ ] Build passes
 - [ ] TypeScript passes
@@ -190,6 +205,6 @@ Integrating the NestJS API backend (~210 endpoints, 32 modules) with the Next.js
 
 ## Current Status Summary
 - **Backend:** 32 modules, ~210 endpoints, dual-token auth with HTTP-only cookies
-- **Frontend:** Phase 1, 2, 3.1–3.4, 3.6 complete — auth + patients + appointments + staff + queue + clinic dashboard integrated
+- **Frontend:** Phase 1, 2, 3.1–3.4, 3.6 complete — auth + patients + appointments + staff + queue + all 7 dashboards integrated
 - **Next:** Phase 3.5 (Branches) or Phase 4 (Domain modules)
 - **Blockers:** None (macOS file descriptor limit during build is system-level, not code)
