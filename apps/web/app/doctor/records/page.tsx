@@ -1,17 +1,25 @@
+"use client";
+
 import React from "react";
 import Link from "next/link";
 import { PageHeader } from "@/app/clinic/_components/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Search, Filter, ClipboardList, Eye, FileText } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
+import { useRecords } from "@/hooks/useRecords";
+import { useAuth } from "@/lib/auth-context";
 
 export default function DoctorRecords() {
-  const recentRecords = [
-    { patient: "Fatima Yusuf", id: "P-003", type: "Consultation", date: "June 18, 2026", status: "Open" },
-    { patient: "Adesuwa Okoro", id: "P-001", type: "Eye Test", date: "June 17, 2026", status: "Closed" },
-    { patient: "Chidi Okafor", id: "P-002", type: "Refraction", date: "June 17, 2026", status: "Closed" },
-  ];
+  const { user } = useAuth();
+  const { data: records = [], isLoading } = useRecords({ staffId: user?.userId });
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-slate-400 text-sm font-medium">Loading records...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4 sm:space-y-8">
@@ -33,29 +41,30 @@ export default function DoctorRecords() {
 
       <div className="space-y-3 sm:space-y-4">
         <h3 className="text-xs sm:text-sm font-bold text-slate-400 uppercase tracking-widest">Recent Encounters</h3>
-        {recentRecords.map((r, i) => (
-          <Link key={i} href={`/doctor/records/${r.id}`} className="block">
+        {records.map((r) => (
+          <Link key={r.id} href={`/doctor/records/${r.patientId}`} className="block">
             <Card className="hover:border-emerald-200 transition-all cursor-pointer group shadow-sm hover:shadow-md">
               <CardContent className="p-4 sm:p-5 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3 sm:gap-4 min-w-0">
                   <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600 group-hover:bg-emerald-50 group-hover:text-emerald-600 transition-colors shrink-0">
-                    {r.type === "Consultation" ? <FileText size={18} className="sm:w-5 sm:h-5" /> : <Eye size={18} className="sm:w-5 sm:h-5" />}
+                    {r.chiefComplaint ? <FileText size={18} className="sm:w-5 sm:h-5" /> : <Eye size={18} className="sm:w-5 sm:h-5" />}
                   </div>
                   <div className="min-w-0">
-                    <p className="font-bold text-slate-900 text-sm truncate">{r.patient}</p>
-                    <p className="text-[10px] sm:text-xs text-slate-500">{r.type} • {r.date}</p>
+                    <p className="font-bold text-slate-900 text-sm truncate">{r.patient?.firstName} {r.patient?.lastName}</p>
+                    <p className="text-[10px] sm:text-xs text-slate-500">{r.chiefComplaint || "Encounter"} • {new Date(r.createdAt).toLocaleDateString()}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 sm:gap-4 shrink-0">
-                  <Badge variant={r.status === "Open" ? "default" : "outline"} className={cn("text-[10px]", r.status === "Open" ? "bg-emerald-600" : "")}>
-                    {r.status}
-                  </Badge>
-                  <Badge variant="outline" className="text-[10px] font-mono hidden sm:inline-flex">{r.id}</Badge>
+                  <Badge variant="default" className="text-[10px] bg-emerald-600">Open</Badge>
+                  <Badge variant="outline" className="text-[10px] font-mono hidden sm:inline-flex">{r.id.slice(0, 8)}</Badge>
                 </div>
               </CardContent>
             </Card>
           </Link>
         ))}
+        {records.length === 0 && (
+          <p className="text-center text-sm text-slate-500 py-6">No medical records found.</p>
+        )}
       </div>
     </div>
   );
