@@ -138,26 +138,20 @@ export default function BillingPage() {
             <div className="space-y-4">
               <div>
                 <p className="text-xs text-gray-500 uppercase font-semibold">Provider</p>
-                <p className="font-bold text-gray-900">Reliance HMO</p>
+                <p className="font-bold text-gray-900">Not enrolled</p>
               </div>
               <div>
                 <p className="text-xs text-gray-500 uppercase font-semibold">Plan</p>
-                <p className="font-bold text-gray-900">Premium Care</p>
+                <p className="font-bold text-gray-900">N/A</p>
               </div>
               <div>
                 <p className="text-xs text-gray-500 uppercase font-semibold">Status</p>
-                <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-black uppercase tracking-widest">Active</span>
+                <span className="px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 text-[10px] font-black uppercase tracking-widest">Inactive</span>
               </div>
             </div>
 
             <div className="mt-6 pt-6 border-t border-gray-100">
-              <div className="flex justify-between items-center text-sm mb-2">
-                <span className="text-gray-500">Optical Limit</span>
-                <span className="font-semibold text-teal-600">{"\u20A6"}150,000 / {"\u20A6"}300,000</span>
-              </div>
-              <div className="w-full bg-gray-100 rounded-full h-2">
-                <div className="bg-teal-500 h-2 rounded-full w-1/2" />
-              </div>
+              <p className="text-xs text-gray-400 text-center">HMO coverage details will appear here once enrolled.</p>
             </div>
           </motion.div>
         </div>

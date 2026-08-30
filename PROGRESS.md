@@ -47,15 +47,25 @@ Integrating the NestJS API backend (~210 endpoints, 32 modules) with the Next.js
 | 3.5 Branches | `POST/GET/PUT/DELETE /api/branches` | `clinic/branches/`, `admin/clinics/` | MEDIUM | NOT STARTED |
 | 3.6 Dashboard | `GET /api/dashboard`, `/revenue`, `/appointments`, `/hmo` | All `*/dashboard/` pages | HIGH | ✅ DONE (all 7 dashboards) |
 
-### 🔄 Phase 4: Domain-Specific Modules — **NOT STARTED**
-| Module | API Endpoints | Pages Affected |
-|--------|---------------|----------------|
-| 4.1 Pharmacy | `/api/drugs`, `/api/prescriptions` (15) | `pharmacy/`, `clinic/pharmacy/` |
-| 4.2 Optical | `/api/optical` (14) | `optician/`, `clinic/optical/` |
-| 4.3 HMO | `/api/hmo` (38) | `clinic/hmo/`, `clinic/hmo-advanced/`, `admin/config/hmo/` |
-| 4.4 Billing | `/api/billing` (7) | `reception/billing/`, `patient/billing/` |
-| 4.5 Cashier/POS | `/api/cashier` (16) | `cashier/` |
-| 4.6 Medical Records | `/api/records`, `/api/observation-notes` (10) | `doctor/records/`, `nurse/` |
+### ✅ Phase 4: Domain-Specific Modules — **DONE**
+| Module | API Endpoints | Pages Affected | Status |
+|--------|---------------|----------------|--------|
+| 4.1 Pharmacy | `/api/drugs`, `/api/prescriptions` (15) | `pharmacy/`, `clinic/pharmacy/` | ✅ DONE |
+| 4.2 Optical | `/api/optical` (14) | `optician/`, `clinic/optical/` | ✅ DONE |
+| 4.3 HMO | `/api/hmo` (38) | `clinic/hmo/`, `clinic/hmo-advanced/`, `admin/config/hmo/` | ✅ DONE (hmo-advanced) |
+| 4.4 Billing | `/api/billing` (7) | `reception/billing/`, `patient/billing/` | ✅ DONE (quick wins) |
+| 4.5 Cashier/POS | `/api/cashier` (16) | `cashier/` | ✅ DONE |
+| 4.6 Medical Records | `/api/records`, `/api/observation-notes` (10) | `doctor/records/`, `nurse/` | ✅ DONE |
+| 4.7 Nurse | `/api/nurse`, `/api/observation-notes` | `nurse/` | ✅ DONE |
+
+### 🔄 Phase 5: Clinic Sub-pages — **PARTIAL**
+| Page | Current State | Priority |
+|------|---------------|----------|
+| `clinic/products/` | Uses `useProducts()` + `useProductStats()` hooks | ✅ DONE (quick wins) |
+| `clinic/finance/` | Uses mock data — expenses module missing in backend | DEFERRED |
+| `clinic/reports/` | Uses mock data — needs new backend endpoints | DEFERRED |
+| `clinic/settings/` | Static settings — needs new backend module | DEFERRED |
+| `admin/settings/` | Static settings — needs new backend module | DEFERRED |
 
 ### 🔄 Phase 5: Supporting Modules — **NOT STARTED**
 | Module | API Endpoints | Pages Affected |
@@ -106,7 +116,14 @@ Integrating the NestJS API backend (~210 endpoints, 32 modules) with the Next.js
 | *(pending)* | feat(web): Phase 3.4 - Queue module integration | **Phase 3** |
 | `e50a3ec` | feat(web): Phase 3.6 - Clinic dashboard integration | **Phase 3** |
 | `cd1ba69` | feat(web): Doctor dashboard integration | **Phase 3** |
-| *(pending)* | feat(web): Nurse + Pharmacy + Optician + Patient dashboards | **Phase 3** |
+| `b5cfb63` | feat(web): Pharmacy sub-pages integration | **Phase 4** |
+| `17c4577` | feat(web): Optician sub-pages integration | **Phase 4** |
+| `96870a3` | feat(web): Nurse sub-pages integration | **Phase 4** |
+| `0903ff9` | feat(web): Doctor sub-pages integration | **Phase 4** |
+| `411b362` | feat(web): Patient sub-pages integration | **Phase 4** |
+| `7a7243d` | feat(web): Cashier/POS integration | **Phase 4** |
+| `4c9834f` | feat(web): HMO advanced module integration | **Phase 4** |
+| *(pending)* | feat(web): Quick wins — products, patient billing, reception billing | **Phase 4-5** |
 
 ---
 
