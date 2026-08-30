@@ -36,6 +36,7 @@ import { HmoIntegrationsModule } from './hmo-integrations/hmo-integrations.modul
 import { ObservationNotesModule } from './observation-notes/observation-notes.module';
 import { CurrencyModule } from './currency/currency.module';
 import { FileUploadModule } from './file-upload/file-upload.module';
+import { ExpensesModule } from './expenses/expenses.module';
 
 @Module({
   imports: [
@@ -78,6 +79,7 @@ import { FileUploadModule } from './file-upload/file-upload.module';
     ObservationNotesModule,
     CurrencyModule,
     FileUploadModule,
+    ExpensesModule,
   ],
 })
 export class AppModule {}

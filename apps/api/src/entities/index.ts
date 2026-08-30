@@ -57,3 +57,4 @@ export { CashierTransaction, CashierTransactionStatus, CashierPaymentEntry, Cash
 export { CurrencyConfig, CurrencyCode } from './currency-config.entity';
 export { FileUpload, FileCategory } from './file-upload.entity';
 export { RefreshToken } from './refresh-token.entity';
+export { Expense, ExpenseCategory, ExpenseStatus } from './expense.entity';
