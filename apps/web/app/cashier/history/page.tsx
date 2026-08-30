@@ -4,19 +4,22 @@ import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Modal } from "@/components/ui/modal";
-import { usePosStore, formatCurrency } from "@/store/posStore";
+import { useCashierTransactions, useVoidTransaction, CashierTransaction } from "@/hooks/useCashier";
 import {
-  Receipt, Search, Filter, Printer, X, CheckCircle2,
-  RotateCcw, Timer, User, Wallet, ArrowRight
+  Receipt, Search, X, RotateCcw
 } from "lucide-react";
 
+function formatCurrency(amount: number): string {
+  return `₦${amount.toLocaleString()}`;
+}
+
 export default function HistoryPage() {
-  const transactions = usePosStore((s) => s.transactions);
-  const voidTransaction = usePosStore((s) => s.voidTransaction);
+  const { data: transactions = [], isLoading } = useCashierTransactions();
+  const voidTransaction = useVoidTransaction();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [selectedTxn, setSelectedTxn] = useState<typeof transactions[0] | null>(null);
-  const [showVoid, setShowVoid] = useState<typeof transactions[0] | null>(null);
+  const [selectedTxn, setSelectedTxn] = useState<CashierTransaction | null>(null);
+  const [showVoid, setShowVoid] = useState<CashierTransaction | null>(null);
 
   const filtered = transactions.filter((t) => {
     if (statusFilter !== "all" && t.status !== statusFilter) return false;
@@ -33,7 +36,6 @@ export default function HistoryPage() {
 
   return (
     <div className="p-4 md:p-6 space-y-5 max-w-[1600px] mx-auto">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-black text-slate-900 tracking-tight">Transaction History</h1>
@@ -41,7 +43,6 @@ export default function HistoryPage() {
         </div>
       </div>
 
-      {/* Search & Filter */}
       <div className="bg-white p-3 rounded-2xl border border-slate-100 shadow-sm flex flex-col sm:flex-row items-center gap-3">
         <div className="relative flex-1 w-full">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
@@ -58,85 +59,91 @@ export default function HistoryPage() {
         </select>
       </div>
 
-      {/* Table */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="border-b border-slate-100">
-                <th className="px-5 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest">Receipt</th>
-                <th className="px-5 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest">Cashier</th>
-                <th className="px-5 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest">Patient</th>
-                <th className="px-5 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest">Items</th>
-                <th className="px-5 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest">Total</th>
-                <th className="px-5 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest">Time</th>
-                <th className="px-5 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest">Status</th>
-                <th className="px-5 py-4"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-50">
-              {filtered.length === 0 && (
-                <tr><td colSpan={8} className="px-5 py-12 text-center text-sm text-slate-400 font-medium">No transactions found</td></tr>
-              )}
-              {filtered.map((txn, i) => (
-                <motion.tr
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.02 }}
-                  key={txn.id}
-                  className="hover:bg-slate-50/50 transition-colors"
-                >
-                  <td className="px-5 py-4">
-                    <span className="text-xs font-black text-slate-900">{txn.receiptNumber}</span>
-                  </td>
-                  <td className="px-5 py-4">
-                    <span className="text-xs font-bold text-slate-700">{txn.cashierName}</span>
-                  </td>
-                  <td className="px-5 py-4">
-                    <span className="text-xs text-slate-500">{txn.patientName || '—'}</span>
-                  </td>
-                  <td className="px-5 py-4">
-                    <span className="text-xs font-bold text-slate-700">{txn.items.length}</span>
-                  </td>
-                  <td className="px-5 py-4">
-                    <span className="text-sm font-black text-slate-900">{formatCurrency(txn.total)}</span>
-                  </td>
-                  <td className="px-5 py-4">
-                    <span className="text-[10px] text-slate-400 font-bold">
-                      {new Date(txn.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                  </td>
-                  <td className="px-5 py-4">
-                    <span className={cn(
-                      "px-2.5 py-1 rounded-full text-[8px] font-black uppercase tracking-widest",
-                      txn.status === 'completed' ? 'bg-emerald-100 text-emerald-700' :
-                      txn.status === 'voided' ? 'bg-rose-100 text-rose-700' :
-                      'bg-amber-100 text-amber-700'
-                    )}>{txn.status}</span>
-                  </td>
-                  <td className="px-5 py-4 text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      <button onClick={() => setSelectedTxn(txn)}
-                        className="p-2 rounded-lg bg-sky-50 text-sky-600 hover:bg-sky-100 transition-colors" title="View Details">
-                        <Receipt size={13} />
-                      </button>
-                      {txn.status === 'completed' && (
-                        <button onClick={() => setShowVoid(txn)}
-                          className="p-2 rounded-lg bg-rose-50 text-rose-500 hover:bg-rose-100 transition-colors" title="Void">
-                          <RotateCcw size={13} />
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </motion.tr>
-              ))}
-            </tbody>
-          </table>
+      {isLoading ? (
+        <div className="space-y-2">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="h-16 bg-gray-100 rounded-xl animate-pulse" />
+          ))}
         </div>
-      </div>
+      ) : (
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-slate-100">
+                  <th className="px-5 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest">Receipt</th>
+                  <th className="px-5 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest">Cashier</th>
+                  <th className="px-5 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest">Patient</th>
+                  <th className="px-5 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest">Items</th>
+                  <th className="px-5 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest">Total</th>
+                  <th className="px-5 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest">Time</th>
+                  <th className="px-5 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest">Status</th>
+                  <th className="px-5 py-4"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {filtered.length === 0 && (
+                  <tr><td colSpan={8} className="px-5 py-12 text-center text-sm text-slate-400 font-medium">No transactions found</td></tr>
+                )}
+                {filtered.map((txn, i) => (
+                  <motion.tr
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.02 }}
+                    key={txn.id}
+                    className="hover:bg-slate-50/50 transition-colors"
+                  >
+                    <td className="px-5 py-4">
+                      <span className="text-xs font-black text-slate-900">{txn.receiptNumber}</span>
+                    </td>
+                    <td className="px-5 py-4">
+                      <span className="text-xs font-bold text-slate-700">{txn.cashierName}</span>
+                    </td>
+                    <td className="px-5 py-4">
+                      <span className="text-xs text-slate-500">{txn.patientName || "\u2014"}</span>
+                    </td>
+                    <td className="px-5 py-4">
+                      <span className="text-xs font-bold text-slate-700">{txn.items.length}</span>
+                    </td>
+                    <td className="px-5 py-4">
+                      <span className="text-sm font-black text-slate-900">{formatCurrency(txn.total)}</span>
+                    </td>
+                    <td className="px-5 py-4">
+                      <span className="text-[10px] text-slate-400 font-bold">
+                        {new Date(txn.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      </span>
+                    </td>
+                    <td className="px-5 py-4">
+                      <span className={cn(
+                        "px-2.5 py-1 rounded-full text-[8px] font-black uppercase tracking-widest",
+                        txn.status === "completed" ? "bg-emerald-100 text-emerald-700" :
+                        txn.status === "voided" ? "bg-rose-100 text-rose-700" :
+                        "bg-amber-100 text-amber-700"
+                      )}>{txn.status}</span>
+                    </td>
+                    <td className="px-5 py-4 text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <button onClick={() => setSelectedTxn(txn)}
+                          className="p-2 rounded-lg bg-sky-50 text-sky-600 hover:bg-sky-100 transition-colors" title="View Details">
+                          <Receipt size={13} />
+                        </button>
+                        {txn.status === "completed" && (
+                          <button onClick={() => setShowVoid(txn)}
+                            className="p-2 rounded-lg bg-rose-50 text-rose-500 hover:bg-rose-100 transition-colors" title="Void">
+                            <RotateCcw size={13} />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </motion.tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
-      {/* View Details Modal */}
-      <Modal isOpen={!!selectedTxn} onClose={() => setSelectedTxn(null)} title={`Receipt ${selectedTxn?.receiptNumber || ''}`}>
+      <Modal isOpen={!!selectedTxn} onClose={() => setSelectedTxn(null)} title={`Receipt ${selectedTxn?.receiptNumber || ""}`}>
         {selectedTxn && (
           <div className="space-y-4">
             <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-1.5 text-xs">
@@ -157,10 +164,9 @@ export default function HistoryPage() {
               {selectedTxn.payments.map((p, i) => (
                 <div key={i} className="flex justify-between text-[10px]"><span className="text-slate-400 capitalize">{p.method}</span><span className="font-bold">{formatCurrency(p.amount)}</span></div>
               ))}
-              {selectedTxn.balance > 0 && <div className="flex justify-between"><span className="text-rose-500 font-bold">Balance</span><span className="text-rose-500 font-black">{formatCurrency(selectedTxn.balance)}</span></div>}
             </div>
             <div className="text-[10px] text-slate-400 text-center">
-              {selectedTxn.cashierName} &bull; {new Date(selectedTxn.timestamp).toLocaleString()}
+              {selectedTxn.cashierName} &bull; {new Date(selectedTxn.createdAt).toLocaleString()}
             </div>
             <button onClick={() => setSelectedTxn(null)}
               className="w-full py-3 rounded-xl border border-slate-200 text-slate-600 text-xs font-black uppercase tracking-widest hover:bg-slate-50">
@@ -170,7 +176,6 @@ export default function HistoryPage() {
         )}
       </Modal>
 
-      {/* Void Modal */}
       <Modal isOpen={!!showVoid} onClose={() => setShowVoid(null)} title="Void Transaction">
         {showVoid && (
           <div className="space-y-4">
@@ -180,9 +185,9 @@ export default function HistoryPage() {
                 className="flex-1 py-3 rounded-xl border border-slate-200 text-slate-600 text-xs font-black uppercase tracking-widest hover:bg-slate-50">
                 Cancel
               </button>
-              <button onClick={() => { voidTransaction(showVoid.id); setShowVoid(null); }}
-                className="flex-1 py-3 rounded-xl bg-rose-600 text-white text-xs font-black uppercase tracking-widest hover:bg-rose-700">
-                Void Transaction
+              <button onClick={() => { voidTransaction.mutate(showVoid.id); setShowVoid(null); }} disabled={voidTransaction.isPending}
+                className="flex-1 py-3 rounded-xl bg-rose-600 text-white text-xs font-black uppercase tracking-widest hover:bg-rose-700 disabled:opacity-50">
+                {voidTransaction.isPending ? "Voiding..." : "Void Transaction"}
               </button>
             </div>
           </div>
