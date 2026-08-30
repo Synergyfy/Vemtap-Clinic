@@ -37,6 +37,7 @@ import { ObservationNotesModule } from './observation-notes/observation-notes.mo
 import { CurrencyModule } from './currency/currency.module';
 import { FileUploadModule } from './file-upload/file-upload.module';
 import { ExpensesModule } from './expenses/expenses.module';
+import { AnalyticsModule } from './analytics/analytics.module';
 
 @Module({
   imports: [
@@ -80,6 +81,7 @@ import { ExpensesModule } from './expenses/expenses.module';
     CurrencyModule,
     FileUploadModule,
     ExpensesModule,
+    AnalyticsModule,
   ],
 })
 export class AppModule {}

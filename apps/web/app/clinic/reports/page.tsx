@@ -6,41 +6,32 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/app/clinic/_components/page-header";
-import {
-  formatNGN,
-  clinicRevenueHistory,
-  clinicHmoClaims,
-  branchQueueData,
-  doctorPerformanceData,
-  appointmentTrendData,
-  opticalConversionData,
-  revenueForecastData
-} from "@/app/clinic/_mock/clinic-data";
+import { useAuth } from "@/lib/auth-context";
+import { useRevenueSummary, useStaffKPIs, useQueueAnalytics, useAppointmentTrends, useOpticalAnalytics } from "@/hooks/useReports";
 import { useModals } from "@/lib/modal-context";
 import { cn } from "@/lib/utils";
-import { 
-  BarChart3, 
-  TrendingUp, 
-  Users, 
-  Clock, 
-  Building2, 
-  ShoppingCart, 
-  Download, 
-  Filter,
-  Calendar,
-  Zap,
-  Target,
-  LineChart,
-  PieChart,
-  ArrowUpRight,
-  ArrowDownRight
+import {
+  BarChart3, TrendingUp, TrendingDown, Users, Clock, Building2, ShoppingCart,
+  Download, Filter, Calendar, Zap, Target, LineChart, PieChart,
+  ArrowUpRight, ArrowDownRight, Loader2, Wallet
 } from "lucide-react";
+
+const formatNGN = (value: number) =>
+  new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 }).format(value);
 
 type ReportTab = "revenue" | "hmo" | "queues" | "optical" | "staff";
 
 export default function ReportsPage() {
+  const { user } = useAuth();
   const { openModal } = useModals();
   const [activeTab, setActiveTab] = useState<ReportTab>("revenue");
+
+  // Backend hooks
+  const { data: revenue, isLoading: revenueLoading } = useRevenueSummary();
+  const { data: staffKPIs = [], isLoading: staffLoading } = useStaffKPIs();
+  const { data: queueAnalytics, isLoading: queueLoading } = useQueueAnalytics();
+  const { data: appointmentTrends = {}, isLoading: trendsLoading } = useAppointmentTrends();
+  const { data: opticalAnalytics, isLoading: opticalLoading } = useOpticalAnalytics();
 
   const tabs = [
     { id: "revenue", label: "Revenue & Growth", icon: TrendingUp },
@@ -50,36 +41,37 @@ export default function ReportsPage() {
     { id: "staff", label: "Staff KPIs", icon: Target },
   ];
 
+  const formatCurrency = (val: number | undefined | null) => {
+    const v = val || 0;
+    if (v >= 1000000) return `₦${(v / 1000000).toFixed(1)}M`;
+    if (v >= 1000) return `₦${(v / 1000).toFixed(0)}K`;
+    return formatNGN(v);
+  };
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="Reports & Analytics"
         description="Centralized business intelligence: Monitor growth, track KPIs, and optimize clinic operations."
         actions={[
-          { label: "Export PDF Report", variant: "primary", onClick: () => {
-            const report = `VEMTAP CLINIC REPORT\n${"=".repeat(40)}\n\nREVENUE & GROWTH\n-----------------\nNet Revenue: ₦4.8M\nAvg. Transaction: ₦28,400\nForecast (Q3): ₦7.2M\nDebt Ratio: 8.4%\n\nPATIENT METRICS\n---------------\nTotal Patients This Month: 169\nAverage Wait Time: 22.4m\nAppointment Conversion: 82%\n\nSTAFF PERFORMANCE\n-----------------\nDr. Amina K.: 48 consults, 4.8/5.0 rating\nDr. Chidi O.: 42 consults, 4.6/5.0 rating\nNurse Bello: 62 vitals, 4.5/5.0 rating\nOptician Tunde: 35 sales, 4.7/5.0 rating\n\nGenerated: ${new Date().toLocaleString()}\n`;
+          { label: "Export Report", variant: "primary", onClick: () => {
+            const report = `VEMTAP CLINIC REPORT\n${"=".repeat(40)}\n\nREVENUE\n-------\nTotal Revenue: ${formatNGN(revenue?.totalRevenue || 0)}\nNet Profit: ${formatNGN(revenue?.netProfit || 0)}\nOutstanding: ${formatNGN(revenue?.outstanding || 0)}\n\nEXPENSES\n--------\nTotal: ${formatNGN(revenue?.totalExpenses || 0)}\n\nSTAFF KPIs\n----------\n${staffKPIs.map(s => `${s.name}: ${s.totalAppointments} appts, ${s.completionRate}% completion`).join("\n")}\n\nGenerated: ${new Date().toLocaleString()}\n`;
             const blob = new Blob([report], { type: "text/plain" });
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url; a.download = "vemtap-clinic-report.txt"; a.click();
             URL.revokeObjectURL(url);
           } },
-          { label: "Schedule Auto-Send", variant: "outline", onClick: () => openModal("report-schedule") },
         ]}
       />
 
       {/* Tab Navigation */}
       <div className="flex space-x-1 border-b border-slate-200 overflow-x-auto pb-px">
         {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id as ReportTab)}
+          <button key={tab.id} onClick={() => setActiveTab(tab.id as ReportTab)}
             className={`flex items-center space-x-2 px-4 py-2.5 text-sm font-medium transition-colors whitespace-nowrap border-b-2 ${
-              activeTab === tab.id
-                ? "border-primary text-primary"
-                : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
-            }`}
-          >
+              activeTab === tab.id ? "border-primary text-primary" : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
+            }`}>
             <tab.icon className="h-4 w-4" />
             <span>{tab.label}</span>
           </button>
@@ -87,445 +79,269 @@ export default function ReportsPage() {
       </div>
 
       <div className="space-y-6">
+        {/* Revenue Tab */}
         {activeTab === "revenue" && (
           <div className="space-y-6">
-             <div className="grid grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-4">
-                {[
-                  { label: "Net Revenue", value: "₦4.8M", change: "+12.5%", trend: "up", sub: "This Month" },
-                  { label: "Avg. Transaction", value: "₦28,400", change: "-2.1%", trend: "down", sub: "Per Patient" },
-                  { label: "Forecast (Q3)", value: "₦7.2M", change: "+18%", trend: "up", sub: "Predicted" },
-                  { label: "Debt Ratio", value: "8.4%", change: "-1.5%", trend: "up", sub: "Collections" },
-                ].map((s, i) => (
-                  <Card key={i} className="border-none shadow-sm bg-white">
-                    <CardContent className="p-3 sm:p-6 flex items-center justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="text-[11px] sm:text-sm font-medium text-slate-500">{s.label}</p>
-                        <p className="mt-1 text-xl sm:text-2xl font-bold tabular-nums">{s.value}</p>
-                      </div>
-                      <div className={cn(
-                        "flex items-center shrink-0 text-[10px] font-black px-2 py-0.5 rounded-lg",
-                        s.trend === "up" ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600"
-                      )}>
-                        {s.trend === "up" ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
-                        {s.change}
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-             </div>
-
-             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <Card className="lg:col-span-2 border-none shadow-sm rounded-3xl p-8 bg-white">
-                   <CardHeader className="p-0 mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                      <div>
-                         <CardTitle className="text-xs sm:text-sm font-black text-slate-400 uppercase tracking-widest">Revenue Growth vs Forecast</CardTitle>
-                         <p className="text-[10px] sm:text-xs text-slate-500 mt-1 font-medium">Tracking historical performance against predictive models.</p>
-                      </div>
-                      <div className="flex gap-2 self-start">
-                        <div className="flex items-center gap-1.5">
-                           <div className="w-2 h-2 rounded-full bg-primary" />
-                           <span className="text-[10px] font-bold text-slate-500">Actual</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                           <div className="w-2 h-2 rounded-full bg-slate-200" />
-                           <span className="text-[10px] font-bold text-slate-500">Forecast</span>
-                        </div>
-                      </div>
-                   </CardHeader>
-                   <div className="h-64 flex items-end gap-3 pb-2 px-4">
-                      {clinicRevenueHistory.map((h, i) => (
-                        <div key={i} className="flex-1 bg-slate-50 rounded-t-xl relative group">
-                           <div 
-                             className="absolute bottom-0 left-0 right-0 bg-primary rounded-t-xl transition-all group-hover:bg-primary/80" 
-                             style={{ height: `${((h.private + h.hmo) / 3000000) * 100}%` }} 
-                           />
-                        </div>
-                      ))}
-                      {revenueForecastData.map((f, i) => (
-                        <div key={i} className="flex-1 bg-slate-50 rounded-t-xl relative group">
-                           <div 
-                             className="absolute bottom-0 left-0 right-0 bg-slate-200 rounded-t-xl border-t-2 border-dashed border-slate-400" 
-                             style={{ height: `${(f.forecast / 3000000) * 100}%` }} 
-                           />
-                        </div>
-                      ))}
-                   </div>
-                   <div className="flex justify-between mt-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest px-4 border-t pt-4">
-                      {clinicRevenueHistory.map(h => <span key={h.month}>{h.month}</span>)}
-                      {revenueForecastData.map(f => <span key={f.month}>{f.month}</span>)}
-                   </div>
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-4">
+              {[
+                { label: "Total Revenue", value: formatCurrency(revenue?.totalPaid || 0), sub: "Collected", icon: TrendingUp, color: "emerald" },
+                { label: "Outstanding", value: formatCurrency(revenue?.outstanding || 0), sub: `${revenue?.invoiceCount || 0} invoices`, icon: Filter, color: "amber" },
+                { label: "Total Expenses", value: formatCurrency(revenue?.totalExpenses || 0), sub: `${revenue?.expenseCount || 0} recorded`, icon: TrendingDown, color: "rose" },
+                { label: "Net Profit", value: formatCurrency(revenue?.netProfit || 0), sub: "Revenue - Expenses", icon: Wallet, color: (revenue?.netProfit || 0) >= 0 ? "emerald" : "rose" },
+              ].map((s, i) => (
+                <Card key={i} className="border-none shadow-sm bg-white">
+                  <CardContent className="p-3 sm:p-6 flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-[11px] sm:text-sm font-medium text-slate-500">{s.label}</p>
+                      <p className="mt-1 text-xl sm:text-2xl font-bold tabular-nums">{s.value}</p>
+                      <p className="mt-1 text-xs text-slate-400">{s.sub}</p>
+                    </div>
+                    <s.icon className={`h-4 w-4 text-${s.color}-500 shrink-0`} />
+                  </CardContent>
                 </Card>
+              ))}
+            </div>
 
-                <div className="space-y-6">
-                   <Card className="border-none shadow-sm rounded-3xl p-6 bg-brand-navy text-white">
-                      <p className="text-[10px] font-black text-white/40 uppercase tracking-widest mb-4">Revenue Source Mix</p>
-                      <div className="space-y-6">
-                         {[
-                           { label: "Private (Cash/POS)", val: 65, color: "bg-sky-400" },
-                           { label: "HMO Claims", val: 28, color: "bg-purple-400" },
-                           { label: "Corporate Contracts", val: 7, color: "bg-emerald-400" },
-                         ].map(item => (
-                            <div key={item.label}>
-                               <div className="flex justify-between text-sm mb-1 font-bold">
-                                  <span>{item.label}</span>
-                                  <span className="text-sky-400">{item.val}%</span>
-                               </div>
-                               <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
-                                  <div className={cn("h-full", item.color)} style={{ width: `${item.val}%` }} />
-                               </div>
-                            </div>
-                         ))}
+            {/* Monthly Revenue Chart */}
+            <Card className="border-none shadow-sm rounded-3xl p-8 bg-white">
+              <CardHeader className="p-0 mb-8">
+                <CardTitle className="text-xs sm:text-sm font-black text-slate-400 uppercase tracking-widest">Monthly Revenue vs Expenses</CardTitle>
+              </CardHeader>
+              {revenueLoading ? (
+                <div className="h-64 flex items-center justify-center"><Loader2 className="animate-spin text-slate-400" /></div>
+              ) : (
+                <div className="h-64 flex items-end gap-3 pb-2 px-4">
+                  {Object.keys(revenue?.monthlyRevenue || {}).length === 0 ? (
+                    <p className="text-sm text-slate-400 text-center w-full py-8">No revenue data yet</p>
+                  ) : (
+                    Object.entries(revenue?.monthlyRevenue || {}).map(([month, amount]) => (
+                      <div key={month} className="flex-1 space-y-1">
+                        <div className="flex justify-between text-xs font-medium">
+                          <span>{month}</span>
+                          <span>{formatCurrency(amount)}</span>
+                        </div>
+                        <div className="relative h-4 w-full bg-slate-100 rounded-full overflow-hidden flex">
+                          <div className="h-full bg-emerald-500" style={{ width: `${(amount / Math.max(...Object.values(revenue?.monthlyRevenue || { 0: 1 }))) * 100}%` }} />
+                          <div className="h-full bg-rose-400 opacity-50 absolute left-0" style={{ width: `${((revenue?.monthlyExpenses?.[month] || 0) / Math.max(...Object.values(revenue?.monthlyRevenue || { 0: 1 }))) * 100}%` }} />
+                        </div>
                       </div>
-                   </Card>
-
-                   <Card className="border-none shadow-sm rounded-3xl p-6 bg-white">
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Collection Alerts</p>
-                      <div className="space-y-3">
-                         <div className="p-3 bg-amber-50 rounded-2xl border border-amber-100 flex gap-3">
-                            <Zap size={16} className="text-amber-600 shrink-0" />
-                            <p className="text-xs font-bold text-amber-700">HMO receivables for AXA Mansard exceeded 60-day aging limit.</p>
-                         </div>
-                      </div>
-                   </Card>
+                    ))
+                  )}
                 </div>
-             </div>
+              )}
+            </Card>
           </div>
         )}
 
+        {/* HMO Tab */}
         {activeTab === "hmo" && (
-           <div className="space-y-6">
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                 <Card className="lg:col-span-2 border-none shadow-sm rounded-3xl p-0 overflow-hidden bg-white">
-                      <CardHeader className="px-4 sm:px-8 py-4 sm:py-6 border-b border-slate-50">
-                        <CardTitle className="text-base sm:text-lg">HMO Partner Performance</CardTitle>
-                        <p className="text-[10px] sm:text-sm text-slate-500">Comparing profitability and approval speed across partners.</p>
-                      </CardHeader>
-                    {/* Mobile card list */}
-                      <div className="md:hidden divide-y divide-slate-100">
-                        {[
-                          { name: "AXA Mansard", rate: 94, days: 18, vol: 85 },
-                          { name: "Hygeia HMO", rate: 88, days: 24, vol: 62 },
-                          { name: "Reliance HMO", rate: 91, days: 12, vol: 44 },
-                          { name: "NHIA", rate: 76, days: 45, vol: 120 },
-                        ].map(h => (
-                          <div key={h.name} className="p-4">
-                            <p className="font-bold text-slate-900 text-sm mb-2">{h.name}</p>
-                            <div className="grid grid-cols-3 gap-2">
-                              <div>
-                                <p className="text-[10px] text-slate-400 uppercase">Approval</p>
-                                <p className="font-bold text-emerald-600 text-sm">{h.rate}%</p>
-                              </div>
-                              <div>
-                                <p className="text-[10px] text-slate-400 uppercase">Remit.</p>
-                                <p className="font-bold text-slate-600 text-sm">{h.days}d</p>
-                              </div>
-                              <div>
-                                <p className="text-[10px] text-slate-400 uppercase">Volume</p>
-                                <p className="font-black text-slate-900 text-sm">{h.vol}</p>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                      {/* Desktop table */}
-                      <div className="hidden md:block overflow-x-auto"><Table>
-                         <TableHeader className="bg-slate-50/50">
-                           <TableRow>
-                              <TableHead className="px-8 text-[10px] font-black text-slate-400 uppercase tracking-widest">HMO Provider</TableHead>
-                              <TableHead className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Approval Rate</TableHead>
-                              <TableHead className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Avg Remittance</TableHead>
-                              <TableHead className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Volume</TableHead>
-                           </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                           {[
-                             { name: "AXA Mansard", rate: 94, days: 18, vol: 85 },
-                             { name: "Hygeia HMO", rate: 88, days: 24, vol: 62 },
-                             { name: "Reliance HMO", rate: 91, days: 12, vol: 44 },
-                             { name: "NHIA", rate: 76, days: 45, vol: 120 },
-                           ].map(h => (
-                              <TableRow key={h.name} className="hover:bg-slate-50/50 border-slate-50">
-                                 <TableCell className="px-8 py-5 font-bold text-slate-900">{h.name}</TableCell>
-                                 <TableCell className="py-5 font-bold text-emerald-600">{h.rate}%</TableCell>
-                                 <TableCell className="py-5 font-bold text-slate-600">{h.days} Days</TableCell>
-                                 <TableCell className="py-5 font-black text-slate-900">{h.vol} Patients</TableCell>
-                              </TableRow>
-                           ))}
-                        </TableBody>
-                      </Table></div>
-                  </Card>
-
-                  <div className="space-y-6">
-                    <Card className="border-none shadow-sm rounded-3xl p-6 bg-brand-navy text-white">
-                       <p className="text-[10px] font-black text-white/40 uppercase tracking-widest mb-4">Claim Rejection Analysis</p>
-                       <div className="space-y-4">
-                          {[
-                            { reason: "Documentation Error", val: 42 },
-                            { reason: "Coverage Exceeded", val: 28 },
-                            { reason: "Authorization Issues", val: 20 },
-                            { reason: "Other", val: 10 },
-                          ].map(r => (
-                             <div key={r.reason} className="flex items-center justify-between">
-                                <span className="text-xs font-bold text-white/60">{r.reason}</span>
-                                <span className="text-sm font-black text-rose-400">{r.val}%</span>
-                             </div>
-                          ))}
-                       </div>
-                    </Card>
-
-                    <Card className="border-none shadow-sm rounded-3xl p-6 bg-white border border-emerald-100">
-                        <div className="flex items-center gap-3 mb-4">
-                           <Target className="text-emerald-600" size={20} />
-                           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">HMO ROI Target</p>
-                        </div>
-                        <p className="text-xs text-slate-600 font-medium leading-relaxed">
-                           Current HMO contribution is within the optimal growth band (25-35%).
-                        </p>
-                        <Badge className="mt-4 bg-emerald-50 text-emerald-700 border-none font-black text-[10px]">ON TARGET</Badge>
-                    </Card>
-                 </div>
-              </div>
-           </div>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base sm:text-lg">HMO Intelligence</CardTitle>
+              <p className="text-xs sm:text-sm text-slate-500">HMO claims and partner performance analytics.</p>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-slate-400 text-center py-8">
+                Detailed HMO analytics are available in the <a href="/clinic/hmo-advanced" className="text-sky-600 underline">HMO Advanced</a> module.
+              </p>
+            </CardContent>
+          </Card>
         )}
 
+        {/* Queue Tab */}
         {activeTab === "queues" && (
-           <div className="space-y-6">
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                 <Card className="lg:col-span-2 border-none shadow-sm rounded-3xl p-8 bg-white">
-                    <CardHeader className="p-0 mb-8">
-                       <CardTitle className="text-sm font-black text-slate-400 uppercase tracking-widest">Appointment vs Arrival Trends</CardTitle>
-                       <p className="text-xs text-slate-500 mt-1 font-medium">Monitoring clinic conversion and missed appointment rates.</p>
-                    </CardHeader>
-                    <div className="h-64 flex items-end gap-3 pb-2 px-4">
-                       {appointmentTrendData.map((d, i) => (
-                         <div key={i} className="flex-1 space-x-1 flex h-full items-end">
-                            <div 
-                              className="w-1/2 bg-slate-100 rounded-t-lg transition-all" 
-                              style={{ height: `${(d.booked / 700) * 100}%` }} 
-                            />
-                            <div 
-                              className="w-1/2 bg-brand-blue rounded-t-lg transition-all" 
-                              style={{ height: `${(d.actual / 700) * 100}%` }} 
-                            />
-                         </div>
-                       ))}
-                    </div>
-                    <div className="flex justify-between mt-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest px-4 border-t pt-4">
-                       {appointmentTrendData.map(d => <span key={d.month}>{d.month}</span>)}
-                    </div>
-                 </Card>
-
-                 <div className="space-y-6">
-                    <Card className="border-none shadow-sm rounded-3xl p-6 bg-brand-navy text-white text-center">
-                       <p className="text-[10px] font-black text-white/40 uppercase tracking-widest mb-2">Network Average Wait</p>
-                       <p className="text-4xl font-black text-sky-400">22.4m</p>
-                       <p className="text-xs font-bold text-white/60 mt-1">Across 3 active branches</p>
-                       <div className="mt-8 flex justify-center gap-4">
-                          <div className="text-center">
-                             <p className="text-lg font-bold">18m</p>
-                             <p className="text-[8px] font-black text-white/40 uppercase">Best</p>
-                          </div>
-                          <div className="text-center">
-                             <p className="text-lg font-bold">34m</p>
-                             <p className="text-[8px] font-black text-white/40 uppercase">Worst</p>
-                          </div>
-                       </div>
-                    </Card>
-
-                    <Card className="border-none shadow-sm rounded-3xl p-6 bg-white">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Throughput by Stage</p>
-                        <div className="space-y-4">
-                           {[
-                             { label: "Front Desk", val: 4, color: "bg-emerald-500" },
-                             { label: "Vitals/Nurse", val: 8, color: "bg-blue-500" },
-                             { label: "Doctor Consult", val: 24, color: "bg-purple-500" },
-                             { label: "Optical/Billing", val: 12, color: "bg-amber-500" },
-                           ].map(s => (
-                              <div key={s.label}>
-                                 <div className="flex justify-between text-[10px] mb-1 font-bold text-slate-600">
-                                    <span>{s.label}</span>
-                                    <span>{s.val}m avg</span>
-                                 </div>
-                                 <div className="h-1 bg-slate-50 rounded-full overflow-hidden">
-                                    <div className={cn("h-full", s.color)} style={{ width: `${(s.val / 30) * 100}%` }} />
-                                 </div>
-                              </div>
-                           ))}
-                        </div>
-                    </Card>
-                 </div>
-              </div>
-           </div>
-        )}
-
-        {activeTab === "optical" && (
-           <div className="space-y-6">
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                 <Card className="lg:col-span-2 border-none shadow-sm rounded-3xl p-8 bg-white">
-                   <CardHeader className="p-0 mb-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                      <div>
-                          <CardTitle className="text-xs sm:text-sm font-black text-slate-400 uppercase tracking-widest leading-relaxed">Conversion Intelligence</CardTitle>
-                          <p className="text-lg sm:text-2xl font-bold text-slate-900 mt-1">Exam-to-Sale Rate</p>
-                       </div>
-                       <div className="flex gap-4 self-start">
-                          <div className="flex items-center gap-1.5">
-                             <div className="w-2 h-2 rounded-full bg-slate-100" />
-                             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Total Exams</span>
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                             <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Optical Sales</span>
-                          </div>
-                       </div>
-                    </CardHeader>
-                    
-                    <div className="h-72 flex items-end gap-6 px-2">
-                       {opticalConversionData.map((d, i) => {
-                         const conversionRate = Math.round((d.sales/d.exams)*100);
-                         return (
-                           <div key={i} className="flex-1 h-full flex flex-col justify-end group">
-                              <div className="relative w-full h-[85%] flex items-end justify-center">
-                                 {/* Exam Bar (Background) */}
-                                 <div 
-                                   className="absolute bottom-0 w-full bg-slate-50 rounded-t-2xl transition-all border border-slate-100/50" 
-                                   style={{ height: `${(d.exams / 300) * 100}%` }} 
-                                 />
-                                 {/* Sales Bar (Foreground) */}
-                                 <div 
-                                   className="relative w-[70%] bg-gradient-to-t from-emerald-600 to-emerald-400 rounded-t-xl transition-all group-hover:from-emerald-500 shadow-lg shadow-emerald-500/10 z-10" 
-                                   style={{ height: `${(d.sales / 300) * 100}%` }} 
-                                 >
-                                    <div className="absolute -top-7 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap bg-slate-900 text-white text-[10px] font-bold px-2 py-1 rounded-md z-20">
-                                       {d.sales} Sales
-                                    </div>
-                                 </div>
-                              </div>
-                              <div className="mt-4 text-center">
-                                 <p className="text-[10px] font-black text-emerald-600">{conversionRate}%</p>
-                                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">{d.month}</p>
-                              </div>
-                           </div>
-                         );
-                       })}
-                    </div>
-                 </Card>
-
-                 <div className="space-y-6">
-                    <Card className="border-none shadow-sm rounded-3xl p-6 bg-brand-navy text-white">
-                       <p className="text-[10px] font-black text-white/40 uppercase tracking-widest mb-4 leading-relaxed">Product Performance</p>
-                       <div className="space-y-6">
-                          {[
-                            { label: "Designer Frames", val: 45, color: "bg-sky-400" },
-                            { label: "Lens Upgrades", val: 35, color: "bg-purple-400" },
-                            { label: "Accessories/Drops", val: 20, color: "bg-emerald-400" },
-                          ].map(item => (
-                             <div key={item.label}>
-                                <div className="flex justify-between items-center text-xs mb-1.5 font-bold">
-                                   <span className="text-white/70">{item.label}</span>
-                                   <span className="text-sky-400">{item.val}%</span>
-                                </div>
-                                <div className="h-1 bg-white/5 rounded-full overflow-hidden">
-                                   <div className={cn("h-full transition-all", item.color)} style={{ width: `${item.val}%` }} />
-                                </div>
-                             </div>
-                          ))}
-                       </div>
-                       <Button className="w-full mt-10 bg-white/10 hover:bg-white/20 text-white rounded-2xl border-none font-bold text-xs h-12" onClick={() => window.location.href = "/clinic/optical"}>Detailed Inventory Log</Button>
-                    </Card>
-
-                    <Card className="border-none shadow-sm rounded-3xl p-6 bg-white border border-sky-100/50">
-                        <div className="flex items-center gap-3 mb-4">
-                           <div className="w-10 h-10 rounded-2xl bg-sky-50 flex items-center justify-center text-sky-600">
-                              <ShoppingCart size={20} />
-                           </div>
-                           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Quarterly Growth</p>
-                        </div>
-                        <div className="flex items-baseline gap-2">
-                           <p className="text-4xl font-black text-slate-900">+24%</p>
-                           <Badge className="bg-emerald-50 text-emerald-700 border-none font-black text-[10px] py-0.5">OUTPERFORMING</Badge>
-                        </div>
-                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-2">Vs. Previous Segment</p>
-                    </Card>
-                 </div>
-              </div>
-           </div>
-        )}
-
-        {activeTab === "staff" && (
-           <Card className="border-none shadow-sm rounded-3xl p-0 overflow-hidden bg-white">
-               <CardHeader className="px-4 sm:px-8 py-4 sm:py-6 border-b border-slate-50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                  <div>
-                     <CardTitle className="text-base sm:text-lg">Staff Performance KPIs</CardTitle>
-                     <p className="text-[10px] sm:text-sm text-slate-500">Individual productivity and quality-of-care metrics.</p>
-                  </div>
-                  <Button variant="outline" size="sm" className="self-start font-bold text-[10px] sm:text-xs" onClick={() => {
-                   const perfData = doctorPerformanceData.map(p => ({
-                     Practitioner: p.name,
-                     Consultations: p.volume,
-                     "Patient Rating": `${p.satisfaction} / 5.0`,
-                     "Avg. Time": p.avgConsult,
-                     Department: p.department || "General"
-                   }));
-                   const headers = Object.keys(perfData[0]);
-                   const csv = [headers.join(","), ...perfData.map(row => headers.map(h => `"${row[h]}"`).join(","))].join("\n");
-                   const blob = new Blob([csv], { type: "text/csv" });
-                   const url = URL.createObjectURL(blob);
-                   const a = document.createElement("a");
-                   a.href = url; a.download = "quarterly-staff-performance.csv"; a.click();
-                   URL.revokeObjectURL(url);
-                 }}>Quarterly Review</Button>
-              </CardHeader>
-               {/* Mobile card list */}
-               <div className="md:hidden divide-y divide-slate-100">
-                 {doctorPerformanceData.map(p => (
-                   <div key={p.name} className="p-4">
-                     <div className="flex items-center justify-between gap-3 mb-2">
-                       <p className="font-bold text-slate-900 text-sm">{p.name}</p>
-                       <Button variant="ghost" size="sm" className="text-sky-600 font-bold text-[10px] px-2 h-6" onClick={() => openModal("staff-profile")}>Profile</Button>
-                     </div>
-                     <div className="grid grid-cols-3 gap-2">
-                       <div>
-                         <p className="text-[10px] text-slate-400 uppercase">Consults</p>
-                         <p className="font-black text-slate-700 text-sm">{p.volume}</p>
-                       </div>
-                       <div>
-                         <p className="text-[10px] text-slate-400 uppercase">Rating</p>
-                         <p className="font-bold text-emerald-600 text-sm">{p.satisfaction}</p>
-                       </div>
-                       <div>
-                         <p className="text-[10px] text-slate-400 uppercase">Avg Time</p>
-                         <p className="font-bold text-slate-500 text-sm">{p.avgConsult}</p>
-                       </div>
-                     </div>
-                   </div>
-                 ))}
-               </div>
-               {/* Desktop table */}
-               <div className="hidden md:block overflow-x-auto"><Table>
-                  <TableHeader className="bg-slate-50/50">
-                    <TableRow>
-                       <TableHead className="px-8 text-[10px] font-black text-slate-400 uppercase tracking-widest">Practitioner</TableHead>
-                       <TableHead className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Consultations</TableHead>
-                       <TableHead className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Patient Rating</TableHead>
-                       <TableHead className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Avg. Time</TableHead>
-                       <TableHead className="text-[10px] font-black text-slate-400 uppercase tracking-widest pr-8 text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {doctorPerformanceData.map(p => (
-                       <TableRow key={p.name} className="hover:bg-slate-50/50 border-slate-50">
-                          <TableCell className="px-8 py-5 font-bold text-slate-900">{p.name}</TableCell>
-                          <TableCell className="py-5 font-black text-slate-700">{p.volume}</TableCell>
-                          <TableCell className="py-5 font-bold text-emerald-600">{p.satisfaction} / 5.0</TableCell>
-                          <TableCell className="py-5 font-bold text-slate-500">{p.avgConsult}</TableCell>
-                          <TableCell className="py-5 pr-8 text-right">
-                             <Button variant="ghost" size="sm" className="text-sky-600 font-bold" onClick={() => openModal("staff-profile")}>Full Profile</Button>
-                          </TableCell>
-                       </TableRow>
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <Card className="lg:col-span-2 border-none shadow-sm rounded-3xl p-8 bg-white">
+                <CardHeader className="p-0 mb-8">
+                  <CardTitle className="text-sm font-black text-slate-400 uppercase tracking-widest">Appointment Trends</CardTitle>
+                  <p className="text-xs text-slate-500 mt-1 font-medium">Booked vs completed appointments by month.</p>
+                </CardHeader>
+                {trendsLoading ? (
+                  <div className="h-64 flex items-center justify-center"><Loader2 className="animate-spin text-slate-400" /></div>
+                ) : Object.keys(appointmentTrends).length === 0 ? (
+                  <p className="text-sm text-slate-400 text-center py-16">No appointment data yet</p>
+                ) : (
+                  <div className="h-64 flex items-end gap-3 pb-2 px-4">
+                    {Object.entries(appointmentTrends).map(([month, data]) => (
+                      <div key={month} className="flex-1 space-x-1 flex h-full items-end">
+                        <div className="w-1/2 bg-slate-100 rounded-t-lg" style={{ height: `${(data.booked / Math.max(...Object.values(appointmentTrends).map(d => d.booked), 1)) * 100}%` }} />
+                        <div className="w-1/2 bg-sky-500 rounded-t-lg" style={{ height: `${(data.completed / Math.max(...Object.values(appointmentTrends).map(d => d.booked), 1)) * 100}%` }} />
+                      </div>
                     ))}
-                  </TableBody>
-                </Table></div>
-            </Card>
+                  </div>
+                )}
+                <div className="flex justify-between mt-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest px-4 border-t pt-4">
+                  {Object.keys(appointmentTrends).map(m => <span key={m}>{m}</span>)}
+                </div>
+              </Card>
+
+              <div className="space-y-6">
+                <Card className="border-none shadow-sm rounded-3xl p-6 bg-brand-navy text-white text-center">
+                  <p className="text-[10px] font-black text-white/40 uppercase tracking-widest mb-2">Queue Status</p>
+                  <p className="text-4xl font-black text-sky-400">{queueAnalytics?.waiting || 0}</p>
+                  <p className="text-xs font-bold text-white/60 mt-1">Patients waiting</p>
+                  <div className="mt-8 flex justify-center gap-4">
+                    <div className="text-center">
+                      <p className="text-lg font-bold">{queueAnalytics?.inProgress || 0}</p>
+                      <p className="text-[8px] font-black text-white/40 uppercase">In Progress</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-lg font-bold">{queueAnalytics?.completed || 0}</p>
+                      <p className="text-[8px] font-black text-white/40 uppercase">Completed</p>
+                    </div>
+                  </div>
+                </Card>
+
+                <Card className="border-none shadow-sm rounded-3xl p-6 bg-white">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Patients by Station</p>
+                  {queueLoading ? (
+                    <div className="space-y-3">
+                      {[1, 2, 3].map(i => <div key={i} className="h-6 bg-slate-100 rounded animate-pulse" />)}
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {Object.entries(queueAnalytics?.byStation || {}).map(([station, count]) => (
+                        <div key={station}>
+                          <div className="flex justify-between text-[10px] mb-1 font-bold text-slate-600">
+                            <span className="capitalize">{station}</span>
+                            <span>{count}</span>
+                          </div>
+                          <div className="h-1 bg-slate-50 rounded-full overflow-hidden">
+                            <div className="h-full bg-sky-500" style={{ width: `${(count / Math.max(queueAnalytics?.total || 1, 1)) * 100}%` }} />
+                          </div>
+                        </div>
+                      ))}
+                      {Object.keys(queueAnalytics?.byStation || {}).length === 0 && (
+                        <p className="text-sm text-slate-400 text-center py-4">No queue data</p>
+                      )}
+                    </div>
+                  )}
+                </Card>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Optical Tab */}
+        {activeTab === "optical" && (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <Card className="lg:col-span-2 border-none shadow-sm rounded-3xl p-8 bg-white">
+                <CardHeader className="p-0 mb-8">
+                  <CardTitle className="text-xs sm:text-sm font-black text-slate-400 uppercase tracking-widest">Optical Sales Performance</CardTitle>
+                  <p className="text-lg sm:text-2xl font-bold text-slate-900 mt-1">Conversion Rate: {opticalAnalytics?.conversionRate || 0}%</p>
+                </CardHeader>
+                {opticalLoading ? (
+                  <div className="h-64 flex items-center justify-center"><Loader2 className="animate-spin text-slate-400" /></div>
+                ) : (
+                  <div className="grid grid-cols-3 gap-6">
+                    <div className="text-center p-6 bg-slate-50 rounded-2xl">
+                      <p className="text-3xl font-black text-slate-900">{opticalAnalytics?.totalSales || 0}</p>
+                      <p className="text-xs font-bold text-slate-500 mt-1">Total Sales</p>
+                    </div>
+                    <div className="text-center p-6 bg-emerald-50 rounded-2xl">
+                      <p className="text-3xl font-black text-emerald-600">{opticalAnalytics?.completed || 0}</p>
+                      <p className="text-xs font-bold text-slate-500 mt-1">Completed</p>
+                    </div>
+                    <div className="text-center p-6 bg-sky-50 rounded-2xl">
+                      <p className="text-3xl font-black text-sky-600">{formatNGN(opticalAnalytics?.totalRevenue || 0)}</p>
+                      <p className="text-xs font-bold text-slate-500 mt-1">Revenue</p>
+                    </div>
+                  </div>
+                )}
+              </Card>
+
+              <Card className="border-none shadow-sm rounded-3xl p-6 bg-white border border-sky-100/50">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-2xl bg-sky-50 flex items-center justify-center text-sky-600">
+                    <ShoppingCart size={20} />
+                  </div>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Performance</p>
+                </div>
+                <p className="text-4xl font-black text-slate-900">{opticalAnalytics?.conversionRate || 0}%</p>
+                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-2">Completion Rate</p>
+                <Button className="w-full mt-6 bg-sky-600 hover:bg-sky-700 text-white rounded-2xl border-none font-bold text-xs h-12" onClick={() => window.location.href = "/clinic/optical"}>
+                  Detailed Inventory
+                </Button>
+              </Card>
+            </div>
+          </div>
+        )}
+
+        {/* Staff Tab */}
+        {activeTab === "staff" && (
+          <Card className="border-none shadow-sm rounded-3xl p-0 overflow-hidden bg-white">
+            <CardHeader className="px-4 sm:px-8 py-4 sm:py-6 border-b border-slate-50">
+              <CardTitle className="text-base sm:text-lg">Staff Performance KPIs</CardTitle>
+              <p className="text-[10px] sm:text-sm text-slate-500">Individual productivity and appointment completion metrics.</p>
+            </CardHeader>
+            {staffLoading ? (
+              <div className="p-8 flex items-center justify-center"><Loader2 className="animate-spin text-slate-400" /></div>
+            ) : staffKPIs.length === 0 ? (
+              <div className="p-8 text-center text-slate-400 text-sm">No staff data available</div>
+            ) : (
+              <>
+                {/* Mobile card list */}
+                <div className="md:hidden divide-y divide-slate-100">
+                  {staffKPIs.map((p) => (
+                    <div key={p.id} className="p-4">
+                      <div className="flex items-center justify-between gap-3 mb-2">
+                        <p className="font-bold text-slate-900 text-sm">{p.name}</p>
+                        <Badge variant="secondary" className="text-[10px]">{p.role}</Badge>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2">
+                        <div>
+                          <p className="text-[10px] text-slate-400 uppercase">Appointments</p>
+                          <p className="font-black text-slate-700 text-sm">{p.totalAppointments}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-slate-400 uppercase">Completed</p>
+                          <p className="font-bold text-emerald-600 text-sm">{p.completedAppointments}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-slate-400 uppercase">Rate</p>
+                          <p className="font-bold text-slate-500 text-sm">{p.completionRate}%</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {/* Desktop table */}
+                <div className="hidden md:block overflow-x-auto">
+                  <Table>
+                    <TableHeader className="bg-slate-50/50">
+                      <TableRow>
+                        <TableHead className="px-8 text-[10px] font-black text-slate-400 uppercase tracking-widest">Practitioner</TableHead>
+                        <TableHead className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Role</TableHead>
+                        <TableHead className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Appointments</TableHead>
+                        <TableHead className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Completed</TableHead>
+                        <TableHead className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Completion Rate</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {staffKPIs.map((p) => (
+                        <TableRow key={p.id} className="hover:bg-slate-50/50 border-slate-50">
+                          <TableCell className="px-8 py-5 font-bold text-slate-900">{p.name}</TableCell>
+                          <TableCell className="py-5"><Badge variant="secondary" className="text-[10px]">{p.role}</Badge></TableCell>
+                          <TableCell className="py-5 font-black text-slate-700">{p.totalAppointments}</TableCell>
+                          <TableCell className="py-5 font-bold text-emerald-600">{p.completedAppointments}</TableCell>
+                          <TableCell className="py-5">
+                            <div className="flex items-center gap-2">
+                              <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                <div className={cn("h-full rounded-full", p.completionRate >= 80 ? "bg-emerald-500" : p.completionRate >= 50 ? "bg-amber-500" : "bg-rose-500")} style={{ width: `${p.completionRate}%` }} />
+                              </div>
+                              <span className="text-xs font-bold">{p.completionRate}%</span>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </>
+            )}
+          </Card>
         )}
       </div>
     </div>
