@@ -7,12 +7,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/app/clinic/_components/page-header";
-import { 
-  clinicSupportTickets, 
-  clinicKnowledgeBase, 
-  clinicSuccessTeam, 
-  clinicIncidentLogs 
-} from "@/app/clinic/_mock/clinic-data";
 import { useModals } from "@/lib/modal-context";
 import { cn } from "@/lib/utils";
 import { 
@@ -34,6 +28,29 @@ import {
 } from "lucide-react";
 
 type SupportTab = "tickets" | "success" | "kb" | "health";
+
+const supportTickets = [
+  { id: "SUP-701", subject: "POS reversal not reflecting", priority: "High", status: "Open", updatedISO: "2026-05-26T12:40:00" },
+  { id: "SUP-702", subject: "Appointment reminders not sending", priority: "Medium", status: "Awaiting user", updatedISO: "2026-05-26T10:05:00" },
+  { id: "SUP-703", subject: "Add new HMO tariff list", priority: "Low", status: "Resolved", updatedISO: "2026-05-25T15:11:00" },
+];
+
+const knowledgeBase = [
+  { id: "KB-001", title: "Generating HMO Claims", category: "Billing", readTime: "5m" },
+  { id: "KB-002", title: "Managing Multi-Branch Queues", category: "Operations", readTime: "8m" },
+  { id: "KB-003", title: "Stock Transfer Protocols", category: "Inventory", readTime: "4m" },
+  { id: "KB-004", title: "Ophthalmic Device Integration", category: "Technical", readTime: "12m" },
+];
+
+const successTeam = [
+  { name: "Blessing Okoro", role: "Dedicated Account Manager", availability: "Available", avatar: "BO" },
+  { name: "Technical Support", role: "24/7 Operations Team", availability: "Live Now", avatar: "TS" },
+];
+
+const incidentLogs = [
+  { id: "INC-101", issue: "NHIA Portal Sync Latency", status: "Resolved", time: "2 hours ago", severity: "Medium" },
+  { id: "INC-102", issue: "Branch POS Offline (Ikeja)", status: "Monitoring", time: "15 mins ago", severity: "High" },
+];
 
 function statusBadge(status: string) {
   const s = status.toLowerCase();
@@ -101,8 +118,8 @@ export default function SupportPage() {
           <div className="space-y-6">
              <div className="grid grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-4">
                 {[
-                  { label: "Total Tickets", value: clinicSupportTickets.length, icon: MessageSquare, color: "text-slate-600" },
-                  { label: "Open Now", value: clinicSupportTickets.filter(t => t.status === "Open").length, icon: Clock, color: "text-sky-600" },
+                  { label: "Total Tickets", value: supportTickets.length, icon: MessageSquare, color: "text-slate-600" },
+                  { label: "Open Now", value: supportTickets.filter(t => t.status === "Open").length, icon: Clock, color: "text-sky-600" },
                   { label: "Avg Resolution", value: "4.2h", icon: CheckCircle2, color: "text-emerald-600" },
                   { label: "Network Uptime", value: "99.98%", icon: Activity, color: "text-blue-600" },
                 ].map((stat, i) => (
@@ -134,7 +151,7 @@ export default function SupportPage() {
                       </TableRow>
                    </TableHeader>
                    <TableBody>
-                      {clinicSupportTickets.map((t) => (
+                      {supportTickets.map((t) => (
                          <TableRow key={t.id} className="hover:bg-slate-50/50 border-slate-50">
                             <TableCell className="px-8 py-5 font-bold text-slate-900">{t.id}</TableCell>
                             <TableCell className="py-5 font-medium text-slate-700">{t.subject}</TableCell>
@@ -160,7 +177,7 @@ export default function SupportPage() {
                        Your clinic has a dedicated success team to ensure smooth operations. Connect with us instantly for any growth or technical needs.
                     </p>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                       {clinicSuccessTeam.map(person => (
+                       {successTeam.map(person => (
                           <div key={person.name} className="p-4 bg-white/5 border border-white/10 rounded-2xl flex items-center gap-4">
                              <div className="w-12 h-12 rounded-full bg-sky-500/20 flex items-center justify-center text-sky-400 font-black">
                                 {person.avatar}
@@ -232,7 +249,7 @@ export default function SupportPage() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                 {clinicKnowledgeBase.map(article => (
+                 {knowledgeBase.map(article => (
                     <Card key={article.id} onClick={() => openModal("kb-article")} className="border-none shadow-sm rounded-3xl hover:translate-y-[-4px] transition-all cursor-pointer group bg-white">
                        <CardContent className="p-6">
                           <div className="w-10 h-10 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-600 group-hover:bg-sky-600 group-hover:text-white transition-colors mb-4">
@@ -287,7 +304,7 @@ export default function SupportPage() {
                  <Card className="border-none shadow-sm rounded-3xl p-6 bg-brand-navy text-white">
                     <p className="text-[10px] font-black text-white/40 uppercase tracking-widest mb-4">Incident Log (Last 24h)</p>
                     <div className="space-y-4">
-                       {clinicIncidentLogs.map(inc => (
+                       {incidentLogs.map(inc => (
                           <div key={inc.id} className="pb-4 border-b border-white/10 last:border-0 last:pb-0">
                              <div className="flex justify-between items-start mb-1">
                                 <p className="text-xs font-bold leading-tight pr-4">{inc.issue}</p>
@@ -309,7 +326,7 @@ export default function SupportPage() {
                     <p className="text-sm font-bold text-slate-900 mb-2">Technical Audit</p>
                     <p className="text-xs text-slate-600 mb-6 leading-relaxed">Download your clinic's technical performance and uptime report for the last quarter.</p>
                      <Button variant="outline" className="w-full rounded-xl font-bold border-sky-100 text-sky-600 h-11 text-xs" onClick={() => {
-                       const auditData = clinicIncidentLogs.map(inc => ({
+                       const auditData = incidentLogs.map(inc => ({
                          ID: inc.id,
                          Issue: inc.issue,
                          Severity: inc.severity,

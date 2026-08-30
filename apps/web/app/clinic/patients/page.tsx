@@ -7,15 +7,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/app/clinic/_components/page-header";
 import { Modal } from "@/components/ui/modal";
-import {
-  clinicConsultations,
-  clinicEyeTests,
-  clinicOpticalOrders,
-  clinicPatientDocuments,
-  clinicPatientNotes,
-  clinicPatients,
-  type ClinicPatient,
-} from "@/app/clinic/_mock/clinic-data";
+import { usePatients, useCreatePatient } from "@/hooks/usePatients";
+import { useRecords } from "@/hooks/useRecords";
+import { useLensOrders } from "@/hooks/useOptician";
+import { PageSkeleton } from "@/components/ui/skeleton";
 
 function statusBadge(status: string) {
   if (status === "Active") return <Badge className="bg-emerald-600 text-white">Active</Badge>;
@@ -33,80 +28,66 @@ function lastVisitLabel(iso: string) {
 }
 
 export default function PatientsPage() {
-  const [patients, setPatients] = React.useState<ClinicPatient[]>(clinicPatients);
+  const { data: patientsResponse, isLoading } = usePatients();
+  const patients = patientsResponse?.data ?? [];
+  const createPatient = useCreatePatient();
+  const { data: records = [] } = useRecords();
+  const { data: opticalOrders = [] } = useLensOrders();
+
   const [isRegisterOpen, setIsRegisterOpen] = React.useState(false);
-  const [form, setForm] = React.useState({ name: "", phone: "", age: "", sex: "Female" as "Female" | "Male" });
+  const [form, setForm] = React.useState({ firstName: "", lastName: "", phone: "", dateOfBirth: "", gender: "Female" as "Female" | "Male" });
   const [query, setQuery] = React.useState("");
-  const [status, setStatus] = React.useState<"All" | ClinicPatient["status"]>("All");
+  const [status, setStatus] = React.useState<"All" | string>("All");
 
-  const activeCount = patients.filter((p) => p.status === "Active").length;
-  const newCount = patients.filter((p) => p.status === "New").length;
-  const openOpticalOrders = clinicOpticalOrders.filter((o) => o.status !== "Dispensed").length;
+  const activeCount = patients.filter((p: any) => p.status === "Active").length;
+  const newCount = patients.filter((p: any) => p.status === "New").length;
+  const openOpticalOrders = opticalOrders.filter((o: any) => o.status !== "Dispensed").length;
 
-  const notesByPatientId = React.useMemo(() => {
+  const recordsByPatientId = React.useMemo(() => {
     const map = new Map<string, number>();
-    for (const note of clinicPatientNotes) map.set(note.patientId, (map.get(note.patientId) ?? 0) + 1);
+    for (const r of records) map.set(r.patientId, (map.get(r.patientId) ?? 0) + 1);
     return map;
-  }, []);
-
-  const documentsByPatientId = React.useMemo(() => {
-    const map = new Map<string, number>();
-    for (const d of clinicPatientDocuments) map.set(d.patientId, (map.get(d.patientId) ?? 0) + 1);
-    return map;
-  }, []);
+  }, [records]);
 
   const ordersByPatientId = React.useMemo(() => {
     const map = new Map<string, number>();
-    for (const o of clinicOpticalOrders) map.set(o.patientId, (map.get(o.patientId) ?? 0) + 1);
+    for (const o of opticalOrders) map.set(o.patientId, (map.get(o.patientId) ?? 0) + 1);
     return map;
-  }, []);
-
-  const consultationsByPatientId = React.useMemo(() => {
-    const map = new Map<string, number>();
-    for (const c of clinicConsultations) map.set(c.patientId, (map.get(c.patientId) ?? 0) + 1);
-    return map;
-  }, []);
-
-  const testsByPatientId = React.useMemo(() => {
-    const map = new Map<string, number>();
-    for (const t of clinicEyeTests) map.set(t.patientId, (map.get(t.patientId) ?? 0) + 1);
-    return map;
-  }, []);
+  }, [opticalOrders]);
 
   const filteredPatients = React.useMemo(() => {
     const normalized = query.trim().toLowerCase();
-    return patients.filter((p) => {
+    return patients.filter((p: any) => {
       const matchesStatus = status === "All" ? true : p.status === status;
       if (!matchesStatus) return false;
       if (!normalized) return true;
       return (
         p.id.toLowerCase().includes(normalized) ||
-        p.name.toLowerCase().includes(normalized) ||
-        p.phone.toLowerCase().includes(normalized)
+        `${p.firstName} ${p.lastName}`.toLowerCase().includes(normalized) ||
+        p.phone?.toLowerCase().includes(normalized)
       );
     });
   }, [patients, query, status]);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    const age = Number(form.age);
-    if (!form.name.trim() || !form.phone.trim() || !Number.isFinite(age) || age <= 0) return;
+    if (!form.firstName.trim() || !form.lastName.trim() || !form.phone.trim()) return;
 
-    const nextId = `P-${String(patients.length + 1).padStart(3, "0")}`;
-    const newPatient: ClinicPatient = {
-      id: nextId,
-      name: form.name.trim(),
+    createPatient.mutate({
+      firstName: form.firstName.trim(),
+      lastName: form.lastName.trim(),
       phone: form.phone.trim(),
-      age,
-      sex: form.sex,
-      lastVisitISO: new Date().toISOString().slice(0, 10),
-      status: "New",
-    };
-
-    setPatients((prev) => [newPatient, ...prev]);
-    setIsRegisterOpen(false);
-    setForm({ name: "", phone: "", age: "", sex: "Female" });
+      dateOfBirth: form.dateOfBirth || undefined,
+      gender: form.gender,
+    }, {
+      onSuccess: () => {
+        setIsRegisterOpen(false);
+        setForm({ firstName: "", lastName: "", phone: "", dateOfBirth: "", gender: "Female" });
+      },
+    });
   };
+
+  if (isLoading) return <PageSkeleton />;
 
   return (
     <div className="space-y-8">
@@ -167,7 +148,7 @@ export default function PatientsPage() {
               <label className="text-sm font-medium text-slate-700">Status</label>
               <select
                 value={status}
-                onChange={(e) => setStatus(e.target.value as "All" | ClinicPatient["status"])}
+                onChange={(e) => setStatus(e.target.value)}
                 className="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none focus:border-sky-300 focus:ring-2 focus:ring-sky-100"
               >
                 <option value="All">All</option>
@@ -183,38 +164,28 @@ export default function PatientsPage() {
               <TableRow>
                 <TableHead>ID</TableHead>
                 <TableHead>Name</TableHead>
-                <TableHead>Age</TableHead>
-                <TableHead>Sex</TableHead>
                 <TableHead>Phone</TableHead>
                 <TableHead>Last visit</TableHead>
-                <TableHead>History</TableHead>
+                <TableHead>Records</TableHead>
                 <TableHead>Optical</TableHead>
-                <TableHead>Docs</TableHead>
-                <TableHead>Notes</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Profile</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredPatients.map((p) => (
+              {filteredPatients.map((p: any) => (
                 <TableRow key={p.id}>
-                  <TableCell className="font-medium">{p.id}</TableCell>
+                  <TableCell className="font-medium">{p.id.slice(0, 8)}</TableCell>
                   <TableCell>
                     <Link href={`/clinic/patients/${p.id}`} className="font-medium text-sky-700 hover:text-sky-800">
-                      {p.name}
+                      {p.firstName} {p.lastName}
                     </Link>
                   </TableCell>
-                  <TableCell className="tabular-nums">{p.age}</TableCell>
-                  <TableCell>{p.sex}</TableCell>
                   <TableCell className="tabular-nums">{p.phone}</TableCell>
-                  <TableCell>{lastVisitLabel(p.lastVisitISO)}</TableCell>
-                  <TableCell className="tabular-nums">
-                    {consultationsByPatientId.get(p.id) ?? 0} / {testsByPatientId.get(p.id) ?? 0}
-                  </TableCell>
+                  <TableCell>{p.lastVisit ? lastVisitLabel(p.lastVisit) : "-"}</TableCell>
+                  <TableCell className="tabular-nums">{recordsByPatientId.get(p.id) ?? 0}</TableCell>
                   <TableCell className="tabular-nums">{ordersByPatientId.get(p.id) ?? 0}</TableCell>
-                  <TableCell className="tabular-nums">{documentsByPatientId.get(p.id) ?? 0}</TableCell>
-                  <TableCell className="tabular-nums">{notesByPatientId.get(p.id) ?? 0}</TableCell>
-                  <TableCell>{statusBadge(p.status)}</TableCell>
+                  <TableCell>{statusBadge(p.status ?? "Active")}</TableCell>
                   <TableCell className="text-right">
                     <Link href={`/clinic/patients/${p.id}`} className="text-sm font-medium text-sky-700 hover:text-sky-800">
                       Open
@@ -224,25 +195,32 @@ export default function PatientsPage() {
               ))}
             </TableBody>
           </Table></div>
-
-          <p className="mt-3 text-xs text-slate-500">
-            History column shows consultations / eye tests. Open a patient to view full timeline, medical history, eye examination history,
-            optical orders, documents &amp; scans, and notes.
-          </p>
         </CardContent>
       </Card>
 
       <Modal isOpen={isRegisterOpen} onClose={() => setIsRegisterOpen(false)} title="Register patient">
         <form onSubmit={submit} className="space-y-4">
-          <div>
-            <label className="text-sm font-medium text-slate-700">Full name</label>
-            <input
-              value={form.name}
-              onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
-              className="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none focus:border-sky-300 focus:ring-2 focus:ring-sky-100"
-              placeholder="e.g., Jane Doe"
-              required
-            />
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div>
+              <label className="text-sm font-medium text-slate-700">First name</label>
+              <input
+                value={form.firstName}
+                onChange={(e) => setForm((p) => ({ ...p, firstName: e.target.value }))}
+                className="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none focus:border-sky-300 focus:ring-2 focus:ring-sky-100"
+                placeholder="e.g., Jane"
+                required
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-slate-700">Last name</label>
+              <input
+                value={form.lastName}
+                onChange={(e) => setForm((p) => ({ ...p, lastName: e.target.value }))}
+                className="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none focus:border-sky-300 focus:ring-2 focus:ring-sky-100"
+                placeholder="e.g., Doe"
+                required
+              />
+            </div>
           </div>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div>
@@ -256,22 +234,20 @@ export default function PatientsPage() {
               />
             </div>
             <div>
-              <label className="text-sm font-medium text-slate-700">Age</label>
+              <label className="text-sm font-medium text-slate-700">Date of birth</label>
               <input
-                value={form.age}
-                onChange={(e) => setForm((p) => ({ ...p, age: e.target.value }))}
+                type="date"
+                value={form.dateOfBirth}
+                onChange={(e) => setForm((p) => ({ ...p, dateOfBirth: e.target.value }))}
                 className="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none focus:border-sky-300 focus:ring-2 focus:ring-sky-100"
-                placeholder="e.g., 34"
-                inputMode="numeric"
-                required
               />
             </div>
           </div>
           <div>
-            <label className="text-sm font-medium text-slate-700">Sex</label>
+            <label className="text-sm font-medium text-slate-700">Gender</label>
             <select
-              value={form.sex}
-              onChange={(e) => setForm((p) => ({ ...p, sex: e.target.value as "Female" | "Male" }))}
+              value={form.gender}
+              onChange={(e) => setForm((p) => ({ ...p, gender: e.target.value as "Female" | "Male" }))}
               className="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none focus:border-sky-300 focus:ring-2 focus:ring-sky-100"
             >
               <option value="Female">Female</option>
@@ -289,9 +265,10 @@ export default function PatientsPage() {
             </button>
             <button
               type="submit"
-              className="inline-flex items-center justify-center rounded-full bg-sky-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-sky-700"
+              disabled={createPatient.isPending}
+              className="inline-flex items-center justify-center rounded-full bg-sky-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-sky-700 disabled:opacity-50"
             >
-              Create patient
+              {createPatient.isPending ? "Creating..." : "Create patient"}
             </button>
           </div>
         </form>

@@ -7,7 +7,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/app/clinic/_components/page-header";
 import { Modal } from "@/components/ui/modal";
-import { clinicQueue, type ClinicQueueItem } from "@/app/clinic/_mock/clinic-data";
+import { useQueue, useCreateQueueEntry, useUpdateQueueEntry } from "@/hooks/useQueue";
+import { PageSkeleton } from "@/components/ui/skeleton";
 
 function stageBadge(stage: string) {
   if (stage === "Reception") return <Badge variant="secondary">Reception</Badge>;
@@ -103,18 +104,26 @@ function shortISODateTime(iso: string) {
 }
 
 export default function QueuePage() {
+  const { data: apiQueue = [], isLoading } = useQueue();
+  const createEntry = useCreateQueueEntry();
+  const updateEntry = useUpdateQueueEntry();
+
   const [tab, setTab] = React.useState<QueueTab>("Live board");
   const [boardView, setBoardView] = React.useState<"flow-list" | "stage-focus" | "kanban">("flow-list");
   const [selectedStage, setSelectedStage] = React.useState<string>("Reception");
-  const [queue, setQueue] = React.useState<ClinicQueueItem[]>(clinicQueue);
+  const [queue, setQueue] = React.useState<any[]>([]);
   const [isAddOpen, setIsAddOpen] = React.useState(false);
   const [addForm, setAddForm] = React.useState({
     patientName: "",
-    stage: "Reception" as ClinicQueueItem["stage"],
-    priority: "Normal" as ClinicQueueItem["priority"],
+    stage: "Reception" as string,
+    priority: "Normal" as string,
   });
 
-  const stageOrder: ClinicQueueItem["stage"][] = ["Reception", "Vitals", "Consultation", "Refraction", "Optical", "Billing"];
+  React.useEffect(() => {
+    if (apiQueue.length > 0) setQueue(apiQueue);
+  }, [apiQueue]);
+
+  const stageOrder = ["Reception", "Vitals", "Consultation", "Refraction", "Optical", "Billing"];
 
   const activeQueue = queue.filter((q) => q.status !== "Done");
   const waiting = activeQueue.filter((q) => q.status === "Waiting").length;
@@ -135,37 +144,42 @@ export default function QueuePage() {
   const emergencyQueue = activeQueue.filter((q) => q.priority === "Urgent");
   const waitingPatients = activeQueue.filter((q) => q.status === "Waiting");
 
-  const updateItem = (id: string, patch: Partial<ClinicQueueItem>) => {
-    setQueue((prev) => prev.map((q) => (q.id === id ? { ...q, ...patch } : q)));
+  const updateItem = (id: string, patch: Partial<any>) => {
+    setQueue((prev) => prev.map((q: any) => (q.id === id ? { ...q, ...patch } : q)));
+    updateEntry.mutate({ id, dto: patch as any });
   };
 
   const moveStage = (id: string, direction: -1 | 1) => {
     setQueue((prev) =>
-      prev.map((q) => {
+      prev.map((q: any) => {
         if (q.id !== id) return q;
         const idx = stageOrder.indexOf(q.stage);
         const next = stageOrder[Math.max(0, Math.min(stageOrder.length - 1, idx + direction))] ?? q.stage;
         return { ...q, stage: next };
       })
     );
+    const item = queue.find((q: any) => q.id === id);
+    if (item) {
+      const idx = stageOrder.indexOf(item.stage);
+      const next = stageOrder[Math.max(0, Math.min(stageOrder.length - 1, idx + direction))];
+      updateEntry.mutate({ id, dto: { stage: next } });
+    }
   };
 
   const submitAdd = (e: React.FormEvent) => {
     e.preventDefault();
     if (!addForm.patientName.trim()) return;
-    const nextId = `Q-${200 + queue.length + 1}`;
-    const newItem: ClinicQueueItem = {
-      id: nextId,
-      patientId: "P-NEW",
+    createEntry.mutate({
       patientName: addForm.patientName.trim(),
-      stage: addForm.stage,
+      serviceType: addForm.stage,
       priority: addForm.priority,
-      waitMinutes: 0,
-      status: "Waiting",
-    };
-    setQueue((prev) => [newItem, ...prev]);
-    setIsAddOpen(false);
-    setAddForm({ patientName: "", stage: "Reception", priority: "Normal" });
+    }, {
+      onSuccess: (newItem) => {
+        setQueue((prev) => [newItem, ...prev]);
+        setIsAddOpen(false);
+        setAddForm({ patientName: "", stage: "Reception", priority: "Normal" });
+      },
+    });
   };
 
   return (
@@ -928,7 +942,7 @@ export default function QueuePage() {
               <label className="text-sm font-medium text-slate-700">Stage</label>
               <select
                 value={addForm.stage}
-                onChange={(e) => setAddForm((p) => ({ ...p, stage: e.target.value as ClinicQueueItem["stage"] }))}
+                onChange={(e) => setAddForm((p) => ({ ...p, stage: e.target.value }))}
                 className="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none focus:border-sky-300 focus:ring-2 focus:ring-sky-100"
               >
                 {stageOrder.map((s) => (
@@ -942,7 +956,7 @@ export default function QueuePage() {
               <label className="text-sm font-medium text-slate-700">Priority</label>
               <select
                 value={addForm.priority}
-                onChange={(e) => setAddForm((p) => ({ ...p, priority: e.target.value as ClinicQueueItem["priority"] }))}
+                onChange={(e) => setAddForm((p) => ({ ...p, priority: e.target.value }))}
                 className="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none focus:border-sky-300 focus:ring-2 focus:ring-sky-100"
               >
                 <option value="Normal">Normal</option>
