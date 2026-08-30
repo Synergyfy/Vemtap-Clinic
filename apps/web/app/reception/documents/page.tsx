@@ -9,12 +9,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Modal } from "@/components/ui/modal";
-
-const mockPatients = [
-  { id: "PT-2024-001", name: "Chidimma Okoro", plan: "HMO", provider: "Reliance Health" },
-  { id: "PT-2024-002", name: "Babatunde Lawal", plan: "Private", provider: "Self-Pay" },
-  { id: "PT-2024-003", name: "Yuki Tanaka", plan: "HMO", provider: "Axa Mansard" },
-];
+import { usePatients } from "@/hooks/usePatients";
 
 const documentTypes = ["Patient form", "HMO card", "Referral letter", "ID card", "Prescription"];
 
@@ -31,7 +26,9 @@ const initialFields = [
 ];
 
 export default function DocumentsPage() {
-  const [selectedPatient, setSelectedPatient] = useState(mockPatients[0]);
+  const { data: patientsResponse, isLoading } = usePatients();
+  const patients = patientsResponse?.data ?? [];
+  const [selectedPatient, setSelectedPatient] = useState(patients[0]);
   const [documentType, setDocumentType] = useState(documentTypes[0]);
   const [scanState, setScanState] = useState<"idle" | "scanning" | "complete">("idle");
   const [attachments, setAttachments] = useState(initialAttachments);
@@ -46,9 +43,12 @@ export default function DocumentsPage() {
   const [showAttachment, setShowAttachment] = useState<typeof initialAttachments[0] | null>(null);
   const [activeTab, setActiveTab] = useState<"scan" | "attachments">("scan");
 
-  const filteredPatients = mockPatients.filter((patient) =>
-    [patient.name, patient.id, patient.provider].join(" ").toLowerCase().includes(query.toLowerCase())
+  const filteredPatients = patients.filter((patient: any) =>
+    [patient.firstName + " " + patient.lastName, patient.id, patient.phone].join(" ").toLowerCase().includes(query.toLowerCase())
   );
+
+  const patientName = selectedPatient ? `${selectedPatient.firstName} ${selectedPatient.lastName}` : "Select a patient";
+  const patientId = selectedPatient?.id || "-";
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 3000); };
 
@@ -128,10 +128,10 @@ export default function DocumentsPage() {
             </div>
             <div className="space-y-1.5 sm:space-y-2">
               {filteredPatients.map((patient) => (
-                <button key={patient.id} onClick={() => { setSelectedPatient(patient); showToast(`${patient.name} selected`); }}
-                  className={cn("w-full p-3 sm:p-4 rounded-lg sm:rounded-2xl border text-left transition-all", selectedPatient.id === patient.id ? "bg-sky-50 border-sky-100" : "border-slate-100 hover:bg-slate-50")}>
-                  <p className="text-xs font-black text-slate-900 truncate">{patient.name}</p>
-                  <p className="text-[8px] sm:text-[9px] font-black uppercase tracking-widest text-slate-400 mt-0.5 truncate">{patient.id} &bull; {patient.provider}</p>
+                <button key={patient.id} onClick={() => { setSelectedPatient(patient); showToast(`${patient.firstName} ${patient.lastName} selected`); }}
+                  className={cn("w-full p-3 sm:p-4 rounded-lg sm:rounded-2xl border text-left transition-all", selectedPatient?.id === patient.id ? "bg-sky-50 border-sky-100" : "border-slate-100 hover:bg-slate-50")}>
+                  <p className="text-xs font-black text-slate-900 truncate">{patient.firstName} {patient.lastName}</p>
+                  <p className="text-[8px] sm:text-[9px] font-black uppercase tracking-widest text-slate-400 mt-0.5 truncate">{patient.id} &bull; {patient.phone}</p>
                 </button>
               ))}
               {filteredPatients.length === 0 && (
@@ -159,10 +159,10 @@ export default function DocumentsPage() {
             <div className="p-4 sm:p-8 border-b border-slate-50 flex items-center justify-between gap-3">
               <div className="min-w-0">
                 <h2 className="text-base sm:text-xl font-black text-slate-900">Scan Form</h2>
-                <p className="text-[9px] sm:text-xs text-slate-400 font-bold uppercase tracking-widest mt-0.5 truncate">{selectedPatient.name} &bull; {selectedPatient.id}</p>
+                <p className="text-[9px] sm:text-xs text-slate-400 font-bold uppercase tracking-widest mt-0.5 truncate">{patientName} &bull; {patientId}</p>
               </div>
-              <span className={cn("px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-[8px] sm:text-[10px] font-black uppercase tracking-widest shrink-0", selectedPatient.plan === "HMO" ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700")}>
-                {selectedPatient.plan}
+              <span className={cn("px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-[8px] sm:text-[10px] font-black uppercase tracking-widest shrink-0", "bg-emerald-100 text-emerald-700")}>
+                {selectedPatient?.gender || "Private"}
               </span>
             </div>
 
@@ -342,8 +342,8 @@ export default function DocumentsPage() {
           <div className="p-4 sm:p-5 rounded-xl sm:rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center gap-3 sm:gap-4">
             <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-emerald-100 flex items-center justify-center text-emerald-700 shrink-0"><ShieldCheck size={24} /></div>
             <div className="min-w-0">
-              <h4 className="text-base sm:text-lg font-bold text-slate-900 truncate">{selectedPatient.name}</h4>
-              <p className="text-xs text-slate-500">{documentType} &bull; {selectedPatient.id}</p>
+              <h4 className="text-base sm:text-lg font-bold text-slate-900 truncate">{patientName}</h4>
+              <p className="text-xs text-slate-500">{documentType} &bull; {patientId}</p>
             </div>
           </div>
           <div className="space-y-2">
@@ -388,7 +388,7 @@ export default function DocumentsPage() {
               </div>
               <div className="flex justify-between p-3 sm:p-4 rounded-lg sm:rounded-2xl bg-slate-50">
                 <span className="text-[10px] sm:text-xs font-bold text-slate-400">Patient</span>
-                <span className="text-xs sm:text-sm font-bold text-slate-900">{selectedPatient.name}</span>
+                <span className="text-xs sm:text-sm font-bold text-slate-900">{patientName}</span>
               </div>
             </div>
             <div className="flex flex-col gap-2">
