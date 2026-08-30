@@ -124,6 +124,20 @@ export interface PaginatedResponse<T> {
 }
 
 export const patientPortalService = {
+  async register(dto: { firstName: string; lastName: string; email: string; phone: string; password: string; dateOfBirth?: string; gender?: string }): Promise<{ patient: PatientProfile; accessToken: string }> {
+    const response = await api.post('/patient-portal/register', dto);
+    return response.data;
+  },
+
+  async login(dto: { email: string; password: string }): Promise<{ patient: PatientProfile; accessToken: string }> {
+    const response = await api.post('/patient-portal/login', dto);
+    return response.data;
+  },
+
+  async logout(): Promise<void> {
+    await api.post('/patient-portal/logout');
+  },
+
   async getProfile(): Promise<PatientProfile> {
     const response = await api.get('/patient-portal/profile');
     return response.data;

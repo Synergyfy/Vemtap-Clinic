@@ -15,6 +15,39 @@ import { useAuth } from '@/lib/auth-context';
 
 const PATIENT_PORTAL_KEY = 'patient-portal';
 
+// ─── Auth Hooks ───
+export function usePatientRegister() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (dto: { firstName: string; lastName: string; email: string; phone: string; password: string; dateOfBirth?: string; gender?: string }) =>
+      patientPortalService.register(dto),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [PATIENT_PORTAL_KEY, 'profile'] });
+    },
+  });
+}
+
+export function usePatientLogin() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (dto: { email: string; password: string }) =>
+      patientPortalService.login(dto),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [PATIENT_PORTAL_KEY, 'profile'] });
+    },
+  });
+}
+
+export function usePatientLogout() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => patientPortalService.logout(),
+    onSuccess: () => {
+      queryClient.clear();
+    },
+  });
+}
+
 export function usePatientProfile() {
   const { user } = useAuth();
   return useQuery({
