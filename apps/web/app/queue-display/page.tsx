@@ -2,7 +2,12 @@
 
 import React from "react";
 import { QueueDisplayBoard } from "@/components/queue-display/QueueDisplayBoard";
+import { QueueDisplayProvider } from "@/components/queue-display/QueueDisplayContext";
 
 export default function QueueDisplayPage() {
-  return <QueueDisplayBoard fullScreen />;
+  return (
+    <QueueDisplayProvider>
+      <QueueDisplayBoard fullScreen />
+    </QueueDisplayProvider>
+  );
 }

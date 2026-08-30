@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { useQueueStore, getQueueTypeLabel, type QueueType, type Priority, type QueueStatus } from "@/store/queueStore";
+import { useQueueDisplay, getQueueTypeLabel, type QueueType, type Priority, type QueueStatus } from "./QueueDisplayContext";
 import { DoctorRoomStatus } from "./DoctorRoomStatus";
 import {
   Users, Clock, UserCheck, AlertCircle, Timer,
@@ -37,12 +37,7 @@ const queueTypes: { type: QueueType | 'all'; label: string }[] = [
 ];
 
 export const QueueDisplayBoard = ({ fullScreen }: { fullScreen?: boolean }) => {
-  const entries = useQueueStore((s) => s.entries);
-  const rooms = useQueueStore((s) => s.rooms);
-  const announcements = useQueueStore((s) => s.announcements);
-  const selectedQueueType = useQueueStore((s) => s.selectedQueueType);
-  const setSelectedQueueType = useQueueStore((s) => s.setSelectedQueueType);
-  const activeDisplayMode = useQueueStore((s) => s.activeDisplayMode);
+  const { entries, rooms, announcements, selectedQueueType, setSelectedQueueType, activeDisplayMode } = useQueueDisplay();
 
   const [currentTime, setCurrentTime] = useState(new Date());
   const [currentAnnouncementIdx, setCurrentAnnouncementIdx] = useState(0);

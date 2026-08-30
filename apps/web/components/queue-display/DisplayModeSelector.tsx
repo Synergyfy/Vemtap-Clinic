@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { useQueueStore, type DisplayMode } from "@/store/queueStore";
+import { useQueueDisplay, type DisplayMode } from "./QueueDisplayContext";
 import { cn } from "@/lib/utils";
 import { Monitor, Tv, Eye, EyeOff, Pill, ScanEye } from "lucide-react";
 
@@ -14,8 +14,8 @@ const modes: { mode: DisplayMode; label: string; icon: React.ElementType; desc: 
 ];
 
 export const DisplayModeSelector = ({ compact }: { compact?: boolean }) => {
-  const activeMode = useQueueStore((s) => s.activeDisplayMode);
-  const setDisplayMode = useQueueStore((s) => s.setDisplayMode);
+  const { activeDisplayMode, setDisplayMode } = useQueueDisplay();
+  const activeMode = activeDisplayMode;
 
   if (compact) {
     return (

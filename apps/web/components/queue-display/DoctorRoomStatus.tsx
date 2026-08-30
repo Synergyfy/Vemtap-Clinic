@@ -3,11 +3,11 @@
 import React from "react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { useQueueStore } from "@/store/queueStore";
+import { useQueueDisplay } from "./QueueDisplayContext";
 import { Stethoscope, User, Clock } from "lucide-react";
 
 export const DoctorRoomStatus = () => {
-  const rooms = useQueueStore((s) => s.rooms);
+  const { rooms } = useQueueDisplay();
 
   const statusConfig = {
     available: { label: 'Available', color: 'bg-emerald-500', bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', pulse: false },
