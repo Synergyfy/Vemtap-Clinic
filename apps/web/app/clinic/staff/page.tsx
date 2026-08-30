@@ -6,7 +6,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/app/clinic/_components/page-header";
-import { clinicShifts as initialShifts, clinicRolePermissions as initialPermissions, type ClinicShift } from "@/app/clinic/_mock/clinic-data";
 import { useModals } from "@/lib/modal-context";
 import { cn } from "@/lib/utils";
 import { CalendarDays, Users, ShieldCheck, TrendingUp, Clock, Plus, Trash2, CheckCircle2 } from "lucide-react";
@@ -15,6 +14,29 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { useStaff, useCreateStaff, useUpdateStaff, useDeleteStaff, Staff, StaffQueryParams, StaffRole } from "@/hooks/useStaff";
 import { useAuth } from "@/lib/auth-context";
 import { toast } from "sonner";
+
+type ClinicShift = {
+  id: string;
+  staffName: string;
+  role: string;
+  day: string;
+  shift: "Morning" | "Afternoon" | "Night";
+};
+
+type RolePermission = {
+  role: string;
+  permissions: string[];
+};
+
+const initialShifts: ClinicShift[] = [
+  { id: "SH-001", staffName: "Dr. A. Bello", role: "Doctor", day: "Monday", shift: "Morning" },
+  { id: "SH-002", staffName: "Nurse R. Okeke", role: "Nurse", day: "Monday", shift: "Morning" },
+];
+
+const initialPermissions: RolePermission[] = [
+  { role: "Doctor", permissions: ["view_patients", "create_consultation", "prescribe_drugs"] },
+  { role: "Receptionist", permissions: ["view_patients", "register_patient", "manage_queue"] },
+];
 
 type TabType = "team" | "shifts" | "permissions";
 

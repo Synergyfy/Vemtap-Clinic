@@ -7,20 +7,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PageHeader } from "@/app/clinic/_components/page-header";
-import {
-  clinicAppointmentsToday,
-  clinicConsultations,
-  clinicEyeTests,
-  clinicFollowUps,
-  clinicHmoClaims,
-  clinicInvoicesToday,
-  clinicOpticalOrders,
-  clinicPatientDocuments,
-  clinicPatientNotes,
-  clinicPatients,
-  clinicPrescriptions,
-  formatNGN,
-} from "@/app/clinic/_mock/clinic-data";
+import { usePatients } from "@/hooks/usePatients";
+import { useAppointments } from "@/hooks/useAppointments";
+import { useRecords, usePatientPrescriptions } from "@/hooks/useRecords";
+import { useLensOrders } from "@/hooks/useOptician";
+import { useInvoices } from "@/hooks/useBilling";
+import { useHmoClaims } from "@/hooks/useHmo";
+import { useUploads } from "@/hooks/useFileUpload";
+import { PageSkeleton } from "@/components/ui/skeleton";
+
+const formatNGN = (value: number) =>
+  new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 }).format(value);
 
 type PatientTab =
   | "Overview"
@@ -44,328 +41,201 @@ function statusBadge(status: string) {
   if (status === "Active") return <Badge className="bg-emerald-600 text-white">Active</Badge>;
   if (status === "New") return <Badge className="bg-sky-600 text-white">New</Badge>;
   if (status === "Inactive") return <Badge variant="secondary">Inactive</Badge>;
-
   if (status === "Open") return <Badge className="bg-amber-600 text-white">Open</Badge>;
   if (status === "Closed") return <Badge className="bg-slate-200 text-slate-700">Closed</Badge>;
-  if (status === "Pending") return <Badge variant="outline">Pending</Badge>;
-  if (status === "Scheduled") return <Badge variant="outline">Scheduled</Badge>;
-  if (status === "Done") return <Badge className="bg-emerald-600 text-white">Done</Badge>;
-
-  if (status === "Draft") return <Badge variant="outline">Draft</Badge>;
-  if (status === "In production") return <Badge className="bg-amber-600 text-white">In production</Badge>;
-  if (status === "Ready") return <Badge className="bg-emerald-600 text-white">Ready</Badge>;
-  if (status === "Dispensed") return <Badge className="bg-slate-200 text-slate-700">Dispensed</Badge>;
-
   if (status === "Paid") return <Badge className="bg-emerald-600 text-white">Paid</Badge>;
-  if (status === "Queried") return <Badge className="bg-rose-600 text-white">Queried</Badge>;
-  if (status === "Approved") return <Badge className="bg-emerald-600 text-white">Approved</Badge>;
+  if (status === "Pending") return <Badge variant="outline">Pending</Badge>;
   if (status === "Submitted") return <Badge variant="outline">Submitted</Badge>;
-
+  if (status === "Approved") return <Badge className="bg-emerald-600 text-white">Approved</Badge>;
   return <Badge variant="outline">{status}</Badge>;
 }
 
 export default function PatientProfilePage() {
   const params = useParams<{ id: string }>();
   const patientId = params.id;
-  const patient = clinicPatients.find((p) => p.id === patientId);
+
+  const { data: patientsResponse, isLoading: loadingPatient } = usePatients();
+  const patients = patientsResponse?.data ?? [];
+  const patient = patients.find((p: any) => p.id === patientId);
+
+  const { data: appointments = [] } = useAppointments();
+  const { data: records = [] } = useRecords({ patientId });
+  const { data: prescriptions = [] } = usePatientPrescriptions(patientId);
+  const { data: lensOrders = [] } = useLensOrders();
+  const { data: invoicesResponse } = useInvoices();
+  const invoices = invoicesResponse?.data ?? [];
+  const { data: hmoClaims = [] } = useHmoClaims();
+  const { data: uploads = [] } = useUploads({ entityType: "patient", entityId: patientId });
+
+  const [tab, setTab] = React.useState<PatientTab>("Overview");
+
+  if (loadingPatient) return <PageSkeleton />;
+
   if (!patient) {
     return (
       <div className="space-y-8">
         <PageHeader
           title="Patient not found"
-          description="This patient record does not exist in the current dataset."
+          description="This patient record does not exist."
           actions={[{ label: "Back to patients", href: "/clinic/patients", variant: "primary" }]}
         />
       </div>
     );
   }
 
-  const [tab, setTab] = React.useState<PatientTab>("Overview");
-
-  const appointments = clinicAppointmentsToday.filter((a) => a.patientId === patientId);
-  const consultations = clinicConsultations.filter((c) => c.patientId === patientId);
-  const tests = clinicEyeTests.filter((t) => t.patientId === patientId);
-  const prescriptions = clinicPrescriptions.filter((r) => r.patientId === patientId);
-  const lensOrders = clinicOpticalOrders.filter((o) => o.patientId === patientId);
-  const billing = clinicInvoicesToday.filter((i) => i.patientName === patient.name);
-  const hmoClaims = clinicHmoClaims.filter((c) => c.patientName === patient.name);
-  const followUps = clinicFollowUps.filter((f) => f.patientId === patientId);
-  const documents = clinicPatientDocuments.filter((d) => d.patientId === patientId);
-  const notes = clinicPatientNotes.filter((n) => n.patientId === patientId);
-
-  const paidTotal = billing.filter((b) => b.status === "Paid").reduce((acc, i) => acc + i.amount, 0);
+  const patientName = `${patient.firstName} ${patient.lastName}`;
+  const patientAppointments = appointments.filter((a: any) => a.patientId === patientId);
+  const patientInvoices = invoices.filter((i: any) => i.patientId === patientId);
+  const patientHmoClaims = hmoClaims.filter((c: any) => c.patientId === patientId);
+  const patientLensOrders = lensOrders.filter((o: any) => o.patientId === patientId);
+  const paidTotal = patientInvoices.filter((i: any) => i.status === "Paid").reduce((acc: number, i: any) => acc + Number(i.totalAmount), 0);
 
   return (
     <div className="space-y-8">
       <PageHeader
-        title={patient.name}
-        description={`${patient.id} • ${patient.sex}, ${patient.age} • ${patient.phone}`}
+        title={patientName}
+        description={`${patient.id.slice(0, 8)} • ${patient.gender || "-"} • ${patient.phone || "-"}`}
         actions={[
           { label: "Back to patients", href: "/clinic/patients" },
           { label: "Create appointment", href: "/clinic/appointments" },
-          { label: "Add lens order", href: "/clinic/optical" },
-          { label: "Create invoice", href: "/clinic/finance" },
-          { label: "Verify HMO", href: "/clinic/hmo" },
         ]}
       />
 
       <div className="flex flex-wrap gap-2">
-        {(
-          [
-            "Overview",
-            "Consultations",
-            "Eye tests",
-            "Prescriptions",
-            "Lens orders",
-            "Billing",
-            "HMO",
-            "Follow-ups",
-            "Documents",
-          ] as PatientTab[]
-        ).map((t) => (
+        {(["Overview", "Consultations", "Prescriptions", "Lens orders", "Billing", "HMO", "Documents"] as PatientTab[]).map((t) => (
           <button key={t} type="button" onClick={() => setTab(t)} className={tabButtonClass(tab === t)}>
             {t}
           </button>
         ))}
       </div>
 
-      {tab === "Overview" ? (
+      {tab === "Overview" && (
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
           <Card className="lg:col-span-2">
-            <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <CardHeader>
               <CardTitle className="text-base sm:text-lg font-bold">Patient overview</CardTitle>
-              <div className="self-start">{statusBadge(patient.status)}</div>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
                 <div className="rounded-xl border border-slate-200 p-4">
-                  <p className="text-sm text-slate-500">Appointments (today)</p>
-                  <p className="mt-1 text-xl font-bold text-slate-900 tabular-nums">{appointments.length}</p>
+                  <p className="text-sm text-slate-500">Appointments</p>
+                  <p className="mt-1 text-xl font-bold text-slate-900 tabular-nums">{patientAppointments.length}</p>
+                </div>
+                <div className="rounded-xl border border-slate-200 p-4">
+                  <p className="text-sm text-slate-500">Medical records</p>
+                  <p className="mt-1 text-xl font-bold text-slate-900 tabular-nums">{records.length}</p>
                 </div>
                 <div className="rounded-xl border border-slate-200 p-4">
                   <p className="text-sm text-slate-500">Lens orders</p>
-                  <p className="mt-1 text-xl font-bold text-slate-900 tabular-nums">{lensOrders.length}</p>
-                </div>
-                <div className="rounded-xl border border-slate-200 p-4">
-                  <p className="text-sm text-slate-500">Paid total (today)</p>
-                  <p className="mt-1 text-xl font-bold text-slate-900 tabular-nums">{formatNGN(paidTotal)}</p>
-                </div>
-              </div>
-
-              <div className="rounded-xl border border-slate-200 p-4">
-                <p className="text-sm font-semibold text-slate-900">Patient timeline</p>
-                <p className="mt-1 text-sm text-slate-500">
-                  Latest activity from appointments, consultations, tests, prescriptions, and optical.
-                </p>
-                <div className="mt-4 space-y-3">
-                  {appointments.slice(0, 2).map((a) => (
-                    <div key={a.id} className="rounded-lg bg-slate-50 p-3">
-                      <p className="text-sm font-semibold text-slate-900">{a.service}</p>
-                      <p className="mt-0.5 text-sm text-slate-500">
-                        {a.startTime} • {a.provider} • {a.status}
-                      </p>
-                    </div>
-                  ))}
-                  {consultations.slice(0, 2).map((c) => (
-                    <div key={c.id} className="rounded-lg bg-slate-50 p-3">
-                      <p className="text-sm font-semibold text-slate-900">Consultation</p>
-                      <p className="mt-0.5 text-sm text-slate-500">
-                        {c.visitISO} • {c.provider} • {c.diagnosis}
-                      </p>
-                    </div>
-                  ))}
-                  {lensOrders.slice(0, 2).map((o) => (
-                    <div key={o.id} className="rounded-lg bg-slate-50 p-3">
-                      <p className="text-sm font-semibold text-slate-900">Optical order</p>
-                      <p className="mt-0.5 text-sm text-slate-500">
-                        {o.lens} • Due {o.dueISO} • {o.status}
-                      </p>
-                    </div>
-                  ))}
-                  {!appointments.length && !consultations.length && !lensOrders.length ? (
-                    <p className="text-sm text-slate-500">No activity yet for this patient.</p>
-                  ) : null}
+                  <p className="mt-1 text-xl font-bold text-slate-900 tabular-nums">{patientLensOrders.length}</p>
                 </div>
               </div>
             </CardContent>
           </Card>
-
           <Card>
-            <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <CardTitle className="text-base sm:text-lg font-bold">Notes</CardTitle>
-              <Link href="/clinic/support" className="text-xs sm:text-sm font-medium text-sky-700 hover:text-sky-800 self-start">
-                Open support
-              </Link>
+            <CardHeader>
+              <CardTitle className="text-base sm:text-lg font-bold">Quick info</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              {notes.length ? (
-                notes.slice(0, 6).map((n) => (
-                  <div key={n.id} className="rounded-xl border border-slate-200 p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold text-slate-900 truncate">{n.tag}</p>
-                        <p className="mt-1 text-sm text-slate-500">{n.note}</p>
-                        <p className="mt-2 text-xs text-slate-400">
-                          {n.createdISO} • {n.author}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <p className="text-sm text-slate-500">No notes yet.</p>
-              )}
+              <div className="rounded-xl border border-slate-200 p-4">
+                <p className="text-sm text-slate-500">Email</p>
+                <p className="mt-1 text-sm font-medium text-slate-900">{patient.email || "-"}</p>
+              </div>
+              <div className="rounded-xl border border-slate-200 p-4">
+                <p className="text-sm text-slate-500">Phone</p>
+                <p className="mt-1 text-sm font-medium text-slate-900">{patient.phone || "-"}</p>
+              </div>
+              <div className="rounded-xl border border-slate-200 p-4">
+                <p className="text-sm text-slate-500">Total paid</p>
+                <p className="mt-1 text-xl font-bold text-slate-900 tabular-nums">{formatNGN(paidTotal)}</p>
+              </div>
             </CardContent>
           </Card>
         </div>
-      ) : null}
+      )}
 
-      {tab === "Consultations" ? (
+      {tab === "Consultations" && (
         <Card>
-          <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <CardTitle className="text-base sm:text-lg font-bold">Consultations</CardTitle>
-            <Link href="/clinic/queue" className="text-xs sm:text-sm font-medium text-sky-700 hover:text-sky-800 self-start">
-              Open queue
-            </Link>
+          <CardHeader>
+            <CardTitle className="text-base sm:text-lg font-bold">Medical records</CardTitle>
           </CardHeader>
           <CardContent>
-            {consultations.length ? (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Provider</TableHead>
-                      <TableHead>Chief complaint</TableHead>
-                      <TableHead>Diagnosis</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {consultations.map((c) => (
-                      <TableRow key={c.id}>
-                        <TableCell className="tabular-nums">{c.visitISO}</TableCell>
-                        <TableCell>{c.provider}</TableCell>
-                        <TableCell>{c.chiefComplaint}</TableCell>
-                        <TableCell>{c.diagnosis}</TableCell>
-                        <TableCell>{statusBadge(c.status)}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            ) : (
-              <p className="text-sm text-slate-500">No consultations recorded yet.</p>
-            )}
-          </CardContent>
-        </Card>
-      ) : null}
-
-      {tab === "Eye tests" ? (
-        <Card>
-          <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <CardTitle className="text-base sm:text-lg font-bold">Eye tests</CardTitle>
-            <Link href="/clinic/queue" className="text-xs sm:text-sm font-medium text-sky-700 hover:text-sky-800 self-start">
-              Add from workflow
-            </Link>
-          </CardHeader>
-          <CardContent>
-            {tests.length ? (
+            {records.length ? (
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Date</TableHead>
                       <TableHead>Type</TableHead>
-                      <TableHead>Summary</TableHead>
-                      <TableHead>Performed by</TableHead>
+                      <TableHead>Diagnosis</TableHead>
+                      <TableHead>Treatment</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {tests.map((t) => (
-                      <TableRow key={t.id}>
-                        <TableCell className="tabular-nums">{t.testISO}</TableCell>
-                        <TableCell>{t.type}</TableCell>
-                        <TableCell>{t.summary}</TableCell>
-                        <TableCell>{t.performedBy}</TableCell>
+                    {records.map((r: any) => (
+                      <TableRow key={r.id}>
+                        <TableCell className="tabular-nums">{r.visitDate?.slice(0, 10)}</TableCell>
+                        <TableCell>{r.recordType}</TableCell>
+                        <TableCell>{r.diagnosis || "-"}</TableCell>
+                        <TableCell>{r.treatment || "-"}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
               </div>
             ) : (
-              <p className="text-sm text-slate-500">No tests recorded yet.</p>
+              <p className="text-sm text-slate-500">No records yet.</p>
             )}
           </CardContent>
         </Card>
-      ) : null}
+      )}
 
-      {tab === "Prescriptions" ? (
+      {tab === "Prescriptions" && (
         <Card>
-          <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <CardHeader>
             <CardTitle className="text-base sm:text-lg font-bold">Prescriptions</CardTitle>
-            <Link href="/clinic/pharmacy" className="text-xs sm:text-sm font-medium text-sky-700 hover:text-sky-800 self-start">
-              Open pharmacy
-            </Link>
           </CardHeader>
           <CardContent className="space-y-4">
             {prescriptions.length ? (
-              prescriptions.map((r) => (
+              prescriptions.map((r: any) => (
                 <div key={r.id} className="rounded-xl border border-slate-200 p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="font-semibold text-slate-900">Prescription • {r.prescribedISO}</p>
-                      <p className="mt-1 text-sm text-slate-500">{r.provider}</p>
+                      <p className="font-semibold text-slate-900">Prescription</p>
+                      <p className="mt-1 text-sm text-slate-500">{r.medication} • {r.dosage}</p>
                     </div>
-                    <div className="shrink-0">{statusBadge(r.status)}</div>
-                  </div>
-                  <div className="mt-4 space-y-2">
-                    {r.items.map((it) => (
-                      <div key={it.name} className="rounded-lg bg-slate-50 p-3">
-                        <p className="text-sm font-semibold text-slate-900">{it.name}</p>
-                        <p className="mt-0.5 text-sm text-slate-500">
-                          {it.dose} • {it.duration}
-                        </p>
-                      </div>
-                    ))}
+                    <div className="shrink-0">{statusBadge(r.isActive ? "Active" : "Completed")}</div>
                   </div>
                 </div>
               ))
             ) : (
-              <p className="text-sm text-slate-500">No prescriptions recorded yet.</p>
+              <p className="text-sm text-slate-500">No prescriptions yet.</p>
             )}
           </CardContent>
         </Card>
-      ) : null}
+      )}
 
-      {tab === "Lens orders" ? (
+      {tab === "Lens orders" && (
         <Card>
-          <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <CardHeader>
             <CardTitle className="text-base sm:text-lg font-bold">Lens orders</CardTitle>
-            <Link href="/clinic/optical" className="text-xs sm:text-sm font-medium text-sky-700 hover:text-sky-800 self-start">
-              Open optical
-            </Link>
           </CardHeader>
           <CardContent>
-            {lensOrders.length ? (
+            {patientLensOrders.length ? (
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Order</TableHead>
-                      <TableHead>Lens</TableHead>
-                      <TableHead>Frame</TableHead>
-                      <TableHead>Due</TableHead>
+                      <TableHead>Type</TableHead>
                       <TableHead>Status</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {lensOrders.map((o) => (
+                    {patientLensOrders.map((o: any) => (
                       <TableRow key={o.id}>
-                        <TableCell className="font-medium">{o.id}</TableCell>
-                        <TableCell>{o.lens}</TableCell>
-                        <TableCell>{o.frame}</TableCell>
-                        <TableCell className="tabular-nums">{o.dueISO}</TableCell>
+                        <TableCell className="font-medium">{o.id.slice(0, 8)}</TableCell>
+                        <TableCell>{o.lensType || "-"}</TableCell>
                         <TableCell>{statusBadge(o.status)}</TableCell>
                       </TableRow>
                     ))}
@@ -373,98 +243,69 @@ export default function PatientProfilePage() {
                 </Table>
               </div>
             ) : (
-              <p className="text-sm text-slate-500">No lens orders for this patient yet.</p>
+              <p className="text-sm text-slate-500">No lens orders yet.</p>
             )}
           </CardContent>
         </Card>
-      ) : null}
+      )}
 
-      {tab === "Billing" ? (
-        <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-          <Card className="lg:col-span-2">
-            <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <CardTitle className="text-base sm:text-lg font-bold">Billing</CardTitle>
-              <Link href="/clinic/finance" className="text-xs sm:text-sm font-medium text-sky-700 hover:text-sky-800 self-start">
-                Open finance
-              </Link>
-            </CardHeader>
-            <CardContent>
-              {billing.length ? (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Invoice</TableHead>
-                        <TableHead>Payer</TableHead>
-                        <TableHead>Method</TableHead>
-                        <TableHead>Amount</TableHead>
-                        <TableHead>Status</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {billing.map((b) => (
-                        <TableRow key={b.id}>
-                          <TableCell className="font-medium">{b.id}</TableCell>
-                          <TableCell>{b.payerType}</TableCell>
-                          <TableCell>{b.method}</TableCell>
-                          <TableCell className="tabular-nums">{formatNGN(b.amount)}</TableCell>
-                          <TableCell>{statusBadge(b.status)}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              ) : (
-                <p className="text-sm text-slate-500">No invoices recorded for this patient today.</p>
-              )}
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base sm:text-lg font-bold">Summary</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="rounded-xl border border-slate-200 p-4">
-                <p className="text-sm text-slate-500">Paid total</p>
-                <p className="mt-1 text-xl font-bold text-slate-900 tabular-nums">{formatNGN(paidTotal)}</p>
-              </div>
-              <div className="rounded-xl border border-slate-200 p-4">
-                <p className="text-sm text-slate-500">Pending invoices</p>
-                <p className="mt-1 text-xl font-bold text-slate-900 tabular-nums">
-                  {billing.filter((b) => b.status === "Pending").length}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      ) : null}
-
-      {tab === "HMO" ? (
+      {tab === "Billing" && (
         <Card>
-            <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <CardTitle className="text-base sm:text-lg font-bold">HMO</CardTitle>
-              <Link href="/clinic/hmo" className="text-xs sm:text-sm font-medium text-sky-700 hover:text-sky-800 self-start">
-                Open HMO
-              </Link>
-            </CardHeader>
+          <CardHeader>
+            <CardTitle className="text-base sm:text-lg font-bold">Billing</CardTitle>
+          </CardHeader>
           <CardContent>
-            {hmoClaims.length ? (
+            {patientInvoices.length ? (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Invoice</TableHead>
+                      <TableHead>Amount</TableHead>
+                      <TableHead>Paid</TableHead>
+                      <TableHead>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {patientInvoices.map((inv: any) => (
+                      <TableRow key={inv.id}>
+                        <TableCell className="font-medium">{inv.invoiceNumber}</TableCell>
+                        <TableCell className="tabular-nums">{formatNGN(Number(inv.totalAmount))}</TableCell>
+                        <TableCell className="tabular-nums">{formatNGN(Number(inv.amountPaid))}</TableCell>
+                        <TableCell>{statusBadge(inv.status)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            ) : (
+              <p className="text-sm text-slate-500">No invoices yet.</p>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {tab === "HMO" && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base sm:text-lg font-bold">HMO claims</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {patientHmoClaims.length ? (
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Claim</TableHead>
-                      <TableHead>HMO</TableHead>
                       <TableHead>Amount</TableHead>
                       <TableHead>Status</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {hmoClaims.map((c) => (
+                    {patientHmoClaims.map((c: any) => (
                       <TableRow key={c.id}>
-                        <TableCell className="font-medium">{c.id}</TableCell>
-                        <TableCell>{c.hmo}</TableCell>
-                        <TableCell className="tabular-nums">{formatNGN(c.amount)}</TableCell>
+                        <TableCell className="font-medium">{c.claimNumber}</TableCell>
+                        <TableCell className="tabular-nums">{formatNGN(Number(c.amountClaimed))}</TableCell>
                         <TableCell>{statusBadge(c.status)}</TableCell>
                       </TableRow>
                     ))}
@@ -472,59 +313,19 @@ export default function PatientProfilePage() {
                 </Table>
               </div>
             ) : (
-              <p className="text-sm text-slate-500">No HMO claims recorded for this patient yet.</p>
+              <p className="text-sm text-slate-500">No HMO claims yet.</p>
             )}
           </CardContent>
         </Card>
-      ) : null}
+      )}
 
-      {tab === "Follow-ups" ? (
+      {tab === "Documents" && (
         <Card>
-          <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <CardTitle className="text-base sm:text-lg font-bold">Follow-ups</CardTitle>
-            <Link href="/clinic/appointments" className="text-xs sm:text-sm font-medium text-sky-700 hover:text-sky-800 self-start">
-              Schedule follow-up
-            </Link>
+          <CardHeader>
+            <CardTitle className="text-base sm:text-lg font-bold">Documents</CardTitle>
           </CardHeader>
           <CardContent>
-            {followUps.length ? (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Due</TableHead>
-                      <TableHead>Reason</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {followUps.map((f) => (
-                      <TableRow key={f.id}>
-                        <TableCell className="tabular-nums">{f.dueISO}</TableCell>
-                        <TableCell>{f.reason}</TableCell>
-                        <TableCell>{statusBadge(f.status)}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            ) : (
-              <p className="text-sm text-slate-500">No follow-ups created yet.</p>
-            )}
-          </CardContent>
-        </Card>
-      ) : null}
-
-      {tab === "Documents" ? (
-        <Card>
-          <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <CardTitle className="text-base sm:text-lg font-bold">Documents &amp; scans</CardTitle>
-            <Link href="/clinic/settings" className="text-xs sm:text-sm font-medium text-sky-700 hover:text-sky-800 self-start">
-              Document settings
-            </Link>
-          </CardHeader>
-          <CardContent>
-            {documents.length ? (
+            {uploads.length ? (
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
@@ -535,11 +336,11 @@ export default function PatientProfilePage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {documents.map((d) => (
+                    {uploads.map((d: any) => (
                       <TableRow key={d.id}>
-                        <TableCell className="font-medium">{d.name}</TableCell>
-                        <TableCell>{d.type}</TableCell>
-                        <TableCell className="tabular-nums">{d.uploadedISO}</TableCell>
+                        <TableCell className="font-medium">{d.fileName}</TableCell>
+                        <TableCell>{d.fileType}</TableCell>
+                        <TableCell className="tabular-nums">{d.createdAt?.slice(0, 10)}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -550,7 +351,7 @@ export default function PatientProfilePage() {
             )}
           </CardContent>
         </Card>
-      ) : null}
+      )}
     </div>
   );
 }
