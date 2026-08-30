@@ -8,12 +8,21 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
+import { useCreateQueueEntry } from "@/hooks/useQueue";
+import { usePatients } from "@/hooks/usePatients";
+import { useAuth } from "@/lib/auth-context";
 
 type CheckInStep = "START" | "IDENTIFY" | "PURPOSE" | "PLAN" | "VERIFYING" | "COMPLETE";
 
 export default function CheckInPage() {
+  const { user } = useAuth();
+  const { data: patientsResponse } = usePatients();
+  const patients = patientsResponse?.data ?? [];
+  const createEntry = useCreateQueueEntry();
+
   const [step, setStep] = useState<CheckInStep>("START");
   const [patientId, setPatientId] = useState("");
+  const [selectedPatient, setSelectedPatient] = useState<any>(null);
   const [selectedPurpose, setSelectedPurpose] = useState<string | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -22,9 +31,16 @@ export default function CheckInPage() {
     e.preventDefault();
     if (!patientId) return;
     setIsLoading(true);
+    const patient = patients.find((p: any) => p.id === patientId);
     setTimeout(() => {
       setIsLoading(false);
-      setStep("IDENTIFY");
+      if (patient) {
+        setSelectedPatient(patient);
+        setStep("IDENTIFY");
+      } else {
+        // Patient not found - could show error
+        setStep("IDENTIFY");
+      }
     }, 1500);
   };
 
@@ -45,9 +61,21 @@ export default function CheckInPage() {
 
   const handleFinalCheckIn = () => {
     setStep("VERIFYING");
-    setTimeout(() => {
-      setStep("COMPLETE");
-    }, 2500);
+    if (selectedPatient && selectedPurpose) {
+      createEntry.mutate({
+        patientId: selectedPatient.id,
+        patientName: `${selectedPatient.firstName} ${selectedPatient.lastName}`,
+        serviceType: selectedPurpose,
+        priority: "Normal",
+        clinicId: user?.clinicId || "",
+      }, {
+        onSuccess: (entry) => {
+          setTimeout(() => setStep("COMPLETE"), 1500);
+        },
+      });
+    } else {
+      setTimeout(() => setStep("COMPLETE"), 1500);
+    }
   };
 
   return (
@@ -111,16 +139,18 @@ export default function CheckInPage() {
               
               <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-8 p-5 sm:p-8 rounded-xl sm:rounded-[2.5rem] bg-sky-50 border border-sky-100 mb-6 sm:mb-12">
                 <div className="w-16 h-16 sm:w-24 sm:h-24 rounded-xl sm:rounded-[2rem] bg-white shadow-sm flex items-center justify-center text-sky-600 text-xl sm:text-3xl font-black shrink-0 mx-auto sm:mx-0">
-                  CO
+                  {selectedPatient?.firstName?.[0]}{selectedPatient?.lastName?.[0]}
                 </div>
                 <div className="text-center sm:text-left">
-                  <h2 className="text-xl sm:text-3xl font-black text-slate-900">Chidimma Okoro</h2>
+                  <h2 className="text-xl sm:text-3xl font-black text-slate-900">
+                    {selectedPatient ? `${selectedPatient.firstName} ${selectedPatient.lastName}` : "Patient Not Found"}
+                  </h2>
                   <p className="text-slate-500 font-bold uppercase tracking-widest text-[9px] sm:text-xs flex items-center gap-1 sm:gap-2 mt-1 justify-center sm:justify-start">
-                    <UserCheck size={12} className="text-sky-500" /> Patient ID: {patientId || "PT-2024-001"}
+                    <UserCheck size={12} className="text-sky-500" /> Patient ID: {selectedPatient?.id || patientId}
                   </p>
                 </div>
                 <div className="mt-1 sm:mt-0 sm:ml-auto px-3 sm:px-6 py-2 sm:py-3 bg-white rounded-lg sm:rounded-2xl border border-sky-100 shadow-sm text-sky-600 font-black text-[9px] sm:text-sm uppercase tracking-widest text-center">
-                  Returning Patient
+                  {selectedPatient ? "Returning Patient" : "New Patient"}
                 </div>
               </div>
 
@@ -247,12 +277,12 @@ export default function CheckInPage() {
                 <div className="relative z-10 space-y-4 sm:space-y-6">
                   <div className="text-center">
                     <p className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Queue Ticket</p>
-                    <p className="text-4xl sm:text-6xl font-black text-slate-900">V-024</p>
+                    <p className="text-4xl sm:text-6xl font-black text-slate-900">{createEntry.data?.ticketNumber || "V-024"}</p>
                   </div>
                   <div className="space-y-1 sm:space-y-2 text-left border-t border-slate-200 pt-4 sm:pt-6">
                     <div className="flex justify-between">
                       <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase">Patient</span>
-                      <span className="text-[10px] sm:text-xs font-black text-slate-900">Chidimma Okoro</span>
+                      <span className="text-[10px] sm:text-xs font-black text-slate-900">{selectedPatient ? `${selectedPatient.firstName} ${selectedPatient.lastName}` : "Patient"}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase">Purpose</span>
@@ -264,7 +294,7 @@ export default function CheckInPage() {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase">Time</span>
-                      <span className="text-[10px] sm:text-xs font-black text-slate-900">10:42 AM</span>
+                      <span className="text-[10px] sm:text-xs font-black text-slate-900">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                     </div>
                   </div>
                   <QrCode className="mx-auto text-slate-900 opacity-20" size={60} />
@@ -275,7 +305,7 @@ export default function CheckInPage() {
                 <button className="w-full sm:w-auto px-6 sm:px-10 py-4 sm:py-5 bg-slate-900 text-white rounded-xl sm:rounded-2xl font-black uppercase tracking-widest text-[10px] sm:text-xs flex items-center justify-center gap-2 sm:gap-3 hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/20">
                   <Printer size={16} /> Print Ticket
                 </button>
-                <button onClick={() => { setStep("START"); setPatientId(""); }}
+                <button onClick={() => { setStep("START"); setPatientId(""); setSelectedPatient(null); setSelectedPurpose(null); setSelectedPlan(null); }}
                   className="w-full sm:w-auto px-6 sm:px-10 py-4 sm:py-5 bg-white border border-slate-200 text-slate-600 rounded-xl sm:rounded-2xl font-black uppercase tracking-widest text-[10px] sm:text-xs hover:bg-slate-50 transition-all">
                   Done
                 </button>
