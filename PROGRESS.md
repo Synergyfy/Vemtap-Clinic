@@ -64,8 +64,8 @@ Integrating the NestJS API backend (~210 endpoints, 32 modules) with the Next.js
 | `clinic/products/` | Uses `useProducts()` + `useProductStats()` hooks | ✅ DONE (quick wins) |
 | `clinic/finance/` | Backend expenses module + `useExpenses()` + `useInvoices()` hooks | ✅ DONE |
 | `clinic/reports/` | Backend analytics module + `useReports` hooks (revenue, staff KPIs, queue, optical) | ✅ DONE |
-| `clinic/settings/` | Static settings — needs new backend module | DEFERRED |
-| `admin/settings/` | Static settings — needs new backend module | DEFERRED |
+| `clinic/settings/` | Backend settings module (key-value store) + `useSettings` hooks | ✅ DONE |
+| `admin/settings/` | SaaS admin settings — platform-level config (deferred, different scope) | DEFERRED |
 
 ### 🔄 Phase 5: Supporting Modules — **NOT STARTED**
 | Module | API Endpoints | Pages Affected |

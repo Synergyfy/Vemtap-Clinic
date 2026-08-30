@@ -38,6 +38,7 @@ import { CurrencyModule } from './currency/currency.module';
 import { FileUploadModule } from './file-upload/file-upload.module';
 import { ExpensesModule } from './expenses/expenses.module';
 import { AnalyticsModule } from './analytics/analytics.module';
+import { SettingsModule } from './settings/settings.module';
 
 @Module({
   imports: [
@@ -82,6 +83,7 @@ import { AnalyticsModule } from './analytics/analytics.module';
     FileUploadModule,
     ExpensesModule,
     AnalyticsModule,
+    SettingsModule,
   ],
 })
 export class AppModule {}
