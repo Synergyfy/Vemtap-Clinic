@@ -14,7 +14,6 @@ import {
   RefreshCw
 } from "lucide-react";
 import { motion } from "framer-motion";
-import { usePatientStore } from "@/store/patientStore";
 import { Modal } from "@/components/ui/modal";
 
 const navigation = [
@@ -28,20 +27,11 @@ const navigation = [
 export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const resetStore = usePatientStore((state) => state.resetStore);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
-
-  const handleReset = () => {
-    if (confirm("Are you sure you want to reset all your data to the initial state? This action cannot be undone.")) {
-      resetStore();
-      alert("Data has been reset successfully!");
-    }
-  };
 
   const handleLogout = () => {
     try {
-      localStorage.removeItem("patient-portal-storage");
-      sessionStorage.clear();
+      localStorage.removeItem("vemtap_patient_access_token");
     } catch { /* ignore */ }
     setShowLogoutModal(false);
     router.replace("/login");
@@ -107,15 +97,6 @@ export default function Sidebar() {
                     <Settings className="h-5 w-5 shrink-0 text-gray-500 group-hover:text-white" />
                     Settings
                   </Link>
-                </li>
-                <li>
-                  <button 
-                    onClick={handleReset}
-                    className="w-full group flex gap-x-3 rounded-xl p-3 text-sm font-semibold leading-6 text-gray-400 hover:text-amber-400 hover:bg-amber-500/10 transition-colors text-left"
-                  >
-                    <RefreshCw className="h-5 w-5 shrink-0 text-gray-500 group-hover:text-amber-400" />
-                    Reset Data
-                  </button>
                 </li>
                 <li>
                   <button 

@@ -5,10 +5,10 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Bell, UserCircle, CheckCircle2, FileText, CalendarDays, Info, LogOut, User, ArrowRightFromLine } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { usePatientStore, Notification } from "@/store/patientStore";
+import { usePatientNotifications, useMarkNotificationRead, useMarkAllNotificationsRead } from "@/hooks/usePatientPortal";
 import { Modal } from "@/components/ui/modal";
 
-const getIcon = (type: Notification['type']) => {
+const getIcon = (type: string) => {
   switch (type) {
     case 'appointment': return { icon: CalendarDays, color: "text-teal-600", bg: "bg-teal-50" };
     case 'invoice': return { icon: FileText, color: "text-blue-600", bg: "bg-blue-50" };
@@ -26,17 +26,18 @@ export default function TopNav() {
   const notifRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
 
-  const { notifications, markNotificationRead, markAllNotificationsRead } = usePatientStore();
+  const { data: notifications = [] } = usePatientNotifications();
+  const markRead = useMarkNotificationRead();
+  const markAllRead = useMarkAllNotificationsRead();
+  const unreadCount = notifications.filter(n => !n.isRead).length;
 
   const handleLogout = () => {
     try {
-      localStorage.removeItem("patient-portal-storage");
-      sessionStorage.clear();
+      localStorage.removeItem("vemtap_patient_access_token");
     } catch { /* ignore */ }
     setShowLogoutModal(false);
     router.replace("/login");
   };
-  const unreadCount = notifications.filter(n => n.unread).length;
 
   // Close dropdowns on click outside
   useEffect(() => {
@@ -94,7 +95,7 @@ export default function TopNav() {
                     <h3 className="font-bold text-gray-900">Notifications</h3>
                     {unreadCount > 0 && (
                       <button 
-                        onClick={markAllNotificationsRead}
+                        onClick={() => markAllRead.mutate()}
                         className="text-xs text-teal-600 font-medium hover:underline"
                       >
                         Mark all as read
@@ -113,9 +114,9 @@ export default function TopNav() {
                         return (
                           <div 
                             key={notif.id} 
-                            onClick={() => markNotificationRead(notif.id)}
+                            onClick={() => markRead.mutate(notif.id)}
                             className={`p-4 border-b border-gray-50 hover:bg-gray-50 transition-colors cursor-pointer flex gap-3 ${
-                              notif.unread ? "bg-white" : "bg-gray-50/50"
+                              !notif.isRead ? "bg-white" : "bg-gray-50/50"
                             }`}
                           >
                             <div className={`mt-0.5 w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${style.bg}`}>
@@ -123,10 +124,10 @@ export default function TopNav() {
                             </div>
                             <div className="flex-1">
                               <div className="flex justify-between items-start gap-2">
-                                <p className={`text-sm font-medium ${notif.unread ? 'text-gray-900' : 'text-gray-700'}`}>
+                                <p className={`text-sm font-medium ${!notif.isRead ? 'text-gray-900' : 'text-gray-700'}`}>
                                   {notif.title}
                                 </p>
-                                {notif.unread && (
+                                {!notif.isRead && (
                                   <span className="w-2 h-2 rounded-full bg-teal-500 mt-1.5 shrink-0" />
                                 )}
                               </div>
