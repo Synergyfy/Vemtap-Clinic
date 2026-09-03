@@ -88,7 +88,7 @@ export default function HMOPage() {
 
   // Filter functions
   const filteredClaims = claims.filter(c => {
-    const patientName = c.patient?.firstName + ' ' + c.patient?.lastName ?? '';
+    const patientName = c.patient ? `${c.patient.firstName} ${c.patient.lastName}` : '';
     const hmoName = c.hmo?.name ?? '';
     const matchesSearch = c.claimNumber?.toLowerCase().includes(searchQuery.toLowerCase()) ||
                           patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||

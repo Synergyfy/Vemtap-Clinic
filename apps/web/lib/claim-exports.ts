@@ -19,9 +19,9 @@ export function exportCsv(data: Record<string, string>[], filename: string) {
 export function exportClaimsCsv(claims: HmoClaim[]) {
   const data = claims.map((c) => ({
     'Claim ID': c.id,
-    HMO: c.hmo?.name ?? c.hmoId,
-    Patient: c.patient?.firstName + ' ' + c.patient?.lastName ?? c.patientId,
-    Diagnosis: c.diagnosis ?? '',
+    HMO: c.hmo?.name || c.hmoId,
+    Patient: c.patient?.firstName + ' ' + c.patient?.lastName || c.patientId,
+    Diagnosis: c.diagnosis || '',
     Total: String(c.amountClaimed),
     Status: c.status,
     Submitted: c.submittedDate || '',
@@ -33,11 +33,11 @@ export function exportClaimsCsv(claims: HmoClaim[]) {
 export function exportRemittancesCsv(remittances: HmoRemittance[]) {
   const data = remittances.map((r) => ({
     Reference: r.remittanceNumber,
-    HMO: r.hmo?.name ?? r.hmoId,
+    HMO: r.hmo?.name || r.hmoId,
     Amount: String(r.totalAmount),
-    Received: r.receivedDate,
+    Received: r.receivedDate || '',
     Status: r.status,
-    'Matched Claims': r.matchedClaimIds?.join('; ') ?? '',
+    'Matched Claims': r.matchedClaimIds?.join('; ') || '',
   }));
   exportCsv(data, `hmo_remittances_${new Date().toISOString().slice(0, 10)}.csv`);
 }
@@ -46,8 +46,8 @@ export function exportAppealsCsv(appeals: HmoAppeal[]) {
   const data = appeals.map((a) => ({
     'Appeal ID': a.id,
     'Claim ID': a.claimId,
-    HMO: a.claim?.hmo?.name ?? '',
-    Patient: a.claim?.patient?.firstName + ' ' + a.claim?.patient?.lastName ?? '',
+    HMO: a.claim?.hmo?.name || '',
+    Patient: a.claim?.patient?.firstName + ' ' + a.claim?.patient?.lastName || '',
     Reason: a.reason,
     Status: a.status,
     Submitted: a.createdAt || '',
@@ -67,8 +67,8 @@ export function generateClaimTextSummary(claims: HmoClaim[]): string {
     '',
     ...claims.map((c) =>
       [
-        `  ${c.id} | ${c.hmo?.name ?? c.hmoId} | ${c.patient?.firstName + ' ' + c.patient?.lastName ?? c.patientId}`,
-        `  Diagnosis: ${c.diagnosis ?? ''}`,
+        `  ${c.id} | ${c.hmo?.name || c.hmoId} | ${c.patient?.firstName + ' ' + c.patient?.lastName || c.patientId}`,
+        `  Diagnosis: ${c.diagnosis || ''}`,
         `  Amount: ₦${c.amountClaimed.toLocaleString()} | Status: ${c.status}`,
         '  ' + '-'.repeat(40),
       ].join('\n')

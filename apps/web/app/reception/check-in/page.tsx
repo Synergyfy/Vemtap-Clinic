@@ -68,6 +68,7 @@ export default function CheckInPage() {
         serviceType: selectedPurpose,
         priority: "Normal",
         clinicId: user?.clinicId || "",
+        branchId: user?.clinicId || "",
       }, {
         onSuccess: (entry) => {
           setTimeout(() => setStep("COMPLETE"), 1500);

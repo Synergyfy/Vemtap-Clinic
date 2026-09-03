@@ -74,13 +74,17 @@ export interface CreateQueueEntryData {
   branchId: string;
   clinicId: string;
   station?: string;
+  stage?: string;
+  serviceType?: string;
   priority?: string;
   notes?: string;
+  patientName?: string;
 }
 
 export interface UpdateQueueEntryData {
   status?: QueueStatus;
   station?: string;
+  stage?: string;
   notes?: string;
 }
 

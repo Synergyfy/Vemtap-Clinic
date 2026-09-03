@@ -38,7 +38,7 @@ export const Hero = () => {
           </p>
           
           <div className="flex flex-col sm:flex-row gap-4 mb-10">
-            <Button variant="dark" size="lg" className="gap-2" onClick={() => openModal("demo")}>
+            <Button variant="default" size="lg" className="gap-2" onClick={() => openModal("demo")}>
               Request Demo <ChevronRight size={18} />
             </Button>
             <Button variant="outline" size="lg" className="gap-2" onClick={() => openModal("tour")}>

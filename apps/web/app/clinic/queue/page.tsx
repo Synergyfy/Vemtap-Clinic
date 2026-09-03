@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/app/clinic/_components/page-header";
 import { Modal } from "@/components/ui/modal";
+import { useAuth } from "@/lib/auth-context";
 import { useQueue, useCreateQueueEntry, useUpdateQueueEntry } from "@/hooks/useQueue";
 import { PageSkeleton } from "@/components/ui/skeleton";
 
@@ -104,6 +105,7 @@ function shortISODateTime(iso: string) {
 }
 
 export default function QueuePage() {
+  const { user } = useAuth();
   const { data: apiQueueResponse, isLoading } = useQueue();
   const apiQueue = apiQueueResponse?.data ?? [];
   const createEntry = useCreateQueueEntry();
@@ -174,6 +176,9 @@ export default function QueuePage() {
       patientName: addForm.patientName.trim(),
       serviceType: addForm.stage,
       priority: addForm.priority,
+      patientId: "", // TODO: Select patient
+      branchId: user?.clinicId || "",
+      clinicId: user?.clinicId || "",
     }, {
       onSuccess: (newItem) => {
         setQueue((prev) => [newItem, ...prev]);

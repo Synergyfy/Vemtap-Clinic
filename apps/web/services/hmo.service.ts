@@ -120,6 +120,7 @@ export interface CreateRemittanceData {
   periodEnd?: string;
   hmoId: string;
   clinicId: string;
+  notes?: string;
 }
 
 export interface UpdateRemittanceData {

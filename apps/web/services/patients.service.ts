@@ -52,7 +52,7 @@ export interface PatientQueryParams {
 export interface CreatePatientData {
   firstName: string;
   lastName: string;
-  dateOfBirth: string;
+  dateOfBirth?: string;
   gender: 'male' | 'female' | 'other';
   phone: string;
   email?: string;

@@ -27,7 +27,27 @@ export default function SettingsPage() {
   const [customizeModal, setCustomizeModal] = useState<string | null>(null);
 
   // Form state
-  const [form, setForm] = useState({
+  type FormState = {
+    clinic_name: string;
+    registration_id: string;
+    address: string;
+    email: string;
+    phone: string;
+    currency: string;
+    timezone: string;
+    apply_vat: string;
+    invoice_prefix: string;
+    payment_terms: string;
+    patient_deposits: string;
+    auto_hmo_claims: string;
+    lock_paid_invoices: string;
+    sms_receipts: string;
+    theme: string;
+    primary_color: string;
+    [key: string]: string;
+  };
+
+  const [form, setForm] = useState<FormState>({
     clinic_name: "", registration_id: "", address: "", email: "", phone: "",
     currency: "NGN", timezone: "(GMT+01:00) West Central Africa",
     apply_vat: "true", invoice_prefix: "VMT-", payment_terms: "Due on Receipt",

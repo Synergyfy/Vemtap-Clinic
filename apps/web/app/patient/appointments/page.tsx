@@ -207,7 +207,7 @@ export default function AppointmentsPage() {
                 <div className="space-y-4">
                   <div className="flex flex-col gap-1.5">
                     <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Appointment Type</label>
-                    <Select value={bookType} onValueChange={setBookType}>
+                    <Select value={bookType} onValueChange={(v) => v && setBookType(v)}>
                       <SelectTrigger className="w-full h-14 rounded-2xl bg-gray-50 border-gray-200 focus:ring-teal-500 font-bold">
                         <SelectValue placeholder="Select type" />
                       </SelectTrigger>
@@ -221,7 +221,7 @@ export default function AppointmentsPage() {
 
                   <div className="flex flex-col gap-1.5">
                     <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Clinic Branch</label>
-                    <Select value={bookBranch} onValueChange={setBookBranch}>
+                    <Select value={bookBranch} onValueChange={(v) => v && setBookBranch(v)}>
                       <SelectTrigger className="w-full h-14 rounded-2xl bg-gray-50 border-gray-200 focus:ring-teal-500 font-bold">
                         <SelectValue placeholder="Select branch" />
                       </SelectTrigger>
@@ -238,7 +238,7 @@ export default function AppointmentsPage() {
                   <div className="flex flex-col gap-1.5">
                     <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Pick Date</label>
                     <Popover>
-                      <PopoverTrigger asChild>
+                      <PopoverTrigger>
                         <button className={`w-full flex items-center justify-between border border-gray-200 rounded-2xl px-4 h-14 bg-gray-50 hover:bg-gray-100 transition-all focus:ring-2 focus:ring-teal-500 outline-none font-bold ${!bookDate ? "text-gray-400" : "text-gray-900"}`}>
                           {bookDate ? format(bookDate, "PPP") : <span>Select Date</span>}
                           <Calendar className="w-5 h-5 opacity-40" />
@@ -295,7 +295,7 @@ export default function AppointmentsPage() {
                 <div className="flex flex-col gap-1.5">
                   <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">New Date</label>
                   <Popover>
-                    <PopoverTrigger asChild>
+                    <PopoverTrigger>
                       <button className={`w-full flex items-center justify-between border border-gray-200 rounded-2xl p-4 h-14 bg-gray-50 hover:bg-gray-100 transition-all focus:ring-2 focus:ring-teal-500 outline-none font-bold ${!rescheduleDate ? "text-gray-400" : "text-gray-900"}`}>
                         {rescheduleDate ? format(rescheduleDate, "PPP") : <span>Pick a date</span>}
                         <Calendar className="w-5 h-5 opacity-40" />
@@ -308,7 +308,7 @@ export default function AppointmentsPage() {
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">New Time</label>
-                  <Select value={rescheduleTime} onValueChange={setRescheduleTime}>
+                  <Select value={rescheduleTime} onValueChange={(v) => v && setRescheduleTime(v)}>
                     <SelectTrigger className="w-full h-14 rounded-2xl bg-gray-50 border-gray-200 focus:ring-teal-500 font-bold">
                       <SelectValue placeholder="Select time" />
                     </SelectTrigger>

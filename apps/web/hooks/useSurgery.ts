@@ -28,7 +28,7 @@ export function useCreateProcedure() {
   const qc = useQueryClient();
   const { user } = useAuth();
   return useMutation({
-    mutationFn: (dto: { name: string; description?: string; category: string; duration: number; cost: string }) =>
+    mutationFn: (dto: { name: string; description: string | null; category: string; duration: number; cost: string }) =>
       createProcedure({ ...dto, clinicId: user!.clinicId }),
     onSuccess: () => { if (user?.clinicId) qc.invalidateQueries({ queryKey: SURGERY_KEYS.procedures(user.clinicId) }); },
   });
@@ -83,7 +83,7 @@ export function useCreateSchedule() {
   const qc = useQueryClient();
   const { user } = useAuth();
   return useMutation({
-    mutationFn: (dto: { procedureId: string; roomId: string; patientId: string; surgeonId: string; scheduledDate: string; scheduledTime: string; notes?: string }) =>
+    mutationFn: (dto: { procedureId: string; roomId: string; patientId: string; surgeonId: string; scheduledDate: string; scheduledTime: string; notes: string | null; status: string }) =>
       createSchedule({ ...dto, clinicId: user!.clinicId }),
     onSuccess: () => { if (user?.clinicId) qc.invalidateQueries({ queryKey: SURGERY_KEYS.schedules(user.clinicId) }); },
   });

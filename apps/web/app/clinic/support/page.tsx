@@ -47,7 +47,16 @@ const successTeam = [
   { name: "Technical Support", role: "24/7 Operations Team", availability: "Live Now", avatar: "TS" },
 ];
 
-const incidentLogs = [
+type IncidentLog = {
+  id: string;
+  issue: string;
+  status: string;
+  time: string;
+  severity: string;
+  [key: string]: string;
+};
+
+const incidentLogs: IncidentLog[] = [
   { id: "INC-101", issue: "NHIA Portal Sync Latency", status: "Resolved", time: "2 hours ago", severity: "Medium" },
   { id: "INC-102", issue: "Branch POS Offline (Ikeja)", status: "Monitoring", time: "15 mins ago", severity: "High" },
 ];
@@ -325,16 +334,16 @@ export default function SupportPage() {
                  <Card className="border-none shadow-sm rounded-3xl p-6 bg-white border border-sky-100">
                     <p className="text-sm font-bold text-slate-900 mb-2">Technical Audit</p>
                     <p className="text-xs text-slate-600 mb-6 leading-relaxed">Download your clinic's technical performance and uptime report for the last quarter.</p>
-                     <Button variant="outline" className="w-full rounded-xl font-bold border-sky-100 text-sky-600 h-11 text-xs" onClick={() => {
-                       const auditData = incidentLogs.map(inc => ({
-                         ID: inc.id,
-                         Issue: inc.issue,
-                         Severity: inc.severity,
-                         Status: inc.status,
-                         Time: inc.time
-                       }));
-                       const headers = Object.keys(auditData[0]);
-                       const csv = [headers.join(","), ...auditData.map(row => headers.map(h => `"${row[h]}"`).join(","))].join("\n");
+<Button variant="outline" className="w-full rounded-xl font-bold border-sky-100 text-sky-600 h-11 text-xs" onClick={() => {
+                        const auditData: Record<string, string>[] = incidentLogs.map(inc => ({
+                          ID: inc.id,
+                          Issue: inc.issue,
+                          Severity: inc.severity,
+                          Status: inc.status,
+                          Time: inc.time
+                        }));
+                        const headers = Object.keys(auditData[0]);
+                        const csv = [headers.join(","), ...auditData.map(row => headers.map(h => `"${row[h]}"`).join(","))].join("\n");
                        const blob = new Blob([csv], { type: "text/csv" });
                        const url = URL.createObjectURL(blob);
                        const a = document.createElement("a");

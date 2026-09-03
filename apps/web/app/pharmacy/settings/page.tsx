@@ -156,32 +156,32 @@ export default function PharmacySettings() {
       </Card>
 
       {/* Profile Modal */}
-      <Modal isOpen={profileModal} onClose={() => setProfileModal(null)} title="Edit Profile">
+      <Modal isOpen={profileModal} onClose={() => setProfileModal(false)} title="Edit Profile">
         <div className="space-y-5">
           <div><label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Full Name</label><input type="text" value={profName} onChange={(e) => setProfName(e.target.value)} className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50" /></div>
           <div><label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Email</label><input type="email" value={profEmail} onChange={(e) => setProfEmail(e.target.value)} className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50" /></div>
           <div><label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Phone</label><input type="text" value={profPhone} onChange={(e) => setProfPhone(e.target.value)} className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50" /></div>
           <div className="flex justify-end gap-2 pt-2">
-            <button onClick={() => setProfileModal(null)} className="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-700 hover:bg-slate-50">Cancel</button>
-            <button onClick={() => { setProfileModal(null); showToast("Profile updated successfully"); }} className="px-6 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-200">Save Changes</button>
+            <button onClick={() => setProfileModal(false)} className="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-700 hover:bg-slate-50">Cancel</button>
+            <button onClick={() => { setProfileModal(false); showToast("Profile updated successfully"); }} className="px-6 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-200">Save Changes</button>
           </div>
         </div>
       </Modal>
 
       {/* Password Modal */}
-      <Modal isOpen={passwordModal} onClose={() => setPasswordModal(null)} title="Change Password">
+      <Modal isOpen={passwordModal} onClose={() => setPasswordModal(false)} title="Change Password">
         <div className="space-y-5">
           <div><label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Current Password</label><div className="relative"><input type={showPw ? "text" : "password"} value={currentPw} onChange={(e) => setCurrentPw(e.target.value)} className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 pr-10" placeholder="Enter current password" /><button onClick={() => setShowPw(!showPw)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">{showPw ? <EyeOff size={16} /> : <Eye size={16} />}</button></div></div>
           <div><label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1.5">New Password</label><input type={showPw ? "text" : "password"} value={newPw} onChange={(e) => setNewPw(e.target.value)} className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50" placeholder="Enter new password" /></div>
           <div className="flex justify-end gap-2 pt-2">
-            <button onClick={() => setPasswordModal(null)} className="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-700 hover:bg-slate-50">Cancel</button>
-            <button onClick={() => { setPasswordModal(null); setCurrentPw(""); setNewPw(""); showToast("Password changed successfully"); }} className="px-6 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-200">Update Password</button>
+            <button onClick={() => setPasswordModal(false)} className="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-700 hover:bg-slate-50">Cancel</button>
+            <button onClick={() => { setPasswordModal(false); setCurrentPw(""); setNewPw(""); showToast("Password changed successfully"); }} className="px-6 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-200">Update Password</button>
           </div>
         </div>
       </Modal>
 
       {/* 2FA Modal */}
-      <Modal isOpen={twoFactorModal} onClose={() => setTwoFactorModal(null)} title="Two-Factor Authentication">
+      <Modal isOpen={twoFactorModal} onClose={() => setTwoFactorModal(false)} title="Two-Factor Authentication">
         <div className="space-y-5">
           <div className="flex items-center justify-between rounded-xl border border-slate-200 p-4">
             <div><p className="font-medium text-slate-900 text-sm">Two-Factor Authentication</p><p className="text-xs text-slate-500">Add an extra layer of security to your account</p></div>
@@ -190,14 +190,14 @@ export default function PharmacySettings() {
             </button>
           </div>
           <div className="flex justify-end gap-2 pt-2">
-            <button onClick={() => setTwoFactorModal(null)} className="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-700 hover:bg-slate-50">Cancel</button>
-            <button onClick={() => { setTwoFactorModal(null); showToast(twoFactor ? "2FA enabled" : "2FA disabled"); }} className="px-6 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-200">Save</button>
+            <button onClick={() => setTwoFactorModal(false)} className="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-700 hover:bg-slate-50">Cancel</button>
+            <button onClick={() => { setTwoFactorModal(false); showToast(twoFactor ? "2FA enabled" : "2FA disabled"); }} className="px-6 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-200">Save</button>
           </div>
         </div>
       </Modal>
 
       {/* Session Timeout Modal */}
-      <Modal isOpen={sessionModal} onClose={() => setSessionModal(null)} title="Session Timeout">
+      <Modal isOpen={sessionModal} onClose={() => setSessionModal(false)} title="Session Timeout">
         <div className="space-y-5">
           <div><label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Duration</label>
             <div className="flex gap-2">
@@ -207,14 +207,14 @@ export default function PharmacySettings() {
             </div>
           </div>
           <div className="flex justify-end gap-2 pt-2">
-            <button onClick={() => setSessionModal(null)} className="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-700 hover:bg-slate-50">Cancel</button>
-            <button onClick={() => { setSessionModal(null); showToast("Session timeout updated"); }} className="px-6 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-200">Save</button>
+            <button onClick={() => setSessionModal(false)} className="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-700 hover:bg-slate-50">Cancel</button>
+            <button onClick={() => { setSessionModal(false); showToast("Session timeout updated"); }} className="px-6 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-200">Save</button>
           </div>
         </div>
       </Modal>
 
       {/* Default View Modal */}
-      <Modal isOpen={viewModal} onClose={() => setViewModal(null)} title="Default View">
+      <Modal isOpen={viewModal} onClose={() => setViewModal(false)} title="Default View">
         <div className="space-y-5">
           <div className="flex gap-2">
             {["Dashboard", "Dispensing", "Inventory", "Prescriptions"].map((v) => (
@@ -222,14 +222,14 @@ export default function PharmacySettings() {
             ))}
           </div>
           <div className="flex justify-end gap-2 pt-2">
-            <button onClick={() => setViewModal(null)} className="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-700 hover:bg-slate-50">Cancel</button>
-            <button onClick={() => { setViewModal(null); showToast("Default view updated"); }} className="px-6 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-200">Save</button>
+            <button onClick={() => setViewModal(false)} className="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-700 hover:bg-slate-50">Cancel</button>
+            <button onClick={() => { setViewModal(false); showToast("Default view updated"); }} className="px-6 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-200">Save</button>
           </div>
         </div>
       </Modal>
 
       {/* Items Per Page Modal */}
-      <Modal isOpen={itemsModal} onClose={() => setItemsModal(null)} title="Items Per Page">
+      <Modal isOpen={itemsModal} onClose={() => setItemsModal(false)} title="Items Per Page">
         <div className="space-y-5">
           <div className="flex gap-2">
             {["10", "20", "50", "100"].map((n) => (
@@ -237,19 +237,19 @@ export default function PharmacySettings() {
             ))}
           </div>
           <div className="flex justify-end gap-2 pt-2">
-            <button onClick={() => setItemsModal(null)} className="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-700 hover:bg-slate-50">Cancel</button>
-            <button onClick={() => { setItemsModal(null); showToast("Items per page updated"); }} className="px-6 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-200">Save</button>
+            <button onClick={() => setItemsModal(false)} className="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-700 hover:bg-slate-50">Cancel</button>
+            <button onClick={() => { setItemsModal(false); showToast("Items per page updated"); }} className="px-6 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-200">Save</button>
           </div>
         </div>
       </Modal>
 
       {/* Sign Out Confirmation */}
-      <Modal isOpen={signOutModal} onClose={() => setSignOutModal(null)} title="Sign Out">
+      <Modal isOpen={signOutModal} onClose={() => setSignOutModal(false)} title="Sign Out">
         <div className="space-y-5">
           <p className="text-sm text-slate-600">Are you sure you want to sign out of the Pharmacy Dashboard? You will need to log in again.</p>
           <div className="flex justify-end gap-2 pt-2">
-            <button onClick={() => setSignOutModal(null)} className="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-700 hover:bg-slate-50">Cancel</button>
-            <button onClick={() => { setSignOutModal(null); showToast("Signed out successfully"); }} className="px-6 py-2.5 rounded-xl bg-rose-600 text-white text-sm font-bold hover:bg-rose-700 shadow-lg shadow-rose-200">Sign Out</button>
+            <button onClick={() => setSignOutModal(false)} className="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-700 hover:bg-slate-50">Cancel</button>
+            <button onClick={() => { setSignOutModal(false); showToast("Signed out successfully"); }} className="px-6 py-2.5 rounded-xl bg-rose-600 text-white text-sm font-bold hover:bg-rose-700 shadow-lg shadow-rose-200">Sign Out</button>
           </div>
         </div>
       </Modal>

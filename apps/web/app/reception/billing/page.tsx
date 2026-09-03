@@ -12,12 +12,14 @@ import { useAuth } from "@/lib/auth-context";
 import { usePatients } from "@/hooks/usePatients";
 import { useProducts } from "@/hooks/useProducts";
 import { useCreateInvoice, useMakePayment } from "@/hooks/useBilling";
+import { Product } from "@/services/products.service";
 
 const formatCurrency = (value: number) => `NGN ${value.toLocaleString("en-NG")}`;
 
 export default function BillingPage() {
   const { user } = useAuth();
-  const { data: patientsData = [], isLoading: patientsLoading } = usePatients();
+  const { data: patientsResponse, isLoading: patientsLoading } = usePatients();
+  const patientsData = patientsResponse?.data ?? [];
   const { data: productsData = [], isLoading: productsLoading } = useProducts();
   const createInvoiceMut = useCreateInvoice();
   const makePaymentMut = useMakePayment();
@@ -33,7 +35,7 @@ export default function BillingPage() {
 
   // Map products to service catalog
   const serviceCatalog = useMemo(() =>
-    productsData.map((p) => ({
+    productsData.map((p: Product) => ({
       name: p.name,
       amount: p.unitPrice,
       productId: p.id,
@@ -54,11 +56,18 @@ export default function BillingPage() {
   const [showReceipt, setShowReceipt] = useState(false);
 
   const invoiceTotal = useMemo(
-    () => selectedServices.reduce((total, service) => total + service.amount, 0),
+    () => selectedServices.reduce((total: number, service: { amount: number }) => total + service.amount, 0),
     [selectedServices]
   );
 
-  const filteredPatients = patients.filter((patient) =>
+  interface PatientOption {
+  id: string;
+  name: string;
+  plan: string;
+  provider: string;
+}
+
+  const filteredPatients = patients.filter((patient: PatientOption) =>
     [patient.name, patient.id, patient.provider].join(" ").toLowerCase().includes(query.toLowerCase())
   );
 
@@ -177,7 +186,7 @@ export default function BillingPage() {
               </div>
             ) : (
               <div className="space-y-1.5 sm:space-y-2">
-                {filteredPatients.map((patient) => (
+                {filteredPatients.map((patient: PatientOption) => (
                   <button key={patient.id} onClick={() => { setSelectedPatient(patient); setInvoiceStatus("Draft"); showToast(`${patient.name} selected`); }}
                     className={cn("w-full p-3 sm:p-4 rounded-lg sm:rounded-2xl border text-left transition-all", selectedPatient?.id === patient.id ? "bg-sky-50 border-sky-100" : "border-slate-100 hover:bg-slate-50")}>
                     <p className="text-xs font-black text-slate-900 truncate">{patient.name}</p>

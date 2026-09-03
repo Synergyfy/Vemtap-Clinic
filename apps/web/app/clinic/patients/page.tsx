@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/app/clinic/_components/page-header";
 import { Modal } from "@/components/ui/modal";
+import { useAuth } from "@/lib/auth-context";
 import { usePatients, useCreatePatient } from "@/hooks/usePatients";
 import { useRecords } from "@/hooks/useRecords";
 import { useLensOrders } from "@/hooks/useOptician";
@@ -28,6 +29,7 @@ function lastVisitLabel(iso: string) {
 }
 
 export default function PatientsPage() {
+  const { user } = useAuth();
   const { data: patientsResponse, isLoading } = usePatients();
   const patients = patientsResponse?.data ?? [];
   const createPatient = useCreatePatient();
@@ -79,6 +81,8 @@ export default function PatientsPage() {
       phone: form.phone.trim(),
       dateOfBirth: form.dateOfBirth || undefined,
       gender: form.gender,
+      clinicId: user?.clinicId || "",
+      branchId: user?.clinicId || "", // Using clinicId as fallback
     }, {
       onSuccess: () => {
         setIsRegisterOpen(false);
@@ -247,11 +251,12 @@ export default function PatientsPage() {
             <label className="text-sm font-medium text-slate-700">Gender</label>
             <select
               value={form.gender}
-              onChange={(e) => setForm((p) => ({ ...p, gender: e.target.value as "Female" | "Male" }))}
+              onChange={(e) => setForm((p) => ({ ...p, gender: e.target.value as "female" | "male" | "other" }))}
               className="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none focus:border-sky-300 focus:ring-2 focus:ring-sky-100"
             >
-              <option value="Female">Female</option>
-              <option value="Male">Male</option>
+              <option value="female">Female</option>
+              <option value="male">Male</option>
+              <option value="other">Other</option>
             </select>
           </div>
 

@@ -30,16 +30,16 @@ export interface NhiaClaimForm {
 export function generateNhiaClaimForm(claim: HmoClaim): NhiaClaimForm {
   return {
     header: {
-      hmoName: claim.hmo?.name ?? '',
+      hmoName: claim.hmo?.name || '',
       hmoCode: claim.hmoId,
       claimDate: claim.submittedDate || new Date().toISOString().slice(0, 10),
       batchRef: `BATCH-${claim.hmoId}-${new Date().toISOString().slice(0, 7)}`,
     },
     patient: {
-      name: claim.patient?.firstName + ' ' + claim.patient?.lastName ?? '',
+      name: claim.patient?.firstName + ' ' + claim.patient?.lastName || '',
       id: claim.patientId,
     },
-    diagnosis: claim.diagnosis ?? '',
+    diagnosis: claim.diagnosis || '',
     services: [], // items not available on HmoClaim type
     totals: {
       subtotal: claim.amountClaimed,
@@ -52,9 +52,9 @@ export function generateNhiaClaimForm(claim: HmoClaim): NhiaClaimForm {
 export function formatClaimForExport(claim: HmoClaim): Record<string, string> {
   return {
     'Claim ID': claim.id,
-    'HMO': claim.hmo?.name ?? claim.hmoId,
-    'Patient': claim.patient?.firstName + ' ' + claim.patient?.lastName ?? claim.patientId,
-    'Diagnosis': claim.diagnosis ?? '',
+    'HMO': claim.hmo?.name || claim.hmoId,
+    'Patient': claim.patient?.firstName + ' ' + claim.patient?.lastName || claim.patientId,
+    'Diagnosis': claim.diagnosis || '',
     'Items': '',
     'Total': `₦${claim.amountClaimed.toLocaleString()}`,
     'Status': claim.status,

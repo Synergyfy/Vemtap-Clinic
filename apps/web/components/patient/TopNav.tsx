@@ -132,7 +132,7 @@ export default function TopNav() {
                                 )}
                               </div>
                               <p className="text-xs text-gray-500 mt-1 line-clamp-2">{notif.message}</p>
-                              <p className="text-[11px] text-gray-400 mt-2 font-medium">{notif.time}</p>
+                              <p className="text-[11px] text-gray-400 mt-2 font-medium">{notif.createdAt}</p>
                             </div>
                           </div>
                         );

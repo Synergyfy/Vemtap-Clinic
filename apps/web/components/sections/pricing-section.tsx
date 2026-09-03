@@ -4,9 +4,11 @@ import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { Check, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useModals } from "@/lib/modal-context";
 
 export const PricingSection = () => {
   const [isYearly, setIsYearly] = useState(false);
+  const { openModal } = useModals();
 
   const plans = [
     {

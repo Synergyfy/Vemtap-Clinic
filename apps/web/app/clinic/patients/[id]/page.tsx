@@ -56,14 +56,14 @@ export default function PatientProfilePage() {
 
   const { data: patientsResponse, isLoading: loadingPatient } = usePatients();
   const patients = patientsResponse?.data ?? [];
-  const patient = patients.find((p: any) => p.id === patientId);
+  const patient = patients.find((p) => p.id === patientId);
 
-  const { data: appointmentsResponse = [] } = useAppointments();
-  const appointments = appointmentsResponse.data ?? [];
+  const { data: appointmentsResponse } = useAppointments();
+  const appointments = appointmentsResponse?.data ?? [];
   const { data: records = [] } = useRecords({ patientId });
   const { data: prescriptions = [] } = usePatientPrescriptions(patientId);
   const { data: lensOrders = [] } = useLensOrders();
-  const invoices = useInvoices();
+  const { data: invoices = [] } = useInvoices();
   const { data: hmoClaims = [] } = useHmoClaims();
   const { data: uploads = [] } = useUploads({ entityType: "patient", entityId: patientId });
 
