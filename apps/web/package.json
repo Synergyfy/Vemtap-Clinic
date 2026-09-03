@@ -1,0 +1,47 @@
+{
+  "name": "web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 3000",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "format": "prettier --write \"**/*.{ts,tsx,json,md}\"",
+    "db:generate": "echo \"No database for web app\"",
+    "db:migrate": "echo \"No database for web app\"",
+    "db:push": "echo \"No database for web app\"",
+    "db:studio": "echo \"No database for web app\""
+  },
+  "dependencies": {
+    "@base-ui/react": "^1.0.0",
+    "@tailwindcss/postcss": "^4.0.0",
+    "@tanstack/react-query": "^5.102.5",
+    "autoprefixer": "^10.4.0",
+    "axios": "^1.19.0",
+    "class-variance-authority": "^0.7.0",
+    "clsx": "^2.1.0",
+    "date-fns": "^4.0.0",
+    "framer-motion": "^12.0.0",
+    "jspdf": "^3.0.0",
+    "lucide-react": "^0.400.0",
+    "next": "^15.0.0",
+    "react": "^18.3.0",
+    "react-day-picker": "^10.0.1",
+    "react-dom": "^18.3.0",
+    "socket.io-client": "^4.8.3",
+    "sonner": "^2.0.8",
+    "tailwind-merge": "^3.0.0",
+    "tailwindcss": "^4.0.0",
+    "zustand": "^5.0.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.62.1",
+    "@types/node": "^24.0.0",
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^16.3.3",
+    "typescript": "^5.7.3"
+  }
+}

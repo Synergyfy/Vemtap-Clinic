@@ -1,0 +1,19 @@
+packages:
+  - 'apps/*'
+  - 'packages/*'
+
+onlyBuiltDependencies:
+  - '@scarf/scarf'
+  - 'unrs-resolver'
+  - 'core-js'
+
+allowBuilds:
+  '@scarf/scarf': true
+  core-js: true
+  unrs-resolver: true
+  '@tailwindcss/postcss': true
+
+peerDependencyRules:
+  ignoreMissing:
+    - '@nestjs/microservices'
+    - '@nestjs/websockets'
