@@ -77,7 +77,7 @@ function ProductionContent() {
         title="Lens Production Tracking"
         description="Monitor every lens order through the production workflow: received → started → quality check → ready for pickup."
         actions={[
-          { label: "Production Queue", href: "#queue", variant: "primary" },
+          { label: "Production Queue", href: "#queue", variant: "default" },
         ]}
       />
 

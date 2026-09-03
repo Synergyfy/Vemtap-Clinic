@@ -97,7 +97,7 @@ export default function PharmacySuppliers() {
       )}
 
       <PageHeader title="Supplier Management" description="Manage drug suppliers, purchase orders, and restocking."
-        actions={[{ label: "New Purchase Order", variant: "primary", onClick: () => setNewOrderModal(true) }]} />
+        actions={[{ label: "New Purchase Order", variant: "default", onClick: () => setNewOrderModal(true) }]} />
 
       <div className="grid grid-cols-1 gap-4 md:gap-8 lg:grid-cols-2">
         <Card>

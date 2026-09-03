@@ -74,7 +74,7 @@ export default function IndustriesPage() {
                 Vemtap Health is designed to adapt to the unique workflows of different eye care environments. Choose your sector to see how we help you scale.
               </p>
               <div className="flex gap-4">
-                <Button size="lg" variant="primary" onClick={() => openModal("demo")}>Get Started</Button>
+                <Button size="lg" variant="default" onClick={() => openModal("demo")}>Get Started</Button>
                 <Button size="lg" variant="outline" onClick={() => openModal("sales")}>Talk to Sales</Button>
               </div>
             </motion.div>

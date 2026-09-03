@@ -67,7 +67,7 @@ export const RequestDemoPopup = () => {
             <option>Specialist Ophthalmology Clinic</option>
           </select>
         </div>
-        <Button className="w-full mt-4" variant="primary">
+        <Button className="w-full mt-4" variant="default">
           Send Request
         </Button>
         <div className="mt-4 text-center">

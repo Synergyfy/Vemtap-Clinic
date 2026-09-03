@@ -7,7 +7,7 @@ type PageHeaderAction = {
   label: string;
   href?: string;
   onClick?: () => void;
-  variant?: "primary" | "outline";
+  variant?: "default" | "outline";
   disabled?: boolean;
 };
 
@@ -30,7 +30,7 @@ export function PageHeader(props: {
             const variant = action.variant ?? "outline";
             const className = cn(
               "inline-flex items-center justify-center rounded-full px-5 py-2.5 text-sm font-medium transition-colors",
-              variant === "primary"
+              variant === "default"
                 ? "bg-sky-600 text-white hover:bg-sky-700 shadow-sm"
                 : "border border-slate-200 bg-white hover:bg-slate-50 text-slate-900",
               action.disabled ? "opacity-50 pointer-events-none" : null

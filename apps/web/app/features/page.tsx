@@ -99,7 +99,7 @@ export default function FeaturesPage() {
               Every feature you need to run a modern, efficient, and profitable eye care practice. From patient check-in to HMO reconciliation.
             </p>
             <div className="flex flex-wrap justify-center gap-4">
-              <Button size="lg" variant="primary" onClick={() => openModal("demo")}>Request Full Demo</Button>
+              <Button size="lg" variant="default" onClick={() => openModal("demo")}>Request Full Demo</Button>
               <Button size="lg" variant="outline" onClick={() => openModal("tour")}>Watch Product Tour</Button>
             </div>
           </motion.div>
@@ -120,7 +120,7 @@ export default function FeaturesPage() {
         <div className="max-w-7xl mx-auto px-6 text-center">
           <h2 className="text-3xl md:text-5xl font-bold text-brand-navy mb-6">Ready to see it in action?</h2>
           <p className="text-slate-500 mb-10 max-w-2xl mx-auto">Get a personalized tour of how Vemtap can transform your specific clinic workflow.</p>
-          <Button size="lg" variant="primary" className="px-12" onClick={() => openModal("demo")}>Book Your Live Demo</Button>
+          <Button size="lg" variant="default" className="px-12" onClick={() => openModal("demo")}>Book Your Live Demo</Button>
         </div>
       </section>
 

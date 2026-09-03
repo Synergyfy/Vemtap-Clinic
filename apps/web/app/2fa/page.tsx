@@ -56,7 +56,7 @@ export default function TwoFactorPage() {
               </div>
 
               <Link href="/dashboard" className="block w-full">
-                <Button variant="primary" className="w-full py-5 text-lg font-bold rounded-2xl">
+                <Button variant="default" className="w-full py-5 text-lg font-bold rounded-2xl">
                   Verify & Continue
                 </Button>
               </Link>

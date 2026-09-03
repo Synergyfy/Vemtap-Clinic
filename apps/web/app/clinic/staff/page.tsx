@@ -200,7 +200,7 @@ export default function StaffPage() {
         title="Staff Management"
         description="Oversee your clinical team, coordinate shift schedules, and manage role-based access control."
         actions={[
-          { label: "Add Staff Member", onClick: () => setEditStaff({} as Staff), variant: "primary" },
+          { label: "Add Staff Member", onClick: () => setEditStaff({} as Staff), variant: "default" },
           { label: "Schedule Shift", onClick: () => setIsShiftModalOpen(true), variant: "outline" },
         ]}
       />

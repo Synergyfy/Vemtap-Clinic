@@ -99,7 +99,7 @@ export default function ClinicDashboard() {
         title="Clinic Dashboard"
         description="Operational overview for today: patients, queue, appointments, revenue, HMO, staff, and alerts."
         actions={[
-          { label: "Register patient", href: "/clinic/patients", variant: "primary" },
+          { label: "Register patient", href: "/clinic/patients", variant: "default" },
           { label: "Create appointment", href: "/clinic/appointments" },
           { label: "Verify HMO", href: "/clinic/hmo" },
           { label: "Create invoice", href: "/clinic/finance" },

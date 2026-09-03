@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 import { motion, AnimatePresence } from "framer-motion";
@@ -111,7 +112,7 @@ export default function BookDemoPage() {
             </div>
             <div className="flex gap-4 pt-6">
               <Button variant="outline" className="flex-1" onClick={prevStep}>Back</Button>
-              <Button variant="primary" className="flex-1" onClick={nextStep} disabled={!formData.clinicName}>Continue</Button>
+              <Button variant="default" className="flex-1" onClick={nextStep} disabled={!formData.clinicName}>Continue</Button>
             </div>
           </motion.div>
         );
@@ -159,7 +160,7 @@ export default function BookDemoPage() {
             </div>
             <div className="flex gap-4 pt-6">
               <Button variant="outline" className="flex-1" onClick={prevStep}>Back</Button>
-              <Button variant="primary" className="flex-1" onClick={nextStep} disabled={!formData.preferredDate || !formData.preferredTime}>Continue</Button>
+              <Button variant="default" className="flex-1" onClick={nextStep} disabled={!formData.preferredDate || !formData.preferredTime}>Continue</Button>
             </div>
           </motion.div>
         );
@@ -221,7 +222,7 @@ export default function BookDemoPage() {
             </div>
             <div className="flex gap-4 pt-6">
               <Button variant="outline" className="flex-1" onClick={prevStep}>Back</Button>
-              <Button variant="primary" className="flex-1" onClick={() => setCurrentStep(4)}>Confirm Demo</Button>
+              <Button variant="default" className="flex-1" onClick={() => setCurrentStep(4)}>Confirm Demo</Button>
             </div>
           </motion.div>
         );

@@ -7,7 +7,9 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
-  turbopack: false,
+  turbopack: {
+    resolveAlias: {},
+  },
 };
 
 export default nextConfig;

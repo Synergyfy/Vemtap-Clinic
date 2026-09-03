@@ -54,7 +54,7 @@ export default function ReportsPage() {
         title="Reports & Analytics"
         description="Centralized business intelligence: Monitor growth, track KPIs, and optimize clinic operations."
         actions={[
-          { label: "Export Report", variant: "primary", onClick: () => {
+          { label: "Export Report", variant: "default", onClick: () => {
             const report = `VEMTAP CLINIC REPORT\n${"=".repeat(40)}\n\nREVENUE\n-------\nTotal Revenue: ${formatNGN(revenue?.totalRevenue || 0)}\nNet Profit: ${formatNGN(revenue?.netProfit || 0)}\nOutstanding: ${formatNGN(revenue?.outstanding || 0)}\n\nEXPENSES\n--------\nTotal: ${formatNGN(revenue?.totalExpenses || 0)}\n\nSTAFF KPIs\n----------\n${staffKPIs.map(s => `${s.name}: ${s.totalAppointments} appts, ${s.completionRate}% completion`).join("\n")}\n\nGenerated: ${new Date().toLocaleString()}\n`;
             const blob = new Blob([report], { type: "text/plain" });
             const url = URL.createObjectURL(blob);

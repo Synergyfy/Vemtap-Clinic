@@ -63,7 +63,7 @@ export default function OpticianSupport() {
   return (
     <div className="space-y-6 md:space-y-8">
       <PageHeader title="Support" description="Get help with the optical hub. Contact support or browse common questions."
-        actions={[{ label: "Submit Ticket", onClick: () => setTicketOpen(true), variant: "primary" }]} />
+        actions={[{ label: "Submit Ticket", onClick: () => setTicketOpen(true), variant: "default" }]} />
 
       <div className="grid grid-cols-1 gap-4 md:gap-8 lg:grid-cols-2">
         {supportChannels.map((ch) => (

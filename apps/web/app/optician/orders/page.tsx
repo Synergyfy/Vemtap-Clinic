@@ -61,7 +61,7 @@ export default function OrdersPage() {
       <PageHeader
         title="Optician Orders"
         description="All lens and frame orders sorted by urgency (earliest due date first)."
-        actions={[{ label: "Production Queue", href: "/optician/production", variant: "primary" }]}
+        actions={[{ label: "Production Queue", href: "/optician/production", variant: "default" }]}
       />
 
       <div className="grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-4">

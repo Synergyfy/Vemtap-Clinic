@@ -121,7 +121,7 @@ export default function ReconciliationPage() {
         title="Remittance Reconciliation"
         description="Match HMO payments to claims, track partial settlements, and reconcile outstanding balances."
         actions={[
-          { label: "Record Remittance", variant: "primary", onClick: () => { setForm({ ...emptyForm }); setFormErrors({}); setShowAddModal(true); } },
+          { label: "Record Remittance", variant: "default", onClick: () => { setForm({ ...emptyForm }); setFormErrors({}); setShowAddModal(true); } },
         ]}
       />
 

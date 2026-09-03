@@ -69,7 +69,7 @@ export default function PharmacySupport() {
   return (
     <div className="space-y-6 md:space-y-8">
       <PageHeader title="Help & Support" description="Get help with pharmacy operations, FAQs, and submit support tickets."
-        actions={[{ label: "Submit Ticket", variant: "primary", onClick: () => setNewTicketModal(true) }]} />
+        actions={[{ label: "Submit Ticket", variant: "default", onClick: () => setNewTicketModal(true) }]} />
 
       <div className="grid grid-cols-1 gap-4 md:gap-8 lg:grid-cols-3">
         {cardLinks.map((c, i) => (

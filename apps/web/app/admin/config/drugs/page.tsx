@@ -46,7 +46,7 @@ export default function DrugDatabasePage() {
           <Button variant="outline" size="sm" className="gap-2 h-11 px-6 rounded-xl font-bold border-slate-200">
             <Download size={16} /> Export Catalog
           </Button>
-          <Button variant="primary" size="sm" className="gap-2 h-11 px-6 rounded-xl font-bold shadow-lg shadow-brand-blue/20">
+          <Button variant="default" size="sm" className="gap-2 h-11 px-6 rounded-xl font-bold shadow-lg shadow-brand-blue/20">
             <Plus size={16} /> Add New Drug
           </Button>
         </div>

@@ -8,7 +8,8 @@ import {
   CreateStaffData, 
   UpdateStaffData, 
   PaginatedStaffResponse,
-  StaffStats
+  StaffStats,
+  StaffRole
 } from '@/services/staff.service';
 
 const STAFF_QUERY_KEY = 'staff';

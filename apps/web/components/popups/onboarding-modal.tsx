@@ -216,7 +216,7 @@ export function OnboardingModal({ isOpen, onClose }: OnboardingModalProps) {
                 <div className="flex items-center gap-3">
                   <Button variant="outline" onClick={onClose} disabled={isSubmitting}>Cancel</Button>
                   <Button 
-                    variant="primary" 
+                    variant="default" 
                     onClick={handleNext}
                     disabled={isSubmitting}
                     className="gap-2 px-8 shadow-lg shadow-brand-blue/20"
@@ -251,7 +251,7 @@ export function OnboardingModal({ isOpen, onClose }: OnboardingModalProps) {
                 Vision Plus Eye Clinic has been successfully registered. The owner has been notified via email with their login credentials.
               </p>
               <div className="flex flex-col gap-3">
-                <Button variant="primary" className="w-full py-6 rounded-2xl text-lg font-bold" onClick={onClose}>
+                <Button variant="default" className="w-full py-6 rounded-2xl text-lg font-bold" onClick={onClose}>
                   Go to Clinics List
                 </Button>
                 <Button variant="ghost" className="font-bold text-brand-blue" onClick={() => { setIsSuccess(false); setCurrentStep(1); }}>

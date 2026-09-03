@@ -170,7 +170,7 @@ export default function DoctorAppointments() {
         description="View and manage your scheduled consultations and follow-up appointments."
         actions={[
           { label: "Set Availability", href: "/doctor/settings", variant: "outline" },
-          { label: "Book Appointment", onClick: () => setBookOpen(true), variant: "primary" },
+          { label: "Book Appointment", onClick: () => setBookOpen(true), variant: "default" },
         ]}
       />
 

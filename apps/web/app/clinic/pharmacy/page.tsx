@@ -208,7 +208,7 @@ export default function PharmacyPage() {
         description="Comprehensive dispensary workflows, rich inventory control, and medical expiry tracking."
         actions={[
           { label: "Clinical Dashboard", href: "/clinic/dashboard" },
-          { label: "Finance & Billing", href: "/clinic/finance", variant: "primary" },
+          { label: "Finance & Billing", href: "/clinic/finance", variant: "default" },
         ]}
       />
 

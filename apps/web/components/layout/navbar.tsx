@@ -127,7 +127,7 @@ export const Navbar = () => {
           <Link href="/book-demo">
             <Button variant="outline" size="sm">Book Demo</Button>
           </Link>
-          <Button variant="primary" size="sm">Start Free Trial</Button>
+          <Button variant="default" size="sm">Start Free Trial</Button>
         </div>
 
         {/* Mobile Menu Toggle */}
@@ -200,7 +200,7 @@ export const Navbar = () => {
               <Link href="/book-demo" onClick={() => setIsMobileMenuOpen(false)}>
                 <Button variant="outline" className="w-full">Book Demo</Button>
               </Link>
-              <Button variant="primary" className="w-full">Start Free Trial</Button>
+              <Button variant="default" className="w-full">Start Free Trial</Button>
             </div>
           </motion.div>
         )}

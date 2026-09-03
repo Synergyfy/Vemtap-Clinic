@@ -38,6 +38,14 @@ const formatNGN = (value: number) =>
 
 type BranchTab = "network" | "analytics" | "queues" | "staff" | "operations";
 
+const branchTabs = [
+  { id: "network" as BranchTab, label: "Network", icon: Building2 },
+  { id: "analytics" as BranchTab, label: "Analytics", icon: BarChart3 },
+  { id: "queues" as BranchTab, label: "Queues", icon: Clock },
+  { id: "staff" as BranchTab, label: "Staff", icon: Users },
+  { id: "operations" as BranchTab, label: "Operations", icon: ArrowLeftRight },
+] as const;
+
 export default function BranchesPage() {
   const { openModal } = useModals();
   const [activeTab, setActiveTab] = useState<BranchTab>("network");
@@ -114,19 +122,13 @@ export default function BranchesPage() {
         title="Branch Management"
         description="Network overview, analytics, queues, staff & operations."
         actions={[
-          { label: "New Branch", variant: "primary", onClick: () => {} },
+          { label: "New Branch", variant: "default", onClick: () => {} },
         ]}
       />
 
       {/* Tab Navigation */}
       <div className="flex flex-wrap gap-2 border-b border-slate-200 pb-1">
-        {[
-          { id: "network", label: "Network", icon: Building2 },
-          { id: "analytics", label: "Analytics", icon: BarChart3 },
-          { id: "queues", label: "Queues", icon: Clock },
-          { id: "staff", label: "Staff", icon: Users },
-          { id: "operations", label: "Operations", icon: ArrowLeftRight },
-        ].map((tab) => (
+        {branchTabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}

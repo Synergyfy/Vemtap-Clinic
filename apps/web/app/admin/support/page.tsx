@@ -46,7 +46,7 @@ export default function SupportDashboardPage() {
           <Button variant="outline" size="sm" className="gap-2" onClick={() => openModal("incident-log")}>
             <ShieldAlert size={16} /> View Incident Logs
           </Button>
-          <Button variant="primary" size="sm" className="gap-2" onClick={() => openModal("broadcast")}>
+          <Button variant="default" size="sm" className="gap-2" onClick={() => openModal("broadcast")}>
             <Plus size={16} /> Broadcast Memo
           </Button>
         </div>

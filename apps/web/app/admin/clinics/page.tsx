@@ -106,7 +106,7 @@ export default function ClinicsListPage() {
           <Button variant="outline" size="sm" className="gap-2 h-11 px-6 rounded-xl font-bold border-slate-200">
             <Download size={16} /> Export List
           </Button>
-          <Button variant="primary" size="sm" className="gap-2 h-11 px-6 rounded-xl font-bold shadow-lg shadow-brand-blue/20" onClick={() => setIsOnboardingOpen(true)}>
+          <Button variant="default" size="sm" className="gap-2 h-11 px-6 rounded-xl font-bold shadow-lg shadow-brand-blue/20" onClick={() => setIsOnboardingOpen(true)}>
             <Plus size={16} /> Onboard New Clinic
           </Button>
         </div>

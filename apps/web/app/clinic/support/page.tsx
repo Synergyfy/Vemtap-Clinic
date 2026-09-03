@@ -90,7 +90,7 @@ export default function SupportPage() {
         title="Support & Success"
         description="24/7 dedicated support hub for technical issues, training, and account success."
         actions={[
-          { label: "Create New Ticket", variant: "primary", onClick: () => openModal("support-ticket") },
+          { label: "Create New Ticket", variant: "default", onClick: () => openModal("support-ticket") },
           { label: "Live WhatsApp Support", variant: "outline", onClick: () => window.open("https://wa.me/234800VEMTAP", "_blank") },
         ]}
       />

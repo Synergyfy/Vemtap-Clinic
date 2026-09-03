@@ -46,7 +46,7 @@ export default function FinanceDashboardPage() {
           <Button variant="outline" size="sm" className="gap-2">
             <Download size={16} /> Financial Report
           </Button>
-          <Button variant="primary" size="sm" className="gap-2" onClick={() => openModal("invoice")}>
+          <Button variant="default" size="sm" className="gap-2" onClick={() => openModal("invoice")}>
             <Receipt size={16} /> Create Invoice
           </Button>
         </div>

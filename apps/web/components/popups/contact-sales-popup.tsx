@@ -50,7 +50,7 @@ export const ContactSalesPopup = () => {
               placeholder="Tell us about your clinic's needs..."
             />
           </div>
-          <Button className="w-full" variant="primary">
+          <Button className="w-full" variant="default">
             Send Message
           </Button>
         </form>

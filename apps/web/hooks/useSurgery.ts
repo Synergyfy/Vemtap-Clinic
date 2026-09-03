@@ -4,6 +4,7 @@ import {
   listProcedures, createProcedure, updateProcedure, deleteProcedure,
   listRooms, createRoom, updateRoom, deleteRoom,
   listSchedules, getScheduleStats, getAvailableSlots, createSchedule, updateSchedule, deleteSchedule,
+  SurgerySchedule,
 } from "@/services/surgery.service";
 
 const SURGERY_KEYS = {

@@ -58,12 +58,12 @@ export default function PatientProfilePage() {
   const patients = patientsResponse?.data ?? [];
   const patient = patients.find((p: any) => p.id === patientId);
 
-  const { data: appointments = [] } = useAppointments();
+  const { data: appointmentsResponse = [] } = useAppointments();
+  const appointments = appointmentsResponse.data ?? [];
   const { data: records = [] } = useRecords({ patientId });
   const { data: prescriptions = [] } = usePatientPrescriptions(patientId);
   const { data: lensOrders = [] } = useLensOrders();
-  const { data: invoicesResponse } = useInvoices();
-  const invoices = invoicesResponse?.data ?? [];
+  const invoices = useInvoices();
   const { data: hmoClaims = [] } = useHmoClaims();
   const { data: uploads = [] } = useUploads({ entityType: "patient", entityId: patientId });
 
@@ -77,7 +77,7 @@ export default function PatientProfilePage() {
         <PageHeader
           title="Patient not found"
           description="This patient record does not exist."
-          actions={[{ label: "Back to patients", href: "/clinic/patients", variant: "primary" }]}
+          actions={[{ label: "Back to patients", href: "/clinic/patients", variant: "default" }]}
         />
       </div>
     );

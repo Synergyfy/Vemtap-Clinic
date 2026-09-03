@@ -78,7 +78,7 @@ export default function AdminDashboard() {
             <Download size={16} /> <span className="hidden xs:inline">Reports</span>
           </Button>
           <Button 
-            variant="primary" 
+            variant="default" 
             size="sm" 
             className="flex-1 sm:flex-none gap-2 h-11 px-4 lg:px-6 rounded-xl font-bold shadow-lg shadow-brand-blue/20"
             onClick={() => openModal("clinic")}

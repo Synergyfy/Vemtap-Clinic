@@ -180,7 +180,7 @@ export default function AppealsPage() {
         title="Claim Appeals"
         description="Challenge denied and queried claims. Track appeal status and recover denied revenue."
         actions={[
-          { label: "New Appeal", variant: "primary", onClick: () => { setForm({ ...emptyForm }); setFormErrors({}); setShowAddModal(true); } },
+          { label: "New Appeal", variant: "default", onClick: () => { setForm({ ...emptyForm }); setFormErrors({}); setShowAddModal(true); } },
         ]}
       />
 

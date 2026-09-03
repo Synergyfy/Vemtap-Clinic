@@ -120,7 +120,7 @@ export default function NurseSupport() {
       <PageHeader
         title="Support"
         description="Get help with the nurse station. Contact our support team or browse common questions."
-        actions={[{ label: "Submit Ticket", onClick: () => setTicketOpen(true), variant: "primary" }]}
+        actions={[{ label: "Submit Ticket", onClick: () => setTicketOpen(true), variant: "default" }]}
       />
 
       <div className="grid grid-cols-1 gap-4 md:gap-8 lg:grid-cols-2">

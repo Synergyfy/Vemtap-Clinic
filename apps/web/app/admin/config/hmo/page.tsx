@@ -113,7 +113,7 @@ export default function HMODatabasePage() {
             />
           </div>
         </div>
-        <Button variant="primary" className="w-full py-4 rounded-xl mt-4 font-bold shadow-lg shadow-brand-blue/20">
+        <Button variant="default" className="w-full py-4 rounded-xl mt-4 font-bold shadow-lg shadow-brand-blue/20">
           Save Provider
         </Button>
       </form>
@@ -156,7 +156,7 @@ export default function HMODatabasePage() {
             />
           </div>
         </div>
-        <Button variant="primary" className="w-full py-4 rounded-xl mt-4 font-bold">
+        <Button variant="default" className="w-full py-4 rounded-xl mt-4 font-bold">
           Create Plan
         </Button>
       </form>
@@ -190,7 +190,7 @@ export default function HMODatabasePage() {
           ))}
         </div>
 
-        <Button variant="primary" className="w-full py-4 rounded-xl font-bold" onClick={() => setIsConfigureRulesOpen(false)}>
+        <Button variant="default" className="w-full py-4 rounded-xl font-bold" onClick={() => setIsConfigureRulesOpen(false)}>
           Apply All Rules
         </Button>
       </div>
@@ -232,7 +232,7 @@ export default function HMODatabasePage() {
           </div>
           <div className="flex items-center gap-2 lg:gap-3">
             <Button variant="outline" className="flex-1 lg:flex-none rounded-xl font-bold h-11 lg:h-12 px-6 border-slate-200 text-sm" onClick={() => setSelectedHmo(null)}>Close</Button>
-            <Button variant="primary" className="flex-1 lg:flex-none rounded-xl font-bold h-11 lg:h-12 px-6 shadow-lg shadow-brand-blue/20 text-sm">Update Profile</Button>
+            <Button variant="default" className="flex-1 lg:flex-none rounded-xl font-bold h-11 lg:h-12 px-6 shadow-lg shadow-brand-blue/20 text-sm">Update Profile</Button>
           </div>
         </div>
 
@@ -410,7 +410,7 @@ export default function HMODatabasePage() {
           </Button>
           <Button 
             onClick={() => setIsAddProviderOpen(true)}
-            variant="primary" 
+            variant="default" 
             size="sm" 
             className="flex-1 sm:flex-none gap-2 h-11 px-4 lg:px-6 rounded-xl font-bold shadow-lg shadow-brand-blue/20 text-xs lg:text-sm"
           >

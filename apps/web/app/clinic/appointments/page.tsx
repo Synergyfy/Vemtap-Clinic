@@ -256,7 +256,7 @@ export default function AppointmentsPage() {
         title="Appointments"
         description="Appointment calendar, upcoming visits, follow-ups, walk-ins, missed appointments, and rescheduling."
         actions={[
-          { label: "New appointment", onClick: () => setIsNewOpen(true), variant: "primary" },
+          { label: "New appointment", onClick: () => setIsNewOpen(true), variant: "default" },
           { label: "Queue management", href: "/clinic/queue" },
           { label: "Patients", href: "/clinic/patients" },
         ]}

@@ -46,7 +46,7 @@ export default function FramesCatalogPage() {
           <Button variant="outline" size="sm" className="gap-2 h-11 px-6 rounded-xl font-bold border-slate-200">
             <Download size={16} /> Export Inventory
           </Button>
-          <Button variant="primary" size="sm" className="gap-2 h-11 px-6 rounded-xl font-bold shadow-lg shadow-brand-blue/20">
+          <Button variant="default" size="sm" className="gap-2 h-11 px-6 rounded-xl font-bold shadow-lg shadow-brand-blue/20">
             <Plus size={16} /> Add New Frame
           </Button>
         </div>

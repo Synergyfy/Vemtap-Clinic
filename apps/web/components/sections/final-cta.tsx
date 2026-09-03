@@ -38,7 +38,7 @@ export const FinalCTA = () => {
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-              <Button variant="primary" size="lg" className="px-12 py-5 text-lg font-bold rounded-2xl group" onClick={() => openModal("demo")}>
+              <Button variant="default" size="lg" className="px-12 py-5 text-lg font-bold rounded-2xl group" onClick={() => openModal("demo")}>
                 Start Free Trial <ChevronRight className="ml-2 group-hover:translate-x-1 transition-transform" />
               </Button>
               <Button variant="dark" size="lg" className="px-12 py-5 text-lg font-bold rounded-2xl border border-white/10 hover:bg-white/5" onClick={() => openModal("sales")}>

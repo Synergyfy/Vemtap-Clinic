@@ -35,7 +35,7 @@ export default function PatientsPage() {
   const { data: opticalOrders = [] } = useLensOrders();
 
   const [isRegisterOpen, setIsRegisterOpen] = React.useState(false);
-  const [form, setForm] = React.useState({ firstName: "", lastName: "", phone: "", dateOfBirth: "", gender: "Female" as "Female" | "Male" });
+  const [form, setForm] = React.useState({ firstName: "", lastName: "", phone: "", dateOfBirth: "", gender: "female" as "male" | "female" | "other" });
   const [query, setQuery] = React.useState("");
   const [status, setStatus] = React.useState<"All" | string>("All");
 
@@ -82,7 +82,7 @@ export default function PatientsPage() {
     }, {
       onSuccess: () => {
         setIsRegisterOpen(false);
-        setForm({ firstName: "", lastName: "", phone: "", dateOfBirth: "", gender: "Female" });
+        setForm({ firstName: "", lastName: "", phone: "", dateOfBirth: "", gender: "female" });
       },
     });
   };
@@ -95,7 +95,7 @@ export default function PatientsPage() {
         title="Patients"
         description="Patients list, profile, timeline, history, optical orders, documents, and notes."
         actions={[
-          { label: "Register patient", onClick: () => setIsRegisterOpen(true), variant: "primary" },
+          { label: "Register patient", onClick: () => setIsRegisterOpen(true), variant: "default" },
           { label: "Appointments", href: "/clinic/appointments" },
           { label: "Optical orders", href: "/clinic/optical" },
         ]}

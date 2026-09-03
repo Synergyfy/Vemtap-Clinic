@@ -431,7 +431,7 @@ export default function FinancePage() {
               <CardTitle className="text-base sm:text-lg font-bold">Operational Expenses</CardTitle>
               <p className="text-xs sm:text-sm text-slate-500">Track all clinic spending and utility payments.</p>
             </div>
-            <Button variant="primary" size="sm" onClick={() => setExpenseModalOpen(true)} className="self-start">
+            <Button variant="default" size="sm" onClick={() => setExpenseModalOpen(true)} className="self-start">
               <Plus className="h-4 w-4 sm:mr-2" /><span className="hidden sm:inline">Add Expense</span>
             </Button>
           </CardHeader>
@@ -494,7 +494,7 @@ export default function FinancePage() {
           </div>
           <div className="flex gap-2 pt-2">
             <Button variant="outline" size="sm" className="flex-1" onClick={() => setExpenseModalOpen(false)}>Cancel</Button>
-            <Button variant="primary" size="sm" className="flex-1" onClick={handleCreateExpense} disabled={createExpenseMut.isPending}>
+            <Button variant="default" size="sm" className="flex-1" onClick={handleCreateExpense} disabled={createExpenseMut.isPending}>
               {createExpenseMut.isPending ? <Loader2 size={14} className="animate-spin mr-2" /> : null}
               {createExpenseMut.isPending ? "Saving..." : "Record Expense"}
             </Button>
@@ -528,14 +528,14 @@ export default function FinancePage() {
             <p className="text-sm text-slate-600">Send payment reminders to <strong>{pendingInvoices.length} debtors</strong>?</p>
             <div className="flex gap-2 pt-2">
               <Button variant="outline" size="sm" className="flex-1" onClick={() => setReminderModalOpen(false)}>Cancel</Button>
-              <Button variant="primary" size="sm" className="flex-1" onClick={() => setReminderSent(true)}>Confirm & Send</Button>
+              <Button variant="default" size="sm" className="flex-1" onClick={() => setReminderSent(true)}>Confirm & Send</Button>
             </div>
           </div>
         ) : (
           <div className="space-y-4 text-center">
             <div className="mx-auto w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center"><Users className="h-6 w-6 text-emerald-600" /></div>
             <p className="text-sm font-medium text-slate-900">Reminders Sent!</p>
-            <Button variant="primary" size="sm" className="w-full" onClick={() => setReminderModalOpen(false)}>Done</Button>
+            <Button variant="default" size="sm" className="w-full" onClick={() => setReminderModalOpen(false)}>Done</Button>
           </div>
         )}
       </Modal>

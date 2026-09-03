@@ -154,7 +154,7 @@ export default function IndustryDetailPage() {
               {data.hero}
             </p>
             <div className="flex flex-wrap gap-4">
-              <Button size="lg" variant="primary" onClick={() => openModal("demo")}>Request Industry Demo</Button>
+              <Button size="lg" variant="default" onClick={() => openModal("demo")}>Request Industry Demo</Button>
               <Button size="lg" variant="outline" className="text-white border-white/20 hover:bg-white/10" onClick={() => openModal("sales")}>Contact Sales</Button>
             </div>
           </motion.div>
@@ -215,7 +215,7 @@ export default function IndustryDetailPage() {
             Join hundreds of eye care professionals who have transformed their operations with our platform.
           </p>
           <div className="flex flex-col sm:row gap-4 justify-center">
-            <Button size="lg" variant="primary" className="px-12" onClick={() => openModal("demo")}>Start Free Trial</Button>
+            <Button size="lg" variant="default" className="px-12" onClick={() => openModal("demo")}>Start Free Trial</Button>
             <Button size="lg" variant="ghost" onClick={() => openModal("tour")}>Watch Product Tour</Button>
           </div>
         </div>

@@ -104,7 +104,8 @@ function shortISODateTime(iso: string) {
 }
 
 export default function QueuePage() {
-  const { data: apiQueue = [], isLoading } = useQueue();
+  const { data: apiQueueResponse, isLoading } = useQueue();
+  const apiQueue = apiQueueResponse?.data ?? [];
   const createEntry = useCreateQueueEntry();
   const updateEntry = useUpdateQueueEntry();
 
@@ -146,7 +147,7 @@ export default function QueuePage() {
 
   const updateItem = (id: string, patch: Partial<any>) => {
     setQueue((prev) => prev.map((q: any) => (q.id === id ? { ...q, ...patch } : q)));
-    updateEntry.mutate({ id, dto: patch as any });
+    updateEntry.mutate({ id, data: patch });
   };
 
   const moveStage = (id: string, direction: -1 | 1) => {
@@ -162,7 +163,7 @@ export default function QueuePage() {
     if (item) {
       const idx = stageOrder.indexOf(item.stage);
       const next = stageOrder[Math.max(0, Math.min(stageOrder.length - 1, idx + direction))];
-      updateEntry.mutate({ id, dto: { stage: next } });
+      updateEntry.mutate({ id, data: { stage: next } });
     }
   };
 
@@ -190,7 +191,7 @@ export default function QueuePage() {
         actions={[
           { label: "Open dashboard", href: "/clinic/dashboard" },
           { label: "Appointments", href: "/clinic/appointments" },
-          { label: "Add to queue", onClick: () => setIsAddOpen(true), variant: "primary" },
+          { label: "Add to queue", onClick: () => setIsAddOpen(true), variant: "default" },
         ]}
       />
 

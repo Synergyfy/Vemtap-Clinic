@@ -1,10 +1,12 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { cashierService } from '@/services/cashier.service';
+import { cashierService, CashierTransaction, CashierProduct } from '@/services/cashier.service';
 import { useAuth } from '@/lib/auth-context';
 
 const CASHIER_KEY = 'cashier';
+
+export type { CashierTransaction, CashierProduct };
 
 export function useCashierShifts() {
   const { user } = useAuth();

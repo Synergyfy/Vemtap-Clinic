@@ -96,7 +96,7 @@ export default function SettingsPage() {
           <h1 className="text-3xl font-bold text-brand-navy font-black tracking-tight">System Control</h1>
           <p className="text-slate-500 font-medium mt-1">Configure global feature toggles, notifications, and API integrations.</p>
         </div>
-        <Button variant="primary" className="gap-2 shadow-xl shadow-brand-blue/20">
+        <Button variant="default" className="gap-2 shadow-xl shadow-brand-blue/20">
           <Save size={18} /> Save Global Changes
         </Button>
       </div>

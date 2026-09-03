@@ -72,7 +72,7 @@ export default function DoctorReports() {
         description="Comprehensive clinical documentation and patient demographic statistics for your practice."
         actions={[
           { label: "Export Full Audit", onClick: () => setExportAuditOpen(true), variant: "outline" },
-          { label: "Generate New Report", onClick: () => setGenerateOpen(true), variant: "primary" },
+          { label: "Generate New Report", onClick: () => setGenerateOpen(true), variant: "default" },
         ]}
       />
 

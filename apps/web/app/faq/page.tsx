@@ -205,7 +205,7 @@ export default function FAQPage() {
                   </div>
                 </div>
                 <div className="flex gap-4">
-                  <Button variant="primary">Chat with Us</Button>
+                  <Button variant="default">Chat with Us</Button>
                   <Button variant="outline">Email Support</Button>
                 </div>
               </div>

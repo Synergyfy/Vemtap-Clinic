@@ -185,7 +185,7 @@ export default function BlogPage() {
               placeholder="Your work email" 
               className="flex-grow px-6 py-4 rounded-2xl bg-white/5 border border-white/10 text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-brand-blue/50 focus:bg-white/10 transition-all"
             />
-            <Button size="lg" variant="primary" className="px-10">Subscribe</Button>
+            <Button size="lg" variant="default" className="px-10">Subscribe</Button>
           </div>
           <p className="mt-6 text-xs text-slate-500 font-medium flex items-center justify-center gap-2">
             <ShieldCheck size={14} /> We respect your privacy. Unsubscribe at any time.

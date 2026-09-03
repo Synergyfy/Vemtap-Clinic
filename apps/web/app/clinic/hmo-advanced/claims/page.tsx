@@ -163,7 +163,7 @@ export default function ClaimsPage() {
         title="Claims Management"
         description="Create, submit, and track HMO claims. Bulk operations and status tracking."
         actions={[
-          { label: "New Claim", variant: "primary", onClick: () => { setForm({ claimNumber: "", amountClaimed: 0, diagnosis: "", treatmentDetails: "", notes: "", hmoId: "", patientId: "" }); setFormErrors({}); setShowAddModal(true); } },
+          { label: "New Claim", variant: "default", onClick: () => { setForm({ claimNumber: "", amountClaimed: 0, diagnosis: "", treatmentDetails: "", notes: "", hmoId: "", patientId: "" }); setFormErrors({}); setShowAddModal(true); } },
         ]}
       />
 

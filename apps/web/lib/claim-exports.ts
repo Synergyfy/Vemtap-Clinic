@@ -1,4 +1,4 @@
-import type { HmoClaim, HmoRemittance, HmoAppeal } from '@/store/hmoAdvancedStore';
+import type { HmoClaim, HmoRemittance, HmoAppeal } from '@/services/hmo.service';
 
 export function exportCsv(data: Record<string, string>[], filename: string) {
   if (!data.length) return;
@@ -19,25 +19,25 @@ export function exportCsv(data: Record<string, string>[], filename: string) {
 export function exportClaimsCsv(claims: HmoClaim[]) {
   const data = claims.map((c) => ({
     'Claim ID': c.id,
-    HMO: c.hmoName,
-    Patient: c.patientName,
-    Diagnosis: c.diagnosis,
-    Total: String(c.total),
+    HMO: c.hmo?.name ?? c.hmoId,
+    Patient: c.patient?.firstName + ' ' + c.patient?.lastName ?? c.patientId,
+    Diagnosis: c.diagnosis ?? '',
+    Total: String(c.amountClaimed),
     Status: c.status,
     Submitted: c.submittedDate || '',
-    'Paid Amount': c.paidAmount ? String(c.paidAmount) : '',
+    'Paid Amount': c.amountApproved ? String(c.amountApproved) : '',
   }));
   exportCsv(data, `hmo_claims_${new Date().toISOString().slice(0, 10)}.csv`);
 }
 
 export function exportRemittancesCsv(remittances: HmoRemittance[]) {
   const data = remittances.map((r) => ({
-    Reference: r.reference,
-    HMO: r.hmoName,
-    Amount: String(r.amount),
+    Reference: r.remittanceNumber,
+    HMO: r.hmo?.name ?? r.hmoId,
+    Amount: String(r.totalAmount),
     Received: r.receivedDate,
     Status: r.status,
-    'Matched Claims': r.matchedClaimIds.join('; '),
+    'Matched Claims': r.matchedClaimIds?.join('; ') ?? '',
   }));
   exportCsv(data, `hmo_remittances_${new Date().toISOString().slice(0, 10)}.csv`);
 }
@@ -46,12 +46,12 @@ export function exportAppealsCsv(appeals: HmoAppeal[]) {
   const data = appeals.map((a) => ({
     'Appeal ID': a.id,
     'Claim ID': a.claimId,
-    HMO: a.hmoName,
-    Patient: a.patientName,
+    HMO: a.claim?.hmo?.name ?? '',
+    Patient: a.claim?.patient?.firstName + ' ' + a.claim?.patient?.lastName ?? '',
     Reason: a.reason,
     Status: a.status,
-    Submitted: a.submittedDate || '',
-    Response: a.response || '',
+    Submitted: a.createdAt || '',
+    Response: a.resolutionNotes || '',
   }));
   exportCsv(data, `hmo_appeals_${new Date().toISOString().slice(0, 10)}.csv`);
 }
@@ -63,13 +63,13 @@ export function generateClaimTextSummary(claims: HmoClaim[]): string {
     '='.repeat(50),
     `Generated: ${new Date().toLocaleDateString()}`,
     `Total Claims: ${claims.length}`,
-    `Total Value: ₦${claims.reduce((s, c) => s + c.total, 0).toLocaleString()}`,
+    `Total Value: ₦${claims.reduce((s, c) => s + c.amountClaimed, 0).toLocaleString()}`,
     '',
     ...claims.map((c) =>
       [
-        `  ${c.id} | ${c.hmoName} | ${c.patientName}`,
-        `  Diagnosis: ${c.diagnosis}`,
-        `  Amount: ₦${c.total.toLocaleString()} | Status: ${c.status}`,
+        `  ${c.id} | ${c.hmo?.name ?? c.hmoId} | ${c.patient?.firstName + ' ' + c.patient?.lastName ?? c.patientId}`,
+        `  Diagnosis: ${c.diagnosis ?? ''}`,
+        `  Amount: ₦${c.amountClaimed.toLocaleString()} | Status: ${c.status}`,
         '  ' + '-'.repeat(40),
       ].join('\n')
     ),

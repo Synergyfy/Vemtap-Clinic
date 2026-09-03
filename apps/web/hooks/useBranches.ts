@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth-context";
-import { listBranches, getBranchStats, createBranch, updateBranch, deleteBranch } from "@/services/branches.service";
+import { listBranches, getBranchStats, createBranch, updateBranch, deleteBranch, Branch } from "@/services/branches.service";
 
 const BRANCH_KEYS = {
   all: (clinicId: string) => ["branches", clinicId] as const,
@@ -29,7 +29,7 @@ export function useCreateBranch() {
   const qc = useQueryClient();
   const { user } = useAuth();
   return useMutation({
-    mutationFn: (dto: { name: string; location: string; manager: string; revenue: number; activePatients: number; status: string }) =>
+    mutationFn: (dto: Omit<Branch, "id" | "createdAt" | "updatedAt">) =>
       createBranch({ ...dto, clinicId: user!.clinicId }),
     onSuccess: () => { if (user?.clinicId) qc.invalidateQueries({ queryKey: BRANCH_KEYS.all(user.clinicId) }); },
   });
@@ -39,7 +39,7 @@ export function useUpdateBranch() {
   const qc = useQueryClient();
   const { user } = useAuth();
   return useMutation({
-    mutationFn: ({ id, dto }: { id: string; dto: Partial<{ name: string; location: string; manager: string; revenue: number; activePatients: number; status: string }> }) =>
+    mutationFn: ({ id, dto }: { id: string; dto: Partial<Branch> }) =>
       updateBranch(id, dto),
     onSuccess: () => { if (user?.clinicId) qc.invalidateQueries({ queryKey: BRANCH_KEYS.all(user.clinicId) }); },
   });

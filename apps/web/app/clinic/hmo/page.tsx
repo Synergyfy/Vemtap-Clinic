@@ -41,6 +41,16 @@ import {
 const formatNGN = (value: number) =>
   new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 }).format(value);
 
+type HMOTab = "dashboard" | "claims" | "partners" | "agreements" | "authorizations";
+
+const hmoTabs = [
+  { id: "dashboard" as HMOTab, label: "Dashboard", icon: TrendingUp },
+  { id: "claims" as HMOTab, label: "Claims", icon: FileText },
+  { id: "partners" as HMOTab, label: "HMO Partners", icon: Building2 },
+  { id: "agreements" as HMOTab, label: "Agreements", icon: Shield },
+  { id: "authorizations" as HMOTab, label: "Authorizations", icon: Eye },
+] as const;
+
 function statusBadge(status: string) {
   const s = status.toLowerCase();
   if (s === "active" || s === "verified" || s === "approved" || s === "paid")
@@ -78,16 +88,18 @@ export default function HMOPage() {
 
   // Filter functions
   const filteredClaims = claims.filter(c => {
+    const patientName = c.patient?.firstName + ' ' + c.patient?.lastName ?? '';
+    const hmoName = c.hmo?.name ?? '';
     const matchesSearch = c.claimNumber?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          c.patientName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          c.hmoName?.toLowerCase().includes(searchQuery.toLowerCase());
+                          patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          hmoName.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === "All" || c.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
   const filteredHmos = hmos.filter(h => {
     const matchesSearch = h.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          h.shortCode?.toLowerCase().includes(searchQuery.toLowerCase());
+                          h.contactPerson?.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesSearch;
   });
 
@@ -111,7 +123,7 @@ export default function HMOPage() {
 
   // Stats for dashboard
   const totalClaims = claims.length;
-  const pendingClaims = claims.filter(c => c.status === "submitted" || c.status === "pending").length;
+  const pendingClaims = claims.filter(c => c.status === "submitted" || c.status === "under_review").length;
   const approvedClaims = claims.filter(c => c.status === "approved" || c.status === "partially_approved").length;
   const totalClaimAmount = claims.reduce((sum, c) => sum + Number(c.amountClaimed), 0);
   const totalApprovedAmount = claims.reduce((sum, c) => sum + Number(c.amountApproved), 0);
@@ -122,20 +134,14 @@ export default function HMOPage() {
         title="HMO Management"
         description="Claims, partners, agreements, authorizations & analytics."
         actions={[
-          { label: "New Claim", variant: "primary", onClick: () => {} },
+          { label: "New Claim", variant: "default", onClick: () => {} },
           { label: "Export Report", variant: "outline", onClick: () => {} },
         ]}
       />
 
       {/* Tab Navigation */}
       <div className="flex flex-wrap gap-2 border-b border-slate-200 pb-1">
-        {[
-          { id: "dashboard", label: "Dashboard", icon: TrendingUp },
-          { id: "claims", label: "Claims", icon: FileText },
-          { id: "partners", label: "HMO Partners", icon: Building2 },
-          { id: "agreements", label: "Agreements", icon: Shield },
-          { id: "authorizations", label: "Authorizations", icon: Eye },
-        ].map((tab) => (
+        {hmoTabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
@@ -412,7 +418,7 @@ export default function HMOPage() {
           <Card>
             <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <CardTitle className="text-base sm:text-lg font-bold">Pre-Authorizations</CardTitle>
-              <Button variant="primary" size="sm" className="self-start">
+              <Button variant="default" size="sm" className="self-start">
                 <Plus className="h-4 w-4 mr-2" /> New Authorization
               </Button>
             </CardHeader>

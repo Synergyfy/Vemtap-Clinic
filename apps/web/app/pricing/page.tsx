@@ -145,7 +145,7 @@ export default function PricingPage() {
                 </div>
 
                 <Button 
-                  variant={plan.popular ? "primary" : "outline"} 
+                  variant={plan.popular ? "default" : "outline"} 
                   className="w-full py-4 rounded-2xl font-bold"
                   onClick={() => openModal(plan.price === "Custom" ? "sales" : "demo")}
                 >

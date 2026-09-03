@@ -58,7 +58,7 @@ export default function InviteAcceptancePage() {
                 />
               </div>
               <Link href="/dashboard" className="block w-full">
-                <Button variant="primary" className="w-full py-5 text-lg font-bold rounded-2xl group">
+                <Button variant="default" className="w-full py-5 text-lg font-bold rounded-2xl group">
                   Accept Invitation <ArrowRight size={20} className="ml-2 group-hover:translate-x-1 transition-transform" />
                 </Button>
               </Link>

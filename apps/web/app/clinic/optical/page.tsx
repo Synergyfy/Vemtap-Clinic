@@ -125,7 +125,7 @@ export default function OpticalPage() {
   // Handlers
   const handleUpdateStatus = (orderId: string, newStatus: string) => {
     setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus } : o));
-    updateStatus.mutate({ id: orderId, status: newStatus });
+    updateStatus.mutate({ orderId, status: newStatus });
   };
 
   // Filter/Search
@@ -188,7 +188,7 @@ export default function OpticalPage() {
         title="Optical"
         description="Lens orders, frames, inventory, lab tracking, sales & suppliers."
         actions={[
-          { label: "New Order", onClick: () => {}, variant: "primary" },
+          { label: "New Order", onClick: () => {}, variant: "default" },
         ]}
       />
 

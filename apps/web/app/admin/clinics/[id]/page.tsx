@@ -98,7 +98,7 @@ export default function ClinicDetailsPage() {
             <Button variant="outline" size="sm" className="gap-2">
               <ShieldAlert size={16} /> Suspend Clinic
             </Button>
-            <Button variant="primary" size="sm" className="gap-2">
+            <Button variant="default" size="sm" className="gap-2">
               <Settings2 size={16} /> Edit Settings
             </Button>
           </div>
@@ -201,7 +201,7 @@ export default function ClinicDetailsPage() {
               <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
                 <div className="p-8 border-b border-slate-50 flex items-center justify-between">
                   <h3 className="text-xl font-bold text-brand-navy">Active Branches</h3>
-                  <Button variant="primary" size="sm" className="gap-2"><Plus size={16} /> Add Branch</Button>
+                  <Button variant="default" size="sm" className="gap-2"><Plus size={16} /> Add Branch</Button>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 p-8 gap-6">
                   {[

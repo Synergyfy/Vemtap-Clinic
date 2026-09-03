@@ -128,7 +128,7 @@ export default function ClinicProductsPage() {
         title="POS Products"
         description="Manage your clinic's product catalog — items, pricing, stock, and categories used by the Cashier terminal."
         actions={[
-          { label: "Add Product", variant: "primary", onClick: handleOpenAdd },
+          { label: "Add Product", variant: "default", onClick: handleOpenAdd },
         ]}
       />
 

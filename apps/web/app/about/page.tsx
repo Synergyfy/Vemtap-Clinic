@@ -122,7 +122,7 @@ export default function AboutPage() {
                   </li>
                 ))}
               </ul>
-              <Button size="lg" variant="primary" onClick={() => openModal("tour")}>Experience the Innovation</Button>
+              <Button size="lg" variant="default" onClick={() => openModal("tour")}>Experience the Innovation</Button>
             </div>
             <div className="relative">
               <div className="aspect-square bg-white/5 rounded-[4rem] border border-white/10 flex items-center justify-center p-12">
@@ -143,7 +143,7 @@ export default function AboutPage() {
           <h2 className="text-3xl md:text-5xl font-bold text-brand-navy mb-8">Join the Future of Eye Care</h2>
           <p className="text-xl text-slate-500 mb-10">Be part of the thousands of professionals who are transforming their clinics with Vemtap Health.</p>
           <div className="flex justify-center gap-4">
-            <Button size="lg" variant="primary" onClick={() => openModal("demo")}>Get Started Today</Button>
+            <Button size="lg" variant="default" onClick={() => openModal("demo")}>Get Started Today</Button>
             <Button size="lg" variant="outline" onClick={() => openModal("sales")}>Contact Sales</Button>
           </div>
         </div>

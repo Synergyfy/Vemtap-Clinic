@@ -4,6 +4,7 @@ import {
   listTemplates, createTemplate, updateTemplate, deleteTemplate,
   generateReport, listReports, getReport, deleteReport,
   getReportingStats, getScheduledTemplates,
+  ReportTemplate,
 } from "@/services/clinical-reporting.service";
 
 const CR_KEYS = {
@@ -26,7 +27,7 @@ export function useCreateTemplate() {
   const qc = useQueryClient();
   const { user } = useAuth();
   return useMutation({
-    mutationFn: (dto: { name: string; description?: string; category: string; content: string; isScheduled?: boolean; scheduleFrequency?: string }) =>
+    mutationFn: (dto: Omit<ReportTemplate, "id" | "createdAt" | "updatedAt">) =>
       createTemplate({ ...dto, clinicId: user!.clinicId }),
     onSuccess: () => { if (user?.clinicId) qc.invalidateQueries({ queryKey: CR_KEYS.templates(user.clinicId) }); },
   });
@@ -36,7 +37,7 @@ export function useUpdateTemplate() {
   const qc = useQueryClient();
   const { user } = useAuth();
   return useMutation({
-    mutationFn: ({ id, dto }: { id: string; dto: Partial<{ name: string; description: string; category: string; content: string; isScheduled: boolean; scheduleFrequency: string }> }) =>
+    mutationFn: ({ id, dto }: { id: string; dto: Partial<ReportTemplate> }) =>
       updateTemplate(id, dto),
     onSuccess: () => { if (user?.clinicId) qc.invalidateQueries({ queryKey: CR_KEYS.templates(user.clinicId) }); },
   });

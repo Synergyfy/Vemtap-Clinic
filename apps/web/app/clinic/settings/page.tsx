@@ -94,7 +94,7 @@ export default function SettingsPage() {
         description="Global control center: Tailor your clinic network's branding, financial rules, and security protocols."
         actions={[
           { label: "Backup Data", variant: "outline", onClick: () => setBackupModal(true) },
-          { label: "Save All Changes", variant: "primary", onClick: handleSave },
+          { label: "Save All Changes", variant: "default", onClick: handleSave },
         ]}
       />
 
@@ -373,7 +373,7 @@ export default function SettingsPage() {
               The detailed {activeTab} logic is currently migrating to the central configuration engine.
               <br />All global defaults are active.
             </p>
-            <Button variant="primary" className="mt-8 rounded-xl font-bold" onClick={() => setActiveTab("profile")}>Back to Profile</Button>
+            <Button variant="default" className="mt-8 rounded-xl font-bold" onClick={() => setActiveTab("profile")}>Back to Profile</Button>
           </Card>
         )}
       </div>
