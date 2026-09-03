@@ -103,7 +103,7 @@ export const HMOManagement = () => {
               Built for <span className="text-brand-blue">HMO & Private</span> Patient Operations
             </h2>
             <p className="text-xl text-slate-400 mb-10 leading-relaxed">
-              Managing HMOs shouldn't be a headache. Vemtap provides end-to-end tracking for claims, revenue analytics, and comparison tools to keep your clinic profitable.
+              Managing HMOs shouldn&apos;t be a headache. Vemtap provides end-to-end tracking for claims, revenue analytics, and comparison tools to keep your clinic profitable.
             </p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
+import React, { createContext, useContext, useEffect, useMemo, useState, useCallback } from "react";
 import { useQueueSocket } from "@/hooks/useQueueSocket";
 import { useQueue as useQueueAPI } from "@/hooks/useQueue";
 
@@ -85,7 +85,33 @@ export function QueueDisplayProvider({ children }: { children: React.ReactNode }
   const apiEntries = apiQueueResponse?.data ?? [];
   const { isConnected, updates } = useQueueSocket();
   const [entries, setEntries] = useState<QueueEntry[]>([]);
-  const [rooms, setRooms] = useState<RoomStatus[]>([]);
+  const rooms = useMemo(() => {
+    const roomMap = new Map<string, RoomStatus>();
+
+    entries.forEach(entry => {
+      if (!roomMap.has(entry.station)) {
+        roomMap.set(entry.station, {
+          roomId: entry.station,
+          roomName: entry.station,
+          doctorName: entry.assignedDoctor || entry.provider || "Unassigned",
+          status: entry.status === "In Progress" ? "occupied" : "available",
+          currentPatient: entry.patientName,
+          queueCount: 0,
+        });
+      }
+
+      const room = roomMap.get(entry.station)!;
+      if (entry.status === "Waiting" || entry.status === "Verifying") {
+        room.queueCount++;
+      }
+      if (entry.status === "In Progress") {
+        room.status = "occupied";
+        room.currentPatient = entry.patientName;
+      }
+    });
+
+    return Array.from(roomMap.values());
+  }, [entries]);
   const [announcements, setAnnouncements] = useState<Announcement[]>([
     { id: "A-001", message: "Clinic opens at 8:00 AM tomorrow", type: "info", createdAt: new Date().toISOString() },
     { id: "A-002", message: "Flu shots available at Branch 2", type: "success", createdAt: new Date().toISOString() },
@@ -155,35 +181,6 @@ export function QueueDisplayProvider({ children }: { children: React.ReactNode }
       });
     }
   }, [updates]);
-
-  // Initialize rooms from entries (derive from data)
-  useEffect(() => {
-    const roomMap = new Map<string, RoomStatus>();
-    
-    entries.forEach(entry => {
-      if (!roomMap.has(entry.station)) {
-        roomMap.set(entry.station, {
-          roomId: entry.station,
-          roomName: entry.station,
-          doctorName: entry.assignedDoctor || entry.provider || "Unassigned",
-          status: entry.status === "In Progress" ? "occupied" : "available",
-          currentPatient: entry.patientName,
-          queueCount: 0,
-        });
-      }
-      
-      const room = roomMap.get(entry.station)!;
-      if (entry.status === "Waiting" || entry.status === "Verifying") {
-        room.queueCount++;
-      }
-      if (entry.status === "In Progress") {
-        room.status = "occupied";
-        room.currentPatient = entry.patientName;
-      }
-    });
-    
-    setRooms(Array.from(roomMap.values()));
-  }, [entries]);
 
   return (
     <QueueDisplayContext.Provider value={{

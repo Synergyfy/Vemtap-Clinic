@@ -4,9 +4,8 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  turbopack: {
-    resolveAlias: {},
-  },
+  reactStrictMode: true,
+  poweredByHeader: false,
 };
 
 export default nextConfig;

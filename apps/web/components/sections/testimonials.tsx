@@ -53,7 +53,7 @@ export const Testimonials = () => {
                 {[...Array(5)].map((_, i) => <Star key={i} size={16} className="fill-brand-blue text-brand-blue" />)}
               </div>
               
-              <p className="text-slate-600 italic mb-8 leading-relaxed relative z-10">"{item.text}"</p>
+              <p className="text-slate-600 italic mb-8 leading-relaxed relative z-10">&quot;{item.text}&quot;</p>
               
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 bg-brand-soft-blue rounded-2xl flex items-center justify-center text-brand-blue font-bold">

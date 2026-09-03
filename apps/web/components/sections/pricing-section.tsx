@@ -64,7 +64,7 @@ export const PricingSection = () => {
       <div className="max-w-7xl mx-auto px-6">
         <div className="text-center max-w-3xl mx-auto mb-16">
           <h2 className="text-4xl font-bold text-brand-navy mb-6">Simple, <span className="text-brand-blue">Transparent</span> Pricing</h2>
-          <p className="text-xl text-slate-500 mb-10">Choose the plan that fits your clinic's growth stage.</p>
+          <p className="text-xl text-slate-500 mb-10">Choose the plan that fits your clinic&apos;s growth stage.</p>
           
           {/* Toggle */}
           <div className="flex items-center justify-center gap-4">

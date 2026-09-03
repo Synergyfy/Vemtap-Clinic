@@ -245,7 +245,7 @@ export default function AppointmentsPage() {
                         </button>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0 z-[110] rounded-3xl border-gray-100 shadow-2xl" align="start">
-                        <CalendarUI mode="single" selected={bookDate} onSelect={setBookDate} initialFocus disabled={(date) => date < new Date()} />
+                        <CalendarUI mode="single" selected={bookDate} onSelect={setBookDate} disabled={(date) => date < new Date()} />
                       </PopoverContent>
                     </Popover>
                   </div>
@@ -302,7 +302,7 @@ export default function AppointmentsPage() {
                       </button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0 z-[110] rounded-3xl border-gray-100 shadow-2xl" align="start">
-                      <CalendarUI mode="single" selected={rescheduleDate} onSelect={setRescheduleDate} initialFocus disabled={(date) => date < new Date()} />
+                      <CalendarUI mode="single" selected={rescheduleDate} onSelect={setRescheduleDate} disabled={(date) => date < new Date()} />
                     </PopoverContent>
                   </Popover>
                 </div>

@@ -227,21 +227,9 @@ export default function DoctorAppointments() {
                   classNames={{
                     months: "w-full",
                     month: "w-full space-y-4",
-                    caption: "hidden",
-                    table: "w-full border-collapse",
-                    head_row: "flex w-full mb-4",
-                    head_cell: "text-slate-400 flex-1 font-bold text-[10px] uppercase tracking-widest text-center",
-                    row: "flex w-full mt-2",
-                    cell: cn(
-                      "relative flex-1 p-0 text-center text-sm focus-within:relative focus-within:z-20",
-                      "h-14 sm:h-20 border border-slate-50 first:rounded-l-2xl last:rounded-r-2xl overflow-hidden"
-                    ),
                     day: cn(
                       "h-full w-full p-2 font-bold transition-all hover:bg-emerald-50/50 flex flex-col items-start justify-start gap-1"
                     ),
-                    day_selected: "bg-emerald-50 border-2 border-emerald-600 text-emerald-700",
-                    day_today: "bg-slate-50 text-slate-900",
-                    day_outside: "opacity-20 pointer-events-none",
                   }}
                   components={{
                     DayButton: ({ day, modifiers, ...props }) => {

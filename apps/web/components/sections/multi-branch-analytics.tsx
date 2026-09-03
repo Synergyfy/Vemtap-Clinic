@@ -16,7 +16,7 @@ export const MultiBranchAnalytics = () => {
             Monitor <span className="text-brand-blue">All Branches</span> From One Dashboard
           </h2>
           <p className="text-xl text-slate-400 leading-relaxed">
-            Whether you run two clinics or two hundred, Vemtap gives you the bird's-eye view you need to stay in control of operations and growth.
+            Whether you run two clinics or two hundred, Vemtap gives you the bird&apos;s-eye view you need to stay in control of operations and growth.
           </p>
         </div>
 
