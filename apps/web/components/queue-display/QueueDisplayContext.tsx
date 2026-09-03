@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
-import { useQueue, useQueueSocket } from "@/hooks/useQueueSocket";
+import { useQueueSocket } from "@/hooks/useQueueSocket";
 import { useQueue as useQueueAPI } from "@/hooks/useQueue";
 
 export type QueueType = 'consultation' | 'eye-test' | 'optical' | 'lens-pickup' | 'pharmacy' | 'emergency';
@@ -81,7 +81,8 @@ interface QueueDisplayContextValue {
 const QueueDisplayContext = createContext<QueueDisplayContextValue | null>(null);
 
 export function QueueDisplayProvider({ children }: { children: React.ReactNode }) {
-  const { data: apiEntries = [], isLoading } = useQueueAPI();
+  const { data: apiQueueResponse } = useQueueAPI();
+  const apiEntries = apiQueueResponse?.data ?? [];
   const { isConnected, updates } = useQueueSocket();
   const [entries, setEntries] = useState<QueueEntry[]>([]);
   const [rooms, setRooms] = useState<RoomStatus[]>([]);
@@ -96,7 +97,24 @@ export function QueueDisplayProvider({ children }: { children: React.ReactNode }
   // Initialize from API
   useEffect(() => {
     if (apiEntries.length > 0) {
-      setEntries(apiEntries);
+      const converted: QueueEntry[] = apiEntries.map((e: any) => ({
+        id: e.id,
+        ticketNumber: e.ticketNumber,
+        patientName: e.patientName || `${e.patient?.firstName || ''} ${e.patient?.lastName || ''}`.trim() || 'Unknown',
+        queueType: e.queueType || e.stage || 'consultation',
+        status: e.status,
+        waitTime: e.waitTime || '',
+        waitTimeMinutes: e.waitTimeMinutes || 0,
+        patientType: e.patientType || 'Private',
+        provider: e.provider || e.hmo?.name || 'Self-Pay',
+        priority: e.priority || 'Normal',
+        station: e.station || e.stage || '',
+        assignedDoctor: e.assignedDoctor,
+        checkInTime: e.checkInTime || e.createdAt || new Date().toISOString(),
+        reason: e.reason,
+        notes: e.notes,
+      }));
+      setEntries(converted);
     }
   }, [apiEntries]);
 
@@ -107,12 +125,32 @@ export function QueueDisplayProvider({ children }: { children: React.ReactNode }
     for (const update of updates) {
       setEntries(prev => {
         const existing = prev.findIndex(e => e.id === update.id);
+        const queueEntry: QueueEntry = {
+          id: update.id,
+          ticketNumber: update.ticketNumber,
+          patientName: update.patient?.firstName || update.patient?.lastName 
+            ? `${update.patient?.firstName || ''} ${update.patient?.lastName || ''}`.trim() 
+            : 'Unknown',
+          queueType: (update.serviceType as QueueType) || 'consultation',
+          status: update.status as QueueStatus,
+          waitTime: '',
+          waitTimeMinutes: 0,
+          patientType: 'Private',
+          provider: update.patient?.firstName ? `${update.patient.firstName} ${update.patient.lastName}` : 'Unknown',
+          priority: update.priority as Priority,
+          station: update.serviceType,
+          assignedDoctor: undefined,
+          checkInTime: update.calledAt || new Date().toISOString(),
+          reason: undefined,
+          notes: undefined,
+        };
+        
         if (existing >= 0) {
           const newEntries = [...prev];
-          newEntries[existing] = { ...newEntries[existing], ...update };
+          newEntries[existing] = { ...newEntries[existing], ...queueEntry };
           return newEntries;
         } else {
-          return [update, ...prev];
+          return [queueEntry, ...prev];
         }
       });
     }

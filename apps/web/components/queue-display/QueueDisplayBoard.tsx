@@ -130,7 +130,7 @@ export const QueueDisplayBoard = ({ fullScreen }: { fullScreen?: boolean }) => {
                   className="flex items-center gap-2 text-amber-700 bg-amber-50 border border-amber-200 px-4 py-2 rounded-xl"
                 >
                   <Volume2 size={16} />
-                  <span className="text-sm font-bold">{announcements[currentAnnouncementIdx]}</span>
+                  <span className="text-sm font-bold">{announcements[currentAnnouncementIdx]?.message || ''}</span>
                 </motion.div>
               </AnimatePresence>
               <div className="text-right">
