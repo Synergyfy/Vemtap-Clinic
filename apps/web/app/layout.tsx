@@ -1,0 +1,42 @@
+import type { Metadata } from "next";
+import { Plus_Jakarta_Sans } from "next/font/google";
+import { Toaster } from "sonner";
+import "./globals.css";
+import { ModalProvider } from "@/lib/modal-context";
+import { ModalManager } from "@/components/popups/modal-manager";
+import { QueryProvider } from "@/components/providers/query-provider";
+import { AuthProvider } from "@/lib/auth-context";
+
+const plusJakartaSans = Plus_Jakarta_Sans({
+  variable: "--font-sans",
+  subsets: ["latin"],
+});
+
+export const metadata: Metadata = {
+  title: "Vemtap Health | Modern Workflow Automation for Eye Clinics",
+  description: "Reduce queues, automate patient check-ins, manage HMOs, and streamline operations with the most intelligent platform for eye clinics.",
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html lang="en" className="scroll-smooth">
+      <body
+        className={`${plusJakartaSans.variable} font-sans antialiased min-h-screen flex flex-col selection:bg-brand-blue/20 selection:text-brand-blue`}
+      >
+        <QueryProvider>
+          <AuthProvider>
+            <ModalProvider>
+              {children}
+              <ModalManager />
+              <Toaster position="top-right" />
+            </ModalProvider>
+          </AuthProvider>
+        </QueryProvider>
+      </body>
+    </html>
+  );
+}
