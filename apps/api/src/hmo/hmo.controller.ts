@@ -227,6 +227,12 @@ export class HmoController {
     return this.hmoService.createAppeal(dto);
   }
 
+  @Get('appeals')
+  @ApiOperation({ summary: 'List HMO appeals' })
+  findAllAppeals(@Query('clinicId') clinicId: string) {
+    return this.hmoService.findAllAppeals(clinicId);
+  }
+
   @Put('appeals/:id')
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Update appeal status' })

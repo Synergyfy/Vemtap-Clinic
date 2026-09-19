@@ -27,6 +27,12 @@ export class StaffController {
     return this.staffService.findAll(query);
   }
 
+  @Get('stats')
+  @ApiOperation({ summary: 'Get staff statistics' })
+  getStats(@Query('clinicId') clinicId: string) {
+    return this.staffService.getStats(clinicId);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get staff member by ID' })
   findOne(@Param('id') id: string) {
@@ -45,11 +51,5 @@ export class StaffController {
   @ApiOperation({ summary: 'Delete staff member' })
   remove(@Param('id') id: string) {
     return this.staffService.remove(id);
-  }
-
-  @Get('stats')
-  @ApiOperation({ summary: 'Get staff statistics' })
-  getStats(@Query('clinicId') clinicId: string) {
-    return this.staffService.getStats(clinicId);
   }
 }

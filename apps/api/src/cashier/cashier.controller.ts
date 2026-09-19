@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { CashierService } from './cashier.service';
-import { OpenShiftDto, CloseShiftDto, ShiftQueryDto, CompleteTransactionDto, CreateProductDto } from './dto';
+import { OpenShiftDto, CloseShiftDto, ShiftQueryDto, CompleteTransactionDto, CreateProductDto, UpdateProductDto } from './dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -58,7 +58,8 @@ export class CashierController {
   @Roles(UserRole.ADMIN, UserRole.CASHIER)
   @ApiOperation({ summary: 'Complete a transaction' })
   completeTransaction(@Body() dto: CompleteTransactionDto, @CurrentUser() user: any) {
-    return this.cashierService.completeTransaction(dto, user.firstName + ' ' + user.lastName);
+    const fullName = user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : 'Unknown';
+    return this.cashierService.completeTransaction(dto, fullName);
   }
 
   @Get('transactions')
@@ -109,7 +110,7 @@ export class CashierController {
   @Put('products/:id')
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Update product' })
-  updateProduct(@Param('id') id: string, @Body() dto: any) {
+  updateProduct(@Param('id') id: string, @Body() dto: UpdateProductDto) {
     return this.cashierService.updateProduct(id, dto);
   }
 

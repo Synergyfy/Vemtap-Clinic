@@ -128,3 +128,30 @@ export class CreateProductDto {
   @IsUUID()
   clinicId: string;
 }
+
+export class UpdateProductDto {
+  @ApiPropertyOptional({ example: 'General Consultation' })
+  @IsOptional()
+  @IsString()
+  name?: string;
+
+  @ApiPropertyOptional({ example: 'Consultation' })
+  @IsOptional()
+  @IsString()
+  category?: string;
+
+  @ApiPropertyOptional({ example: 5000 })
+  @IsOptional()
+  @IsNumber()
+  unitPrice?: number;
+
+  @ApiPropertyOptional({ example: 'General consultation for eye checkup' })
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @ApiPropertyOptional({ example: 100 })
+  @IsOptional()
+  @IsNumber()
+  stock?: number;
+}

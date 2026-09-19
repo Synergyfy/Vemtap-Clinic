@@ -22,16 +22,16 @@ export class NotificationsController {
     return this.notificationsService.getUnreadCount(req.user.sub);
   }
 
-  @Put(':id/read')
-  @ApiOperation({ summary: 'Mark notification as read' })
-  markAsRead(@Param('id') id: string) {
-    return this.notificationsService.markAsRead(id);
-  }
-
   @Put('read-all')
   @ApiOperation({ summary: 'Mark all notifications as read' })
   markAllAsRead(@Request() req: any) {
     return this.notificationsService.markAllAsRead(req.user.sub);
+  }
+
+  @Put(':id/read')
+  @ApiOperation({ summary: 'Mark notification as read' })
+  markAsRead(@Param('id') id: string) {
+    return this.notificationsService.markAsRead(id);
   }
 
   @Delete(':id')

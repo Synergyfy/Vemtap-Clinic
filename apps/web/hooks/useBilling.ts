@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth-context";
 import {
-  listInvoices, createInvoice, makePayment,
+  listInvoices, createInvoice, makePayment, getRevenue,
   type Invoice, type CreateInvoiceData, type CreatePaymentData,
 } from "@/services/billing.service";
 
@@ -48,7 +48,7 @@ export function useRevenue() {
   const { user } = useAuth();
   return useQuery({
     queryKey: BILLING_KEYS.revenue(user?.clinicId ?? ""),
-    queryFn: () => listInvoices(user!.clinicId),
+    queryFn: () => getRevenue(user!.clinicId),
     enabled: !!user?.clinicId,
   });
 }

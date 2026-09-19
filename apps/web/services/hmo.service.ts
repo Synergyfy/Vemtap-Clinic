@@ -159,6 +159,11 @@ export async function createAppeal(dto: CreateAppealData): Promise<HmoAppeal> {
   return data;
 }
 
+export async function listAppeals(clinicId: string): Promise<HmoAppeal[]> {
+  const { data } = await api.get("/hmo/appeals", { params: { clinicId } });
+  return data;
+}
+
 export async function updateAppeal(id: string, dto: UpdateAppealData): Promise<HmoAppeal> {
   const { data } = await api.put(`/hmo/appeals/${id}`, dto);
   return data;
