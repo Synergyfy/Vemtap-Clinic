@@ -35,51 +35,25 @@ export class HmoController {
     return this.hmoService.findAllHMOs(query);
   }
 
-  @Get(':id')
-  @ApiOperation({ summary: 'Get HMO by ID' })
-  findOneHMO(@Param('id') id: string) {
-    return this.hmoService.findOneHMO(id);
-  }
-
-  @Put(':id')
+  // --- Appeals ---
+  @Post('appeals')
   @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Update HMO' })
-  updateHMO(@Param('id') id: string, @Body() dto: UpdateHMODto) {
-    return this.hmoService.updateHMO(id, dto);
+  @ApiOperation({ summary: 'Submit appeal' })
+  createAppeal(@Body() dto: CreateAppealDto) {
+    return this.hmoService.createAppeal(dto);
   }
 
-  // --- Plans ---
-  @Post('plans')
+  @Get('appeals')
+  @ApiOperation({ summary: 'List HMO appeals' })
+  findAllAppeals(@Query('clinicId') clinicId: string) {
+    return this.hmoService.findAllAppeals(clinicId);
+  }
+
+  @Put('appeals/:id')
   @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Create HMO plan' })
-  createPlan(@Body() dto: CreateHMOPlanDto) {
-    return this.hmoService.createPlan(dto);
-  }
-
-  @Get('plans/:hmoId')
-  @ApiOperation({ summary: 'List plans for an HMO' })
-  findAllPlans(@Param('hmoId') hmoId: string) {
-    return this.hmoService.findAllPlans(hmoId);
-  }
-
-  @Get('plans/detail/:id')
-  @ApiOperation({ summary: 'Get plan by ID' })
-  findOnePlan(@Param('id') id: string) {
-    return this.hmoService.findOnePlan(id);
-  }
-
-  @Put('plans/:id')
-  @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Update HMO plan' })
-  updatePlan(@Param('id') id: string, @Body() dto: UpdateHMOPlanDto) {
-    return this.hmoService.updatePlan(id, dto);
-  }
-
-  @Delete('plans/:id')
-  @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Delete HMO plan' })
-  removePlan(@Param('id') id: string) {
-    return this.hmoService.removePlan(id);
+  @ApiOperation({ summary: 'Update appeal status' })
+  updateAppeal(@Param('id') id: string, @Body() dto: UpdateAppealDto) {
+    return this.hmoService.updateAppeal(id, dto);
   }
 
   // --- Coverage Check ---
@@ -219,55 +193,6 @@ export class HmoController {
     return this.hmoService.removeDocument(id);
   }
 
-  // --- Appeals ---
-  @Post('appeals')
-  @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Submit appeal' })
-  createAppeal(@Body() dto: CreateAppealDto) {
-    return this.hmoService.createAppeal(dto);
-  }
-
-  @Get('appeals')
-  @ApiOperation({ summary: 'List HMO appeals' })
-  findAllAppeals(@Query('clinicId') clinicId: string) {
-    return this.hmoService.findAllAppeals(clinicId);
-  }
-
-  @Put('appeals/:id')
-  @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Update appeal status' })
-  updateAppeal(@Param('id') id: string, @Body() dto: UpdateAppealDto) {
-    return this.hmoService.updateAppeal(id, dto);
-  }
-
-  // --- Remittances ---
-  @Post('remittances')
-  @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Record remittance' })
-  createRemittance(@Body() dto: CreateRemittanceDto) {
-    return this.hmoService.createRemittance(dto);
-  }
-
-  @Get('remittances/all')
-  @ApiOperation({ summary: 'List remittances' })
-  findAllRemittances(@Query('clinicId') clinicId: string) {
-    return this.hmoService.findAllRemittances(clinicId);
-  }
-
-  @Put('remittances/:id')
-  @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Update remittance' })
-  updateRemittance(@Param('id') id: string, @Body() dto: UpdateRemittanceDto) {
-    return this.hmoService.updateRemittance(id, dto);
-  }
-
-  @Put('remittances/:id/match')
-  @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Match remittance to claims' })
-  matchRemittance(@Param('id') id: string, @Body() dto: MatchRemittanceDto) {
-    return this.hmoService.matchRemittance(id, dto.claimIds);
-  }
-
   @Get('aging')
   @ApiOperation({ summary: 'Get HMO aging report' })
   getAgingReport(@Query() query: AgingReportDto) {
@@ -285,5 +210,18 @@ export class HmoController {
   @ApiOperation({ summary: 'Get HMO statistics' })
   getStats(@Query('clinicId') clinicId: string) {
     return this.hmoService.getStats(clinicId);
+  }
+
+  @Get(':id')
+  @ApiOperation({ summary: 'Get HMO by ID' })
+  findOneHMO(@Param('id') id: string) {
+    return this.hmoService.findOneHMO(id);
+  }
+
+  @Put(':id')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Update HMO' })
+  updateHMO(@Param('id') id: string, @Body() dto: UpdateHMODto) {
+    return this.hmoService.updateHMO(id, dto);
   }
 }

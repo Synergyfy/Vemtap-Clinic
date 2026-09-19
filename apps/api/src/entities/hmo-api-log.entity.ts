@@ -1,7 +1,17 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
 import { HmoIntegration } from './hmo-integration.entity';
 import { Clinic } from './clinic.entity';
-import { EndpointType } from './hmo-integration.entity';
+
+export enum EndpointType {
+  ELIGIBILITY_CHECK = 'eligibility_check',
+  CLAIM_SUBMISSION = 'claim_submission',
+  CLAIM_STATUS = 'claim_status',
+  REMITTANCE_ADVICE = 'remittance_advice',
+  PROVIDER_DIRECTORY = 'provider_directory',
+  BENEFIT_SCHEDULE = 'benefit_schedule',
+  PRE_AUTHORIZATION = 'pre_authorization',
+  CLAIM_REVERSAL = 'claim_reversal',
+}
 
 export enum ApiLogStatus {
   SUCCESS = 'success',

@@ -195,7 +195,7 @@ export class HmoService {
   async findAllAppeals(clinicId?: string): Promise<HMOAppeal[]> {
     const where: any = {};
     if (clinicId) where.clinicId = clinicId;
-    return this.appealRepository.find({ where, relations: ['claim', 'hmo', 'patient'], order: { createdAt: 'DESC' } });
+    return this.appealRepository.find({ where, relations: ['claim'], order: { createdAt: 'DESC' } });
   }
 
   async updateAppeal(id: string, dto: UpdateAppealDto): Promise<HMOAppeal> {
