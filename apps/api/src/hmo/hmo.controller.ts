@@ -207,6 +207,7 @@ export class HmoController {
 
   // --- Stats ---
   @Get('stats')
+  @Roles(UserRole.ADMIN, UserRole.DOCTOR, UserRole.NURSE, UserRole.RECEPTIONIST, UserRole.PHARMACIST, UserRole.OPTOMETRIST, UserRole.CASHIER)
   @ApiOperation({ summary: 'Get HMO statistics' })
   getStats(@Query('clinicId') clinicId: string) {
     return this.hmoService.getStats(clinicId);

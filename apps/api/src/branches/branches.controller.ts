@@ -28,6 +28,7 @@ export class BranchesController {
   }
 
   @Get('stats')
+  @Roles(UserRole.ADMIN, UserRole.DOCTOR, UserRole.NURSE, UserRole.RECEPTIONIST, UserRole.PHARMACIST, UserRole.OPTOMETRIST, UserRole.CASHIER)
   @ApiOperation({ summary: 'Get branch statistics' })
   getStats(@Query('clinicId') clinicId: string) {
     return this.branchesService.getStats(clinicId);
