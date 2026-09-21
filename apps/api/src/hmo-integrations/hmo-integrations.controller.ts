@@ -37,6 +37,19 @@ export class HmoIntegrationsController {
     return this.hmoIntegrationsService.getStats(clinicId);
   }
 
+  // ========== Logs ==========
+  @Get('logs')
+  @ApiOperation({ summary: 'List API logs' })
+  findLogs(@Query() query: HmoApiLogQueryDto) {
+    return this.hmoIntegrationsService.findLogs(query);
+  }
+
+  @Get('logs/:id')
+  @ApiOperation({ summary: 'Get API log by ID' })
+  findLog(@Param('id') id: string) {
+    return this.hmoIntegrationsService.findLogById(id);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get integration by ID' })
   findIntegration(@Param('id') id: string) {
@@ -91,18 +104,5 @@ export class HmoIntegrationsController {
   @ApiOperation({ summary: 'Parse remittance advice' })
   parseRemittance(@Param('id') id: string, @Body() dto: RemittanceParseDto) {
     return this.hmoIntegrationsService.parseRemittance(id, dto);
-  }
-
-  // ========== Logs ==========
-  @Get('logs')
-  @ApiOperation({ summary: 'List API logs' })
-  findLogs(@Query() query: HmoApiLogQueryDto) {
-    return this.hmoIntegrationsService.findLogs(query);
-  }
-
-  @Get('logs/:id')
-  @ApiOperation({ summary: 'Get API log by ID' })
-  findLog(@Param('id') id: string) {
-    return this.hmoIntegrationsService.findLogById(id);
   }
 }

@@ -1,6 +1,7 @@
 import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AuditLogsService } from './audit-logs.service';
+import { AuditLogQueryDto } from './dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -16,7 +17,7 @@ export class AuditLogsController {
 
   @Get()
   @ApiOperation({ summary: 'List audit logs (admin only)' })
-  findAll(@Query() query: any) {
+  findAll(@Query() query: AuditLogQueryDto) {
     return this.auditLogsService.findAll(query);
   }
 

@@ -27,6 +27,13 @@ export class BranchesController {
     return this.branchesService.findAll(query);
   }
 
+  @Get('stats')
+  @Roles(UserRole.ADMIN, UserRole.DOCTOR, UserRole.NURSE, UserRole.RECEPTIONIST, UserRole.PHARMACIST, UserRole.OPTOMETRIST, UserRole.CASHIER)
+  @ApiOperation({ summary: 'Get branch statistics' })
+  getStats(@Query('clinicId') clinicId: string) {
+    return this.branchesService.getStats(clinicId);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get branch by ID' })
   findOne(@Param('id') id: string) {
@@ -45,11 +52,5 @@ export class BranchesController {
   @ApiOperation({ summary: 'Delete branch' })
   remove(@Param('id') id: string) {
     return this.branchesService.remove(id);
-  }
-
-  @Get('stats')
-  @ApiOperation({ summary: 'Get branch statistics' })
-  getStats(@Query('clinicId') clinicId: string) {
-    return this.branchesService.getStats(clinicId);
   }
 }

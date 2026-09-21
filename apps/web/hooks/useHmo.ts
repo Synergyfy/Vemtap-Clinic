@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth-context";
 import {
   listClaims, createClaim, updateClaim,
-  createAppeal, updateAppeal,
+  createAppeal, updateAppeal, listAppeals,
   listRemittances, createRemittance, matchRemittance,
   getAgingReport, getHmoTotals, getHmoStats,
   listHmos, createHmo, getHmo, updateHmo,
@@ -74,12 +74,7 @@ export function useHmoAppeals() {
   const { user } = useAuth();
   return useQuery({
     queryKey: HMO_KEYS.appeals(user?.clinicId ?? ""),
-    queryFn: async (): Promise<HmoAppeal[]> => {
-      // Backend doesn't have a standalone appeals list endpoint — fetch via stats or derive from claims
-      // For now, we'll rely on the claims data and filter appealed ones
-      // TODO: If a dedicated appeals endpoint is added, use it here
-      return [];
-    },
+    queryFn: () => listAppeals(user!.clinicId),
     enabled: !!user?.clinicId,
   });
 }

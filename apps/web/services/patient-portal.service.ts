@@ -168,12 +168,12 @@ export const patientPortalService = {
     appointmentDate: string;
     appointmentTime?: string;
   }): Promise<PatientAppointment> {
-    const response = await api.put(`/appointments/${id}`, dto);
+    const response = await api.put(`/patient-portal/appointments/${id}/reschedule`, dto);
     return response.data;
   },
 
   async cancelAppointment(id: string): Promise<void> {
-    await api.put(`/appointments/${id}`, { status: 'cancelled' });
+    await api.put(`/patient-portal/appointments/${id}/cancel`);
   },
 
   async getRecords(): Promise<MedicalRecord[]> {
@@ -187,7 +187,7 @@ export const patientPortalService = {
   },
 
   async makePayment(invoiceId: string, dto: { amount: number; paymentMethod: string; reference?: string }): Promise<void> {
-    await api.post('/billing/payments', { ...dto, invoiceId });
+    await api.post('/patient-portal/billing/payments', { ...dto, invoiceId });
   },
 
   async getNotifications(): Promise<Notification[]> {

@@ -1,8 +1,8 @@
-import { Controller, Get, Post, Put, Body, Res, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Put, Body, Res, Req, UseGuards, Param } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { Response, Request as ExpressRequest } from 'express';
 import { PatientPortalService } from './patient-portal.service';
-import { PatientLoginDto, PatientRegisterDto, BookAppointmentDto, UpdatePatientProfileDto } from './dto';
+import { PatientLoginDto, PatientRegisterDto, BookAppointmentDto, UpdatePatientProfileDto, RescheduleAppointmentDto, MakePaymentDto } from './dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { COOKIE_CONFIG } from '../auth/cookie.config';
 
@@ -83,6 +83,22 @@ export class PatientPortalController {
     return this.portalService.getMyAppointments(req.user.sub);
   }
 
+  @Put('appointments/:id/reschedule')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Reschedule an appointment' })
+  rescheduleAppointment(@Req() req: ExpressRequest & { user: JwtPayload }, @Param('id') id: string, @Body() dto: RescheduleAppointmentDto) {
+    return this.portalService.rescheduleAppointment(req.user.sub, id, dto);
+  }
+
+  @Put('appointments/:id/cancel')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Cancel an appointment' })
+  cancelAppointment(@Req() req: ExpressRequest & { user: JwtPayload }, @Param('id') id: string) {
+    return this.portalService.cancelAppointment(req.user.sub, id);
+  }
+
   @Get('records')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
@@ -97,6 +113,14 @@ export class PatientPortalController {
   @ApiOperation({ summary: 'Get my billing history' })
   getMyBilling(@Req() req: ExpressRequest & { user: JwtPayload }) {
     return this.portalService.getMyBilling(req.user.sub);
+  }
+
+  @Post('billing/payments')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Make a payment on an invoice' })
+  makePayment(@Req() req: ExpressRequest & { user: JwtPayload }, @Body() dto: MakePaymentDto) {
+    return this.portalService.makePayment(req.user.sub, dto);
   }
 
   private setAccessCookie(res: Response, token: string) {

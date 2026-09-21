@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, ConflictException, NotFoundException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -6,8 +6,9 @@ import * as bcrypt from 'bcryptjs';
 import { Patient } from '../entities/patient.entity';
 import { Appointment, AppointmentStatus } from '../entities/appointment.entity';
 import { MedicalRecord } from '../entities/medical-record.entity';
-import { Invoice } from '../entities/invoice.entity';
-import { PatientLoginDto, PatientRegisterDto, BookAppointmentDto, UpdatePatientProfileDto } from './dto';
+import { Invoice, InvoiceStatus } from '../entities/invoice.entity';
+import { Payment, PaymentMethod } from '../entities/payment.entity';
+import { PatientLoginDto, PatientRegisterDto, BookAppointmentDto, UpdatePatientProfileDto, RescheduleAppointmentDto, MakePaymentDto } from './dto';
 
 export interface PatientTokenPair {
   accessToken: string;
@@ -121,6 +122,60 @@ export class PatientPortalService {
       relations: ['payments'],
       order: { createdAt: 'DESC' },
     });
+  }
+
+  async rescheduleAppointment(patientId: string, appointmentId: string, dto: RescheduleAppointmentDto) {
+    const appointment = await this.appointmentRepo.findOne({
+      where: { id: appointmentId, patientId },
+    });
+    if (!appointment) throw new NotFoundException('Appointment not found');
+
+    appointment.appointmentDate = dto.appointmentDate as any;
+    if (dto.appointmentTime) {
+      appointment.appointmentTime = dto.appointmentTime;
+    }
+    appointment.status = AppointmentStatus.SCHEDULED;
+    return this.appointmentRepo.save(appointment);
+  }
+
+  async cancelAppointment(patientId: string, appointmentId: string) {
+    const appointment = await this.appointmentRepo.findOne({
+      where: { id: appointmentId, patientId },
+    });
+    if (!appointment) throw new NotFoundException('Appointment not found');
+
+    appointment.status = AppointmentStatus.CANCELLED;
+    return this.appointmentRepo.save(appointment);
+  }
+
+  async makePayment(patientId: string, dto: MakePaymentDto) {
+    const invoice = await this.invoiceRepo.findOne({
+      where: { id: dto.invoiceId, patientId },
+    });
+    if (!invoice) throw new NotFoundException('Invoice not found');
+
+    const payment = this.invoiceRepo.manager.create(Payment, {
+      invoiceId: dto.invoiceId,
+      amount: dto.amount,
+      paymentMethod: dto.paymentMethod as PaymentMethod,
+      reference: dto.reference,
+      notes: 'Patient portal payment',
+      isSuccessful: true,
+      clinicId: invoice.clinicId,
+    });
+    const savedPayment = await this.invoiceRepo.manager.save(payment);
+
+    // Update invoice totals
+    invoice.amountPaid += dto.amount;
+    invoice.balance = invoice.totalAmount - invoice.amountPaid;
+    if (invoice.balance <= 0) {
+      invoice.status = InvoiceStatus.PAID;
+    } else {
+      invoice.status = InvoiceStatus.PARTIALLY_PAID;
+    }
+    await this.invoiceRepo.save(invoice);
+
+    return savedPayment;
   }
 
   private generateToken(patient: Patient): { tokens: PatientTokenPair; patient: PatientAuthUser } {

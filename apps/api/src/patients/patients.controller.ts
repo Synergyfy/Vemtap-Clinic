@@ -27,6 +27,19 @@ export class PatientsController {
     return this.patientsService.findAll(query);
   }
 
+  @Get('stats')
+  @Roles(UserRole.ADMIN, UserRole.DOCTOR, UserRole.NURSE, UserRole.RECEPTIONIST, UserRole.PHARMACIST, UserRole.OPTOMETRIST, UserRole.CASHIER)
+  @ApiOperation({ summary: 'Get patient statistics' })
+  getStats(@Query('clinicId') clinicId: string) {
+    return this.patientsService.getStats(clinicId);
+  }
+
+  @Get('hmo/:hmoName')
+  @ApiOperation({ summary: 'Get patients by HMO' })
+  findByHMO(@Param('hmoName') hmoName: string, @Query('clinicId') clinicId: string) {
+    return this.patientsService.findByHMO(hmoName, clinicId);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get patient by ID' })
   findOne(@Param('id') id: string) {
@@ -45,18 +58,6 @@ export class PatientsController {
   @ApiOperation({ summary: 'Delete patient' })
   remove(@Param('id') id: string) {
     return this.patientsService.remove(id);
-  }
-
-  @Get('stats')
-  @ApiOperation({ summary: 'Get patient statistics' })
-  getStats(@Query('clinicId') clinicId: string) {
-    return this.patientsService.getStats(clinicId);
-  }
-
-  @Get('hmo/:hmoName')
-  @ApiOperation({ summary: 'Get patients by HMO' })
-  findByHMO(@Param('hmoName') hmoName: string, @Query('clinicId') clinicId: string) {
-    return this.patientsService.findByHMO(hmoName, clinicId);
   }
 
   @Get(':id/hmo-eligibility')

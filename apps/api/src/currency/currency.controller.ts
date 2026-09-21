@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, BadRequestException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { CurrencyService } from './currency.service';
 import { CreateCurrencyConfigDto, UpdateCurrencyConfigDto, CurrencyConfigQueryDto } from './dto';
@@ -6,6 +6,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole } from '../entities/user.entity';
+import { CurrencyCode } from '../entities/currency-config.entity';
 
 @ApiTags('Currency')
 @Controller('currency')
@@ -42,12 +43,16 @@ export class CurrencyController {
   @Get('convert')
   @ApiOperation({ summary: 'Convert amount between currencies' })
   convert(
-    @Query('amount') amount: number,
+    @Query('amount') amount: string,
     @Query('from') from: string,
     @Query('to') to: string,
     @Query('clinicId') clinicId: string,
   ) {
-    return this.currencyService.convert(Number(amount), from as any, to as any, clinicId);
+    const numAmount = Number(amount);
+    if (isNaN(numAmount)) {
+      throw new BadRequestException('Invalid amount: must be a valid number');
+    }
+    return this.currencyService.convert(numAmount, from as CurrencyCode, to as CurrencyCode, clinicId);
   }
 
   @Get(':id')

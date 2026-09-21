@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsEmail, IsUUID, MinLength, MaxLength } from 'class-validator';
+import { IsString, IsOptional, IsEmail, IsUUID, MinLength, MaxLength, IsNumber, IsEnum } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class PatientLoginDto {
@@ -97,4 +97,34 @@ export class UpdatePatientProfileDto {
   @ApiPropertyOptional() @IsOptional() @IsString() state?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() emergencyContact?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() emergencyPhone?: string;
+}
+
+export class RescheduleAppointmentDto {
+  @ApiProperty({ example: '2026-01-15' })
+  @IsString()
+  appointmentDate: string;
+
+  @ApiPropertyOptional({ example: '10:00' })
+  @IsOptional()
+  @IsString()
+  appointmentTime?: string;
+}
+
+export class MakePaymentDto {
+  @ApiProperty()
+  @IsUUID()
+  invoiceId: string;
+
+  @ApiProperty({ example: 5000 })
+  @IsNumber()
+  amount: number;
+
+  @ApiProperty({ enum: ['cash', 'card', 'transfer', 'hmo'] })
+  @IsString()
+  paymentMethod: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  reference?: string;
 }

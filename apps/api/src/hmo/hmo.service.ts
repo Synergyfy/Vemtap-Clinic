@@ -192,6 +192,12 @@ export class HmoService {
     return this.appealRepository.save(appeal);
   }
 
+  async findAllAppeals(clinicId?: string): Promise<HMOAppeal[]> {
+    const where: any = {};
+    if (clinicId) where.clinicId = clinicId;
+    return this.appealRepository.find({ where, relations: ['claim'], order: { createdAt: 'DESC' } });
+  }
+
   async updateAppeal(id: string, dto: UpdateAppealDto): Promise<HMOAppeal> {
     const appeal = await this.appealRepository.findOne({ where: { id } });
     if (!appeal) throw new NotFoundException('Appeal not found');
