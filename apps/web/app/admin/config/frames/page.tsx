@@ -10,18 +10,24 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
-
-const frameItems = [
-  { id: "FRM-001", brand: "Ray-Ban", model: "Aviator Classic", material: "Metal", gender: "Unisex", price: "$150.00" },
-  { id: "FRM-002", brand: "Oakley", model: "Holbrook", material: "O Matter", gender: "Men", price: "$130.00" },
-  { id: "FRM-003", brand: "Gucci", model: "GG0006O", material: "Acetate", gender: "Women", price: "$320.00" },
-  { id: "FRM-004", brand: "Prada", model: "PR 16MV", material: "Plastic", gender: "Women", price: "$280.00" },
-  { id: "FRM-005", brand: "Tom Ford", model: "FT5401", material: "Acetate", gender: "Men", price: "$350.00" },
-  { id: "FRM-006", brand: "Vogue", model: "VO5211", material: "Nylon", gender: "Women", price: "$90.00" },
-];
+import { useAuth } from "@/lib/auth-context";
+import { useFrames } from "@/hooks/useOptical";
+import type { OpticalItem } from "@/hooks/useOptical";
 
 export default function FramesCatalogPage() {
+  const { user } = useAuth();
+  const clinicId = user?.clinicId ?? "";
   const [searchQuery, setSearchQuery] = useState("");
+  const { data: frames = [], isLoading, refetch } = useFrames({ clinicId, search: searchQuery });
+
+const displayFrames = frames.map((frame: any) => ({
+    id: frame.id,
+    brand: frame.brand || "Unknown",
+    model: frame.name,
+    material: frame.frameSize || "N/A",
+    gender: "Unisex",
+    price: `₦${frame.unitPrice.toLocaleString()}`,
+  }));
 
   return (
     <div className="space-y-8">
@@ -114,7 +120,7 @@ export default function FramesCatalogPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-              {frameItems.map((frame, i) => (
+              {displayFrames.map((frame, i) => (
                 <tr key={i} className="group hover:bg-slate-50/30 transition-colors">
                   <td className="px-8 py-6">
                     <div className="flex items-center gap-4">

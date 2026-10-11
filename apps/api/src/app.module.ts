@@ -4,12 +4,15 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { appConfig } from './app.config';
 import { getDatabaseConfig } from './database.config';
+import { CommonModule } from './common/common.module';
+import { DevSeedModule } from './common/dev-seed.module';
 import { HealthModule } from './health/health.module';
 import { AuthModule } from './auth/auth.module';
 import { PatientsModule } from './patients/patients.module';
 import { AppointmentsModule } from './appointments/appointments.module';
 import { StaffModule } from './staff/staff.module';
 import { BranchesModule } from './branches/branches.module';
+import { ClinicsModule } from './clinics/clinics.module';
 import { QueueModule } from './queue/queue.module';
 import { RecordsModule } from './records/records.module';
 import { DrugsModule } from './drugs/drugs.module';
@@ -25,6 +28,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { CashierModule } from './cashier/cashier.module';
 import { PatientDocumentsModule } from './patient-documents/patient-documents.module';
 import { StaffTasksModule } from './staff-tasks/staff-tasks.module';
+import { SupportTicketsModule } from './support-tickets/support-tickets.module';
 import { FeedbackModule } from './feedback/feedback.module';
 import { AuditLogsModule } from './audit-logs/audit-logs.module';
 import { SurgeryModule } from './surgery/surgery.module';
@@ -49,12 +53,15 @@ import { SettingsModule } from './settings/settings.module';
       inject: [ConfigService],
     }),
     ThrottlerModule.forRoot([{ ttl: 60000, limit: 100 }]),
+    CommonModule,
+    DevSeedModule,
     HealthModule,
     AuthModule,
     PatientsModule,
     AppointmentsModule,
     StaffModule,
     BranchesModule,
+    ClinicsModule,
     QueueModule,
     RecordsModule,
     DrugsModule,
@@ -82,6 +89,7 @@ import { SettingsModule } from './settings/settings.module';
     CurrencyModule,
     FileUploadModule,
     ExpensesModule,
+    SupportTicketsModule,
     AnalyticsModule,
     SettingsModule,
   ],

@@ -13,36 +13,31 @@ import {
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { Modal } from "@/components/ui/modal";
+import { useAuth } from "@/lib/auth-context";
+import { useDashboardOverview, useDashboardHMOAnalytics } from "@/hooks/useDashboard";
+import { useQueue, useQueueStats } from "@/hooks/useQueue";
+import { useTodayAppointments } from "@/hooks/useAppointments";
+import { usePendingAuthorizations } from "@/hooks/useHmo";
 
 const stats = [
-  { label: "Today's Queue", value: "24", icon: Users, color: "text-sky-600", bg: "bg-sky-50", href: "/reception/queue" },
-  { label: "Pending HMO", value: "8", icon: ShieldCheck, color: "text-amber-600", bg: "bg-amber-50", href: "/reception/billing#hmo-queue" },
-  { label: "Bookings", value: "12", icon: CalendarDays, color: "text-emerald-600", bg: "bg-emerald-50", href: "/reception/appointments" },
-  { label: "Avg. Wait", value: "15m", icon: Clock, color: "text-rose-600", bg: "bg-rose-50", href: "/reception/queue" },
-];
-
-const todayAppointments = [
-  { id: "APT-1042", patient: "Chidimma Okoro", time: "09:00 AM", type: "Eye Consultation", status: "Arrived", hmo: "Reliance Health" },
-  { id: "APT-1043", patient: "Babatunde Lawal", time: "10:30 AM", type: "Lens Purchase", status: "Scheduled", hmo: "Private" },
-  { id: "APT-1044", patient: "Yuki Tanaka", time: "11:15 AM", type: "Follow-up", status: "Confirmed", hmo: "Axa Mansard" },
-  { id: "APT-1045", patient: "Sarah Mensah", time: "12:00 PM", type: "Emergency", status: "Emergency", hmo: "Private" },
-];
-
-const queueItems = [
-  { id: "V001", patient: "Fatima Yusuf", time: "10 mins ago", status: "HMO Verifying", color: "amber" },
-  { id: "V002", patient: "John Doe", time: "15 mins ago", status: "To Nurse", color: "sky" },
-  { id: "V003", patient: "Emeka Obi", time: "22 mins ago", status: "In Consultation", color: "emerald" },
-];
-
-const hmoPendingList = [
-  { patient: "Chidimma Okoro", provider: "Reliance Health", code: "HMO-901", amount: "NGN 12,000" },
-  { patient: "Yuki Tanaka", provider: "Axa Mansard", code: "HMO-902", amount: "NGN 8,000" },
-  { patient: "Emeka Obi", provider: "Hygeia", code: "HMO-903", amount: "NGN 35,000" },
+  { label: "Today's Queue", value: "—", icon: Users, color: "text-sky-600", bg: "bg-sky-50", href: "/reception/queue" },
+  { label: "Pending HMO", value: "—", icon: ShieldCheck, color: "text-amber-600", bg: "bg-amber-50", href: "/reception/billing#hmo-queue" },
+  { label: "Bookings", value: "—", icon: CalendarDays, color: "text-emerald-600", bg: "bg-emerald-50", href: "/reception/appointments" },
+  { label: "Avg. Wait", value: "—", icon: Clock, color: "text-rose-600", bg: "bg-rose-50", href: "/reception/queue" },
 ];
 
 export default function ReceptionDashboard() {
   const router = useRouter();
+  const { user } = useAuth();
+  const clinicId = user?.clinicId ?? "";
   const [toast, setToast] = useState("");
+
+  // Real API data
+  const { data: overview, isLoading: overviewLoading } = useDashboardOverview(clinicId);
+  const { data: queueStats, isLoading: queueLoading } = useQueueStats(clinicId);
+  const { data: todayAppointmentsData, isLoading: aptLoading } = useTodayAppointments(clinicId);
+  const { data: pendingAuths, isLoading: hmoLoading } = usePendingAuthorizations();
+  const { data: queueListData } = useQueue({ clinicId, limit: 10, sortBy: 'createdAt', sortOrder: 'DESC' });
 
   // Modal states
   const [queueAction, setQueueAction] = useState<any>(null);
@@ -76,9 +71,89 @@ export default function ReceptionDashboard() {
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 3000); };
 
+  // Transform stats with real data
+  const displayStats = React.useMemo(() => {
+    if (!overview || !queueStats) return stats;
+    return [
+      { ...stats[0], value: queueStats.waiting?.toString() ?? "0" },
+      { ...stats[1], value: pendingAuths?.length?.toString() ?? "0" },
+      { ...stats[2], value: todayAppointmentsData?.total?.toString() ?? "0" },
+      { ...stats[3], value: queueStats.avgWaitTime ? `${queueStats.avgWaitTime}m` : "—" },
+    ];
+  }, [overview, queueStats, pendingAuths, todayAppointmentsData]);
+
+  // Transform today's appointments
+  const displayAppointments = React.useMemo(() => {
+    if (!todayAppointmentsData?.appointments) return [];
+    return todayAppointmentsData.appointments.slice(0, 6).map((apt: any) => ({
+      id: apt.id,
+      patient: apt.patient ? `${apt.patient.firstName} ${apt.patient.lastName}` : "Unknown",
+      time: apt.appointmentTime ? new Date(`2000-01-01T${apt.appointmentTime}`).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "—",
+      type: apt.type?.replace('_', ' ') ?? "Consultation",
+      status: apt.status === "scheduled" ? "Scheduled" : apt.status === "confirmed" ? "Confirmed" : apt.status === "in_progress" ? "In Consultation" : apt.status === "completed" ? "Completed" : apt.status === "cancelled" ? "Cancelled" : apt.status === "no_show" ? "No Show" : apt.status,
+      hmo: apt.patient?.hmoName ?? "Private",
+    }));
+  }, [todayAppointmentsData]);
+
+  // Transform queue items
+  const displayQueueItems = React.useMemo(() => {
+    if (!queueListData?.data) return [];
+    return queueListData.data.slice(0, 5).map((item: any) => ({
+      id: item.ticketNumber?.toString() ?? item.id.slice(-4),
+      patient: item.patient ? `${item.patient.firstName} ${item.patient.lastName}` : "Unknown",
+      time: item.createdAt ? formatRelativeTime(new Date(item.createdAt)) : "—",
+      status: formatQueueStatus(item.status),
+      color: getStatusColor(item.status),
+    }));
+  }, [queueListData]);
+
+  // Transform HMO pending list from pending authorizations
+  const displayHmoPending = React.useMemo(() => {
+    if (!pendingAuths) return [];
+    return pendingAuths.slice(0, 5).map((auth: any) => ({
+      patient: auth.patient ? `${auth.patient.firstName} ${auth.patient.lastName}` : "Unknown",
+      provider: auth.hmo?.name ?? "Unknown HMO",
+      code: auth.authorizationNumber ?? auth.id,
+      amount: auth.approvedAmount ? `NGN ${auth.approvedAmount.toLocaleString()}` : "—",
+    }));
+  }, [pendingAuths]);
+
   const handleQueueAction = (action: string) => {
     setQueueAction(null);
     showToast(`${action} for ${queueAction?.patient}`);
+  };
+
+  // Helper functions for queue status
+  const formatRelativeTime = (date: Date) => {
+    const diff = Math.floor((Date.now() - date.getTime()) / 60000);
+    if (diff < 1) return "Just now";
+    if (diff < 60) return `${diff} min${diff > 1 ? "s" : ""} ago`;
+    const hours = Math.floor(diff / 60);
+    return `${hours} hour${hours > 1 ? "s" : ""} ago`;
+  };
+
+  const formatQueueStatus = (status: string) => {
+    switch (status) {
+      case "waiting": return "Waiting";
+      case "called": return "Called";
+      case "in_progress": return "In Consultation";
+      case "completed": return "Completed";
+      case "cancelled": return "Cancelled";
+      case "no_show": return "No Show";
+      default: return status;
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "waiting": return "amber";
+      case "called": return "sky";
+      case "in_progress": return "emerald";
+      case "completed": return "slate";
+      case "cancelled": return "rose";
+      case "no_show": return "rose";
+      default: return "slate";
+    }
   };
 
   return (
@@ -104,7 +179,7 @@ export default function ReceptionDashboard() {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-        {stats.map((stat, i) => (
+        {displayStats.map((stat, i) => (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -181,7 +256,7 @@ export default function ReceptionDashboard() {
               </Link>
             </div>
             <div className="divide-y divide-slate-50">
-              {queueItems.map((item) => (
+              {displayQueueItems.map((item) => (
                 <div key={item.id} className="p-4 sm:p-6 flex items-center justify-between hover:bg-slate-50 transition-colors">
                   <div className="flex items-center gap-3 sm:gap-4 min-w-0">
                     <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-slate-50 flex items-center justify-center font-black text-slate-400 text-[10px] sm:text-xs shrink-0">
@@ -219,7 +294,7 @@ export default function ReceptionDashboard() {
               <p className="text-[10px] sm:text-xs text-slate-400 font-bold uppercase tracking-tight">Scheduled Appointments</p>
             </div>
             <div className="p-3 sm:p-4 space-y-3">
-              {todayAppointments.map((apt) => (
+              {displayAppointments.map((apt) => (
                 <div key={apt.id} onClick={() => setAptDetail(apt)}
                   className="p-4 sm:p-5 rounded-[1.5rem] border border-slate-50 bg-slate-50/30 hover:bg-white hover:shadow-lg hover:shadow-slate-200/50 transition-all cursor-pointer">
                   <div className="flex items-start justify-between mb-3">
@@ -259,7 +334,7 @@ export default function ReceptionDashboard() {
             <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-3xl -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-700" />
             <ShieldCheck size={40} className="mb-4 sm:mb-6 opacity-80" />
             <h3 className="text-lg sm:text-xl font-black mb-2">HMO Verification Queue</h3>
-            <p className="text-xs sm:text-sm text-white/80 font-medium mb-4 sm:mb-6">There are 8 pending HMO verifications that require immediate attention from the front desk.</p>
+            <p className="text-xs sm:text-sm text-white/80 font-medium mb-4 sm:mb-6">There {pendingAuths?.length === 1 ? "is" : "are"} {pendingAuths?.length ?? 0} pending HMO verification{pendingAuths?.length === 1 ? "" : "s"} that require immediate attention from the front desk.</p>
             <div className="inline-flex px-5 sm:px-6 py-2.5 sm:py-3 bg-white text-amber-600 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest hover:bg-amber-50 transition-all items-center gap-2">
               Process Queue <ArrowRight size={16} />
             </div>
@@ -437,7 +512,7 @@ export default function ReceptionDashboard() {
         <div className="space-y-5">
           <p className="text-sm text-slate-600">Review and verify pending HMO authorizations.</p>
           <div className="space-y-3">
-            {hmoPendingList.map((item) => {
+            {displayHmoPending.map((item) => {
               const verified = hmoVerified.includes(item.code);
               return (
                 <div key={item.code} className={cn(

@@ -1,30 +1,28 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { 
   Wallet, CreditCard, TrendingUp, TrendingDown,
   ArrowUpRight, ArrowDownRight, Search, Filter,
   Download, MoreVertical, CheckCircle2, Clock,
   AlertCircle, Receipt, DollarSign, PieChart,
-  ArrowRight
+  ArrowRight, ChevronDown
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useModals } from "@/lib/modal-context";
+import { useAuth } from "@/lib/auth-context";
+import { useRevenueSummary } from "@/hooks/useReports";
+import { useExpenses, useExpenseSummary } from "@/hooks/useFinance";
+import { useDebtorStats } from "@/hooks/useDebtors";
+import { api } from "@/lib/api";
 
-const transactions = [
-  { id: "TXN-8492", clinic: "ClearVision Eye Clinic", amount: "$1,240.00", date: "2 hours ago", method: "Paystack", status: "Success", type: "Subscription" },
-  { id: "TXN-8491", clinic: "Lagos Vision Center", amount: "$240.00", date: "5 hours ago", method: "Flutterwave", status: "Success", type: "Add-on" },
-  { id: "TXN-8490", clinic: "Optimal Optical", amount: "$99.00", date: "8 hours ago", method: "Bank Transfer", status: "Pending", type: "Subscription" },
-  { id: "TXN-8489", clinic: "Precision Eyecare", amount: "$480.00", date: "Yesterday", method: "Paystack", status: "Success", type: "Subscription" },
-  { id: "TXN-8488", clinic: "Elite Vision Hospital", amount: "$2,400.00", date: "Yesterday", method: "Direct Debit", status: "Failed", type: "Enterprise" },
-];
-
-const invoices = [
-  { id: "INV-2024-001", clinic: "ClearVision Eye Clinic", amount: "$1,240.00", dueDate: "In 3 days", status: "Unpaid" },
-  { id: "INV-2024-002", clinic: "Lagos Vision Center", amount: "$240.00", dueDate: "Passed", status: "Overdue" },
-];
+interface Clinic {
+  id: string;
+  name: string;
+  isActive: boolean;
+}
 
 const affiliates = [
   { name: "Dr. Adebayo", referrals: 12, revenue: "$4,200.00", commission: "$420.00" },
@@ -33,6 +31,39 @@ const affiliates = [
 
 export default function FinanceDashboardPage() {
   const { openModal } = useModals();
+  const { user } = useAuth();
+  const [selectedClinicId, setSelectedClinicId] = useState<string>("");
+  const [clinics, setClinics] = useState<Clinic[]>([]);
+
+  // Real API data
+  const { data: revenueSummary, isLoading: revenueLoading } = useRevenueSummary();
+  const { data: expenseSummary, isLoading: expenseLoading } = useExpenseSummary();
+  const { data: debtorStats, isLoading: debtorLoading } = useDebtorStats();
+  const [invoicesData, setInvoicesData] = useState<any[]>([]);
+  const [invoicesLoading, setInvoicesLoading] = useState(false);
+
+  // Fetch clinics for selector
+  React.useEffect(() => {
+    if (user?.roles?.includes("ADMIN")) {
+      api.get("/clinics").then(res => setClinics(res.data.filter((c: Clinic) => c.isActive))).catch(() => {});
+    }
+  }, [user?.roles]);
+
+  // Fetch invoices for selected clinic
+  React.useEffect(() => {
+    if (selectedClinicId && user?.roles?.includes("ADMIN")) {
+      setInvoicesLoading(true);
+      api.get("/billing/invoices", { params: { clinicId: selectedClinicId, limit: 10 } })
+        .then(res => setInvoicesData(res.data.invoices || res.data))
+        .catch(() => setInvoicesData([]))
+        .finally(() => setInvoicesLoading(false));
+    } else if (user?.roles?.includes("ADMIN")) {
+      // Fetch all clinics' invoices - use first clinic or all
+      api.get("/billing/invoices", { params: { limit: 10 } })
+        .then(res => setInvoicesData(res.data.invoices || res.data))
+        .catch(() => setInvoicesData([]));
+    }
+  }, [selectedClinicId, user?.roles]);
 
   return (
     <div className="space-y-10 pb-20">
@@ -42,7 +73,22 @@ export default function FinanceDashboardPage() {
           <h1 className="text-3xl font-bold text-brand-navy font-black tracking-tight">Financial Management</h1>
           <p className="text-slate-500 font-medium mt-1">Monitor platform revenue, transactions, and billing health.</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
+          {clinics.length > 0 && (
+            <div className="relative">
+              <select
+                value={selectedClinicId || "all"}
+                onChange={e => setSelectedClinicId(e.target.value)}
+                className="pl-9 pr-10 py-2 bg-slate-50 border border-slate-100 rounded-lg text-xs outline-none focus:ring-2 focus:ring-brand-blue/20 appearance-none cursor-pointer"
+              >
+                <option value="all">All Clinics</option>
+                {clinics.map((c: Clinic) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={14} />
+            </div>
+          )}
           <Button variant="outline" size="sm" className="gap-2">
             <Download size={16} /> Financial Report
           </Button>
@@ -55,10 +101,34 @@ export default function FinanceDashboardPage() {
       {/* Main Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {[
-          { label: "Total Revenue (ARR)", val: "$1.8M", trend: "+12.5%", icon: DollarSign, color: "brand-blue" },
-          { label: "Monthly Revenue (MRR)", val: "$142,500", trend: "+8.2%", icon: TrendingUp, color: "emerald" },
-          { label: "Affiliate Payouts", val: "$12,400", trend: "+5.1%", icon: Wallet, color: "amber" },
-          { label: "Commission Earned", val: "$42,200", trend: "+10.5%", icon: PieChart, color: "rose" },
+          { 
+            label: "Total Revenue", 
+            val: revenueSummary ? `$${revenueSummary.totalRevenue?.toLocaleString() ?? "0"}` : (revenueLoading ? "—" : "$0"), 
+            trend: revenueSummary?.netProfit && revenueSummary.netProfit > 0 ? `+${((revenueSummary.netProfit / (revenueSummary.totalRevenue || 1)) * 100).toFixed(1)}%` : "—",
+            icon: DollarSign, 
+            color: "brand-blue" 
+          },
+          { 
+            label: "Monthly Revenue", 
+            val: revenueSummary ? `$${revenueSummary.totalPaid?.toLocaleString() ?? "0"}` : (revenueLoading ? "—" : "$0"), 
+            trend: "—",
+            icon: TrendingUp, 
+            color: "emerald" 
+          },
+          { 
+            label: "Total Expenses", 
+            val: expenseSummary ? `$${expenseSummary.total?.toLocaleString() ?? "0"}` : (expenseLoading ? "—" : "$0"), 
+            trend: "—",
+            icon: Wallet, 
+            color: "amber" 
+          },
+          { 
+            label: "Outstanding Invoices", 
+            val: debtorStats ? `$${debtorStats.totalOwed?.toLocaleString() ?? "0"}` : (debtorLoading ? "—" : "$0"), 
+            trend: debtorStats?.totalOwed && debtorStats.totalOwed > 0 ? `+${debtorStats.byStatus?.overdue || 0} overdue` : "—",
+            icon: PieChart, 
+            color: "rose" 
+          },
         ].map((stat, i) => (
           <div key={i} className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm group hover:shadow-lg transition-all">
             <div className="flex items-center justify-between mb-4">
@@ -71,7 +141,9 @@ export default function FinanceDashboardPage() {
                 <stat.icon size={24} />
               </div>
               <div className={cn("text-xs font-bold px-2 py-1 rounded-full", 
-                stat.trend.startsWith("+") ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"
+                stat.trend?.startsWith("+") ? "bg-emerald-100 text-emerald-700" : 
+                stat.trend?.startsWith("-") ? "bg-rose-100 text-rose-700" :
+                "bg-slate-100 text-slate-600"
               )}>
                 {stat.trend}
               </div>
@@ -111,28 +183,28 @@ export default function FinanceDashboardPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
-                  {transactions.map((txn, i) => (
+                  {invoicesData?.map((inv: any, i: number) => (
                     <tr key={i} className="hover:bg-slate-50/30 transition-colors group">
                       <td className="px-8 py-5">
-                        <p className="text-sm font-bold text-brand-navy">{txn.id}</p>
-                        <p className="text-[10px] text-slate-400 font-medium">{txn.date} via {txn.method}</p>
+                        <p className="text-sm font-bold text-brand-navy">{inv.invoiceNumber ?? inv.id}</p>
+                        <p className="text-[10px] text-slate-400 font-medium">{inv.createdAt ? new Date(inv.createdAt).toLocaleDateString() : "—"}</p>
                       </td>
                       <td className="px-8 py-5">
-                        <p className="text-sm font-bold text-slate-700">{txn.clinic}</p>
-                        <p className="text-[10px] text-brand-blue font-bold uppercase tracking-tighter">{txn.type}</p>
+                        <p className="text-sm font-bold text-slate-700">{inv.patient ? `${inv.patient.firstName} ${inv.patient.lastName}` : "Unknown"}</p>
+                        <p className="text-[10px] text-brand-blue font-bold uppercase tracking-tighter">{inv.status}</p>
                       </td>
                       <td className="px-8 py-5">
-                        <p className="text-sm font-black text-brand-navy">{txn.amount}</p>
+                        <p className="text-sm font-black text-brand-navy">{inv.total ? `₦${inv.total.toLocaleString()}` : "—"}</p>
                       </td>
                       <td className="px-8 py-5">
                         <div className={cn(
                           "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest",
-                          txn.status === "Success" ? "bg-emerald-50 text-emerald-600" :
-                          txn.status === "Pending" ? "bg-amber-50 text-amber-600" : "bg-rose-50 text-rose-600"
+                          inv.status === "paid" ? "bg-emerald-50 text-emerald-600" :
+                          inv.status === "pending" ? "bg-amber-50 text-amber-600" : "bg-rose-50 text-rose-600"
                         )}>
-                          {txn.status === "Success" ? <CheckCircle2 size={12} /> : 
-                           txn.status === "Pending" ? <Clock size={12} /> : <AlertCircle size={12} />}
-                          {txn.status}
+                          {inv.status === "paid" ? <CheckCircle2 size={12} /> : 
+                           inv.status === "pending" ? <Clock size={12} /> : <AlertCircle size={12} />}
+                          {inv.status}
                         </div>
                       </td>
                       <td className="px-8 py-5 text-right">
@@ -212,21 +284,21 @@ export default function FinanceDashboardPage() {
               <span className="bg-amber-100 text-amber-700 text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-tighter">Action Required</span>
             </div>
             <div className="space-y-4">
-              {invoices.map((inv, i) => (
+              {(invoicesData || []).slice(0, 5).map((inv: any, i: number) => (
                 <div key={i} className="p-4 rounded-2xl bg-slate-50 border border-slate-100 group hover:border-brand-blue/30 transition-colors">
                   <div className="flex justify-between items-start mb-2">
                     <div>
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{inv.id}</p>
-                      <p className="text-sm font-bold text-brand-navy">{inv.clinic}</p>
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{inv.invoiceNumber ?? inv.id}</p>
+                      <p className="text-sm font-bold text-brand-navy">{inv.patient ? `${inv.patient.firstName} ${inv.patient.lastName}` : "Unknown"}</p>
                     </div>
-                    <p className="text-sm font-black text-brand-navy">{inv.amount}</p>
+                    <p className="text-sm font-black text-brand-navy">{inv.total ? `₦${inv.total.toLocaleString()}` : "—"}</p>
                   </div>
                   <div className="flex items-center justify-between mt-4">
                     <span className={cn(
                       "text-[10px] font-black uppercase tracking-tighter flex items-center gap-1",
-                      inv.status === "Overdue" ? "text-rose-600" : "text-amber-600"
+                      inv.status === "overdue" ? "text-rose-600" : "text-amber-600"
                     )}>
-                      <Clock size={10} /> {inv.dueDate}
+                      <Clock size={10} /> {inv.dueDate ? new Date(inv.dueDate).toLocaleDateString() : "—"}
                     </span>
                     <Button variant="ghost" size="sm" className="h-7 text-[10px] font-black text-brand-blue p-0 hover:bg-transparent">Send Reminder</Button>
                   </div>
