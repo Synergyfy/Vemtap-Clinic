@@ -65,7 +65,7 @@ export class SupportTicket {
   @JoinColumn({ name: 'clinicId' })
   clinic: Clinic;
 
-  @Column({ nullable: true })
+  @Column({ type: 'timestamp with time zone', nullable: true })
   resolvedAt: Date | null;
 
   @CreateDateColumn()

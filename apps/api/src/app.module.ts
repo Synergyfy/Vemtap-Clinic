@@ -4,6 +4,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { appConfig } from './app.config';
 import { getDatabaseConfig } from './database.config';
+import { CommonModule } from './common/common.module';
+import { DevSeedModule } from './common/dev-seed.module';
 import { HealthModule } from './health/health.module';
 import { AuthModule } from './auth/auth.module';
 import { PatientsModule } from './patients/patients.module';
@@ -51,6 +53,8 @@ import { SettingsModule } from './settings/settings.module';
       inject: [ConfigService],
     }),
     ThrottlerModule.forRoot([{ ttl: 60000, limit: 100 }]),
+    CommonModule,
+    DevSeedModule,
     HealthModule,
     AuthModule,
     PatientsModule,
