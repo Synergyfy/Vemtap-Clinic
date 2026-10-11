@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
 import { PageHeader } from "@/app/clinic/_components/page-header";
 import { useAuth } from "@/lib/auth-context";
-import { useHmoClaims, useCreateAppeal, useUpdateAppeal } from "@/hooks/useHmo";
+import { useHmoClaims, useHmoAppeals, useCreateAppeal, useUpdateAppeal } from "@/hooks/useHmo";
 import {
   Search, Plus, ShieldAlert, CheckCircle2,
   AlertCircle, Send, Clock, X, FileText,
@@ -19,17 +19,27 @@ function formatNGN(amount: number): string {
   return `\u20A6${amount.toLocaleString()}`;
 }
 
-interface LocalAppeal {
+interface DisplayAppeal {
   id: string;
+  appealNumber: string;
   claimId: string;
   hmoName: string;
   patientName: string;
   reason: string;
-  supportingNotes: string;
-  status: "draft" | "submitted" | "under_review" | "approved" | "dismissed";
+  supportingDocuments: string | null;
+  supportingNotes: string | null; // alias for supportingDocuments
+  status: "submitted" | "under_review" | "upheld" | "overturned" | "closed";
   submittedDate: string;
-  responseDate?: string;
-  response?: string;
+  resolvedDate?: string;
+  resolutionNotes?: string;
+  response?: string; // alias for resolutionNotes
+  responseDate?: string; // alias for resolvedDate
+  disputedAmount: number | null;
+  claim?: {
+    claimNumber: string;
+    hmo?: { name: string };
+    patient?: { firstName: string; lastName: string };
+  };
 }
 
 function appealBadge(status: string) {
@@ -37,38 +47,25 @@ function appealBadge(status: string) {
     draft: "bg-slate-100 text-slate-600",
     submitted: "bg-amber-50 text-amber-700",
     under_review: "bg-sky-50 text-sky-700",
+    "under-review": "bg-sky-50 text-sky-700",
+    upheld: "bg-emerald-50 text-emerald-700",
+    overturned: "bg-emerald-50 text-emerald-700",
     approved: "bg-emerald-50 text-emerald-700",
     dismissed: "bg-rose-50 text-rose-700",
+    closed: "bg-slate-50 text-slate-600",
   };
   return <Badge className={cn("text-[10px] font-black uppercase tracking-widest border-0", map[status] || "bg-slate-100 text-slate-600")}>{status.replace(/_/g, " ")}</Badge>;
 }
 
-const emptyForm = { claimId: "", hmoName: "", patientName: "", reason: "", supportingNotes: "" };
-
-// Local appeals state (backend has no list endpoint)
-const LOCAL_APPEALS_KEY = "vemtap-hmo-appeals";
-
-function loadLocalAppeals(): LocalAppeal[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = localStorage.getItem(LOCAL_APPEALS_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch { return []; }
-}
-
-function saveLocalAppeals(appeals: LocalAppeal[]) {
-  if (typeof window !== "undefined") {
-    localStorage.setItem(LOCAL_APPEALS_KEY, JSON.stringify(appeals));
-  }
-}
+const emptyForm = { claimId: "", reason: "", supportingDocuments: "", supportingNotes: "", disputedAmount: 0, hmoName: "", patientName: "" };
 
 export default function AppealsPage() {
   const { user } = useAuth();
   const { data: claims = [] } = useHmoClaims();
+  const { data: appealsData = [], isLoading: appealsLoading } = useHmoAppeals();
   const createAppealMut = useCreateAppeal();
   const updateAppealMut = useUpdateAppeal();
 
-  const [appeals, setAppeals] = useState<LocalAppeal[]>(() => loadLocalAppeals());
   const [search, setSearch] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
   const [showDetail, setShowDetail] = useState<string | null>(null);
@@ -77,8 +74,33 @@ export default function AppealsPage() {
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [notification, setNotification] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
+  // Map API appeals to display format
+  const appeals = React.useMemo(() => {
+    if (!appealsData) return [];
+    return appealsData.map((a: any): DisplayAppeal => ({
+      id: a.id,
+      appealNumber: a.appealNumber,
+      claimId: a.claimId,
+      hmoName: a.claim?.hmo?.name || "Unknown HMO",
+      patientName: a.claim?.patient ? `${a.claim.patient.firstName} ${a.claim.patient.lastName}` : "Unknown",
+      reason: a.reason,
+      supportingDocuments: a.supportingDocuments ?? null,
+      supportingNotes: a.supportingDocuments ?? null, // alias
+      status: a.status,
+      submittedDate: a.createdAt?.slice(0, 10) || "",
+      resolvedDate: a.resolvedDate,
+      resolutionNotes: a.resolutionNotes,
+      disputedAmount: a.disputedAmount ?? null,
+      claim: a.claim ? {
+        claimNumber: a.claim.claimNumber,
+        hmo: a.claim.hmo,
+        patient: a.claim.patient,
+      } : undefined,
+    }));
+  }, [appealsData]);
+
   const filtered = appeals.filter((a) =>
-    !search || a.id.toLowerCase().includes(search.toLowerCase()) || a.hmoName.toLowerCase().includes(search.toLowerCase()) || a.patientName.toLowerCase().includes(search.toLowerCase())
+    !search || a.id.toLowerCase().includes(search.toLowerCase()) || a.hmoName.toLowerCase().includes(search.toLowerCase()) || a.patientName.toLowerCase().includes(search.toLowerCase()) || a.claimId.toLowerCase().includes(search.toLowerCase())
   );
 
   const detail = showDetail ? appeals.find((a) => a.id === showDetail) : null;
@@ -92,8 +114,6 @@ export default function AppealsPage() {
   const validateForm = () => {
     const errors: Record<string, string> = {};
     if (!form.claimId.trim()) errors.claimId = "Claim ID is required";
-    if (!form.hmoName.trim()) errors.hmoName = "HMO name is required";
-    if (!form.patientName.trim()) errors.patientName = "Patient name is required";
     if (!form.reason.trim()) errors.reason = "Appeal reason is required";
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
@@ -107,28 +127,23 @@ export default function AppealsPage() {
     }
   };
 
-  const persistAppeals = (updated: LocalAppeal[]) => {
-    setAppeals(updated);
-    saveLocalAppeals(updated);
-  };
-
-  const handleAddAppeal = () => {
+  const handleAddAppeal = async () => {
     if (!validateForm()) return;
-    const newAppeal: LocalAppeal = {
-      id: `APL-${String(appeals.length + 1).padStart(3, "0")}`,
-      claimId: form.claimId,
-      hmoName: form.hmoName,
-      patientName: form.patientName,
-      reason: form.reason,
-      supportingNotes: form.supportingNotes,
-      status: "draft",
-      submittedDate: "",
-    };
-    persistAppeals([...appeals, newAppeal]);
-    setForm({ ...emptyForm });
-    setFormErrors({});
-    setShowAddModal(false);
-    showNotification("success", `Appeal created for ${form.claimId}`);
+    try {
+      await createAppealMut.mutateAsync({
+        appealNumber: `APL-${Date.now().toString().slice(-6)}`,
+        claimId: form.claimId,
+        reason: form.reason,
+        supportingDocuments: form.supportingDocuments || undefined,
+        disputedAmount: form.disputedAmount || undefined,
+      });
+      setForm({ ...emptyForm });
+      setFormErrors({});
+      setShowAddModal(false);
+      showNotification("success", `Appeal created for ${form.claimId}`);
+    } catch (e) {
+      showNotification("error", "Failed to create appeal");
+    }
   };
 
   const handleQuickCreate = (claimId: string) => {
@@ -136,42 +151,47 @@ export default function AppealsPage() {
     if (!c) return;
     setForm({
       claimId: c.claimNumber,
+      reason: `Appeal for ${c.claimNumber} \u2014 ${c.diagnosis || "N/A"}`,
+      supportingDocuments: "",
+      supportingNotes: "",
+      disputedAmount: c.amountClaimed - (c.amountApproved || 0),
       hmoName: c.hmo?.name || c.hmoId,
       patientName: c.patient ? `${c.patient.firstName} ${c.patient.lastName}` : c.patientId,
-      reason: `Appeal for ${c.claimNumber} \u2014 ${c.diagnosis || "N/A"}`,
-      supportingNotes: "",
     });
     setFormErrors({});
     setShowAddModal(true);
   };
 
-  const handleDismiss = () => {
+  const handleDismiss = async () => {
     if (!showDismissConfirm) return;
-    const updated = appeals.map((a) =>
-      a.id === showDismissConfirm ? { ...a, status: "dismissed" as const, responseDate: new Date().toISOString().slice(0, 10), response: "Appeal dismissed." } : a
-    );
-    persistAppeals(updated);
-    setShowDismissConfirm(null);
-    setShowDetail(null);
-    showNotification("success", "Appeal dismissed.");
+    try {
+      await updateAppealMut.mutateAsync({ id: showDismissConfirm, dto: { status: "closed", resolutionNotes: "Appeal dismissed." } });
+      setShowDismissConfirm(null);
+      setShowDetail(null);
+      showNotification("success", "Appeal dismissed.");
+    } catch (e) {
+      showNotification("error", "Failed to dismiss appeal");
+    }
   };
 
-  const handleApprove = (id: string) => {
-    const updated = appeals.map((a) =>
-      a.id === id ? { ...a, status: "approved" as const, responseDate: new Date().toISOString().slice(0, 10), response: "Appeal approved \u2014 claim reinstated." } : a
-    );
-    persistAppeals(updated);
-    setShowDetail(null);
-    showNotification("success", "Appeal approved.");
+  const handleApprove = async (id: string) => {
+    try {
+      await updateAppealMut.mutateAsync({ id, dto: { status: "upheld", resolutionNotes: "Appeal approved \u2014 claim reinstated." } });
+      setShowDetail(null);
+      showNotification("success", "Appeal approved.");
+    } catch (e) {
+      showNotification("error", "Failed to approve appeal");
+    }
   };
 
-  const handleSubmit = (id: string) => {
-    const updated = appeals.map((a) =>
-      a.id === id ? { ...a, status: "submitted" as const, submittedDate: new Date().toISOString().slice(0, 10) } : a
-    );
-    persistAppeals(updated);
-    setShowDetail(null);
-    showNotification("success", "Appeal submitted.");
+  const handleSubmit = async (id: string) => {
+    try {
+      await updateAppealMut.mutateAsync({ id, dto: { status: "submitted" } });
+      setShowDetail(null);
+      showNotification("success", "Appeal submitted.");
+    } catch (e) {
+      showNotification("error", "Failed to submit appeal");
+    }
   };
 
   return (
@@ -205,13 +225,13 @@ export default function AppealsPage() {
         <Card className="border-none shadow-sm rounded-2xl">
           <CardContent className="p-5">
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Open</p>
-            <p className="text-xl font-black text-amber-600 mt-1">{appeals.filter((a) => a.status !== "approved" && a.status !== "dismissed").length}</p>
+            <p className="text-xl font-black text-amber-600 mt-1">{appeals.filter((a) => a.status !== "upheld" && a.status !== "closed").length}</p>
           </CardContent>
         </Card>
         <Card className="border-none shadow-sm rounded-2xl">
           <CardContent className="p-5">
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Approved</p>
-            <p className="text-xl font-black text-emerald-600 mt-1">{appeals.filter((a) => a.status === "approved").length}</p>
+            <p className="text-xl font-black text-emerald-600 mt-1">{appeals.filter((a) => a.status === "upheld").length}</p>
           </CardContent>
         </Card>
         <Card className="border-none shadow-sm rounded-2xl">
@@ -393,8 +413,8 @@ export default function AppealsPage() {
         {detail && (
           <div className="space-y-5">
             <div className={cn("p-3 rounded-xl flex items-center justify-between",
-              detail.status === "approved" ? "bg-emerald-50" :
-              detail.status === "dismissed" ? "bg-rose-50" :
+              detail.status === "upheld" ? "bg-emerald-50" :
+              detail.status === "closed" ? "bg-rose-50" :
               detail.status === "submitted" || detail.status === "under_review" ? "bg-amber-50" : "bg-slate-50"
             )}>
               <div>
@@ -443,7 +463,7 @@ export default function AppealsPage() {
             </div>
 
             <div className="flex items-center gap-3 pt-1">
-              {detail.status === "draft" && (
+              {detail.status === "submitted" && (
                 <Button onClick={() => handleSubmit(detail.id)}
                   variant="default" className="flex-1 h-11 rounded-xl font-bold gap-2 bg-sky-600 hover:bg-sky-700 disabled:opacity-50">
                   <Send size={16} /> Submit Appeal

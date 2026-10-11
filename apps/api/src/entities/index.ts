@@ -56,6 +56,7 @@ export { QueueAnnouncement, AnnouncementType } from './queue-announcement.entity
 export { CashierTransaction, CashierTransactionStatus, CashierPaymentEntry, CashierCartItem, CashierPaymentMethod } from './cashier-transaction.entity';
 export { CurrencyConfig, CurrencyCode } from './currency-config.entity';
 export { FileUpload, FileCategory } from './file-upload.entity';
+export { SupportTicket, SupportTicketMessage, TicketStatus, TicketPriority, TicketType } from './support-ticket.entity';
 export { RefreshToken } from './refresh-token.entity';
 export { Expense, ExpenseCategory, ExpenseStatus } from './expense.entity';
 export { ClinicSetting } from './clinic-setting.entity';

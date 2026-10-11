@@ -10,18 +10,47 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
-
-const drugItems = [
-  { id: "DRG-001", name: "Ciprofloxacin Eye Drops", category: "Antibiotics", stock: 1240, status: "In Stock", price: "$15.00" },
-  { id: "DRG-002", name: "Latanoprost", category: "Glaucoma", stock: 850, status: "In Stock", price: "$45.00" },
-  { id: "DRG-003", name: "Tropicamide", category: "Mydriatics", stock: 154, status: "Low Stock", price: "$12.00" },
-  { id: "DRG-004", name: "Artificial Tears", category: "Lubricants", stock: 2100, status: "In Stock", price: "$8.50" },
-  { id: "DRG-005", name: "Prednisolone", category: "Steroids", stock: 0, status: "Out of Stock", price: "$22.00" },
-  { id: "DRG-006", name: "Timolol Maleate", category: "Glaucoma", stock: 450, status: "In Stock", price: "$18.00" },
-];
+import { useAuth } from "@/lib/auth-context";
+import { useDrugs, useLowStockDrugsList } from "@/hooks/useDrugs";
+import type { Drug } from "@/hooks/useDrugs";
 
 export default function DrugDatabasePage() {
+  const { user } = useAuth();
+  const clinicId = user?.clinicId ?? "";
   const [searchQuery, setSearchQuery] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
+
+  // Real API data
+  const { data: drugsData = [], isLoading: drugsLoading, refetch } = useDrugs({ 
+    clinicId, 
+    search: searchQuery,
+    category: categoryFilter || undefined,
+    limit: 50 
+  });
+  const { data: lowStockDrugs = [] } = useLowStockDrugsList();
+
+  // Transform drugs for display
+  const displayDrugs = React.useMemo(() => {
+    if (!drugsData) return [];
+    return drugsData.map((drug: Drug) => ({
+      id: drug.id,
+      name: drug.name,
+      category: drug.category,
+      stock: drug.quantityInStock,
+      status: drug.quantityInStock <= 0 ? "Out of Stock" : drug.quantityInStock <= drug.reorderLevel ? "Low Stock" : "In Stock",
+      price: `₦${drug.unitPrice.toLocaleString()}`,
+      reorderLevel: drug.reorderLevel,
+      genericName: drug.genericName,
+      dosageForm: drug.dosageForm,
+      strength: drug.strength,
+    }));
+  }, [drugsData]);
+
+  // Transform low stock drugs for stats
+  const outOfStockCount = lowStockDrugs.filter((d: Drug) => d.quantityInStock <= 0).length;
+  const inStockCount = displayDrugs.filter(d => d.status === "In Stock").length;
+  const lowStockCount = displayDrugs.filter(d => d.status === "Low Stock").length;
+  const categoryCount = new Set(displayDrugs.map(d => d.category)).size;
 
   return (
     <div className="space-y-8">
@@ -55,10 +84,10 @@ export default function DrugDatabasePage() {
       {/* Stats Quick View */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {[
-          { label: "Total Drugs", val: "4,250", icon: Pill, color: "emerald" },
-          { label: "Active Prescriptions", val: "8,920", icon: Activity, color: "blue" },
-          { label: "Categories", val: "24", icon: Layers, color: "purple" },
-          { label: "Out of Stock", val: "12", icon: AlertCircle, color: "rose" },
+          { label: "Total Drugs", val: displayDrugs.length.toLocaleString(), icon: Pill, color: "emerald" },
+          { label: "In Stock", val: inStockCount.toLocaleString(), icon: Activity, color: "blue" },
+          { label: "Categories", val: categoryCount.toLocaleString(), icon: Layers, color: "purple" },
+          { label: "Out of Stock", val: outOfStockCount.toLocaleString(), icon: AlertCircle, color: "rose" },
         ].map((stat, i) => (
           <div key={i} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex items-center gap-4">
             <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center shrink-0", 
@@ -114,7 +143,7 @@ export default function DrugDatabasePage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-              {drugItems.map((drug, i) => (
+              {displayDrugs.map((drug, i) => (
                 <tr key={i} className="group hover:bg-slate-50/30 transition-colors">
                   <td className="px-8 py-6">
                     <div className="flex items-center gap-4">

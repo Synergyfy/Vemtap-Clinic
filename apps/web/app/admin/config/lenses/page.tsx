@@ -10,18 +10,24 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
-
-const lensItems = [
-  { id: "LNS-001", name: "Single Vision (Clear)", type: "Standard", material: "CR-39", status: "Active", basePrice: "$40.00" },
-  { id: "LNS-002", name: "Progressive (Elite)", type: "Premium", material: "Hi-Index 1.67", status: "Active", basePrice: "$120.00" },
-  { id: "LNS-003", name: "Photochromic (Grey)", type: "Enhanced", material: "Polycarbonate", status: "Active", basePrice: "$85.00" },
-  { id: "LNS-004", name: "Bifocal (Flat-Top)", type: "Standard", material: "CR-39", status: "Active", basePrice: "$55.00" },
-  { id: "LNS-005", name: "Blue Light Filter", type: "Enhanced", material: "1.56 Mid-Index", status: "Review", basePrice: "$35.00" },
-  { id: "LNS-006", name: "Anti-Reflective Coating", type: "Add-on", material: "N/A", status: "Active", basePrice: "$25.00" },
-];
+import { useAuth } from "@/lib/auth-context";
+import { useLenses } from "@/hooks/useOptical";
+import type { OpticalItem } from "@/hooks/useOptical";
 
 export default function LensCatalogPage() {
+  const { user } = useAuth();
+  const clinicId = user?.clinicId ?? "";
   const [searchQuery, setSearchQuery] = useState("");
+  const { data: lenses = [], isLoading, refetch } = useLenses({ clinicId, search: searchQuery });
+
+const displayLenses = lenses.map((lens: any) => ({
+    id: lens.id,
+    name: lens.name,
+    type: lens.type || "Standard",
+    material: lens.lensType || lens.type || "N/A",
+    status: lens.isActive ? "Active" : "Inactive",
+    basePrice: `₦${lens.unitPrice.toLocaleString()}`,
+  }));
 
   return (
     <div className="space-y-8">
@@ -114,7 +120,7 @@ export default function LensCatalogPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-              {lensItems.map((lens, i) => (
+              {displayLenses.map((lens, i) => (
                 <tr key={i} className="group hover:bg-slate-50/30 transition-colors">
                   <td className="px-8 py-6">
                     <div className="flex items-center gap-4">
