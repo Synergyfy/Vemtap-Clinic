@@ -3,6 +3,7 @@ import { Patient } from './patient.entity';
 import { Staff } from './staff.entity';
 import { Branch } from './branch.entity';
 import { Clinic } from './clinic.entity';
+import { Payment } from './payment.entity';
 
 export enum InvoiceStatus {
   DRAFT = 'draft',
@@ -69,6 +70,9 @@ export class Invoice {
   @ManyToOne(() => Clinic)
   @JoinColumn({ name: 'clinicId' })
   clinic: Clinic;
+
+  @OneToMany(() => Payment, payment => payment.invoice)
+  payments: Payment[];
 
   @CreateDateColumn()
   createdAt: Date;
