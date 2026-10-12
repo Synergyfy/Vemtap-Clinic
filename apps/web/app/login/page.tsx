@@ -28,6 +28,17 @@ const dashboardLinks = [
   { name: "Patient Success Portal", href: "/patient/dashboard", icon: UserCircle, color: "text-emerald-600", desc: "Results, orders & bookings", roles: ["patient"] },
 ];
 
+const redirectMap: Record<string, string> = {
+  admin: "/admin/dashboard",
+  doctor: "/doctor/dashboard",
+  nurse: "/nurse/dashboard",
+  optometrist: "/optician/dashboard",
+  pharmacist: "/pharmacy/dashboard",
+  receptionist: "/reception/dashboard",
+  cashier: "/cashier",
+  patient: "/patient/dashboard",
+};
+
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isQuickAccessOpen, setIsQuickAccessOpen] = useState(false);
@@ -43,19 +54,9 @@ export default function LoginPage() {
     setIsSubmitting(true);
 
     try {
-      await login(formData.email, formData.password);
+      const loggedInUser = await login(formData.email, formData.password);
       // Redirect based on user role
-      const role = user?.roles?.[0] ?? "";
-      const redirectMap: Record<string, string> = {
-        admin: "/admin/dashboard",
-        doctor: "/doctor/dashboard",
-        nurse: "/nurse/dashboard",
-        optometrist: "/optician/dashboard",
-        pharmacist: "/pharmacy/dashboard",
-        receptionist: "/reception/dashboard",
-        cashier: "/cashier",
-        patient: "/patient/dashboard",
-      };
+      const role = loggedInUser?.roles?.[0] ?? "";
       router.push(redirectMap[role] ?? "/clinic/dashboard");
     } catch (err: any) {
       setError(err?.response?.data?.message ?? "Invalid credentials. Please try again.");
@@ -70,16 +71,6 @@ export default function LoginPage() {
 
   if (isAuthenticated) {
     const role = user?.roles?.[0] ?? "";
-    const redirectMap: Record<string, string> = {
-      admin: "/admin/dashboard",
-      doctor: "/doctor/dashboard",
-      nurse: "/nurse/dashboard",
-      optometrist: "/optician/dashboard",
-      pharmacist: "/pharmacy/dashboard",
-      receptionist: "/reception/dashboard",
-      cashier: "/cashier",
-      patient: "/patient/dashboard",
-    };
     router.push(redirectMap[role] ?? "/clinic/dashboard");
     return null;
   }
@@ -160,6 +151,7 @@ export default function LoginPage() {
                 </div>
 
                 <Button 
+                  type="submit"
                   variant="default" 
                   className="w-full py-7 text-base font-black rounded-2xl shadow-xl shadow-brand-blue/20"
                   disabled={isSubmitting}

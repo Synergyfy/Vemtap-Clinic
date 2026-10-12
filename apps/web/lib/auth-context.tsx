@@ -9,8 +9,8 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   isHydrated: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  register: (data: RegisterData) => Promise<void>;
+  login: (email: string, password: string) => Promise<AuthUser>;
+  register: (data: RegisterData) => Promise<AuthUser>;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
   hasRole: (roles: string[]) => boolean;
@@ -59,6 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (newAccessToken && newUser) {
         setAuth(newAccessToken, newUser);
       }
+      return newUser as AuthUser;
     } finally {
       setIsLoading(false);
     }
@@ -72,6 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (newAccessToken && newUser) {
         setAuth(newAccessToken, newUser);
       }
+      return newUser as AuthUser;
     } finally {
       setIsLoading(false);
     }
