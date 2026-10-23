@@ -12,6 +12,7 @@ import {
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { BottomNav } from "@/components/layout/bottom-nav";
+import { NotificationBell } from "@/components/layout/notification-bell";
 
 const sidebarLinks = [
   { name: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
@@ -156,10 +157,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </div>
 
           <div className="flex items-center gap-2 lg:gap-4 shrink-0">
-            <button className="relative p-2 hover:bg-slate-50 rounded-xl transition-colors group">
-              <Bell size={20} className="text-slate-500 group-hover:text-brand-blue transition-colors" />
-              <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
-            </button>
+            <NotificationBell accentClass="bg-red-500" viewAllHref="/admin/settings" />
             
             <div className="w-px h-8 bg-slate-200 mx-1 lg:mx-2 hidden xs:block"></div>
             

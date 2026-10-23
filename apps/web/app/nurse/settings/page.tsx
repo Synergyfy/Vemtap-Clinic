@@ -132,7 +132,7 @@ export default function NurseSettings() {
             <div className="rounded-xl border border-slate-200 p-4"><p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Department</p><p className="mt-1 font-bold text-slate-900">Clinic</p></div>
             <div className="rounded-xl border border-slate-200 p-4"><p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Branch</p><p className="mt-1 font-bold text-slate-900">Vemtap Main</p></div>
             <div className="rounded-xl border border-slate-200 p-4"><p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Email</p><p className="mt-1 font-bold text-slate-900">r.okeke@vemtap.com</p></div>
-            <div className="rounded-xl border border-slate-200 p-4"><p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Status</p><p className="mt-1"><Badge className="bg-emerald-600 text-white">Active</Badge></p></div>
+            <div className="rounded-xl border border-slate-200 p-4"><p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Status</p><div className="mt-1"><Badge className="bg-emerald-600 text-white">Active</Badge></div></div>
           </div>
         </CardContent>
       </Card>

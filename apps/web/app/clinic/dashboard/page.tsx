@@ -165,7 +165,7 @@ export default function ClinicDashboard() {
       {/* Queue Overview + Staff */}
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
         <Card className="lg:col-span-2">
-          <CardHeader className="flex-row items-center justify-between">
+          <CardHeader className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle>Queue overview</CardTitle>
             <Link href="/clinic/queue" className="text-sm font-medium text-sky-700 hover:text-sky-800">
               Manage queue
@@ -174,15 +174,17 @@ export default function ClinicDashboard() {
           <CardContent>
             <div className="md:hidden space-y-2">
               {queueEntries.slice(0, 4).map((q) => (
-                <div key={q.id} className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 p-3">
+                <div key={q.id} className="flex flex-col gap-2 rounded-xl border border-slate-100 p-3">
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-slate-900 truncate">{getPatientName(q.patient)}</p>
                     <p className="text-xs text-slate-500 truncate">{q.station || "Unassigned"}</p>
                   </div>
-                  <div className="shrink-0 flex items-center gap-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
                     <span className="text-[10px] font-medium text-slate-400 tabular-nums">{computeWaitMinutes(q.createdAt)}m</span>
-                    {statusBadge(q.priority || "Normal")}
-                    {statusBadge(q.status)}
+                    <div className="flex flex-wrap items-center gap-2">
+                      {statusBadge(q.priority || "Normal")}
+                      {statusBadge(q.status)}
+                    </div>
                   </div>
                 </div>
               ))}
@@ -223,7 +225,7 @@ export default function ClinicDashboard() {
         </Card>
 
         <Card>
-          <CardHeader className="flex-row items-center justify-between">
+          <CardHeader className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle>Staff on duty</CardTitle>
             <Link href="/clinic/staff" className="text-sm font-medium text-sky-700 hover:text-sky-800">
               Manage staff
@@ -252,16 +254,16 @@ export default function ClinicDashboard() {
 
       {/* Alerts */}
       <Card>
-        <CardHeader className="flex-row items-center justify-between">
+        <CardHeader className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
           <CardTitle>Alerts</CardTitle>
-          <div className="hidden sm:flex items-center gap-3">
-            <Link href="/clinic/queue" className="text-sm font-medium text-sky-700 hover:text-sky-800">Queue</Link>
-            <Link href="/clinic/pharmacy" className="text-sm font-medium text-sky-700 hover:text-sky-800">Pharmacy</Link>
-            <Link href="/clinic/hmo" className="text-sm font-medium text-sky-700 hover:text-sky-800">HMO</Link>
-            <Link href="/clinic/finance" className="text-sm font-medium text-sky-700 hover:text-sky-800">Billing</Link>
+          <div className="flex flex-wrap items-center gap-3 text-sm">
+            <Link href="/clinic/queue" className="font-medium text-sky-700 hover:text-sky-800">Queue</Link>
+            <Link href="/clinic/pharmacy" className="font-medium text-sky-700 hover:text-sky-800">Pharmacy</Link>
+            <Link href="/clinic/hmo" className="font-medium text-sky-700 hover:text-sky-800">HMO</Link>
+            <Link href="/clinic/finance" className="font-medium text-sky-700 hover:text-sky-800">Billing</Link>
           </div>
         </CardHeader>
-        <CardContent className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <CardContent className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <div className="rounded-xl border border-slate-200 p-4">
             <p className="text-sm font-semibold text-slate-900">Pharmacy stock</p>
             <p className="mt-1 text-sm text-slate-500">{overview?.pharmacy?.lowStock ?? 0} item(s) low stock</p>
@@ -284,7 +286,7 @@ export default function ClinicDashboard() {
       {/* Revenue + HMO */}
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
         <Card className="lg:col-span-2">
-          <CardHeader className="flex-row items-center justify-between">
+          <CardHeader className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle>Revenue summary</CardTitle>
             <Link href="/clinic/finance" className="text-sm font-medium text-sky-700 hover:text-sky-800">
               Open finance
@@ -292,26 +294,28 @@ export default function ClinicDashboard() {
           </CardHeader>
           <CardContent>
             <p className="text-sm text-slate-500">Revenue trend (last 7 days)</p>
-            <div className="mt-4 grid grid-cols-7 gap-3 items-end">
-              {(revenueData || []).map((r) => {
-                const dayLabel = new Date(r.date).toLocaleDateString("en", { weekday: "short" });
-                const height = Math.max(10, Math.round(((r.collected || 0) / maxRevenue) * 100));
-                return (
-                  <div key={r.date} className="flex flex-col items-center gap-2">
-                    <div
-                      className={cn("w-full rounded-lg bg-sky-600/20 border border-sky-600/20", "relative overflow-hidden")}
-                      style={{ height: 140 }}
-                      title={formatNGN(r.collected || 0)}
-                    >
-                      <div className="absolute inset-x-0 bottom-0 bg-sky-600" style={{ height: `${height}%` }} />
+            <div className="mt-4 overflow-x-auto pb-2">
+              <div className="grid min-w-[420px] grid-cols-7 gap-3 items-end">
+                {(revenueData || []).map((r) => {
+                  const dayLabel = new Date(r.date).toLocaleDateString("en", { weekday: "short" });
+                  const height = Math.max(10, Math.round(((r.collected || 0) / maxRevenue) * 100));
+                  return (
+                    <div key={r.date} className="flex flex-col items-center gap-2">
+                      <div
+                        className={cn("w-full rounded-lg bg-sky-600/20 border border-sky-600/20", "relative overflow-hidden")}
+                        style={{ height: 140 }}
+                        title={formatNGN(r.collected || 0)}
+                      >
+                        <div className="absolute inset-x-0 bottom-0 bg-sky-600" style={{ height: `${height}%` }} />
+                      </div>
+                      <p className="text-xs text-slate-500">{dayLabel}</p>
                     </div>
-                    <p className="text-xs text-slate-500">{dayLabel}</p>
-                  </div>
-                );
-              })}
-              {(!revenueData || revenueData.length === 0) && (
-                <p className="col-span-7 text-sm text-slate-400 text-center py-8">No revenue data available</p>
-              )}
+                  );
+                })}
+                {(!revenueData || revenueData.length === 0) && (
+                  <p className="col-span-7 text-sm text-slate-400 text-center py-8">No revenue data available</p>
+                )}
+              </div>
             </div>
 
             <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
@@ -332,7 +336,7 @@ export default function ClinicDashboard() {
         </Card>
 
         <Card>
-          <CardHeader>
+          <CardHeader className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle>HMO analytics</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">

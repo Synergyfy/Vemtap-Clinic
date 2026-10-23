@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { Modal } from "@/components/ui/modal";
 import { BottomNav } from "@/components/layout/bottom-nav";
+import { NotificationBell } from "@/components/layout/notification-bell";
 
 const sidebarLinks = [
   { name: "Dashboard", href: "/doctor/dashboard", icon: LayoutDashboard },
@@ -128,10 +129,7 @@ export default function DoctorLayout({ children }: { children: React.ReactNode }
             <Menu size={24} className="text-slate-700" />
           </button>
           <div className="flex-1" />
-          <button className="relative p-2 hover:bg-slate-100 rounded-xl" aria-label="Notifications">
-            <Bell size={20} className="text-slate-500" />
-            <span className="absolute top-2 right-2 w-2 h-2 bg-emerald-500 rounded-full border-2 border-white"></span>
-          </button>
+          <NotificationBell accentClass="bg-emerald-500" viewAllHref="/doctor/settings" />
           <button
             onClick={() => setIsLogoutOpen(true)}
             className="ml-2 inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"

@@ -138,9 +138,9 @@ export default function PatientsPage() {
           <p className="text-xs sm:text-sm text-slate-500">Showing {filteredPatients.length} record(s)</p>
         </CardHeader>
         <CardContent>
-          <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-3">
-            <div className="md:col-span-2">
-              <label className="text-sm font-medium text-slate-700">Search</label>
+          <div className="mb-4 flex flex-col gap-3 md:grid md:grid-cols-[minmax(0,2fr)_minmax(200px,1fr)] md:items-end">
+            <div className="w-full">
+              <label className="block text-sm font-medium text-slate-700">Search</label>
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
@@ -148,8 +148,8 @@ export default function PatientsPage() {
                 placeholder="Search by name, phone, or patient ID..."
               />
             </div>
-            <div>
-              <label className="text-sm font-medium text-slate-700">Status</label>
+            <div className="w-full">
+              <label className="block text-sm font-medium text-slate-700">Status</label>
               <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value)}

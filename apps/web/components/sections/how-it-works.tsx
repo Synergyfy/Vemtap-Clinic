@@ -13,7 +13,7 @@ export const HowItWorks = () => {
   ];
 
   return (
-    <section className="py-24 bg-slate-50 overflow-hidden">
+    <section className="py-6 bg-slate-50 overflow-hidden">
       <div className="max-w-7xl mx-auto px-6">
         <div className="text-center max-w-3xl mx-auto mb-20">
           <h2 className="text-4xl font-bold text-brand-navy mb-6">Simple to Set Up, <span className="text-brand-blue">Powerful</span> to Use</h2>

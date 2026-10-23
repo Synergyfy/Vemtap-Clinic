@@ -12,7 +12,7 @@ const stats = [
 
 export const TrustSection = () => {
   return (
-    <section className="py-20 bg-slate-50">
+    <section className="py-6 bg-slate-50">
       <div className="max-w-7xl mx-auto px-6">
         <div className="text-center mb-16">
           <p className="text-brand-blue font-bold text-sm uppercase tracking-widest mb-4">Trusted by Industry Leaders</p>

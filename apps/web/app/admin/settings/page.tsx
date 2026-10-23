@@ -91,12 +91,12 @@ export default function SettingsPage() {
   return (
     <div className="space-y-10">
       {/* Header */}
-      <div className="flex flex-col md:row md:items-center justify-between gap-4">
+      <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
         <div>
           <h1 className="text-3xl font-bold text-brand-navy font-black tracking-tight">System Control</h1>
-          <p className="text-slate-500 font-medium mt-1">Configure global feature toggles, notifications, and API integrations.</p>
+          <p className="mt-1 text-slate-500 font-medium">Configure global feature toggles, notifications, and API integrations.</p>
         </div>
-        <Button variant="default" className="gap-2 shadow-xl shadow-brand-blue/20">
+        <Button variant="default" className="gap-2 self-start shadow-xl shadow-brand-blue/20 sm:self-auto">
           <Save size={18} /> Save Global Changes
         </Button>
       </div>
@@ -105,21 +105,21 @@ export default function SettingsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Feature Toggles */}
         <div className="lg:col-span-2 space-y-6">
-          <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
-            <h3 className="text-xl font-bold text-brand-navy mb-8 flex items-center gap-2">
+          <div className="bg-white p-4 rounded-[1.5rem] border border-slate-100 shadow-sm sm:p-8 sm:rounded-[2.5rem]">
+            <h3 className="mb-6 flex items-center gap-2 text-lg font-bold text-brand-navy sm:mb-8 sm:text-xl">
               <Zap className="text-brand-blue" size={24} /> Platform Feature Toggles
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6">
               {Object.entries(features).map(([key, value]) => (
-                <div key={key} className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between group hover:border-brand-blue/30 transition-all">
-                  <div>
-                    <p className="text-sm font-bold text-brand-navy capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}</p>
+                <div key={key} className="flex items-center justify-between rounded-2xl border border-slate-100 bg-slate-50 p-4 transition-all group hover:border-brand-blue/30">
+                  <div className="min-w-0 pr-3">
+                    <p className="text-sm font-bold capitalize text-brand-navy">{key.replace(/([A-Z])/g, ' $1').trim()}</p>
                     <p className="text-[10px] text-slate-500">Global activation for all clinics.</p>
                   </div>
                   <button 
                     onClick={() => toggleFeature(key as keyof typeof features)}
                     className={cn(
-                      "transition-colors duration-300",
+                      "shrink-0 transition-colors duration-300",
                       value ? "text-brand-blue" : "text-slate-300"
                     )}
                   >
@@ -130,8 +130,8 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
-            <h3 className="text-xl font-bold text-brand-navy mb-8 flex items-center gap-2">
+          <div className="bg-white p-4 rounded-[1.5rem] border border-slate-100 shadow-sm sm:p-8 sm:rounded-[2.5rem]">
+            <h3 className="mb-6 flex items-center gap-2 text-lg font-bold text-brand-navy sm:mb-8 sm:text-xl">
               <Bell className="text-brand-blue" size={24} /> Notification Templates
             </h3>
             <div className="space-y-4">
@@ -141,27 +141,27 @@ export default function SettingsPage() {
                 { name: "HMO Verification Success", type: "SMS", status: "Active" },
                 { name: "Lens Ready for Pickup", type: "WhatsApp/Email", status: "Draft" },
               ].map((template, i) => (
-                <div key={i} className="flex items-center justify-between p-4 bg-slate-50/50 rounded-2xl hover:bg-white hover:shadow-md transition-all group">
+                <div key={i} className="flex flex-col gap-3 rounded-2xl bg-slate-50/50 p-4 transition-all hover:bg-white hover:shadow-md group sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-xl bg-white border border-slate-100 flex items-center justify-center text-slate-400 group-hover:text-brand-blue transition-colors">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-100 bg-white text-slate-400 transition-colors group-hover:text-brand-blue">
                       <Mail size={18} />
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <p className="text-sm font-bold text-brand-navy">{template.name}</p>
-                      <p className="text-[10px] text-slate-500 uppercase font-black tracking-widest">{template.type}</p>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">{template.type}</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center justify-between gap-4 sm:justify-end">
                     <span className={cn(
-                      "text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-tighter",
+                      "rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-tighter",
                       template.status === "Active" ? "bg-emerald-50 text-emerald-600" : "bg-slate-100 text-slate-500"
                     )}>{template.status}</span>
-                    <Button variant="ghost" size="sm" className="text-brand-blue font-bold text-xs p-0 hover:bg-transparent">Edit</Button>
+                    <Button variant="ghost" size="sm" className="p-0 text-xs font-bold text-brand-blue hover:bg-transparent">Edit</Button>
                   </div>
                 </div>
               ))}
             </div>
-            <Button variant="ghost" className="w-full mt-6 text-brand-blue font-bold gap-2">
+            <Button variant="ghost" className="mt-6 w-full gap-2 text-brand-blue font-bold">
               Manage All Templates <ArrowRight size={16} />
             </Button>
           </div>
@@ -169,13 +169,13 @@ export default function SettingsPage() {
 
         {/* Integrations & API */}
         <div className="space-y-6">
-          <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
-            <h3 className="text-lg font-bold text-brand-navy mb-6">Active Integrations</h3>
+          <div className="bg-white p-4 rounded-[1.5rem] border border-slate-100 shadow-sm sm:p-8 sm:rounded-[2.5rem]">
+            <h3 className="mb-6 text-lg font-bold text-brand-navy">Active Integrations</h3>
             <div className="space-y-4">
               {integrations.map((item, i) => (
-                <div key={i} className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center", 
+                <div key={i} className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+                  <div className="mb-3 flex items-center justify-between">
+                    <div className={cn("flex h-8 w-8 items-center justify-center rounded-lg", 
                       item.color === "emerald" ? "bg-emerald-50 text-emerald-500" :
                       item.color === "amber" ? "bg-amber-50 text-amber-500" :
                       item.color === "blue" ? "bg-blue-50 text-blue-500" : "bg-brand-soft-blue text-brand-blue"
@@ -183,16 +183,16 @@ export default function SettingsPage() {
                       <item.icon size={18} />
                     </div>
                     <span className={cn(
-                      "text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-widest",
+                      "rounded px-1.5 py-0.5 text-[8px] font-black uppercase tracking-widest",
                       item.status === "Connected" || item.status === "Active" ? "bg-emerald-500 text-white" : "bg-amber-500 text-white"
                     )}>{item.status}</span>
                   </div>
                   <p className="text-sm font-bold text-brand-navy">{item.name}</p>
-                  <p className="text-[10px] text-slate-400 font-medium">Provider: {item.provider}</p>
+                  <p className="text-[10px] font-medium text-slate-400">Provider: {item.provider}</p>
                 </div>
               ))}
             </div>
-            <Button variant="outline" className="w-full mt-6 rounded-xl font-bold gap-2">
+            <Button variant="outline" className="mt-6 w-full rounded-xl gap-2 font-bold">
               <Plus size={16} /> Add Integration
             </Button>
           </div>

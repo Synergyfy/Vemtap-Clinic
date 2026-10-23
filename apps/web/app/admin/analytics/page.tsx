@@ -15,20 +15,20 @@ export default function PlatformAnalyticsPage() {
   return (
     <div className="space-y-10">
       {/* Header */}
-      <div className="flex flex-col md:row md:items-center justify-between gap-4">
+      <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
         <div>
           <h1 className="text-3xl font-bold text-brand-navy font-black tracking-tight">Platform Analytics</h1>
-          <p className="text-slate-500 font-medium mt-1">Deep dive into platform growth, clinic performance, and user engagement.</p>
+          <p className="mt-1 text-slate-500 font-medium">Deep dive into platform growth, clinic performance, and user engagement.</p>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1 bg-white border border-slate-100 p-1 rounded-xl shadow-sm">
+        <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-end md:w-auto">
+          <div className="flex items-center gap-1 self-start rounded-xl border border-slate-100 bg-white p-1 shadow-sm sm:self-auto">
             {["7D", "30D", "90D", "12M"].map((p) => (
-              <button key={p} className={cn("px-4 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all", p === "30D" ? "bg-brand-navy text-white" : "text-slate-400 hover:text-brand-navy")}>
+              <button key={p} className={cn("rounded-lg px-3 py-1.5 text-[10px] font-black uppercase transition-all sm:px-4", p === "30D" ? "bg-brand-navy text-white" : "text-slate-400 hover:text-brand-navy")}>
                 {p}
               </button>
             ))}
           </div>
-          <Button variant="outline" size="sm" className="gap-2" onClick={() => console.log("PDF Report clicked")}>
+          <Button variant="outline" size="sm" className="gap-2 self-start sm:self-auto" onClick={() => console.log("PDF Report clicked")}>
             <Download size={16} /> PDF Report
           </Button>
         </div>
@@ -36,22 +36,22 @@ export default function PlatformAnalyticsPage() {
 
       {/* Growth & Revenue Overview */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm relative overflow-hidden group">
-          <div className="flex items-center justify-between mb-10">
+        <div className="lg:col-span-2 bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm relative overflow-hidden group sm:p-8 sm:rounded-[3rem]">
+          <div className="mb-6 flex flex-col gap-4 sm:mb-10 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <h2 className="text-xl font-bold text-brand-navy">Revenue & Onboarding Growth</h2>
+              <h2 className="text-lg font-bold text-brand-navy sm:text-xl">Revenue & Onboarding Growth</h2>
               <p className="text-xs text-slate-500">MRR and new clinics joined per month</p>
             </div>
-            <div className="flex gap-6 text-right">
+            <div className="flex flex-wrap items-end gap-4 sm:gap-6 lg:justify-end">
               <div>
-                <p className="text-2xl font-black text-brand-navy">$142k</p>
-                <p className="text-[10px] font-bold text-emerald-500 flex items-center justify-end gap-1 uppercase tracking-tighter">
+                <p className="text-xl font-black text-brand-navy sm:text-2xl">$142k</p>
+                <p className="flex items-center justify-end gap-1 text-[10px] font-bold uppercase tracking-tighter text-emerald-500">
                   MRR <ArrowUpRight size={12} /> +12%
                 </p>
               </div>
               <div>
-                <p className="text-2xl font-black text-brand-navy">110</p>
-                <p className="text-[10px] font-bold text-brand-blue flex items-center justify-end gap-1 uppercase tracking-tighter">
+                <p className="text-xl font-black text-brand-navy sm:text-2xl">110</p>
+                <p className="flex items-center justify-end gap-1 text-[10px] font-bold uppercase tracking-tighter text-brand-blue">
                   New Clinics <ArrowUpRight size={12} /> +24%
                 </p>
               </div>
@@ -59,7 +59,7 @@ export default function PlatformAnalyticsPage() {
           </div>
           
           {/* Mock Chart Area */}
-          <div className="h-64 w-full flex items-end gap-3 px-4 relative">
+          <div className="relative flex h-52 w-full items-end gap-2 px-2 sm:h-64 sm:gap-3 sm:px-4">
             {/* Legend */}
             <div className="absolute top-0 right-4 flex gap-4">
               <div className="flex items-center gap-1.5">
@@ -138,9 +138,9 @@ export default function PlatformAnalyticsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Top Performing Clinics */}
         <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
-          <div className="flex items-center justify-between mb-8">
-            <h3 className="text-xl font-bold text-brand-navy">Top Clinics by Volume</h3>
-            <Button variant="ghost" size="sm" className="text-brand-blue font-bold text-xs">View Ranking</Button>
+          <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <h3 className="text-lg font-bold text-brand-navy sm:text-xl">Top Clinics by Volume</h3>
+            <Button variant="ghost" size="sm" className="self-start text-xs font-bold text-brand-blue sm:self-auto">View Ranking</Button>
           </div>
           <div className="space-y-4">
             {[
@@ -149,21 +149,21 @@ export default function PlatformAnalyticsPage() {
               { name: "Optimal Optical", patients: "850", growth: "+15%", health: 92 },
               { name: "Precision Eyecare", patients: "720", growth: "+5%", health: 88 },
             ].map((clinic, i) => (
-              <div key={i} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100 group hover:border-brand-blue/30 transition-all">
+              <div key={i} className="flex flex-col gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-4 transition-all group hover:border-brand-blue/30 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-sm font-black text-brand-navy shadow-sm">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-sm font-black text-brand-navy shadow-sm">
                     {i + 1}
                   </div>
-                  <div>
-                    <h4 className="text-sm font-bold text-brand-navy">{clinic.name}</h4>
-                    <p className="text-[10px] text-slate-400 font-medium">{clinic.patients} patients • {clinic.growth} growth</p>
+                  <div className="min-w-0">
+                    <h4 className="truncate text-sm font-bold text-brand-navy">{clinic.name}</h4>
+                    <p className="text-[10px] font-medium text-slate-400">{clinic.patients} patients • {clinic.growth} growth</p>
                   </div>
                 </div>
-                <div className="text-right">
-                  <div className="text-[10px] font-black text-brand-blue uppercase tracking-widest mb-1">Health Score</div>
-                  <div className="flex items-center gap-1.5 justify-end">
-                    <div className="w-16 h-1.5 bg-slate-200 rounded-full overflow-hidden">
-                      <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${clinic.health}%` }} />
+                <div className="sm:text-right">
+                  <div className="mb-1 text-[10px] font-black uppercase tracking-widest text-brand-blue">Health Score</div>
+                  <div className="flex items-center gap-1.5 sm:justify-end">
+                    <div className="h-1.5 w-16 overflow-hidden rounded-full bg-slate-200 sm:w-20">
+                      <div className="h-full rounded-full bg-emerald-500" style={{ width: `${clinic.health}%` }} />
                     </div>
                     <span className="text-xs font-bold text-brand-navy">{clinic.health}%</span>
                   </div>
@@ -175,11 +175,11 @@ export default function PlatformAnalyticsPage() {
 
         {/* Feature Adoption & Retention */}
         <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
-          <div className="flex items-center justify-between mb-8">
-            <h3 className="text-xl font-bold text-brand-navy">Feature Adoption</h3>
-            <Button variant="ghost" size="sm" className="text-brand-blue font-bold text-xs">Full Audit</Button>
+          <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <h3 className="text-lg font-bold text-brand-navy sm:text-xl">Feature Adoption</h3>
+            <Button variant="ghost" size="sm" className="self-start text-xs font-bold text-brand-blue sm:self-auto">Full Audit</Button>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {[
               { label: "HMO Module", val: "94%", desc: "High engagement", color: "emerald" },
               { label: "Optical Shop", val: "72%", desc: "Growing", color: "brand-blue" },
@@ -210,7 +210,7 @@ export default function PlatformAnalyticsPage() {
       </div>
 
       {/* Regional & Device Analytics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
         {[
           { label: "Top Region", val: "Lagos, NG", icon: Globe, color: "blue" },
           { label: "Peak Activity", val: "Mon - Wed", icon: Clock, color: "purple" },
@@ -232,9 +232,9 @@ export default function PlatformAnalyticsPage() {
       </div>
 
       {/* Popular Modules */}
-      <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
-        <h3 className="text-xl font-bold text-brand-navy mb-8">Most Used Modules (Daily Hits)</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+      <div className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden sm:p-8 sm:rounded-[2.5rem]">
+        <h3 className="mb-8 text-lg font-bold text-brand-navy sm:text-xl">Most Used Modules (Daily Hits)</h3>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-8">
           {[
             { name: "HMO Claims", hits: "45.2k", trend: "+5.1%" },
             { name: "Optical Orders", hits: "32.8k", trend: "+8.4%" },

@@ -60,7 +60,7 @@ export const PricingSection = () => {
   ];
 
   return (
-    <section id="pricing" className="py-24 bg-white">
+    <section id="pricing" className="py-6 bg-white">
       <div className="max-w-7xl mx-auto px-6">
         <div className="text-center max-w-3xl mx-auto mb-16">
           <h2 className="text-4xl font-bold text-brand-navy mb-6">Simple, <span className="text-brand-blue">Transparent</span> Pricing</h2>

@@ -37,23 +37,23 @@ export default function SupportDashboardPage() {
   return (
     <div className="space-y-10 pb-20">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
         <div>
           <h1 className="text-3xl font-bold text-brand-navy font-black tracking-tight">Support Desk</h1>
-          <p className="text-slate-500 font-medium mt-1">Manage platform-wide tickets, complaints, and system incidents.</p>
+          <p className="mt-1 text-slate-500 font-medium">Manage platform-wide tickets, complaints, and system incidents.</p>
         </div>
-        <div className="flex items-center gap-3">
-          <Button variant="outline" size="sm" className="gap-2" onClick={() => openModal("incident-log")}>
+        <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-end md:w-auto">
+          <Button variant="outline" size="sm" className="gap-2 self-start sm:self-auto" onClick={() => openModal("incident-log")}>
             <ShieldAlert size={16} /> View Incident Logs
           </Button>
-          <Button variant="default" size="sm" className="gap-2" onClick={() => openModal("broadcast")}>
+          <Button variant="default" size="sm" className="gap-2 self-start sm:self-auto" onClick={() => openModal("broadcast")}>
             <Plus size={16} /> Broadcast Memo
           </Button>
         </div>
       </div>
 
       {/* Stats Quick View */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6">
         {[
           { label: "Open Tickets", val: "14", icon: Ticket, color: "blue" },
           { label: "Active Complaints", val: "5", icon: AlertCircle, color: "rose" },
@@ -81,35 +81,37 @@ export default function SupportDashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Tickets & Complaints List */}
         <div className="lg:col-span-2 space-y-6">
-          <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="relative flex-1 w-full max-w-sm group">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-brand-blue transition-colors" size={16} />
-              <input type="text" placeholder="Search support..." className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm outline-none focus:ring-2 focus:ring-brand-blue/20" />
-            </div>
-            <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0">
-              {["all", "tickets", "complaints", "resolved"].map((s) => (
-                <button
-                  key={s}
-                  onClick={() => setActiveTab(s)}
-                  className={cn(
-                    "px-4 py-1.5 rounded-lg text-xs font-bold capitalize transition-all",
-                    activeTab === s ? "bg-brand-navy text-white" : "text-slate-400 hover:text-brand-navy hover:bg-slate-50"
-                  )}
-                >
-                  {s}
-                </button>
-              ))}
+          <div className="bg-white p-4 rounded-[1.5rem] border border-slate-100 shadow-sm sm:p-6 sm:rounded-[2rem]">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <div className="relative w-full max-w-sm group">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-brand-blue transition-colors" size={16} />
+                <input type="text" placeholder="Search support..." className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm outline-none focus:ring-2 focus:ring-brand-blue/20" />
+              </div>
+              <div className="flex items-center gap-2 overflow-x-auto pb-1">
+                {["all", "tickets", "complaints", "resolved"].map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => setActiveTab(s)}
+                    className={cn(
+                      "px-4 py-1.5 rounded-lg text-xs font-bold capitalize transition-all whitespace-nowrap",
+                      activeTab === s ? "bg-brand-navy text-white" : "text-slate-400 hover:text-brand-navy hover:bg-slate-50"
+                    )}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
           <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
             <div className="divide-y divide-slate-50">
               {filteredTickets.map((t, i) => (
-                <div key={i} className="p-6 hover:bg-slate-50/50 transition-all cursor-pointer group" onClick={() => openModal("ticket")}>
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div className="flex items-start gap-4">
+                <div key={i} className="p-4 hover:bg-slate-50/50 transition-all cursor-pointer group sm:p-6" onClick={() => openModal("ticket")}>
+                  <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                    <div className="flex items-start gap-3 sm:gap-4">
                       <div className={cn(
-                        "w-10 h-10 rounded-xl flex items-center justify-center shrink-0",
+                        "h-10 w-10 shrink-0 rounded-xl flex items-center justify-center",
                         t.type === "Complaint" ? "bg-rose-50 text-rose-500" :
                         t.priority === "Critical" ? "bg-rose-50 text-rose-500" :
                         t.priority === "High" ? "bg-amber-50 text-amber-500" :
@@ -117,11 +119,11 @@ export default function SupportDashboardPage() {
                       )}>
                         {t.type === "Complaint" ? <AlertCircle size={20} /> : <Ticket size={20} />}
                       </div>
-                      <div>
-                        <div className="flex items-center gap-2 mb-1">
+                      <div className="min-w-0 flex-1">
+                        <div className="mb-1 flex flex-wrap items-center gap-2">
                           <h4 className="text-sm font-bold text-brand-navy group-hover:text-brand-blue transition-colors">{t.subject}</h4>
                           <span className={cn(
-                            "text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-widest",
+                            "rounded uppercase tracking-widest px-1.5 py-0.5 text-[8px] font-black",
                             t.type === "Complaint" ? "bg-rose-600 text-white" :
                             t.priority === "Critical" ? "bg-rose-600 text-white" :
                             t.priority === "High" ? "bg-amber-500 text-white" :
@@ -130,16 +132,16 @@ export default function SupportDashboardPage() {
                             {t.type === "Complaint" ? "Complaint" : t.priority}
                           </span>
                         </div>
-                        <div className="flex items-center gap-3 text-[10px] text-slate-400 font-bold">
+                        <div className="flex flex-wrap items-center gap-3 text-[10px] font-bold text-slate-400">
                           <span className="flex items-center gap-1"><Building2 size={12} /> {t.clinic}</span>
                           <span className="flex items-center gap-1"><User size={12} /> {t.user}</span>
                           <span className="flex items-center gap-1"><Clock size={12} /> {t.time}</span>
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center justify-between md:justify-end gap-6">
+                    <div className="flex items-center justify-between gap-4 md:justify-end">
                       <div className={cn(
-                        "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest",
+                        "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest",
                         t.status === "Resolved" ? "bg-emerald-50 text-emerald-600" :
                         t.status === "Pending" ? "bg-amber-50 text-amber-600" : "bg-blue-50 text-blue-600"
                       )}>
@@ -147,7 +149,7 @@ export default function SupportDashboardPage() {
                          t.status === "Pending" ? <Clock size={12} /> : <AlertCircle size={12} />}
                         {t.status}
                       </div>
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0 rounded-lg">
+                      <Button variant="ghost" size="sm" className="h-8 w-8 rounded-lg p-0">
                         <MoreVertical size={16} />
                       </Button>
                     </div>

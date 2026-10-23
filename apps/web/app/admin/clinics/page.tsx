@@ -161,84 +161,84 @@ export default function ClinicsListPage() {
       </div>
 
       {/* Clinics Table */}
-      <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
+      <div className="overflow-hidden rounded-[2.5rem] border border-slate-100 bg-white shadow-sm">
         <div className="overflow-x-auto">
-          <table className="w-full text-left">
+          <table className="min-w-[820px] w-full table-fixed text-left">
             <thead>
-              <tr className="bg-slate-50/50 border-b border-slate-100">
-                <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Clinic Details</th>
-                <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Plan & Usage</th>
-                <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
-                <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Joined</th>
-                <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest"></th>
+              <tr className="border-b border-slate-100 bg-slate-50/50">
+                <th className="w-[38%] px-6 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Clinic Details</th>
+                <th className="w-[22%] px-6 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Plan & Usage</th>
+                <th className="w-[14%] px-6 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Status</th>
+                <th className="w-[14%] px-6 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Joined</th>
+                <th className="w-[12%] px-6 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
               {clinics.map((clinic, i) => (
-                <tr key={i} className="group hover:bg-slate-50/30 transition-colors">
-                  <td className="px-8 py-6">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-2xl bg-brand-soft-blue flex items-center justify-center text-brand-blue font-black border border-brand-blue/10">
+                <tr key={i} className="group align-middle transition-colors hover:bg-slate-50/30">
+                  <td className="px-6 py-5 align-middle">
+                    <div className="flex min-w-0 items-center gap-4">
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-brand-blue/10 bg-brand-soft-blue text-sm font-black text-brand-blue">
                         {clinic.name.split(" ").map(w => w[0]).join("").slice(0, 2)}
                       </div>
-                      <div>
-                        <Link href={`/admin/clinics/${clinic.id}`} className="text-sm font-black text-brand-navy hover:text-brand-blue transition-colors block">
+                      <div className="min-w-0 flex-1">
+                        <Link href={`/admin/clinics/${clinic.id}`} className="block truncate text-sm font-black text-brand-navy transition-colors hover:text-brand-blue">
                           {clinic.name}
                         </Link>
-                        <div className="flex items-center gap-4 mt-1">
-                          <span className="flex items-center gap-1 text-[10px] text-slate-400 font-bold">
+                        <div className="mt-1 flex min-w-0 items-center gap-4 text-[10px] font-bold text-slate-400">
+                          <span className="flex items-center gap-1 whitespace-nowrap">
                             <MapPin size={10} /> {clinic.location}
                           </span>
-                          <span className="flex items-center gap-1 text-[10px] text-slate-400 font-bold">
+                          <span className="flex items-center gap-1 whitespace-nowrap">
                             <Building2 size={10} /> {clinic.id}
                           </span>
                         </div>
                       </div>
                     </div>
                   </td>
-                  <td className="px-8 py-6">
-                    <div>
+                  <td className="px-6 py-5 align-middle">
+                    <div className="min-w-0">
                       <span className={cn(
-                        "text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-tighter",
+                        "inline-flex rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-tighter",
                         clinic.plan === "Enterprise" ? "bg-purple-100 text-purple-700" :
                         clinic.plan === "Multi-Branch" ? "bg-brand-navy text-white" :
                         clinic.plan === "Growth" ? "bg-brand-soft-blue text-brand-blue" : "bg-slate-100 text-slate-600"
                       )}>
                         {clinic.plan}
                       </span>
-                      <div className="flex items-center gap-3 mt-2">
-                        <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1 uppercase tracking-widest">
+                      <div className="mt-2 flex items-center gap-3 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                        <span className="flex items-center gap-1 whitespace-nowrap">
                           <Building2 size={12} className="text-brand-blue" /> {clinic.branches} Br.
                         </span>
-                        <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1 uppercase tracking-widest">
+                        <span className="flex items-center gap-1 whitespace-nowrap">
                           <Users size={12} className="text-brand-blue" /> {clinic.staff} Staff
                         </span>
                       </div>
                     </div>
                   </td>
-                  <td className="px-8 py-6">
+                  <td className="px-6 py-5 align-middle">
                     <div className={cn(
-                      "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest",
+                      "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest",
                       clinic.status === "Active" ? "bg-emerald-50 text-emerald-600" : "bg-amber-50 text-amber-600"
                     )}>
                       {clinic.status === "Active" ? <CheckCircle2 size={14} /> : <Clock size={14} />}
                       {clinic.status}
                     </div>
                   </td>
-                  <td className="px-8 py-6 text-xs text-slate-500 font-bold uppercase tracking-widest">
+                  <td className="px-6 py-5 align-middle text-xs font-bold uppercase tracking-widest text-slate-500">
                     {clinic.joined}
                   </td>
-                  <td className="px-8 py-6 text-right">
+                  <td className="px-6 py-5 text-right align-middle">
                     <div className="flex items-center justify-end gap-2">
                       <Link href={`/admin/clinics/${clinic.id}`}>
-                        <Button variant="ghost" size="sm" className="h-10 w-10 p-0 rounded-xl hover:bg-brand-soft-blue hover:text-brand-blue transition-all">
+                        <Button variant="ghost" size="sm" className="h-10 w-10 rounded-xl p-0 transition-all hover:bg-brand-soft-blue hover:text-brand-blue">
                           <ExternalLink size={18} />
                         </Button>
                       </Link>
                       <Button 
                         variant="ghost" 
                         size="sm" 
-                        className="h-10 w-10 p-0 rounded-xl"
+                        className="h-10 w-10 rounded-xl p-0"
                         onClick={() => setActiveClinic({ id: clinic.id, name: clinic.name })}
                       >
                         <MoreVertical size={18} />
@@ -252,14 +252,16 @@ export default function ClinicsListPage() {
         </div>
         
         {/* Pagination */}
-        <div className="p-6 bg-slate-50/50 border-t border-slate-100 flex items-center justify-between">
-          <p className="text-xs text-slate-400 font-black uppercase tracking-widest">Showing 1 to 5 of 542 clinics</p>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" className="rounded-xl font-bold px-6 h-10 border-slate-200" disabled>Previous</Button>
-            <Button variant="outline" className="rounded-xl font-bold w-10 h-10 p-0 bg-white border-brand-blue text-brand-blue">1</Button>
-            <Button variant="outline" className="rounded-xl font-bold w-10 h-10 p-0 bg-white border-slate-200">2</Button>
-            <Button variant="outline" className="rounded-xl font-bold w-10 h-10 p-0 bg-white border-slate-200">3</Button>
-            <Button variant="outline" className="rounded-xl font-bold px-6 h-10 border-slate-200">Next</Button>
+        <div className="flex flex-col gap-3 border-t border-slate-100 bg-slate-50/50 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+          <p className="text-left text-xs font-black uppercase tracking-widest text-slate-400 sm:text-center">
+            Showing 1 to 5 of 542 clinics
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-end">
+            <Button variant="outline" className="h-10 rounded-xl border-slate-200 px-6 font-bold" disabled>Previous</Button>
+            <Button variant="outline" className="h-10 w-10 rounded-xl border-brand-blue bg-white p-0 font-bold text-brand-blue">1</Button>
+            <Button variant="outline" className="h-10 w-10 rounded-xl border-slate-200 bg-white p-0 font-bold">2</Button>
+            <Button variant="outline" className="h-10 w-10 rounded-xl border-slate-200 bg-white p-0 font-bold">3</Button>
+            <Button variant="outline" className="h-10 rounded-xl border-slate-200 px-6 font-bold">Next</Button>
           </div>
         </div>
       </div>

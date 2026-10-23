@@ -88,18 +88,18 @@ export default function PatientDashboard() {
           <CheckCircle2 size={16} className="text-emerald-400" /> {toast}
         </div>
       )}
-      <header className="flex justify-between items-center">
-        <div>
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
             Welcome back
           </h1>
-          <p className="text-sm sm:text-base text-gray-500 mt-1 font-medium">
+          <p className="text-sm sm:text-base text-gray-500 mt-1 font-medium leading-relaxed">
             {upcomingAppt
               ? `You have an appointment ${upcomingAppt.appointmentTime ? `at ${upcomingAppt.appointmentTime}` : `on ${upcomingAppt.appointmentDate}`}.`
               : "No upcoming appointments."}
           </p>
         </div>
-        <Link href="/patient/profile">
+        <Link href="/patient/profile" className="self-end sm:self-auto">
           <div className="w-12 h-12 rounded-full bg-teal-100 border-2 border-white shadow-sm flex items-center justify-center text-teal-700 font-bold hover:scale-105 transition-transform cursor-pointer">
             {user?.email?.[0]?.toUpperCase() || "U"}
           </div>
@@ -113,30 +113,30 @@ export default function PatientDashboard() {
               initial={{ opacity: 0, scale: 0.98 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.4 }}
-              className="bg-teal-600 rounded-[2.5rem] p-8 text-white shadow-xl shadow-teal-900/10 relative overflow-hidden h-full flex flex-col justify-between"
+              className="bg-teal-600 rounded-[2rem] p-4 sm:rounded-[2.5rem] sm:p-8 text-white shadow-xl shadow-teal-900/10 relative overflow-hidden h-full flex flex-col justify-between"
             >
               <div className="absolute -right-10 -top-10 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
               <div className="absolute -left-20 -bottom-20 w-80 h-80 bg-teal-500/30 rounded-full blur-3xl"></div>
 
               <div className="relative z-10">
-                <div className="flex justify-between items-center mb-8">
-                  <div className="flex items-center gap-2 bg-white/20 rounded-full px-4 py-1.5 text-xs font-bold uppercase tracking-widest backdrop-blur-md border border-white/20">
+                <div className="flex justify-between items-center mb-4 sm:mb-8">
+                  <div className="flex items-center gap-2 bg-white/20 rounded-full px-3 py-1.5 text-[10px] sm:text-xs font-bold uppercase tracking-widest backdrop-blur-md border border-white/20">
                     <div className="w-2 h-2 rounded-full bg-white animate-pulse"></div>
                     <span>{getAppointmentType(upcomingAppt.status)}</span>
                   </div>
                 </div>
 
-                <h2 className="text-3xl font-extrabold mb-2 leading-tight">{upcomingAppt.type}</h2>
-                <p className="text-teal-50 text-lg mb-8 opacity-90">{getStaffName(upcomingAppt.staff)}</p>
+                <h2 className="text-2xl sm:text-3xl font-extrabold mb-2 leading-tight">{upcomingAppt.type}</h2>
+                <p className="text-teal-50 text-sm sm:text-lg mb-5 sm:mb-8 opacity-90">{getStaffName(upcomingAppt.staff)}</p>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-white/10 p-5 rounded-3xl backdrop-blur-md border border-white/10">
-                    <p className="text-xs text-teal-100 uppercase tracking-widest font-bold mb-1 opacity-80">Date</p>
-                    <p className="text-xl font-black">{upcomingAppt.appointmentDate}</p>
+                <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                  <div className="bg-white/10 p-3 sm:p-5 rounded-2xl sm:rounded-3xl backdrop-blur-md border border-white/10">
+                    <p className="text-[10px] sm:text-xs text-teal-100 uppercase tracking-widest font-bold mb-1 opacity-80">Date</p>
+                    <p className="text-base sm:text-xl font-black">{upcomingAppt.appointmentDate}</p>
                   </div>
-                  <div className="bg-white/10 p-5 rounded-3xl backdrop-blur-md border border-white/10">
-                    <p className="text-xs text-teal-100 uppercase tracking-widest font-bold mb-1 opacity-80">Time</p>
-                    <p className="text-xl font-black">{upcomingAppt.appointmentTime || "—"}</p>
+                  <div className="bg-white/10 p-3 sm:p-5 rounded-2xl sm:rounded-3xl backdrop-blur-md border border-white/10">
+                    <p className="text-[10px] sm:text-xs text-teal-100 uppercase tracking-widest font-bold mb-1 opacity-80">Time</p>
+                    <p className="text-base sm:text-xl font-black">{upcomingAppt.appointmentTime || "—"}</p>
                   </div>
                 </div>
               </div>
@@ -163,14 +163,14 @@ export default function PatientDashboard() {
         </div>
 
         <div className="space-y-6">
-          <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-gray-100">
+          <div className="bg-white rounded-[1.5rem] p-4 sm:rounded-[2rem] sm:p-6 shadow-sm border border-gray-100">
             <h3 className="font-bold text-gray-900 mb-4 px-2 text-sm uppercase tracking-widest">Quick Actions</h3>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
               {quickActions.map((action, idx) => (
                 <Link key={idx} href={action.href}>
-                  <div className={`${action.color} rounded-2xl p-4 flex flex-col items-center justify-center text-center group cursor-pointer hover:scale-[1.02] transition-transform border border-transparent hover:border-current/10`}>
-                    <action.icon className="w-6 h-6 mb-2" />
-                    <span className="text-[11px] font-bold leading-tight">{action.label}</span>
+                  <div className={`${action.color} rounded-2xl p-3 sm:p-4 flex flex-col items-center justify-center text-center group cursor-pointer hover:scale-[1.02] transition-transform border border-transparent hover:border-current/10 min-h-[96px]`}>
+                    <action.icon className="w-5 h-5 sm:w-6 sm:h-6 mb-2" />
+                    <span className="text-[10px] sm:text-[11px] font-bold leading-tight">{action.label}</span>
                   </div>
                 </Link>
               ))}

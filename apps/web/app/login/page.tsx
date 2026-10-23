@@ -88,10 +88,10 @@ export default function LoginPage() {
     <main className="min-h-screen bg-slate-50 flex flex-col">
       <Navbar />
       
-      <section className="flex-grow flex items-center justify-center pt-32 pb-20">
-        <div className="max-w-md w-full px-6">
+      <section className="flex-grow flex items-center justify-center px-3 pb-10 pt-28 sm:px-6 sm:pb-20 sm:pt-32">
+        <div className="w-full max-w-[420px] sm:max-w-lg">
           
-          <div className="bg-white rounded-[3rem] shadow-2xl shadow-slate-200/60 p-10 md:p-12 border border-slate-100 relative overflow-hidden">
+          <div className="relative overflow-hidden rounded-[2rem] border border-slate-100 bg-white p-6 shadow-2xl shadow-slate-200/60 sm:rounded-[3rem] sm:p-10 md:p-12">
             {/* Background Accents */}
             <div className="absolute top-0 right-0 w-32 h-32 bg-sky-50 rounded-full blur-3xl -mr-16 -mt-16" />
             <div className="absolute bottom-0 left-0 w-32 h-32 bg-emerald-50 rounded-full blur-3xl -ml-16 -mb-16" />
@@ -121,7 +121,7 @@ export default function LoginPage() {
                       type="email"
                       value={formData.email}
                       onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      className="w-full pl-14 pr-6 py-4 rounded-2xl bg-slate-50 border border-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-blue/50 transition-all font-bold text-slate-900 placeholder:text-slate-300"
+                      className="w-full pl-12 pr-4 py-4 rounded-2xl border border-slate-100 bg-slate-50 text-base font-bold text-slate-900 placeholder:text-slate-300 transition-all focus:outline-none focus:ring-2 focus:ring-brand-blue/50 sm:pl-14 sm:pr-6"
                       placeholder="name@clinic.com"
                       disabled={isSubmitting}
                       required
@@ -143,7 +143,7 @@ export default function LoginPage() {
                       type={showPassword ? "text" : "password"}
                       value={formData.password}
                       onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                      className="w-full pl-14 pr-14 py-4 rounded-2xl bg-slate-50 border border-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-blue/50 transition-all font-bold text-slate-900 placeholder:text-slate-300"
+                      className="w-full pl-12 pr-11 py-4 rounded-2xl border border-slate-100 bg-slate-50 text-base font-bold text-slate-900 placeholder:text-slate-300 transition-all focus:outline-none focus:ring-2 focus:ring-brand-blue/50 sm:pl-14 sm:pr-14"
                       placeholder="••••••••"
                       disabled={isSubmitting}
                       required
