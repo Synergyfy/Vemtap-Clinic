@@ -9,6 +9,7 @@ import { MedicalRecord } from '../entities/medical-record.entity';
 import { Invoice, InvoiceStatus } from '../entities/invoice.entity';
 import { Payment, PaymentMethod } from '../entities/payment.entity';
 import { PatientLoginDto, PatientRegisterDto, BookAppointmentDto, UpdatePatientProfileDto, RescheduleAppointmentDto, MakePaymentDto } from './dto';
+import { EmailService } from '../common/services/email.service';
 
 export interface PatientTokenPair {
   accessToken: string;
@@ -31,6 +32,7 @@ export class PatientPortalService {
     @InjectRepository(MedicalRecord) private recordRepo: Repository<MedicalRecord>,
     @InjectRepository(Invoice) private invoiceRepo: Repository<Invoice>,
     private jwtService: JwtService,
+    private emailService: EmailService,
   ) {}
 
   async register(dto: PatientRegisterDto): Promise<{ tokens: PatientTokenPair; patient: PatientAuthUser }> {
@@ -52,6 +54,14 @@ export class PatientPortalService {
       portalAccessEnabled: true,
     });
     const saved = await this.patientRepo.save(patient);
+
+    // Send welcome email
+    await this.emailService.sendTemplatedEmail('welcome', saved.email, {
+      firstName: saved.firstName,
+      clinicName: 'Vemtap Health Clinic',
+      loginUrl: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/patient/login`,
+    });
+
     return this.generateToken(saved);
   }
 

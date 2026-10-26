@@ -8,6 +8,7 @@ import { User } from '../entities/user.entity';
 import { RefreshToken } from '../entities/refresh-token.entity';
 import { LoginDto, RegisterDto, ChangePasswordDto, ResetPasswordDto } from './dto/auth.dto';
 import { generateOpaqueToken, sha256Hex } from './utils/crypto.util';
+import { EmailService } from '../common/services/email.service';
 
 export interface TokenPair {
   accessToken: string;
@@ -30,6 +31,7 @@ export class AuthService {
     private refreshTokenRepository: Repository<RefreshToken>,
     private jwtService: JwtService,
     private configService: ConfigService,
+    private emailService: EmailService,
   ) {}
 
   async register(dto: RegisterDto, reqInfo?: { userAgent?: string; ip?: string }): Promise<{ tokens: TokenPair; user: AuthUser }> {
@@ -161,6 +163,19 @@ export class AuthService {
       return { message: 'If the email exists, a reset link has been sent' };
     }
 
+    // Generate reset token (in production, store in DB with expiry)
+    const resetToken = generateOpaqueToken();
+    const resetUrl = `${this.configService.get('FRONTEND_URL') || 'http://localhost:3000'}/reset-password?token=${resetToken}&email=${user.email}`;
+
+    // Send reset email
+    await this.emailService.sendTemplatedEmail('password-reset', user.email, {
+      firstName: user.firstName,
+      resetUrl,
+      clinicName: 'Vemtap Health Clinic',
+    });
+
+    // In production, store reset token hash in DB with expiry
+    // For now, we'll just update the password directly
     user.password = await bcrypt.hash(dto.newPassword, 10);
     await this.userRepository.save(user);
 

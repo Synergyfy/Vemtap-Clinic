@@ -1,9 +1,11 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between } from 'typeorm';
+import { Repository, Between, EntityManager } from 'typeorm';
 import { Invoice, InvoiceStatus } from '../entities/invoice.entity';
 import { Payment } from '../entities/payment.entity';
+import { Patient } from '../entities/patient.entity';
 import { CreateInvoiceDto, UpdateInvoiceDto, CreatePaymentDto, InvoiceQueryDto } from './dto';
+import { EmailService } from '../common/services/email.service';
 
 @Injectable()
 export class BillingService {
@@ -12,6 +14,10 @@ export class BillingService {
     private invoiceRepository: Repository<Invoice>,
     @InjectRepository(Payment)
     private paymentRepository: Repository<Payment>,
+    @InjectRepository(Patient)
+    private patientRepository: Repository<Patient>,
+    private entityManager: EntityManager,
+    private emailService: EmailService,
   ) {}
 
   async createInvoice(dto: CreateInvoiceDto): Promise<Invoice> {
@@ -50,19 +56,49 @@ export class BillingService {
     if (invoice.status === InvoiceStatus.PAID) {
       throw new BadRequestException('Invoice is already fully paid');
     }
-    const payment = this.paymentRepository.create(dto);
-    const savedPayment = await this.paymentRepository.save(payment);
 
-    invoice.amountPaid += dto.amount;
-    invoice.balance = invoice.totalAmount - invoice.amountPaid;
-    invoice.status = invoice.balance <= 0 ? InvoiceStatus.PAID : InvoiceStatus.PARTIALLY_PAID;
-    await this.invoiceRepository.save(invoice);
+    const query = 'INSERT INTO payments (amount, "paymentMethod", reference, notes, "invoiceId", "clinicId") ' +
+                  'VALUES ($1, $2, $3, $4, $5, $6) ' +
+                  'RETURNING id';
+
+    const result = await this.entityManager.query(
+      query,
+      [dto.amount, dto.paymentMethod, dto.reference, dto.notes, invoice.id, dto.clinicId]
+    );
+
+    const insertedId = result[0].id;
+    const savedPayment = await this.entityManager.findOneOrFail(Payment, {
+      where: { id: insertedId },
+      relations: ['invoice'],
+    });
+
+    // Use a targeted UPDATE (not save) so TypeORM does not try to re-persist the
+    // loaded `payments` relation and clobber payment.invoiceId with undefined.
+    const amountPaid = Number(invoice.amountPaid) + Number(dto.amount);
+    const balance = Number(invoice.totalAmount) - amountPaid;
+    await this.invoiceRepository.update(invoice.id, {
+      amountPaid,
+      balance,
+      status: balance <= 0 ? InvoiceStatus.PAID : InvoiceStatus.PARTIALLY_PAID,
+    });
+
+    // Send payment receipt email if patient has email
+    const patient = await this.patientRepository.findOne({ where: { id: invoice.patientId } });
+    if (patient?.email) {
+      await this.emailService.sendTemplatedEmail('payment-receipt', patient.email, {
+        amount: '₦' + dto.amount.toLocaleString(),
+        method: dto.paymentMethod,
+        reference: dto.reference || 'PAY-' + savedPayment.id.slice(0, 8).toUpperCase(),
+        date: new Date().toLocaleDateString(),
+        patientName: patient.firstName + ' ' + patient.lastName,
+      });
+    }
 
     return savedPayment;
   }
 
   async getPayments(invoiceId: string): Promise<Payment[]> {
-    return this.paymentRepository.find({ where: { invoiceId }, relations: ['receivedBy'], order: { createdAt: 'DESC' } });
+    return this.paymentRepository.find({ where: { invoice: { id: invoiceId } }, relations: ['receivedBy'], order: { createdAt: 'DESC' } });
   }
 
   async getRevenue(clinicId: string) {
