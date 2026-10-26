@@ -1,6 +1,7 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
+import * as nodemailer from 'nodemailer';
 
 export interface EmailOptions {
   to: string | string[];
@@ -20,36 +21,82 @@ export interface EmailResult {
   error?: string;
 }
 
+type EmailProvider = 'resend' | 'smtp';
+
 @Injectable()
 export class EmailService {
+  private provider: EmailProvider;
   private apiKey: string;
   private fromEmail: string;
   private fromName: string;
+  private transporter: nodemailer.Transporter | null = null;
+  private configError: string | null = null;
 
   constructor(private config: ConfigService) {
-    const apiKey = this.config.get('RESEND_API_KEY');
-    if (!apiKey) {
-      console.warn('⚠️ RESEND_API_KEY not configured - email service will not work');
-      this.apiKey = '';
-    } else {
-      this.apiKey = apiKey;
-    }
     this.fromEmail = this.config.get('EMAIL_FROM') || 'noreply@vemtap.com';
     this.fromName = this.config.get('EMAIL_FROM_NAME') || 'Vemtap Health Clinic';
+
+    // EMAIL_PROVIDER=smtp|resend; defaults to smtp when SMTP_HOST is set, else resend
+    const configured = (this.config.get('EMAIL_PROVIDER') || (this.config.get('SMTP_HOST') ? 'smtp' : 'resend'))
+      .toLowerCase() as EmailProvider;
+    this.provider = configured === 'smtp' ? 'smtp' : 'resend';
+
+    if (this.provider === 'smtp') {
+      const host = this.config.get('SMTP_HOST');
+      const user = this.config.get('SMTP_USER');
+      const pass = this.config.get('SMTP_PASS');
+      if (!host || !user || !pass) {
+        this.configError = 'EMAIL_PROVIDER=smtp but SMTP_HOST, SMTP_USER and SMTP_PASS are not all set';
+        console.warn(`⚠️ ${this.configError} - email service will not work`);
+      } else {
+        this.transporter = nodemailer.createTransport({
+          host,
+          port: Number(this.config.get('SMTP_PORT', 587)),
+          secure: this.config.get('SMTP_SECURE', 'false') === 'true', // true = port 465, false = STARTTLS (587)
+          auth: { user, pass },
+        });
+      }
+    } else {
+      const apiKey = this.config.get('RESEND_API_KEY');
+      if (!apiKey) {
+        this.configError = 'RESEND_API_KEY not configured';
+        console.warn('⚠️ RESEND_API_KEY not configured - email service will not work');
+      }
+      this.apiKey = apiKey || '';
+    }
   }
 
   async sendEmail(options: EmailOptions): Promise<EmailResult> {
-    if (!this.apiKey) {
-      console.warn('⚠️ RESEND_API_KEY not configured - email not sent');
-      return { success: false, error: 'RESEND_API_KEY not configured' };
+    if (this.configError) {
+      console.warn(`⚠️ email not sent: ${this.configError}`);
+      return { success: false, error: this.configError };
+    }
+
+    const from = `${this.fromName} <${this.fromEmail}>`;
+    const to = Array.isArray(options.to) ? options.to : [options.to];
+
+    if (this.provider === 'smtp') {
+      try {
+        const info = await this.transporter!.sendMail({
+          from,
+          to,
+          subject: options.subject,
+          text: options.text,
+          html: options.html,
+          attachments: options.attachments,
+        });
+        return { success: true, messageId: info.messageId };
+      } catch (error) {
+        return { success: false, error: error.message };
+      }
     }
 
     try {
       const response = await axios.post(
         'https://api.resend.com/emails',
         {
-          from: `${this.fromName} <${this.fromEmail}>`,
-          to: Array.isArray(options.to) ? options.to : [options.to],
+          from,
+          to,
           subject: options.subject,
           text: options.text,
           html: options.html,
