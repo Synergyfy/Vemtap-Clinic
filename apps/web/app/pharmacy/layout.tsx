@@ -110,9 +110,14 @@ export default function PharmacyLayout({ children }: { children: React.ReactNode
       <BottomNav 
         items={[
           { label: "Home", href: "/pharmacy/dashboard", icon: LayoutDashboard },
-          { label: "Rx Queue", href: "/pharmacy/prescriptions", icon: ClipboardList },
+          { label: "Rx", href: "/pharmacy/prescriptions", icon: ClipboardList },
           { label: "Inventory", href: "/pharmacy/inventory", icon: PackageSearch },
+        ]}
+        moreItems={[
           { label: "Dispense", href: "/pharmacy/dispensing", icon: Pill },
+          { label: "Suppliers", href: "/pharmacy/suppliers", icon: Truck },
+          { label: "Support", href: "/pharmacy/support", icon: Headphones },
+          { label: "Settings", href: "/pharmacy/settings", icon: Settings2 },
         ]}
         activeColor="text-emerald-600"
       />

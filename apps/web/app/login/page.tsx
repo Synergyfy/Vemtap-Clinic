@@ -34,6 +34,7 @@ export default function LoginPage() {
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [pendingEnvironment, setPendingEnvironment] = useState<string | null>(null);
   const { login, isAuthenticated, user } = useAuth();
   const router = useRouter();
 
@@ -64,7 +65,10 @@ export default function LoginPage() {
     }
   };
 
-  const handleQuickAccess = (href: string) => {
+  const handleQuickAccess = (href: string, label: string) => {
+    setPendingEnvironment(label);
+    setIsQuickAccessOpen(false);
+    setError(null);
     router.push(href);
   };
 
@@ -179,16 +183,22 @@ export default function LoginPage() {
                   <button 
                     type="button"
                     onClick={() => setIsQuickAccessOpen(!isQuickAccessOpen)}
-                    className="w-full py-4 px-6 rounded-2xl bg-slate-900 text-white flex items-center justify-between group hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/10"
-                    disabled={isSubmitting}
+                    className="w-full py-4 px-6 rounded-2xl bg-slate-900 text-white flex items-center justify-between group hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/10 disabled:opacity-70 disabled:cursor-not-allowed relative z-10"
+                    disabled={isSubmitting || !!pendingEnvironment}
                   >
                     <div className="flex items-center gap-3">
                       <div className="w-6 h-6 rounded-lg bg-white/10 flex items-center justify-center">
-                        <ArrowRight size={14} className="text-sky-400 group-hover:translate-x-0.5 transition-transform" />
+                        {pendingEnvironment ? (
+                          <Loader2 size={14} className="animate-spin text-sky-400" />
+                        ) : (
+                          <ArrowRight size={14} className="text-sky-400 group-hover:translate-x-0.5 transition-transform" />
+                        )}
                       </div>
-                      <span className="text-xs font-black uppercase tracking-widest">Quick Dashboard Access</span>
+                      <span className="text-xs font-black uppercase tracking-widest">
+                        {pendingEnvironment ? `Opening ${pendingEnvironment}...` : "Quick Dashboard Access"}
+                      </span>
                     </div>
-                    <ChevronDown size={16} className={cn("transition-transform text-white/40", isQuickAccessOpen && "rotate-180")} />
+                    {!pendingEnvironment && <ChevronDown size={16} className={cn("transition-transform text-white/40", isQuickAccessOpen && "rotate-180")} />}
                   </button>
 
                   <AnimatePresence>
@@ -197,7 +207,7 @@ export default function LoginPage() {
                         initial={{ opacity: 0, y: 10, scale: 0.95 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                        className="absolute bottom-full left-0 w-full mb-3 bg-white border border-slate-100 rounded-3xl shadow-2xl p-3 z-50 overflow-y-auto max-h-[28rem]"
+                        className="absolute bottom-full left-0 w-full mb-3 bg-white border border-slate-100 rounded-3xl shadow-2xl p-3 z-[60] overflow-y-auto max-h-[28rem] pointer-events-auto"
                       >
                         <div className="p-3 mb-2">
                           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Select Environment</p>
@@ -205,8 +215,15 @@ export default function LoginPage() {
                         {dashboardLinks.map((link) => (
                           <button 
                             key={link.name} 
-                            onClick={() => handleQuickAccess(link.href)}
-                            className="flex items-center gap-4 p-4 hover:bg-slate-50 rounded-2xl transition-all group w-full text-left"
+                            type="button"
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              handleQuickAccess(link.href, link.name);
+                            }}
+                            disabled={!!pendingEnvironment}
+                            className="flex items-center gap-4 p-4 hover:bg-slate-50 rounded-2xl transition-all group w-full text-left disabled:cursor-not-allowed disabled:opacity-70"
                           >
                             <div className={cn("w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center transition-colors group-hover:bg-white group-hover:shadow-sm", link.color)}>
                               <link.icon size={20} />

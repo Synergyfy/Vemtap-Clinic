@@ -186,7 +186,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           { label: "Home", href: "/admin/dashboard", icon: LayoutDashboard },
           { label: "Clinics", href: "/admin/clinics", icon: Building2 },
           { label: "Finance", href: "/admin/finance", icon: Wallet },
+        ]}
+        moreItems={[
           { label: "Analytics", href: "/admin/analytics", icon: BarChart3 },
+          { label: "Security", href: "/admin/security", icon: ShieldAlert },
+          { label: "Settings", href: "/admin/settings", icon: Settings2 },
+          { label: "Support", href: "/admin/support", icon: Headphones },
         ]}
         activeColor="text-brand-blue"
       />

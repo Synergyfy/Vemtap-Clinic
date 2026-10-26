@@ -139,7 +139,12 @@ export default function OpticianLayout({ children }: { children: React.ReactNode
           { label: "Home", href: "/optician/dashboard", icon: LayoutDashboard },
           { label: "Orders", href: "/optician/orders", icon: ShoppingBag },
           { label: "Inventory", href: "/optician/inventory", icon: PackageSearch },
+        ]}
+        moreItems={[
           { label: "Production", href: "/optician/production", icon: Cog },
+          { label: "Sales", href: "/optician/sales", icon: BarChart3 },
+          { label: "Support", href: "/optician/support", icon: Headphones },
+          { label: "Settings", href: "/optician/settings", icon: Settings2 },
         ]}
         activeColor="text-amber-600"
       />

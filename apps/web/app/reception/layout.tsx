@@ -153,7 +153,12 @@ export default function ReceptionLayout({ children }: { children: React.ReactNod
           { label: "Home", href: "/reception/dashboard", icon: LayoutDashboard },
           { label: "Queue", href: "/reception/queue", icon: Clock },
           { label: "Patients", href: "/reception/patients", icon: Users },
+        ]}
+        moreItems={[
           { label: "Appts", href: "/reception/appointments", icon: Calendar },
+          { label: "Billing", href: "/reception/billing", icon: Wallet },
+          { label: "Documents", href: "/reception/documents", icon: FileText },
+          { label: "Settings", href: "/reception/settings", icon: Settings2 },
         ]}
         activeColor="text-sky-600"
       />

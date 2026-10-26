@@ -150,7 +150,12 @@ export default function DoctorLayout({ children }: { children: React.ReactNode }
           { label: "Home", href: "/doctor/dashboard", icon: LayoutDashboard },
           { label: "Queue", href: "/doctor/queue", icon: Clock },
           { label: "Patients", href: "/doctor/patients", icon: Users },
+        ]}
+        moreItems={[
           { label: "Appts", href: "/doctor/appointments", icon: Calendar },
+          { label: "Reports", href: "/doctor/reports", icon: BarChart3 },
+          { label: "Support", href: "/doctor/support", icon: Headphones },
+          { label: "Settings", href: "/doctor/settings", icon: Settings2 },
         ]}
         activeColor="text-emerald-600"
       />

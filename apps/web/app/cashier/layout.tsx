@@ -142,6 +142,9 @@ export default function CashierLayout({ children }: { children: React.ReactNode 
           { label: "History", href: "/cashier/history", icon: Receipt },
           { label: "Reports", href: "/cashier/reconciliation", icon: BarChart3 },
         ]}
+        moreItems={[
+          { label: "Settings", href: "/cashier/settings", icon: Settings2 },
+        ]}
         activeColor="text-emerald-600"
       />
 

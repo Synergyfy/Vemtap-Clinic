@@ -151,7 +151,12 @@ export default function NurseLayout({ children }: { children: React.ReactNode })
           { label: "Home", href: "/nurse/dashboard", icon: LayoutDashboard },
           { label: "Patients", href: "/nurse/patients", icon: Users },
           { label: "Vitals", href: "/nurse/vitals", icon: Activity },
+        ]}
+        moreItems={[
           { label: "Monitor", href: "/nurse/monitoring", icon: Heart },
+          { label: "Notes", href: "/nurse/treatment", icon: ClipboardList },
+          { label: "Follow-ups", href: "/nurse/followups", icon: Calendar },
+          { label: "Settings", href: "/nurse/settings", icon: Settings2 },
         ]}
         activeColor="text-cyan-600"
       />

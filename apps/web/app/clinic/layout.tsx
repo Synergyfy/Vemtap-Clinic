@@ -160,7 +160,12 @@ export default function ClinicLayout({ children }: { children: React.ReactNode }
           { label: "Home", href: "/clinic/dashboard", icon: LayoutDashboard },
           { label: "Patients", href: "/clinic/patients", icon: Users },
           { label: "Queue", href: "/clinic/queue", icon: Clock },
+        ]}
+        moreItems={[
           { label: "Appts", href: "/clinic/appointments", icon: Calendar },
+          { label: "Optical", href: "/clinic/optical", icon: Eye },
+          { label: "Finance", href: "/clinic/finance", icon: Wallet },
+          { label: "Settings", href: "/clinic/settings", icon: Settings2 },
         ]}
         activeColor="text-sky-600"
       />
