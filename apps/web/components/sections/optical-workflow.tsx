@@ -40,39 +40,47 @@ export const OpticalWorkflow = () => {
             <div className="mb-8 hidden md:block">
               <div className="relative flex items-center justify-between">
                 <div className="absolute left-0 top-1/2 z-0 h-0.5 w-full -translate-y-1/2 bg-slate-100"></div>
-                {workflow.map((step, idx) => (
-                  <div key={idx} className="relative z-10 flex flex-col items-center gap-3">
-                    <div className={`flex h-12 w-12 items-center justify-center rounded-full border-4 ${
-                      step.status === "completed" ? "border-brand-soft-blue bg-brand-blue text-white" :
-                      step.status === "active" ? "border-brand-blue bg-white text-brand-blue animate-pulse" :
-                      "border-slate-100 bg-white text-slate-300"
-                    }`}>
-                      <step.icon size={20} />
+                {workflow.map((step, idx) => {
+                  const StepIcon = step.icon;
+
+                  return (
+                    <div key={idx} className="relative z-10 flex flex-col items-center gap-3">
+                      <div className={`flex h-12 w-12 items-center justify-center rounded-full border-4 ${
+                        step.status === "completed" ? "border-brand-soft-blue bg-brand-blue text-white" :
+                        step.status === "active" ? "border-brand-blue bg-white text-brand-blue animate-pulse" :
+                        "border-slate-100 bg-white text-slate-300"
+                      }`}>
+                        <StepIcon size={20} />
+                      </div>
+                      <span className={`text-[10px] font-bold uppercase tracking-wider ${
+                        step.status === "pending" ? "text-slate-300" : "text-brand-navy"
+                      }`}>{step.title}</span>
                     </div>
-                    <span className={`text-[10px] font-bold uppercase tracking-wider ${
-                      step.status === "pending" ? "text-slate-300" : "text-brand-navy"
-                    }`}>{step.title}</span>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
             <div className="md:hidden">
-              <div className="-mx-2 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <div className="-mx-2 overflow-x-auto pb-2 scrollbar-none">
                 <div className="flex min-w-max snap-x snap-mandatory gap-3 px-2">
-                  {workflow.map((step, idx) => (
-                    <div key={idx} className="snap-center rounded-2xl border border-slate-200 bg-white p-3 shadow-sm min-w-[150px]">
-                      <div className={`mb-3 flex h-11 w-11 items-center justify-center rounded-full border-4 ${
-                        step.status === "completed" ? "border-brand-soft-blue bg-brand-blue text-white" :
-                        step.status === "active" ? "border-brand-blue bg-white text-brand-blue animate-pulse" :
-                        "border-slate-100 bg-slate-50 text-slate-300"
-                      }`}>
-                        <step.icon size={18} />
+                  {workflow.map((step, idx) => {
+                    const StepIcon = step.icon;
+
+                    return (
+                      <div key={idx} className="snap-center rounded-2xl border border-slate-200 bg-white p-3 shadow-sm min-w-37.5">
+                        <div className={`mb-3 flex h-11 w-11 items-center justify-center rounded-full border-4 ${
+                          step.status === "completed" ? "border-brand-soft-blue bg-brand-blue text-white" :
+                          step.status === "active" ? "border-brand-blue bg-white text-brand-blue animate-pulse" :
+                          "border-slate-100 bg-slate-50 text-slate-300"
+                        }`}>
+                          <StepIcon size={18} />
+                        </div>
+                        <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">Step {idx + 1}</div>
+                        <div className="mt-1 text-sm font-bold text-brand-navy">{step.title}</div>
                       </div>
-                      <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">Step {idx + 1}</div>
-                      <div className="mt-1 text-sm font-bold text-brand-navy">{step.title}</div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -87,10 +95,10 @@ export const OpticalWorkflow = () => {
             </div>
 
             <div className="md:hidden">
-              <div className="-mx-2 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <div className="-mx-2 overflow-x-auto pb-2 scrollbar-none">
                 <div className="flex min-w-max snap-x snap-mandatory gap-3 px-2">
                   {workflowFeatures.map((item) => (
-                    <div key={item} className="snap-center rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-600 min-w-[190px]">
+                    <div key={item} className="snap-center rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-600 min-w-47.5">
                       <div className="flex items-center gap-2">
                         <div className="h-1.5 w-1.5 rounded-full bg-brand-blue" />
                         <span>{item}</span>

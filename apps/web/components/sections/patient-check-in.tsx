@@ -28,30 +28,34 @@ export const PatientCheckIn = () => {
               {/* Vertical line connecting steps */}
               <div className="absolute left-6 top-8 bottom-8 w-0.5 bg-slate-100 hidden md:block" />
               
-              {steps.map((step, idx) => (
-                <motion.div
-                  key={idx}
-                  initial={{ opacity: 0, x: -20 }}
-                  whileInView={{ opacity: 1, x: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: idx * 0.1 }}
-                  className="flex items-start gap-6 relative z-10"
-                >
-                  <div className="w-12 h-12 rounded-2xl bg-white shadow-lg border border-slate-50 flex items-center justify-center shrink-0">
-                    <step.icon className="text-brand-blue" size={24} />
-                  </div>
-                  <div>
-                    <h4 className="text-lg font-bold text-brand-navy mb-1">{step.title}</h4>
-                    <p className="text-slate-500">{step.desc}</p>
-                  </div>
-                </motion.div>
-              ))}
+              {steps.map((step, idx) => {
+                const StepIcon = step.icon;
+
+                return (
+                  <motion.div
+                    key={idx}
+                    initial={{ opacity: 0, x: -20 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: idx * 0.1 }}
+                    className="flex items-start gap-6 relative z-10"
+                  >
+                    <div className="w-12 h-12 rounded-2xl bg-white shadow-lg border border-slate-50 flex items-center justify-center shrink-0">
+                      <StepIcon className="text-brand-blue" size={24} />
+                    </div>
+                    <div>
+                      <h4 className="text-lg font-bold text-brand-navy mb-1">{step.title}</h4>
+                      <p className="text-slate-500">{step.desc}</p>
+                    </div>
+                  </motion.div>
+                );
+              })}
             </div>
           </div>
 
           <div className="relative">
             {/* Phone Mockup */}
-            <div className="relative mx-auto w-[300px] h-[600px] bg-slate-900 rounded-[3rem] border-8 border-slate-800 shadow-2xl overflow-hidden">
+            <div className="relative mx-auto w-75 h-150 bg-slate-900 rounded-[3rem] border-8 border-slate-800 shadow-2xl overflow-hidden">
               <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-6 bg-slate-800 rounded-b-2xl z-20"></div>
               
               <div className="absolute inset-0 bg-white p-6 pt-12">

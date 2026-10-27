@@ -24,22 +24,26 @@ export const HowItWorks = () => {
           {/* Connecting Line (Desktop) */}
           <div className="absolute top-1/2 left-0 w-full h-0.5 bg-brand-blue/10 -translate-y-1/2 hidden md:block"></div>
           
-          {steps.map((step, idx) => (
-            <motion.div
-              key={idx}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: idx * 0.1 }}
-              className="relative z-10 text-center"
-            >
-              <div className="w-20 h-20 bg-white rounded-[2rem] border-4 border-slate-50 shadow-xl mx-auto flex items-center justify-center mb-6 group hover:border-brand-blue/20 transition-all">
-                <step.icon className="text-brand-blue" size={32} />
-              </div>
-              <h4 className="text-xl font-bold text-brand-navy mb-3">{step.title}</h4>
-              <p className="text-sm text-slate-500 px-4">{step.desc}</p>
-            </motion.div>
-          ))}
+          {steps.map((step, idx) => {
+            const StepIcon = step.icon;
+
+            return (
+              <motion.div
+                key={idx}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: idx * 0.1 }}
+                className="relative z-10 text-center"
+              >
+                <div className="w-20 h-20 bg-white rounded-[2rem] border-4 border-slate-50 shadow-xl mx-auto flex items-center justify-center mb-6 group hover:border-brand-blue/20 transition-all">
+                  <StepIcon className="text-brand-blue" size={32} />
+                </div>
+                <h4 className="text-xl font-bold text-brand-navy mb-3">{step.title}</h4>
+                <p className="text-sm text-slate-500 px-4">{step.desc}</p>
+              </motion.div>
+            );
+          })}
         </div>
       </div>
     </section>

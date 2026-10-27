@@ -13,6 +13,18 @@ import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { OnboardingModal } from "@/components/popups/onboarding-modal";
 
+const DownloadIcon = Download as React.ComponentType<{ size?: number; className?: string }>;
+const PlusIcon = Plus as React.ComponentType<{ size?: number; className?: string }>;
+const SearchIcon = Search as React.ComponentType<{ size?: number; className?: string }>;
+const FilterIcon = Filter as React.ComponentType<{ size?: number; className?: string }>;
+const MapPinIcon = MapPin as React.ComponentType<{ size?: number; className?: string }>;
+const Building2Icon = Building2 as React.ComponentType<{ size?: number; className?: string }>;
+const UsersIcon = Users as React.ComponentType<{ size?: number; className?: string }>;
+const CheckCircle2Icon = CheckCircle2 as React.ComponentType<{ size?: number; className?: string }>;
+const ClockIcon = Clock as React.ComponentType<{ size?: number; className?: string }>;
+const ExternalLinkIcon = ExternalLink as React.ComponentType<{ size?: number; className?: string }>;
+const MoreVerticalIcon = MoreVertical as React.ComponentType<{ size?: number; className?: string }>;
+
 const clinics = [
   { 
     id: "CLN-001", 
@@ -99,15 +111,15 @@ export default function ClinicsListPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-brand-navy font-black tracking-tight">Clinics Management</h1>
+          <h1 className="text-3xl font-black text-brand-navy tracking-tight">Clinics Management</h1>
           <p className="text-slate-500 font-medium">Manage and monitor all healthcare providers on the Vemtap platform.</p>
         </div>
         <div className="flex items-center gap-3">
           <Button variant="outline" size="sm" className="gap-2 h-11 px-6 rounded-xl font-bold border-slate-200">
-            <Download size={16} /> Export List
+            <DownloadIcon size={16} /> Export List
           </Button>
           <Button variant="default" size="sm" className="gap-2 h-11 px-6 rounded-xl font-bold shadow-lg shadow-brand-blue/20" onClick={() => setIsOnboardingOpen(true)}>
-            <Plus size={16} /> Onboard New Clinic
+            <PlusIcon size={16} /> Onboard New Clinic
           </Button>
         </div>
       </div>
@@ -115,7 +127,7 @@ export default function ClinicsListPage() {
       {/* Filters & Search */}
       <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6">
         <div className="relative flex-1 w-full max-w-md group">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-brand-blue transition-colors" size={18} />
+          <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-brand-blue transition-colors" size={18} />
           <input 
             type="text" 
             placeholder="Search by clinic name, ID, or owner..." 
@@ -155,7 +167,7 @@ export default function ClinicsListPage() {
           </button>
           <div className="w-px h-8 bg-slate-200 mx-2 hidden md:block"></div>
           <Button variant="outline" size="sm" className="gap-2 shrink-0 h-10 px-4 rounded-xl text-xs font-bold border-slate-100">
-            <Filter size={16} /> Advanced Filters
+            <FilterIcon size={16} /> Advanced Filters
           </Button>
         </div>
       </div>
@@ -163,7 +175,7 @@ export default function ClinicsListPage() {
       {/* Clinics Table */}
       <div className="overflow-hidden rounded-[2.5rem] border border-slate-100 bg-white shadow-sm">
         <div className="overflow-x-auto">
-          <table className="min-w-[820px] w-full table-fixed text-left">
+          <table className="min-w-205 w-full table-fixed text-left">
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50/50">
                 <th className="w-[38%] px-6 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Clinic Details</th>
@@ -187,10 +199,10 @@ export default function ClinicsListPage() {
                         </Link>
                         <div className="mt-1 flex min-w-0 items-center gap-4 text-[10px] font-bold text-slate-400">
                           <span className="flex items-center gap-1 whitespace-nowrap">
-                            <MapPin size={10} /> {clinic.location}
+                            <MapPinIcon size={10} /> {clinic.location}
                           </span>
                           <span className="flex items-center gap-1 whitespace-nowrap">
-                            <Building2 size={10} /> {clinic.id}
+                            <Building2Icon size={10} /> {clinic.id}
                           </span>
                         </div>
                       </div>
@@ -208,10 +220,10 @@ export default function ClinicsListPage() {
                       </span>
                       <div className="mt-2 flex items-center gap-3 text-[10px] font-bold uppercase tracking-widest text-slate-400">
                         <span className="flex items-center gap-1 whitespace-nowrap">
-                          <Building2 size={12} className="text-brand-blue" /> {clinic.branches} Br.
+                          <Building2Icon size={12} className="text-brand-blue" /> {clinic.branches} Br.
                         </span>
                         <span className="flex items-center gap-1 whitespace-nowrap">
-                          <Users size={12} className="text-brand-blue" /> {clinic.staff} Staff
+                          <UsersIcon size={12} className="text-brand-blue" /> {clinic.staff} Staff
                         </span>
                       </div>
                     </div>
@@ -221,7 +233,7 @@ export default function ClinicsListPage() {
                       "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest",
                       clinic.status === "Active" ? "bg-emerald-50 text-emerald-600" : "bg-amber-50 text-amber-600"
                     )}>
-                      {clinic.status === "Active" ? <CheckCircle2 size={14} /> : <Clock size={14} />}
+                      {clinic.status === "Active" ? <CheckCircle2Icon size={14} /> : <ClockIcon size={14} />}
                       {clinic.status}
                     </div>
                   </td>
@@ -232,7 +244,7 @@ export default function ClinicsListPage() {
                     <div className="flex items-center justify-end gap-2">
                       <Link href={`/admin/clinics/${clinic.id}`}>
                         <Button variant="ghost" size="sm" className="h-10 w-10 rounded-xl p-0 transition-all hover:bg-brand-soft-blue hover:text-brand-blue">
-                          <ExternalLink size={18} />
+                          <ExternalLinkIcon size={18} />
                         </Button>
                       </Link>
                       <Button 
@@ -241,7 +253,7 @@ export default function ClinicsListPage() {
                         className="h-10 w-10 rounded-xl p-0"
                         onClick={() => setActiveClinic({ id: clinic.id, name: clinic.name })}
                       >
-                        <MoreVertical size={18} />
+                        <MoreVerticalIcon size={18} />
                       </Button>
                     </div>
                   </td>
