@@ -34,5 +34,14 @@ export const appConfig = ConfigModule.forRoot({
     SMTP_PASS: Joi.string()
       .when('EMAIL_PROVIDER', { is: 'smtp', then: Joi.required(), otherwise: Joi.optional() }),
     RESEND_API_KEY: Joi.string().optional(),
+    // File storage: Cloudinary in deployed environments, local disk as a dev fallback
+    FILE_STORAGE_PROVIDER: Joi.string().valid('local', 'cloudinary').default('local'),
+    UPLOAD_DIR: Joi.string().optional(),
+    CLOUDINARY_CLOUD_NAME: Joi.string()
+      .when('FILE_STORAGE_PROVIDER', { is: 'cloudinary', then: Joi.required(), otherwise: Joi.optional() }),
+    CLOUDINARY_API_KEY: Joi.string()
+      .when('FILE_STORAGE_PROVIDER', { is: 'cloudinary', then: Joi.required(), otherwise: Joi.optional() }),
+    CLOUDINARY_API_SECRET: Joi.string()
+      .when('FILE_STORAGE_PROVIDER', { is: 'cloudinary', then: Joi.required(), otherwise: Joi.optional() }),
   }),
 });

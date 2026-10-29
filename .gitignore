@@ -40,6 +40,10 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
+
+# locally stored uploads (may contain patient files)
+uploads/
 
 # vercel
 .vercel
