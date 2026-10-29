@@ -10,6 +10,7 @@ export interface OpticalInventoryItem {
   lensType?: string;
   unitPrice: number;
   quantityInStock: number;
+  reorderLevel?: number;
   isActive?: boolean;
   clinicId: string;
   createdAt?: string;

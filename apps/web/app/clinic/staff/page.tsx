@@ -28,14 +28,14 @@ type RolePermission = {
   permissions: string[];
 };
 
-const initialShifts: ClinicShift[] = [
-  { id: "SH-001", staffName: "Dr. A. Bello", role: "Doctor", day: "Monday", shift: "Morning" },
-  { id: "SH-002", staffName: "Nurse R. Okeke", role: "Nurse", day: "Monday", shift: "Morning" },
-];
-
-const initialPermissions: RolePermission[] = [
-  { role: "Doctor", permissions: ["view_patients", "create_consultation", "prescribe_drugs"] },
-  { role: "Receptionist", permissions: ["view_patients", "register_patient", "manage_queue"] },
+const DEFAULT_ROLE_PERMISSIONS: RolePermission[] = [
+  { role: "DOCTOR", permissions: ["view_patients", "create_consultation", "prescribe_drugs", "view_records"] },
+  { role: "NURSE", permissions: ["view_patients", "record_vitals", "administer_meds", "observation_notes"] },
+  { role: "RECEPTIONIST", permissions: ["view_patients", "register_patient", "manage_queue", "schedule_appointments"] },
+  { role: "CASHIER", permissions: ["view_invoices", "record_payment", "view_expenses", "process_refunds"] },
+  { role: "PHARMACIST", permissions: ["dispense_drugs", "view_inventory", "manage_stock", "restock_requests"] },
+  { role: "OPTOMETRIST", permissions: ["eye_exams", "lens_orders", "manage_optical", "optical_sales"] },
+  { role: "ADMIN", permissions: ["all_access", "manage_staff", "clinic_settings", "financial_reports"] },
 ];
 
 type TabType = "team" | "shifts" | "permissions";
@@ -66,8 +66,22 @@ export default function StaffPage() {
 
   const staff = staffResponse?.data || [];
 
-// Interactive State for Shifts
-  const [roster, setRoster] = useState<ClinicShift[]>(initialShifts);
+  // Interactive State for Shifts (seeded from live staff or empty)
+  const [roster, setRoster] = useState<ClinicShift[]>([]);
+  React.useEffect(() => {
+    if (staff.length > 0 && roster.length === 0) {
+      setRoster(
+        staff.slice(0, 6).map((s, idx) => ({
+          id: `SH-${String(idx + 1).padStart(3, "0")}`,
+          staffName: `${s.firstName} ${s.lastName}`,
+          role: s.role,
+          day: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][idx % 6],
+          shift: idx % 2 === 0 ? "Morning" : "Afternoon",
+        }))
+      );
+    }
+  }, [staff, roster.length]);
+
   const [isShiftModalOpen, setIsShiftModalOpen] = useState(false);
   const [newShift, setNewShift] = useState({
     staffName: "",
@@ -77,9 +91,9 @@ export default function StaffPage() {
   });
 
   // Interactive State for Permissions
-  const [selectedRole, setSelectedRole] = useState(initialPermissions[0].role);
+  const [selectedRole, setSelectedRole] = useState(DEFAULT_ROLE_PERMISSIONS[0].role);
   const [permissionsMap, setPermissionsMap] = useState<Record<string, string[]>>(
-    Object.fromEntries(initialPermissions.map(p => [p.role, p.permissions]))
+    Object.fromEntries(DEFAULT_ROLE_PERMISSIONS.map(p => [p.role, p.permissions]))
   );
 
   const handleAddShift = (e: React.FormEvent) => {

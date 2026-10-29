@@ -8,13 +8,23 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/app/clinic/_components/page-header";
 import { useAuth } from "@/lib/auth-context";
-import { useExpenses, useCreateExpense } from "@/hooks/useFinance";
+import {
+  useExpenses,
+  useCreateExpense,
+  useUpdateExpense,
+  useDeleteExpense,
+  useExpenseSummary,
+  type Expense,
+  type ExpenseCategory,
+  type ExpenseStatus,
+} from "@/hooks/useExpenses";
 import { useInvoices } from "@/hooks/useBilling";
 import { useModals } from "@/lib/modal-context";
 import { Modal } from "@/components/ui/modal";
+import { toast } from "sonner";
 import {
   Search, Plus, Download, Filter, TrendingUp, TrendingDown,
-  Wallet, Receipt, Building2, Users, Loader2
+  Wallet, Receipt, Building2, Users, Loader2, Edit3, Trash2, Calendar
 } from "lucide-react";
 
 const formatNGN = (value: number) =>
@@ -35,10 +45,10 @@ const exportCSV = (data: Record<string, any>[], filename: string) => {
 
 function statusBadge(status: string) {
   const s = status.toLowerCase();
-  if (s === "paid" || s === "approved") return <Badge className="bg-emerald-600 text-white">{status}</Badge>;
-  if (s === "pending" || s === "submitted") return <Badge className="bg-amber-600 text-white">{status}</Badge>;
-  if (s === "queried" || s === "rejected") return <Badge className="bg-rose-600 text-white">{status}</Badge>;
-  return <Badge variant="secondary">{status}</Badge>;
+  if (s === "paid" || s === "approved") return <Badge className="bg-emerald-600 text-white capitalize">{status}</Badge>;
+  if (s === "pending" || s === "submitted") return <Badge className="bg-amber-600 text-white capitalize">{status}</Badge>;
+  if (s === "queried" || s === "rejected") return <Badge className="bg-rose-600 text-white capitalize">{status}</Badge>;
+  return <Badge variant="secondary" className="capitalize">{status}</Badge>;
 }
 
 export default function FinancePage() {
@@ -46,10 +56,25 @@ export default function FinancePage() {
   const { openModal } = useModals();
   const [activeTab, setActiveTab] = useState("overview");
 
+  // Expense query filters
+  const [expenseCategoryFilter, setExpenseCategoryFilter] = useState<string>("all");
+  const [expenseStatusFilter, setExpenseStatusFilter] = useState<string>("all");
+  const [expenseStartDate, setExpenseStartDate] = useState<string>("");
+  const [expenseEndDate, setExpenseEndDate] = useState<string>("");
+  const [expenseSearch, setExpenseSearch] = useState<string>("");
+
   // Backend hooks
-  const { data: expenses = [], isLoading: expensesLoading } = useExpenses();
+  const { data: expenses = [], isLoading: expensesLoading } = useExpenses({
+    category: expenseCategoryFilter !== "all" ? (expenseCategoryFilter as ExpenseCategory) : undefined,
+    status: expenseStatusFilter !== "all" ? (expenseStatusFilter as ExpenseStatus) : undefined,
+    startDate: expenseStartDate || undefined,
+    endDate: expenseEndDate || undefined,
+  });
+  const { data: expenseSummary } = useExpenseSummary();
   const { data: invoices = [], isLoading: invoicesLoading } = useInvoices();
   const createExpenseMut = useCreateExpense();
+  const updateExpenseMut = useUpdateExpense();
+  const deleteExpenseMut = useDeleteExpense();
 
   // Local UI state
   const [invoiceSearch, setInvoiceSearch] = useState("");
@@ -62,7 +87,28 @@ export default function FinancePage() {
   const [reminderModalOpen, setReminderModalOpen] = useState(false);
   const [reminderSent, setReminderSent] = useState(false);
   const [expenseModalOpen, setExpenseModalOpen] = useState(false);
-  const [expenseForm, setExpenseForm] = useState({ category: "utilities", amount: "", description: "", date: new Date().toISOString().slice(0, 10) });
+  const [expenseForm, setExpenseForm] = useState<{ category: ExpenseCategory; amount: string; description: string; date: string }>({
+    category: "utilities",
+    amount: "",
+    description: "",
+    date: new Date().toISOString().slice(0, 10),
+  });
+
+  // Edit Expense modal state
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+  const [editExpenseForm, setEditExpenseForm] = useState<{
+    category: ExpenseCategory;
+    amount: string;
+    description: string;
+    date: string;
+    status: ExpenseStatus;
+  }>({
+    category: "utilities",
+    amount: "",
+    description: "",
+    date: new Date().toISOString().slice(0, 10),
+    status: "pending",
+  });
 
   // Derived data
   const paidInvoices = invoices.filter((i: any) => i.status === "paid");
@@ -92,17 +138,94 @@ export default function FinancePage() {
     { id: "expenses", label: "Expenses", icon: TrendingDown },
   ];
 
+  const filteredExpenses = expenses.filter((e) => {
+    if (!expenseSearch.trim()) return true;
+    const q = expenseSearch.toLowerCase();
+    return (
+      e.description?.toLowerCase().includes(q) ||
+      e.category?.toLowerCase().includes(q) ||
+      e.status?.toLowerCase().includes(q)
+    );
+  });
+
   const handleCreateExpense = () => {
-    if (!expenseForm.amount || !expenseForm.description) return;
-    createExpenseMut.mutate({
-      category: expenseForm.category,
-      amount: Number(expenseForm.amount),
-      description: expenseForm.description,
-      date: expenseForm.date,
-    }, {
+    if (!expenseForm.amount || !expenseForm.description) {
+      toast.error("Please provide amount and description");
+      return;
+    }
+    createExpenseMut.mutate(
+      {
+        category: expenseForm.category,
+        amount: Number(expenseForm.amount),
+        description: expenseForm.description,
+        date: expenseForm.date,
+      },
+      {
+        onSuccess: () => {
+          toast.success("Expense recorded successfully");
+          setExpenseModalOpen(false);
+          setExpenseForm({
+            category: "utilities",
+            amount: "",
+            description: "",
+            date: new Date().toISOString().slice(0, 10),
+          });
+        },
+        onError: (err: any) => {
+          toast.error(err?.response?.data?.message || "Failed to record expense");
+        },
+      }
+    );
+  };
+
+  const openEditModal = (expense: Expense) => {
+    setEditingExpense(expense);
+    setEditExpenseForm({
+      category: expense.category,
+      amount: String(expense.amount),
+      description: expense.description,
+      date: expense.date ? expense.date.slice(0, 10) : new Date().toISOString().slice(0, 10),
+      status: expense.status,
+    });
+  };
+
+  const handleUpdateExpense = () => {
+    if (!editingExpense) return;
+    if (!editExpenseForm.amount || !editExpenseForm.description) {
+      toast.error("Please provide amount and description");
+      return;
+    }
+    updateExpenseMut.mutate(
+      {
+        id: editingExpense.id,
+        dto: {
+          category: editExpenseForm.category,
+          amount: Number(editExpenseForm.amount),
+          description: editExpenseForm.description,
+          date: editExpenseForm.date,
+          status: editExpenseForm.status,
+        },
+      },
+      {
+        onSuccess: () => {
+          toast.success("Expense updated successfully");
+          setEditingExpense(null);
+        },
+        onError: (err: any) => {
+          toast.error(err?.response?.data?.message || "Failed to update expense");
+        },
+      }
+    );
+  };
+
+  const handleDeleteExpense = (id: string, description: string) => {
+    if (!window.confirm(`Are you sure you want to delete expense "${description}"?`)) return;
+    deleteExpenseMut.mutate(id, {
       onSuccess: () => {
-        setExpenseModalOpen(false);
-        setExpenseForm({ category: "utilities", amount: "", description: "", date: new Date().toISOString().slice(0, 10) });
+        toast.success("Expense deleted successfully");
+      },
+      onError: (err: any) => {
+        toast.error(err?.response?.data?.message || "Failed to delete expense");
       },
     });
   };
@@ -432,45 +555,261 @@ export default function FinancePage() {
       )}
 
       {activeTab === "expenses" && (
-        <Card>
-          <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b pb-4">
-            <div>
-              <CardTitle className="text-base sm:text-lg font-bold">Operational Expenses</CardTitle>
-              <p className="text-xs sm:text-sm text-slate-500">Track all clinic spending and utility payments.</p>
+        <div className="space-y-6">
+          {/* Summary KPIs */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <Card className="bg-gradient-to-br from-rose-500/10 via-rose-500/5 to-transparent border-rose-200">
+              <CardContent className="p-4 flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-semibold text-rose-700 uppercase tracking-wider">Total Recorded</p>
+                  <p className="text-xl sm:text-2xl font-bold text-slate-900 mt-1">
+                    {formatNGN(expenseSummary?.total ?? totalExpenses)}
+                  </p>
+                  <p className="text-xs text-slate-500 mt-0.5">{expenses.length} total entries</p>
+                </div>
+                <div className="w-10 h-10 rounded-xl bg-rose-100 flex items-center justify-center text-rose-600">
+                  <TrendingDown className="h-5 w-5" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-transparent border-emerald-200">
+              <CardContent className="p-4 flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-semibold text-emerald-700 uppercase tracking-wider">Paid Expenses</p>
+                  <p className="text-xl sm:text-2xl font-bold text-slate-900 mt-1">
+                    {formatNGN(expenseSummary?.byStatus?.paid ?? 0)}
+                  </p>
+                  <p className="text-xs text-emerald-600 font-medium mt-0.5">Disbursed funds</p>
+                </div>
+                <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-600">
+                  <Receipt className="h-5 w-5" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-transparent border-amber-200">
+              <CardContent className="p-4 flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-semibold text-amber-700 uppercase tracking-wider">Pending / Approved</p>
+                  <p className="text-xl sm:text-2xl font-bold text-slate-900 mt-1">
+                    {formatNGN((expenseSummary?.byStatus?.pending ?? 0) + (expenseSummary?.byStatus?.approved ?? 0))}
+                  </p>
+                  <p className="text-xs text-amber-600 font-medium mt-0.5">Awaiting payout</p>
+                </div>
+                <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center text-amber-600">
+                  <Wallet className="h-5 w-5" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-gradient-to-br from-indigo-500/10 via-indigo-500/5 to-transparent border-indigo-200">
+              <CardContent className="p-4 flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-semibold text-indigo-700 uppercase tracking-wider">Active Categories</p>
+                  <p className="text-xl sm:text-2xl font-bold text-slate-900 mt-1">
+                    {expenseSummary?.byCategory ? Object.keys(expenseSummary.byCategory).length : 0}
+                  </p>
+                  <p className="text-xs text-slate-500 mt-0.5">Operational cost heads</p>
+                </div>
+                <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center text-indigo-600">
+                  <Building2 className="h-5 w-5" />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Main Card with Filters and Table */}
+          <Card>
+            <CardHeader className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b pb-4">
+              <div>
+                <CardTitle className="text-base sm:text-lg font-bold">Operational Expenses</CardTitle>
+                <p className="text-xs sm:text-sm text-slate-500">Track all clinic operational spending, utility bills, salaries, supplies, and maintenance.</p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    exportCSV(
+                      filteredExpenses.map((e) => ({
+                        Category: e.category,
+                        Description: e.description,
+                        Amount: e.amount,
+                        Status: e.status,
+                        Date: e.date?.slice(0, 10),
+                      })),
+                      "clinic-expenses.csv"
+                    )
+                  }
+                  disabled={filteredExpenses.length === 0}
+                >
+                  <Download className="h-4 w-4 sm:mr-1.5" />
+                  <span className="hidden sm:inline">Export</span>
+                </Button>
+                <Button variant="default" size="sm" onClick={() => setExpenseModalOpen(true)}>
+                  <Plus className="h-4 w-4 sm:mr-1.5" />
+                  <span>Record Expense</span>
+                </Button>
+              </div>
+            </CardHeader>
+
+            {/* Filter Bar */}
+            <div className="p-4 border-b bg-slate-50/50 flex flex-wrap items-center gap-3">
+              <div className="relative flex-1 min-w-[200px]">
+                <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Search description, category..."
+                  className="w-full pl-9 pr-3 py-1.5 text-xs sm:text-sm bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  value={expenseSearch}
+                  onChange={(e) => setExpenseSearch(e.target.value)}
+                />
+              </div>
+
+              <select
+                className="px-3 py-1.5 text-xs sm:text-sm bg-white border border-slate-200 rounded-lg text-slate-700"
+                value={expenseCategoryFilter}
+                onChange={(e) => setExpenseCategoryFilter(e.target.value)}
+              >
+                <option value="all">All Categories</option>
+                <option value="utilities">Utilities</option>
+                <option value="salary">Salary</option>
+                <option value="supplies">Supplies</option>
+                <option value="rent">Rent</option>
+                <option value="maintenance">Maintenance</option>
+                <option value="other">Other</option>
+              </select>
+
+              <select
+                className="px-3 py-1.5 text-xs sm:text-sm bg-white border border-slate-200 rounded-lg text-slate-700"
+                value={expenseStatusFilter}
+                onChange={(e) => setExpenseStatusFilter(e.target.value)}
+              >
+                <option value="all">All Statuses</option>
+                <option value="pending">Pending</option>
+                <option value="approved">Approved</option>
+                <option value="paid">Paid</option>
+                <option value="rejected">Rejected</option>
+              </select>
+
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="date"
+                  className="px-2.5 py-1.5 text-xs sm:text-sm bg-white border border-slate-200 rounded-lg text-slate-700"
+                  value={expenseStartDate}
+                  onChange={(e) => setExpenseStartDate(e.target.value)}
+                  placeholder="From"
+                  title="Start Date"
+                />
+                <span className="text-slate-400 text-xs">to</span>
+                <input
+                  type="date"
+                  className="px-2.5 py-1.5 text-xs sm:text-sm bg-white border border-slate-200 rounded-lg text-slate-700"
+                  value={expenseEndDate}
+                  onChange={(e) => setExpenseEndDate(e.target.value)}
+                  placeholder="To"
+                  title="End Date"
+                />
+              </div>
+
+              {(expenseCategoryFilter !== "all" ||
+                expenseStatusFilter !== "all" ||
+                expenseStartDate ||
+                expenseEndDate ||
+                expenseSearch) && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs text-slate-500 hover:text-slate-800"
+                  onClick={() => {
+                    setExpenseCategoryFilter("all");
+                    setExpenseStatusFilter("all");
+                    setExpenseStartDate("");
+                    setExpenseEndDate("");
+                    setExpenseSearch("");
+                  }}
+                >
+                  Clear filters
+                </Button>
+              )}
             </div>
-            <Button variant="default" size="sm" onClick={() => setExpenseModalOpen(true)} className="self-start">
-              <Plus className="h-4 w-4 sm:mr-2" /><span className="hidden sm:inline">Add Expense</span>
-            </Button>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto"><Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="pl-6">Category</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Date</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {expensesLoading ? (
-                  <TableRow><TableCell colSpan={5} className="text-center py-8 text-slate-400">Loading...</TableCell></TableRow>
-                ) : expenses.length === 0 ? (
-                  <TableRow><TableCell colSpan={5} className="text-center py-8 text-slate-400">No expenses recorded</TableCell></TableRow>
-                ) : expenses.map((e: any) => (
-                  <TableRow key={e.id} className="hover:bg-slate-50">
-                    <TableCell className="pl-6"><Badge variant="secondary" className="capitalize">{e.category}</Badge></TableCell>
-                    <TableCell className="max-w-[200px] truncate">{e.description}</TableCell>
-                    <TableCell className="font-bold text-rose-600 tabular-nums">{formatNGN(e.amount)}</TableCell>
-                    <TableCell>{statusBadge(e.status)}</TableCell>
-                    <TableCell className="text-slate-500 text-sm">{e.date?.slice(0, 10)}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table></div>
-          </CardContent>
-        </Card>
+
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="pl-6">Category</TableHead>
+                      <TableHead>Description</TableHead>
+                      <TableHead>Amount</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead className="text-right pr-6">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {expensesLoading ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center py-10 text-slate-400">
+                          <Loader2 className="h-6 w-6 animate-spin mx-auto text-teal-600 mb-2" />
+                          Loading expenses...
+                        </TableCell>
+                      </TableRow>
+                    ) : filteredExpenses.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center py-10 text-slate-400">
+                          No expenses found matching the selected criteria.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      filteredExpenses.map((e: Expense) => (
+                        <TableRow key={e.id} className="hover:bg-slate-50">
+                          <TableCell className="pl-6">
+                            <Badge variant="secondary" className="capitalize">
+                              {e.category}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="max-w-[240px] truncate font-medium text-slate-900">
+                            {e.description}
+                          </TableCell>
+                          <TableCell className="font-bold text-rose-600 tabular-nums">
+                            {formatNGN(e.amount)}
+                          </TableCell>
+                          <TableCell>{statusBadge(e.status)}</TableCell>
+                          <TableCell className="text-slate-500 text-sm">
+                            {e.date ? e.date.slice(0, 10) : "-"}
+                          </TableCell>
+                          <TableCell className="text-right pr-6 space-x-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0 text-slate-500 hover:text-slate-800"
+                              onClick={() => openEditModal(e)}
+                              title="Edit Expense"
+                            >
+                              <Edit3 className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0 text-rose-500 hover:text-rose-700 hover:bg-rose-50"
+                              onClick={() => handleDeleteExpense(e.id, e.description)}
+                              disabled={deleteExpenseMut.isPending}
+                              title="Delete Expense"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       )}
 
       {/* Add Expense Modal */}
@@ -478,7 +817,11 @@ export default function FinancePage() {
         <div className="space-y-4">
           <div>
             <label className="text-sm font-medium text-slate-700">Category</label>
-            <select className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg text-sm" value={expenseForm.category} onChange={(e) => setExpenseForm(f => ({ ...f, category: e.target.value }))}>
+            <select
+              className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white"
+              value={expenseForm.category}
+              onChange={(e) => setExpenseForm(f => ({ ...f, category: e.target.value as ExpenseCategory }))}
+            >
               <option value="utilities">Utilities</option>
               <option value="salary">Salary</option>
               <option value="supplies">Supplies</option>
@@ -489,21 +832,114 @@ export default function FinancePage() {
           </div>
           <div>
             <label className="text-sm font-medium text-slate-700">Amount (NGN)</label>
-            <input type="number" className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg text-sm" value={expenseForm.amount} onChange={(e) => setExpenseForm(f => ({ ...f, amount: e.target.value }))} />
+            <input
+              type="number"
+              className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg text-sm"
+              value={expenseForm.amount}
+              onChange={(e) => setExpenseForm(f => ({ ...f, amount: e.target.value }))}
+            />
           </div>
           <div>
             <label className="text-sm font-medium text-slate-700">Description</label>
-            <input type="text" className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg text-sm" value={expenseForm.description} onChange={(e) => setExpenseForm(f => ({ ...f, description: e.target.value }))} />
+            <input
+              type="text"
+              className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg text-sm"
+              value={expenseForm.description}
+              onChange={(e) => setExpenseForm(f => ({ ...f, description: e.target.value }))}
+            />
           </div>
           <div>
             <label className="text-sm font-medium text-slate-700">Date</label>
-            <input type="date" className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg text-sm" value={expenseForm.date} onChange={(e) => setExpenseForm(f => ({ ...f, date: e.target.value }))} />
+            <input
+              type="date"
+              className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg text-sm"
+              value={expenseForm.date}
+              onChange={(e) => setExpenseForm(f => ({ ...f, date: e.target.value }))}
+            />
           </div>
           <div className="flex gap-2 pt-2">
             <Button variant="outline" size="sm" className="flex-1" onClick={() => setExpenseModalOpen(false)}>Cancel</Button>
             <Button variant="default" size="sm" className="flex-1" onClick={handleCreateExpense} disabled={createExpenseMut.isPending}>
               {createExpenseMut.isPending ? <Loader2 size={14} className="animate-spin mr-2" /> : null}
               {createExpenseMut.isPending ? "Saving..." : "Record Expense"}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Edit Expense Modal */}
+      <Modal isOpen={!!editingExpense} onClose={() => setEditingExpense(null)} title="Update Expense">
+        <div className="space-y-4">
+          <div>
+            <label className="text-sm font-medium text-slate-700">Category</label>
+            <select
+              className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white"
+              value={editExpenseForm.category}
+              onChange={(e) => setEditExpenseForm((f) => ({ ...f, category: e.target.value as ExpenseCategory }))}
+            >
+              <option value="utilities">Utilities</option>
+              <option value="salary">Salary</option>
+              <option value="supplies">Supplies</option>
+              <option value="rent">Rent</option>
+              <option value="maintenance">Maintenance</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div>
+            <label className="text-sm font-medium text-slate-700">Amount (NGN)</label>
+            <input
+              type="number"
+              className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg text-sm"
+              value={editExpenseForm.amount}
+              onChange={(e) => setEditExpenseForm((f) => ({ ...f, amount: e.target.value }))}
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium text-slate-700">Description</label>
+            <input
+              type="text"
+              className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg text-sm"
+              value={editExpenseForm.description}
+              onChange={(e) => setEditExpenseForm((f) => ({ ...f, description: e.target.value }))}
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-sm font-medium text-slate-700">Date</label>
+              <input
+                type="date"
+                className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg text-sm"
+                value={editExpenseForm.date}
+                onChange={(e) => setEditExpenseForm((f) => ({ ...f, date: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-slate-700">Status</label>
+              <select
+                className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white"
+                value={editExpenseForm.status}
+                onChange={(e) => setEditExpenseForm((f) => ({ ...f, status: e.target.value as ExpenseStatus }))}
+              >
+                <option value="pending">Pending</option>
+                <option value="approved">Approved</option>
+                <option value="paid">Paid</option>
+                <option value="rejected">Rejected</option>
+              </select>
+            </div>
+          </div>
+          <div className="flex gap-2 pt-2">
+            <Button variant="outline" size="sm" className="flex-1" onClick={() => setEditingExpense(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="default"
+              size="sm"
+              className="flex-1"
+              onClick={handleUpdateExpense}
+              disabled={updateExpenseMut.isPending}
+            >
+              {updateExpenseMut.isPending ? <Loader2 size={14} className="animate-spin mr-2" /> : null}
+              {updateExpenseMut.isPending ? "Updating..." : "Save Changes"}
             </Button>
           </div>
         </div>

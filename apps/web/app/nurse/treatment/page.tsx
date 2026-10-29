@@ -8,6 +8,7 @@ import { Modal } from "@/components/ui/modal";
 import { ClipboardList, FileText, Pill, Scissors, Plus, CheckCircle2 } from "lucide-react";
 import { PageHeader } from "@/app/clinic/_components/page-header";
 import { useClinicNotes, useCreateNote, useNurseQueue } from "@/hooks/useNurse";
+import { useAuth } from "@/lib/auth-context";
 
 const categoryLabels: Record<string, string> = {
   general: "General",
@@ -43,6 +44,7 @@ const categoryColors: Record<string, string> = {
 };
 
 export default function NurseTreatment() {
+  const { user } = useAuth();
   const { data: notes = [], isLoading } = useClinicNotes();
   const { data: queueEntries = [] } = useNurseQueue();
   const createNote = useCreateNote();
@@ -68,7 +70,7 @@ export default function NurseTreatment() {
   const handleAddNote = () => {
     if (!patientId || !noteText.trim()) return;
     createNote.mutate(
-      { patientId, note: noteText.trim(), category, clinicId: "" },
+      { patientId, note: noteText.trim(), category, clinicId: user?.clinicId || "" },
       {
         onSuccess: () => {
           setSuccessMsg("Note added successfully");

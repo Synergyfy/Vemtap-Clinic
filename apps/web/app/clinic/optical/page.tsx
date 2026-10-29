@@ -1,172 +1,442 @@
 "use client";
 
-import React from "react";
+import React, { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/app/clinic/_components/page-header";
 import { Modal } from "@/components/ui/modal";
-import { Tooltip } from "@/components/ui/tooltip";
-import { useLensOrders, useOpticalInventory, useOpticalSales, useUpdateLensOrderStatus } from "@/hooks/useOptician";
+import { useAuth } from "@/lib/auth-context";
+import { usePatients } from "@/hooks/usePatients";
+import {
+  useLensOrders,
+  useOpticalInventory,
+  useOpticalSales,
+  useAllProductionItems,
+  useCreateOpticalItem,
+  useUpdateOpticalItem,
+  useDeleteOpticalItem,
+  useCreateLensOrder,
+  useUpdateLensOrderStatus,
+  useUpdateProductionStage,
+  useCreateOpticalSale,
+  type OpticalInventoryItem,
+  type LensOrder,
+  type OpticalSale,
+  type ProductionItem,
+} from "@/hooks/useOptician";
+import { useSuppliers, useCreateSupplier, type Supplier } from "@/hooks/usePharmacy";
+import { toast } from "sonner";
 import {
   Glasses,
   Eye,
   Layers,
   Settings,
   DollarSign,
-  Truck,
-  TrendingUp,
   Building2,
   Package,
   Wrench,
   CheckCircle2,
   AlertTriangle,
-  ClipboardList,
-  Pencil,
   Plus,
   Search,
   Filter,
-  ChevronLeft,
-  ChevronRight
+  Loader2,
+  Trash2,
+  Edit3,
+  Calendar,
+  Truck,
+  ArrowUpRight,
 } from "lucide-react";
 
 const formatNGN = (value: number) =>
   new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 }).format(value);
 
-function statusBadge(status: string) {
-  if (status === "Ready") return <Badge className="bg-emerald-600 text-white">Ready for Pickup</Badge>;
-  if (status === "In production") return <Badge className="bg-amber-600 text-white">In production</Badge>;
-  if (status === "Dispensed") return <Badge className="bg-slate-200 text-slate-700">Dispensed</Badge>;
-  return <Badge variant="outline">Draft</Badge>;
+function statusBadge(status?: string) {
+  const s = status?.toLowerCase() || "";
+  if (s === "ready" || s === "ready for pickup" || s === "ready_for_pickup") {
+    return <Badge className="bg-emerald-600 text-white capitalize">Ready for Pickup</Badge>;
+  }
+  if (s === "processing" || s === "in production" || s === "in progress") {
+    return <Badge className="bg-amber-600 text-white capitalize">In Production</Badge>;
+  }
+  if (s === "delivered" || s === "dispensed" || s === "completed") {
+    return <Badge className="bg-slate-200 text-slate-700 capitalize">Delivered</Badge>;
+  }
+  if (s === "cancelled") {
+    return <Badge className="bg-rose-600 text-white capitalize">Cancelled</Badge>;
+  }
+  return <Badge variant="outline" className="capitalize">{status || "Pending"}</Badge>;
 }
-
-// ----------------------------------------------------
-// LOCAL STATIC DATA (no backend API yet)
-// ----------------------------------------------------
-const initialFrames = [
-  { id: "FR-01", brand: "Tom Ford", model: "TF-5726 Titanium", type: "Full Rim", color: "Rose Gold", price: 78000, stock: 4, status: "Active" },
-  { id: "FR-02", brand: "Ray-Ban", model: "Clubmaster Classic", type: "Semi-Rimless", color: "Tortoise Gold", price: 54000, stock: 12, status: "Active" },
-  { id: "FR-03", brand: "Gucci", model: "GG-0824 Acetate", type: "Full Rim", color: "Gloss Black", price: 92000, stock: 1, status: "Low Stock" },
-  { id: "FR-04", brand: "Oakley", model: "Holbrook Sport", type: "Rimless", color: "Matte Black", price: 62000, stock: 8, status: "Active" },
-  { id: "FR-05", brand: "Prada", model: "PR-12V Elegant", type: "Cat-Eye", color: "Burgundy Red", price: 85000, stock: 0, status: "Out of Stock" },
-];
-
-type LensPricingRule = {
-  id: string;
-  name: string;
-  index: string;
-  coatings: string;
-  basePrice: number;
-  isActive: boolean;
-};
-
-const initialLensPricing: LensPricingRule[] = [
-  { id: "LP-01", name: "Single Vision", index: "1.56", coatings: "Hard Coat, AR", basePrice: 12000, isActive: true },
-  { id: "LP-02", name: "Single Vision", index: "1.61", coatings: "Hard Coat, AR, Blue Cut", basePrice: 18000, isActive: true },
-  { id: "LP-03", name: "Single Vision", index: "1.67", coatings: "Hard Coat, AR, Blue Cut", basePrice: 24000, isActive: true },
-  { id: "LP-04", name: "Bifocal", index: "1.56", coatings: "Hard Coat, AR", basePrice: 22000, isActive: true },
-  { id: "LP-05", name: "Progressive", index: "1.56", coatings: "Hard Coat, AR, Blue Cut", basePrice: 45000, isActive: true },
-  { id: "LP-06", name: "Progressive", index: "1.67", coatings: "Hard Coat, AR, Blue Cut", basePrice: 65000, isActive: true },
-];
-
-const initialProductionItems = [
-  { id: "PRD-001", orderId: "O-3301", patient: "Chidi Okafor", lensType: "Progressive", frame: "Tom Ford TF-5726", stage: "Edging", assignedTo: "Lab Tech A", startedAt: "2026-05-26T09:00:00", status: "In Progress" },
-  { id: "PRD-002", orderId: "O-3302", patient: "Adesuwa Okoro", lensType: "Single Vision", frame: "Patient-owned", stage: "Coating", assignedTo: "Lab Tech B", startedAt: "2026-05-26T11:30:00", status: "In Progress" },
-  { id: "PRD-003", orderId: "O-3303", patient: "Amina Musa", lensType: "Bifocal", frame: "Ray-Ban Clubmaster", stage: "Surfacing", assignedTo: "Lab Tech A", startedAt: "2026-05-27T08:00:00", status: "Pending" },
-];
-
-const initialSalesData = [
-  { id: "SAL-001", date: "2026-05-26", frame: "Tom Ford TF-5726", lens: "Progressive 1.67", customer: "Chidi Okafor", amount: 245000, payment: "POS", branch: "Vemtap Main" },
-  { id: "SAL-002", date: "2026-05-26", frame: "Ray-Ban Clubmaster", lens: "Single Vision 1.61", customer: "Fatima Yusuf", amount: 185000, payment: "Transfer", branch: "Vemtap Ikeja" },
-  { id: "SAL-003", date: "2026-05-25", frame: "Gucci GG-0824", lens: "Progressive 1.56", customer: "Ifeanyi Nwosu", amount: 285000, payment: "POS", branch: "Vemtap Main" },
-  { id: "SAL-004", date: "2026-05-25", frame: "Oakley Holbrook", lens: "Single Vision 1.56", customer: "Kemi Balogun", amount: 155000, payment: "Cash", branch: "Vemtap Lekki" },
-];
-
-const initialSuppliers = [
-  { id: "SUP-01", name: "LensCo Nigeria Ltd", contact: "Adebayo T.", phone: "0803 111 2233", email: "orders@lensco.ng", status: "Active", lastOrder: "2026-05-20" },
-  { id: "SUP-02", name: "FrameWorld Importers", contact: "Chioma E.", phone: "0802 444 5566", email: "sales@frameworld.ng", status: "Active", lastOrder: "2026-05-18" },
-  { id: "SUP-03", name: "Essilor West Africa", contact: "Kwame A.", phone: "0805 777 8899", email: "procurement@essilor.com.ng", status: "Active", lastOrder: "2026-05-24" },
-];
 
 type OpticalTab = "orders" | "frames" | "lens-pricing" | "inventory" | "lab" | "sales" | "suppliers";
 
 export default function OpticalPage() {
-  const { data: apiOrders = [], isLoading: loadingOrders } = useLensOrders();
-  const { data: inventory = [] } = useOpticalInventory();
-  const { data: sales = [] } = useOpticalSales();
-  const updateStatus = useUpdateLensOrderStatus();
+  const { user } = useAuth();
+  const clinicId = user?.clinicId ?? "";
 
-  const [activeTab, setActiveTab] = React.useState<OpticalTab>("orders");
+  const [activeTab, setActiveTab] = useState<OpticalTab>("orders");
 
-  // Local state for orders (seeded from API)
-  const [orders, setOrders] = React.useState<any[]>([]);
-  React.useEffect(() => {
-    if (apiOrders.length > 0) setOrders(apiOrders);
-  }, [apiOrders]);
+  // Live Backend Queries
+  const { data: orders = [], isLoading: loadingOrders } = useLensOrders();
+  const { data: inventory = [], isLoading: loadingInventory } = useOpticalInventory();
+  const { data: sales = [], isLoading: loadingSales } = useOpticalSales();
+  const { data: productionItems = [], isLoading: loadingProduction } = useAllProductionItems();
+  const { data: suppliers = [], isLoading: loadingSuppliers } = useSuppliers(clinicId || null);
 
-  // Local state for frames
-  const [frames] = React.useState(initialFrames);
-  const [lensPricing] = React.useState(initialLensPricing);
-  const [productionItems] = React.useState(initialProductionItems);
-  const [salesData] = React.useState(initialSalesData);
-  const [suppliers] = React.useState(initialSuppliers);
+  // Reference for patient selector
+  const { data: patientsData } = usePatients({ clinicId, limit: 100 });
+  const patientsList = Array.isArray(patientsData?.data) ? patientsData.data : Array.isArray(patientsData) ? patientsData : [];
 
-  // Stats
+  // Mutations
+  const createOrderMut = useCreateLensOrder();
+  const updateStatusMut = useUpdateLensOrderStatus();
+  const createItemMut = useCreateOpticalItem();
+  const deleteItemMut = useDeleteOpticalItem();
+  const createSaleMut = useCreateOpticalSale();
+  const updateStageMut = useUpdateProductionStage();
+  const createSupplierMut = useCreateSupplier();
+
+  // Search and Filter states
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("All");
+
+  // Modal States
+  const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
+  const [isItemModalOpen, setIsItemModalOpen] = useState(false);
+  const [isSaleModalOpen, setIsSaleModalOpen] = useState(false);
+  const [isSupplierModalOpen, setIsSupplierModalOpen] = useState(false);
+
+  // Forms
+  const [orderForm, setOrderForm] = useState({
+    patientId: "",
+    lensType: "Single Vision 1.56",
+    frameDescription: "",
+    rightEyeSphere: "",
+    rightEyeCylinder: "",
+    rightEyeAxis: "",
+    leftEyeSphere: "",
+    leftEyeCylinder: "",
+    leftEyeAxis: "",
+    totalPrice: "",
+    expectedDeliveryDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+    notes: "",
+  });
+
+  const [itemForm, setItemForm] = useState({
+    name: "",
+    brand: "",
+    category: "frame",
+    type: "Full Rim",
+    frameSize: "Standard",
+    lensType: "",
+    unitPrice: "",
+    quantityInStock: "10",
+    reorderLevel: "5",
+  });
+
+  const [saleForm, setSaleForm] = useState({
+    patientId: "",
+    inventoryItemId: "",
+    lensOrderId: "",
+    quantity: "1",
+    unitPrice: "",
+    paymentMethod: "pos",
+    paymentReference: "",
+  });
+
+  const [supplierForm, setSupplierForm] = useState({
+    name: "",
+    contactPerson: "",
+    phone: "",
+    email: "",
+    address: "",
+    products: "Optical Frames & Lenses",
+  });
+
+  // Derived frames & lenses from real inventory
+  const frames = useMemo(() => {
+    return inventory.filter(
+      (item) =>
+        item.category?.toLowerCase() === "frame" ||
+        item.type?.toLowerCase()?.includes("rim") ||
+        item.type?.toLowerCase() === "frame" ||
+        (!item.category && !item.lensType)
+    );
+  }, [inventory]);
+
+  const lensItems = useMemo(() => {
+    return inventory.filter(
+      (item) => item.category?.toLowerCase() === "lens" || item.lensType
+    );
+  }, [inventory]);
+
+  // Real Stats
   const totalOrders = orders.length;
-  const inProduction = orders.filter(o => o.status === "In production").length;
-  const ready = orders.filter(o => o.status === "Ready").length;
-  const dispensed = orders.filter(o => o.status === "Dispensed").length;
-  const lowStockFrames = frames.filter(f => f.stock > 0 && f.stock < 5).length;
-  const outOfStockFrames = frames.filter(f => f.stock === 0).length;
-  const totalInventoryValue = frames.reduce((sum, f) => sum + f.price * f.stock, 0);
-  const totalSalesToday = salesData.filter(s => s.date === "2026-05-26").reduce((sum, s) => sum + s.amount, 0);
-  const pendingProduction = productionItems.filter(p => p.status === "Pending").length;
+  const inProduction = orders.filter((o) => o.status === "processing" || (o as any).status === "In production").length;
+  const ready = orders.filter((o) => o.status === "ready" || (o as any).status === "Ready").length;
+  const dispensed = orders.filter((o) => o.status === "delivered" || (o as any).status === "Dispensed").length;
+  const lowStockFrames = frames.filter(
+    (f) => Number(f.quantityInStock || 0) > 0 && Number(f.quantityInStock || 0) <= Number(f.reorderLevel || 5)
+  ).length;
+  const outOfStockFrames = frames.filter((f) => Number(f.quantityInStock || 0) === 0).length;
+  const totalInventoryValue = inventory.reduce(
+    (sum, f) => sum + Number(f.unitPrice || 0) * Number(f.quantityInStock || 0),
+    0
+  );
+  const totalSalesRevenue = sales.reduce((sum, s) => sum + Number(s.totalPrice || 0), 0);
+  const pendingProduction = productionItems.filter((p) => p.stage !== "completed").length;
+
+  // Filtered collections
+  const filteredOrders = useMemo(() => {
+    return orders.filter((o) => {
+      const patientName = o.patient ? `${o.patient.firstName || ""} ${o.patient.lastName || ""}` : (o as any).patientName || "";
+      const matchesSearch =
+        !searchQuery ||
+        patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        o.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        o.lensType.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesStatus = statusFilter === "All" || o.status.toLowerCase() === statusFilter.toLowerCase();
+      return matchesSearch && matchesStatus;
+    });
+  }, [orders, searchQuery, statusFilter]);
+
+  const filteredFrames = useMemo(() => {
+    return frames.filter((f) => {
+      if (!searchQuery) return true;
+      const q = searchQuery.toLowerCase();
+      return f.name.toLowerCase().includes(q) || (f.brand && f.brand.toLowerCase().includes(q));
+    });
+  }, [frames, searchQuery]);
+
+  const filteredProduction = useMemo(() => {
+    return productionItems.filter((p) => {
+      if (!searchQuery) return true;
+      const q = searchQuery.toLowerCase();
+      return (
+        p.id.toLowerCase().includes(q) ||
+        p.lensOrderId.toLowerCase().includes(q) ||
+        (p as any).patientName?.toLowerCase().includes(q) ||
+        p.stage.toLowerCase().includes(q)
+      );
+    });
+  }, [productionItems, searchQuery]);
+
+  const filteredSales = useMemo(() => {
+    return sales.filter((s) => {
+      if (!searchQuery) return true;
+      const q = searchQuery.toLowerCase();
+      const patientName = s.patient ? `${s.patient.firstName || ""} ${s.patient.lastName || ""}` : "";
+      return (
+        (s.saleNumber && s.saleNumber.toLowerCase().includes(q)) ||
+        patientName.toLowerCase().includes(q) ||
+        (s.inventoryItem?.name && s.inventoryItem.name.toLowerCase().includes(q))
+      );
+    });
+  }, [sales, searchQuery]);
+
+  const filteredSuppliers = useMemo(() => {
+    return suppliers.filter((s) => {
+      if (!searchQuery) return true;
+      const q = searchQuery.toLowerCase();
+      return s.name.toLowerCase().includes(q) || (s.contactPerson && s.contactPerson.toLowerCase().includes(q));
+    });
+  }, [suppliers, searchQuery]);
 
   // Handlers
   const handleUpdateStatus = (orderId: string, newStatus: string) => {
-    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus } : o));
-    updateStatus.mutate({ orderId, status: newStatus });
+    updateStatusMut.mutate(
+      { orderId, status: newStatus },
+      {
+        onSuccess: () => toast.success(`Order updated to ${newStatus}`),
+        onError: (err: any) => toast.error(err?.response?.data?.message || "Failed to update order status"),
+      }
+    );
   };
 
-  // Filter/Search
-  const [searchQuery, setSearchQuery] = React.useState("");
-  const [statusFilter, setStatusFilter] = React.useState<string>("All");
+  const handleUpdateStage = (orderId: string, stage: string) => {
+    updateStageMut.mutate(
+      { orderId, stage },
+      {
+        onSuccess: () => toast.success(`Production stage advanced to ${stage}`),
+        onError: (err: any) => toast.error(err?.response?.data?.message || "Failed to update production stage"),
+      }
+    );
+  };
 
-  const filteredOrders = orders.filter(o => {
-    const matchesSearch = o.patientName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          o.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          o.lensType?.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = statusFilter === "All" || o.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
+  const handleCreateOrder = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!orderForm.patientId) {
+      toast.error("Please select a patient");
+      return;
+    }
+    if (!orderForm.totalPrice) {
+      toast.error("Please enter a total price");
+      return;
+    }
+    createOrderMut.mutate(
+      {
+        clinicId,
+        patientId: orderForm.patientId,
+        lensType: orderForm.lensType,
+        frameDescription: orderForm.frameDescription || undefined,
+        rightEyeSphere: orderForm.rightEyeSphere || undefined,
+        rightEyeCylinder: orderForm.rightEyeCylinder || undefined,
+        rightEyeAxis: orderForm.rightEyeAxis || undefined,
+        leftEyeSphere: orderForm.leftEyeSphere || undefined,
+        leftEyeCylinder: orderForm.leftEyeCylinder || undefined,
+        leftEyeAxis: orderForm.leftEyeAxis || undefined,
+        totalPrice: Number(orderForm.totalPrice),
+        expectedDeliveryDate: orderForm.expectedDeliveryDate || undefined,
+        notes: orderForm.notes || undefined,
+      },
+      {
+        onSuccess: () => {
+          toast.success("Lens order created successfully");
+          setIsOrderModalOpen(false);
+          setOrderForm({
+            patientId: "",
+            lensType: "Single Vision 1.56",
+            frameDescription: "",
+            rightEyeSphere: "",
+            rightEyeCylinder: "",
+            rightEyeAxis: "",
+            leftEyeSphere: "",
+            leftEyeCylinder: "",
+            leftEyeAxis: "",
+            totalPrice: "",
+            expectedDeliveryDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+            notes: "",
+          });
+        },
+        onError: (err: any) => toast.error(err?.response?.data?.message || "Failed to create lens order"),
+      }
+    );
+  };
 
-  const filteredFrames = frames.filter(f => {
-    const matchesSearch = f.brand.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          f.model.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesSearch;
-  });
+  const handleCreateItem = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!itemForm.name || !itemForm.unitPrice) {
+      toast.error("Please enter name and price");
+      return;
+    }
+    createItemMut.mutate(
+      {
+        clinicId,
+        name: itemForm.name,
+        brand: itemForm.brand || undefined,
+        category: itemForm.category,
+        type: itemForm.type,
+        frameSize: itemForm.frameSize || undefined,
+        lensType: itemForm.lensType || undefined,
+        unitPrice: Number(itemForm.unitPrice),
+        quantityInStock: Number(itemForm.quantityInStock) || 0,
+        reorderLevel: Number(itemForm.reorderLevel) || 5,
+        isActive: true,
+      },
+      {
+        onSuccess: () => {
+          toast.success("Optical item added to inventory");
+          setIsItemModalOpen(false);
+          setItemForm({
+            name: "",
+            brand: "",
+            category: "frame",
+            type: "Full Rim",
+            frameSize: "Standard",
+            lensType: "",
+            unitPrice: "",
+            quantityInStock: "10",
+            reorderLevel: "5",
+          });
+        },
+        onError: (err: any) => toast.error(err?.response?.data?.message || "Failed to create optical item"),
+      }
+    );
+  };
 
-  const filteredProduction = productionItems.filter(p => {
-    const matchesSearch = p.patient.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          p.orderId.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesSearch;
-  });
+  const handleDeleteItem = (id: string, name: string) => {
+    if (!confirm(`Are you sure you want to delete ${name}?`)) return;
+    deleteItemMut.mutate(id, {
+      onSuccess: () => toast.success("Item deleted successfully"),
+      onError: (err: any) => toast.error(err?.response?.data?.message || "Failed to delete item"),
+    });
+  };
 
-  const filteredSales = salesData.filter(s => {
-    const matchesSearch = s.customer.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          s.frame.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesSearch;
-  });
+  const handleCreateSale = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!saleForm.unitPrice) {
+      toast.error("Please enter unit price");
+      return;
+    }
+    createSaleMut.mutate(
+      {
+        clinicId,
+        patientId: saleForm.patientId || undefined,
+        inventoryItemId: saleForm.inventoryItemId || undefined,
+        lensOrderId: saleForm.lensOrderId || undefined,
+        quantity: Number(saleForm.quantity) || 1,
+        unitPrice: Number(saleForm.unitPrice),
+        paymentMethod: saleForm.paymentMethod as any,
+        paymentReference: saleForm.paymentReference || undefined,
+      },
+      {
+        onSuccess: () => {
+          toast.success("Optical sale recorded successfully");
+          setIsSaleModalOpen(false);
+          setSaleForm({
+            patientId: "",
+            inventoryItemId: "",
+            lensOrderId: "",
+            quantity: "1",
+            unitPrice: "",
+            paymentMethod: "pos",
+            paymentReference: "",
+          });
+        },
+        onError: (err: any) => toast.error(err?.response?.data?.message || "Failed to record sale"),
+      }
+    );
+  };
 
-  const filteredSuppliers = suppliers.filter(s => {
-    const matchesSearch = s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          s.contact.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesSearch;
-  });
+  const handleCreateSupplier = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!supplierForm.name) {
+      toast.error("Please enter supplier name");
+      return;
+    }
+    createSupplierMut.mutate(
+      {
+        clinicId,
+        name: supplierForm.name,
+        contactPerson: supplierForm.contactPerson || undefined,
+        phone: supplierForm.phone || undefined,
+        email: supplierForm.email || undefined,
+        address: supplierForm.address || undefined,
+        products: supplierForm.products || undefined,
+      },
+      {
+        onSuccess: () => {
+          toast.success("Supplier registered successfully");
+          setIsSupplierModalOpen(false);
+          setSupplierForm({
+            name: "",
+            contactPerson: "",
+            phone: "",
+            email: "",
+            address: "",
+            products: "Optical Frames & Lenses",
+          });
+        },
+        onError: (err: any) => toast.error(err?.response?.data?.message || "Failed to register supplier"),
+      }
+    );
+  };
 
-  if (loadingOrders) {
+  if (loadingOrders && loadingInventory) {
     return (
-      <div className="space-y-8">
+      <div className="space-y-8 p-4 md:p-6 max-w-[1600px] mx-auto">
         <PageHeader title="Optical" description="Lens orders, frames, inventory, lab tracking, sales & suppliers." />
         <div className="grid grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
@@ -183,64 +453,95 @@ export default function OpticalPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 p-4 md:p-6 max-w-[1600px] mx-auto">
       <PageHeader
         title="Optical"
-        description="Lens orders, frames, inventory, lab tracking, sales & suppliers."
+        description="Lens orders, frames inventory, optical lab tracking, sales ledger & optical suppliers."
         actions={[
-          { label: "New Order", onClick: () => {}, variant: "default" },
+          {
+            label: "New Lens Order",
+            onClick: () => setIsOrderModalOpen(true),
+            variant: "default",
+          },
+          {
+            label: "Add Frame / Item",
+            onClick: () => setIsItemModalOpen(true),
+            variant: "outline",
+          },
+          {
+            label: "Record Sale",
+            onClick: () => setIsSaleModalOpen(true),
+            variant: "outline",
+          },
         ]}
       />
 
+      {/* KPI Overview Grid */}
       <div className="grid grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-4">
-        <Card>
-          <CardContent className="p-3 sm:p-6 flex items-center justify-between gap-2">
+        <Card className="border-slate-200/80 shadow-sm">
+          <CardContent className="p-4 sm:p-5 flex items-center justify-between gap-2">
             <div className="min-w-0">
-              <p className="text-sm font-medium text-slate-500">Total Orders</p>
+              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Total Lens Orders</p>
               <p className="mt-1 text-2xl font-bold text-slate-900">{totalOrders}</p>
+              <p className="text-xs text-slate-400 mt-0.5">{dispensed} completed</p>
             </div>
-            <Glasses size={14} className="shrink-0 text-slate-400" />
+            <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600">
+              <Glasses size={20} />
+            </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-3 sm:p-6 flex items-center justify-between gap-2">
+
+        <Card className="border-slate-200/80 shadow-sm">
+          <CardContent className="p-4 sm:p-5 flex items-center justify-between gap-2">
             <div className="min-w-0">
-              <p className="text-sm font-medium text-slate-500">In Production</p>
-              <p className="mt-1 text-2xl font-bold text-slate-900">{inProduction}</p>
+              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">In Production</p>
+              <p className="mt-1 text-2xl font-bold text-amber-600">{inProduction}</p>
+              <p className="text-xs text-amber-600/80 mt-0.5">{pendingProduction} lab tasks pending</p>
             </div>
-            <Layers size={14} className="shrink-0 text-amber-500" />
+            <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600">
+              <Layers size={20} />
+            </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-3 sm:p-6 flex items-center justify-between gap-2">
+
+        <Card className="border-slate-200/80 shadow-sm">
+          <CardContent className="p-4 sm:p-5 flex items-center justify-between gap-2">
             <div className="min-w-0">
-              <p className="text-sm font-medium text-slate-500">Ready for Pickup</p>
-              <p className="mt-1 text-2xl font-bold text-slate-900">{ready}</p>
+              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Ready for Pickup</p>
+              <p className="mt-1 text-2xl font-bold text-emerald-600">{ready}</p>
+              <p className="text-xs text-emerald-600/80 mt-0.5">Awaiting patient collection</p>
             </div>
-            <CheckCircle2 size={14} className="shrink-0 text-emerald-500" />
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600">
+              <CheckCircle2 size={20} />
+            </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-3 sm:p-6 flex items-center justify-between gap-2">
+
+        <Card className="border-slate-200/80 shadow-sm">
+          <CardContent className="p-4 sm:p-5 flex items-center justify-between gap-2">
             <div className="min-w-0">
-              <p className="text-sm font-medium text-slate-500">Pending Production</p>
-              <p className="mt-1 text-2xl font-bold text-slate-900">{pendingProduction}</p>
+              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Total Optical Sales</p>
+              <p className="mt-1 text-2xl font-bold text-indigo-600">{formatNGN(totalSalesRevenue)}</p>
+              <p className="text-xs text-slate-400 mt-0.5">{sales.length} transactions logged</p>
             </div>
-            <Wrench size={14} className="shrink-0 text-sky-500" />
+            <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600">
+              <DollarSign size={20} />
+            </div>
           </CardContent>
         </Card>
       </div>
 
+      {/* Tab Navigation */}
       <div className="flex flex-wrap gap-2 border-b border-slate-200 pb-1">
         {(
           [
-            { id: "orders", label: "Orders", icon: Glasses },
-            { id: "frames", label: "Frames", icon: Eye },
-            { id: "lens-pricing", label: "Lens Pricing", icon: Settings },
-            { id: "inventory", label: "Inventory", icon: Package },
-            { id: "lab", label: "Lab Tracking", icon: Wrench },
-            { id: "sales", label: "Sales Ledger", icon: DollarSign },
-            { id: "suppliers", label: "Suppliers", icon: Building2 },
+            { id: "orders", label: `Orders (${orders.length})`, icon: Glasses },
+            { id: "frames", label: `Frames (${frames.length})`, icon: Eye },
+            { id: "lens-pricing", label: `Lenses (${lensItems.length})`, icon: Settings },
+            { id: "inventory", label: `Full Inventory (${inventory.length})`, icon: Package },
+            { id: "lab", label: `Lab Tracking (${productionItems.length})`, icon: Wrench },
+            { id: "sales", label: `Sales Ledger (${sales.length})`, icon: DollarSign },
+            { id: "suppliers", label: `Suppliers (${suppliers.length})`, icon: Building2 },
           ] as { id: OpticalTab; label: string; icon: any }[]
         ).map((tab) => (
           <button
@@ -248,8 +549,8 @@ export default function OpticalPage() {
             onClick={() => setActiveTab(tab.id)}
             className={`flex items-center space-x-2 px-4 py-2.5 text-sm font-medium transition-colors whitespace-nowrap border-b-2 ${
               activeTab === tab.id
-                ? "border-primary text-primary"
-                : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
+                ? "border-teal-600 text-teal-600 font-semibold"
+                : "border-transparent text-slate-500 hover:text-slate-700"
             }`}
           >
             <tab.icon className="h-4 w-4" />
@@ -258,59 +559,102 @@ export default function OpticalPage() {
         ))}
       </div>
 
-      {/* Orders Tab */}
+      {/* Tab 1: Orders */}
       {activeTab === "orders" && (
-        <Card>
-          <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <CardTitle className="text-base sm:text-lg font-bold">Lens Orders</CardTitle>
-            <div className="flex gap-2 self-start">
-              <input
-                type="text"
-                placeholder="Search patient, order ID, lens..."
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                className="w-64 bg-white border border-slate-200 rounded-xl pl-10 pr-4 py-2 text-sm font-medium outline-none focus:ring-2 focus:ring-sky-100 transition-all shadow-sm"
-              />
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 h-4 w-4" />
+        <Card className="border-slate-200/80 shadow-sm">
+          <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b pb-4">
+            <div>
+              <CardTitle className="text-base sm:text-lg font-bold">Patient Lens Orders</CardTitle>
+              <p className="text-xs text-slate-500">Manage prescription lens grinding, status progression, and deliveries.</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Search patient, order ID..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-56 bg-white border border-slate-200 rounded-lg pl-9 pr-3 py-1.5 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                />
+                <Search className="absolute left-3 top-2 text-slate-400 h-4 w-4" />
+              </div>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs sm:text-sm text-slate-700"
+              >
+                <option value="All">All Statuses</option>
+                <option value="pending">Pending</option>
+                <option value="processing">In Production</option>
+                <option value="ready">Ready for Pickup</option>
+                <option value="delivered">Delivered</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+              <Button variant="default" size="sm" onClick={() => setIsOrderModalOpen(true)}>
+                <Plus className="h-4 w-4 mr-1.5" /> New Order
+              </Button>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-0">
             <div className="overflow-x-auto">
               <Table>
-                <TableHeader className="bg-slate-50/50">
+                <TableHeader>
                   <TableRow>
-                    <TableHead className="w-24">Order ID</TableHead>
+                    <TableHead className="pl-6">Order ID</TableHead>
                     <TableHead>Patient</TableHead>
-                    <TableHead>Lens</TableHead>
-                    <TableHead>Frame</TableHead>
-                    <TableHead>Due</TableHead>
+                    <TableHead>Lens Specification</TableHead>
+                    <TableHead>Frame Description</TableHead>
+                    <TableHead>Due Date</TableHead>
+                    <TableHead>Price</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead className="w-32">Action</TableHead>
+                    <TableHead className="text-right pr-6">Change Status</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredOrders.map((o: any) => (
-                    <TableRow key={o.id} className="hover:bg-slate-50/50">
-                      <TableCell className="font-medium">{o.id}</TableCell>
-                      <TableCell>{o.patientName}</TableCell>
-                      <TableCell>{o.lensType}</TableCell>
-                      <TableCell>{o.frameType}</TableCell>
-                      <TableCell>{o.dueDate?.slice(0, 10)}</TableCell>
-                      <TableCell>{statusBadge(o.status)}</TableCell>
-                      <TableCell>
-                        <select
-                          value={o.status}
-                          onChange={e => handleUpdateStatus(o.id, e.target.value)}
-                          className="text-xs rounded-lg border border-slate-200 bg-white px-2 py-1 font-medium outline-none focus:ring-2 focus:ring-sky-100"
-                        >
-                          <option value="Draft">Draft</option>
-                          <option value="In production">In production</option>
-                          <option value="Ready">Ready</option>
-                          <option value="Dispensed">Dispensed</option>
-                        </select>
+                  {filteredOrders.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={8} className="text-center py-10 text-slate-400">
+                        No lens orders recorded yet. Click &quot;New Order&quot; to create one.
                       </TableCell>
                     </TableRow>
-                  ))}
+                  ) : (
+                    filteredOrders.map((o) => {
+                      const patientName = o.patient
+                        ? `${o.patient.firstName || ""} ${o.patient.lastName || ""}`
+                        : (o as any).patientName || "Walk-in Patient";
+                      return (
+                        <TableRow key={o.id} className="hover:bg-slate-50">
+                          <TableCell className="pl-6 font-mono text-xs text-slate-600 font-medium">
+                            {o.id.slice(0, 8)}...
+                          </TableCell>
+                          <TableCell className="font-medium text-slate-900">{patientName}</TableCell>
+                          <TableCell className="text-xs">{o.lensType}</TableCell>
+                          <TableCell className="text-xs text-slate-600">{o.frameDescription || "Customer Supplied"}</TableCell>
+                          <TableCell className="text-xs text-slate-500">
+                            {o.expectedDeliveryDate ? String(o.expectedDeliveryDate).slice(0, 10) : "-"}
+                          </TableCell>
+                          <TableCell className="font-bold text-slate-900 tabular-nums">
+                            {formatNGN(o.totalPrice)}
+                          </TableCell>
+                          <TableCell>{statusBadge(o.status)}</TableCell>
+                          <TableCell className="text-right pr-6">
+                            <select
+                              value={o.status}
+                              onChange={(e) => handleUpdateStatus(o.id, e.target.value)}
+                              className="text-xs rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-slate-700 font-medium outline-none focus:ring-2 focus:ring-teal-500"
+                              disabled={updateStatusMut.isPending}
+                            >
+                              <option value="pending">Pending</option>
+                              <option value="processing">In Production</option>
+                              <option value="ready">Ready for Pickup</option>
+                              <option value="delivered">Delivered</option>
+                              <option value="cancelled">Cancelled</option>
+                            </select>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  )}
                 </TableBody>
               </Table>
             </div>
@@ -318,70 +662,141 @@ export default function OpticalPage() {
         </Card>
       )}
 
-      {/* Frames Tab */}
+      {/* Tab 2: Frames */}
       {activeTab === "frames" && (
         <div className="space-y-6">
-          <Card>
-            <CardContent className="p-3 sm:p-6 flex items-center justify-between gap-2">
-              <p className="text-sm font-medium text-slate-500">Low Stock</p>
-              <p className="mt-1 text-2xl font-bold text-slate-900">{lowStockFrames}</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-3 sm:p-6 flex items-center justify-between gap-2">
-              <p className="text-sm font-medium text-slate-500">Out of Stock</p>
-              <p className="mt-1 text-2xl font-bold text-slate-900">{outOfStockFrames}</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-3 sm:p-6 flex items-center justify-between gap-2">
-              <p className="text-sm font-medium text-slate-500">Inventory Value</p>
-              <p className="mt-1 text-2xl font-bold text-slate-900">{formatNGN(totalInventoryValue)}</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-3 sm:p-6 flex items-center justify-between gap-2">
-              <p className="text-sm font-medium text-slate-500">Total Frames</p>
-              <p className="mt-1 text-2xl font-bold text-slate-900">{frames.length}</p>
-            </CardContent>
-          </Card>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <Card className="border-slate-200/80 shadow-sm">
+              <CardContent className="p-4 flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-semibold text-slate-500 uppercase">Total Frame Models</p>
+                  <p className="text-xl sm:text-2xl font-bold text-slate-900 mt-1">{frames.length}</p>
+                </div>
+                <Eye className="h-6 w-6 text-slate-400" />
+              </CardContent>
+            </Card>
+            <Card className="border-amber-200/80 shadow-sm bg-amber-50/20">
+              <CardContent className="p-4 flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-semibold text-amber-700 uppercase">Low Stock</p>
+                  <p className="text-xl sm:text-2xl font-bold text-amber-700 mt-1">{lowStockFrames}</p>
+                </div>
+                <AlertTriangle className="h-6 w-6 text-amber-500" />
+              </CardContent>
+            </Card>
+            <Card className="border-rose-200/80 shadow-sm bg-rose-50/20">
+              <CardContent className="p-4 flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-semibold text-rose-700 uppercase">Out of Stock</p>
+                  <p className="text-xl sm:text-2xl font-bold text-rose-700 mt-1">{outOfStockFrames}</p>
+                </div>
+                <Package className="h-6 w-6 text-rose-500" />
+              </CardContent>
+            </Card>
+            <Card className="border-emerald-200/80 shadow-sm bg-emerald-50/20">
+              <CardContent className="p-4 flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-semibold text-emerald-700 uppercase">Frame Inventory Value</p>
+                  <p className="text-xl sm:text-2xl font-bold text-emerald-700 mt-1">
+                    {formatNGN(
+                      frames.reduce(
+                        (sum, f) => sum + Number(f.unitPrice || 0) * Number(f.quantityInStock || 0),
+                        0
+                      )
+                    )}
+                  </p>
+                </div>
+                <DollarSign className="h-6 w-6 text-emerald-500" />
+              </CardContent>
+            </Card>
+          </div>
 
-          <Card>
-            <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <CardTitle className="text-base sm:text-lg font-bold">Frame Inventory</CardTitle>
+          <Card className="border-slate-200/80 shadow-sm">
+            <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b pb-4">
+              <div>
+                <CardTitle className="text-base sm:text-lg font-bold">Optical Frame Catalogue</CardTitle>
+                <p className="text-xs text-slate-500">Live inventory of prescription glasses frames, designer rims, and sunglasses.</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="Search brand, model..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-56 bg-white border border-slate-200 rounded-lg pl-9 pr-3 py-1.5 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  />
+                  <Search className="absolute left-3 top-2 text-slate-400 h-4 w-4" />
+                </div>
+                <Button variant="default" size="sm" onClick={() => setIsItemModalOpen(true)}>
+                  <Plus className="h-4 w-4 mr-1.5" /> Add Frame
+                </Button>
+              </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-0">
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>SKU</TableHead>
-                      <TableHead>Brand</TableHead>
-                      <TableHead>Model</TableHead>
+                      <TableHead className="pl-6">Brand / Name</TableHead>
                       <TableHead>Type</TableHead>
-                      <TableHead>Color</TableHead>
-                      <TableHead>Price</TableHead>
-                      <TableHead>Stock</TableHead>
-                      <TableHead>Status</TableHead>
+                      <TableHead>Frame Size</TableHead>
+                      <TableHead>Unit Price</TableHead>
+                      <TableHead>Quantity In Stock</TableHead>
+                      <TableHead>Stock Status</TableHead>
+                      <TableHead className="text-right pr-6">Action</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredFrames.map((f: any) => (
-                      <TableRow key={f.id}>
-                        <TableCell className="font-medium">{f.id}</TableCell>
-                        <TableCell>{f.brand}</TableCell>
-                        <TableCell>{f.model}</TableCell>
-                        <TableCell>{f.type}</TableCell>
-                        <TableCell>{f.color}</TableCell>
-                        <TableCell className="tabular-nums">{formatNGN(f.price)}</TableCell>
-                        <TableCell className="tabular-nums">{f.stock}</TableCell>
-                        <TableCell>
-                          {f.status === "Active" && <Badge className="bg-emerald-600 text-white">Active</Badge>}
-                          {f.status === "Low Stock" && <Badge className="bg-amber-600 text-white">Low Stock</Badge>}
-                          {f.status === "Out of Stock" && <Badge className="bg-rose-600 text-white">Out of Stock</Badge>}
+                    {filteredFrames.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center py-10 text-slate-400">
+                          No optical frames found in inventory. Click &quot;Add Frame&quot; to stock items.
                         </TableCell>
                       </TableRow>
-                    ))}
+                    ) : (
+                      filteredFrames.map((f) => {
+                        const stock = Number(f.quantityInStock || 0);
+                        const isLow = stock > 0 && stock <= Number(f.reorderLevel || 5);
+                        const isOut = stock === 0;
+                        return (
+                          <TableRow key={f.id} className="hover:bg-slate-50">
+                            <TableCell className="pl-6">
+                              <div>
+                                <p className="font-medium text-slate-900">{f.name}</p>
+                                {f.brand && <p className="text-xs text-slate-500">{f.brand}</p>}
+                              </div>
+                            </TableCell>
+                            <TableCell className="capitalize text-xs">{f.type || "Full Rim"}</TableCell>
+                            <TableCell className="text-xs text-slate-600">{f.frameSize || "Standard"}</TableCell>
+                            <TableCell className="font-bold text-slate-900 tabular-nums">
+                              {formatNGN(f.unitPrice)}
+                            </TableCell>
+                            <TableCell className="tabular-nums font-semibold text-slate-800">{stock} units</TableCell>
+                            <TableCell>
+                              {isOut ? (
+                                <Badge className="bg-rose-600 text-white">Out of Stock</Badge>
+                              ) : isLow ? (
+                                <Badge className="bg-amber-600 text-white">Low Stock</Badge>
+                              ) : (
+                                <Badge className="bg-emerald-600 text-white">In Stock</Badge>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-right pr-6">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0 text-rose-500 hover:text-rose-700 hover:bg-rose-50"
+                                onClick={() => handleDeleteItem(f.id, f.name)}
+                                title="Delete Frame"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })
+                    )}
                   </TableBody>
                 </Table>
               </div>
@@ -390,114 +805,62 @@ export default function OpticalPage() {
         </div>
       )}
 
-      {/* Lens Pricing Tab */}
+      {/* Tab 3: Lens Pricing */}
       {activeTab === "lens-pricing" && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base sm:text-lg font-bold">Lens Pricing Rules</CardTitle>
+        <Card className="border-slate-200/80 shadow-sm">
+          <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b pb-4">
+            <div>
+              <CardTitle className="text-base sm:text-lg font-bold">Lens Types &amp; Pricing Schedule</CardTitle>
+              <p className="text-xs text-slate-500">Configured lens materials, refractive indices, coatings, and clinic base pricing.</p>
+            </div>
+            <Button variant="default" size="sm" onClick={() => {
+              setItemForm(f => ({ ...f, category: "lens", type: "Single Vision" }));
+              setIsItemModalOpen(true);
+            }}>
+              <Plus className="h-4 w-4 mr-1.5" /> Add Lens Specification
+            </Button>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-0">
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>ID</TableHead>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Index</TableHead>
-                    <TableHead>Coatings</TableHead>
+                    <TableHead className="pl-6">Lens Name</TableHead>
+                    <TableHead>Category / Type</TableHead>
+                    <TableHead>Specification / Index</TableHead>
                     <TableHead>Base Price</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead>Stock On Hand</TableHead>
+                    <TableHead className="text-right pr-6">Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {lensPricing.map((l: any) => (
-                    <TableRow key={l.id}>
-                      <TableCell className="font-medium">{l.id}</TableCell>
-                      <TableCell>{l.name}</TableCell>
-                      <TableCell className="tabular-nums">{l.index}</TableCell>
-                      <TableCell>{l.coatings}</TableCell>
-                      <TableCell className="tabular-nums">{formatNGN(l.basePrice)}</TableCell>
-                      <TableCell>{l.isActive ? <Badge className="bg-emerald-600 text-white">Active</Badge> : <Badge variant="secondary">Inactive</Badge>}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Inventory Tab */}
-      {activeTab === "inventory" && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base sm:text-lg font-bold">Optical Inventory</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>SKU</TableHead>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Stock</TableHead>
-                    <TableHead>Reorder Level</TableHead>
-                    <TableHead>Location</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {inventory.map((i: any) => (
-                    <TableRow key={i.id}>
-                      <TableCell className="font-medium">{i.id}</TableCell>
-                      <TableCell>{i.name}</TableCell>
-                      <TableCell className="tabular-nums">{i.stock}</TableCell>
-                      <TableCell className="tabular-nums">{i.reorderLevel}</TableCell>
-                      <TableCell>{i.location}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Lab Tracking Tab */}
-      {activeTab === "lab" && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base sm:text-lg font-bold">Lab Production Tracking</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Production ID</TableHead>
-                    <TableHead>Order</TableHead>
-                    <TableHead>Patient</TableHead>
-                    <TableHead>Lens Type</TableHead>
-                    <TableHead>Stage</TableHead>
-                    <TableHead>Assigned To</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredProduction.map((p: any) => (
-                    <TableRow key={p.id}>
-                      <TableCell className="font-medium">{p.id}</TableCell>
-                      <TableCell>{p.orderId}</TableCell>
-                      <TableCell>{p.patient}</TableCell>
-                      <TableCell>{p.lensType}</TableCell>
-                      <TableCell>{p.stage}</TableCell>
-                      <TableCell>{p.assignedTo}</TableCell>
-                      <TableCell>
-                        {p.status === "In Progress" && <Badge className="bg-amber-600 text-white">In Progress</Badge>}
-                        {p.status === "Pending" && <Badge variant="secondary">Pending</Badge>}
-                        {p.status === "Completed" && <Badge className="bg-emerald-600 text-white">Completed</Badge>}
+                  {lensItems.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-10 text-slate-400">
+                        No lens specifications configured in inventory. Click &quot;Add Lens Specification&quot; to define prices.
                       </TableCell>
                     </TableRow>
-                  ))}
+                  ) : (
+                    lensItems.map((l) => (
+                      <TableRow key={l.id} className="hover:bg-slate-50">
+                        <TableCell className="pl-6 font-medium text-slate-900">{l.name}</TableCell>
+                        <TableCell className="text-xs">{l.type || "Prescription Lens"}</TableCell>
+                        <TableCell className="text-xs text-slate-600">{l.lensType || "Standard Index"}</TableCell>
+                        <TableCell className="font-bold text-slate-900 tabular-nums">{formatNGN(l.unitPrice)}</TableCell>
+                        <TableCell className="tabular-nums font-semibold">{l.quantityInStock || 0} blanks</TableCell>
+                        <TableCell className="text-right pr-6">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 text-rose-500 hover:text-rose-700"
+                            onClick={() => handleDeleteItem(l.id, l.name)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
                 </TableBody>
               </Table>
             </div>
@@ -505,91 +868,725 @@ export default function OpticalPage() {
         </Card>
       )}
 
-      {/* Sales Ledger Tab */}
-      {activeTab === "sales" && (
-        <div className="space-y-6">
-          <Card>
-            <CardContent className="p-3 sm:p-6 flex items-center justify-between gap-2">
-              <p className="text-sm font-medium text-slate-500">Sales Today</p>
-              <p className="mt-1 text-2xl font-bold text-slate-900">{formatNGN(totalSalesToday)}</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base sm:text-lg font-bold">Sales Ledger</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Frame</TableHead>
-                      <TableHead>Lens</TableHead>
-                      <TableHead>Customer</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>Payment</TableHead>
-                      <TableHead>Branch</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredSales.map((s: any) => (
-                      <TableRow key={s.id}>
-                        <TableCell className="tabular-nums">{s.date}</TableCell>
-                        <TableCell>{s.frame}</TableCell>
-                        <TableCell>{s.lens}</TableCell>
-                        <TableCell>{s.customer}</TableCell>
-                        <TableCell className="tabular-nums">{formatNGN(s.amount)}</TableCell>
-                        <TableCell>{s.payment}</TableCell>
-                        <TableCell>{s.branch}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      {/* Suppliers Tab */}
-      {activeTab === "suppliers" && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base sm:text-lg font-bold">Suppliers</CardTitle>
+      {/* Tab 4: Full Inventory */}
+      {activeTab === "inventory" && (
+        <Card className="border-slate-200/80 shadow-sm">
+          <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b pb-4">
+            <div>
+              <CardTitle className="text-base sm:text-lg font-bold">Comprehensive Optical Inventory</CardTitle>
+              <p className="text-xs text-slate-500">All registered frames, lens blanks, contact lenses, cases, and cleaning supplies.</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <Button variant="default" size="sm" onClick={() => setIsItemModalOpen(true)}>
+                <Plus className="h-4 w-4 mr-1.5" /> Add Inventory Item
+              </Button>
+            </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-0">
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>ID</TableHead>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Contact</TableHead>
-                    <TableHead>Phone</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Last Order</TableHead>
+                    <TableHead className="pl-6">Item Name</TableHead>
+                    <TableHead>Category</TableHead>
+                    <TableHead>Brand</TableHead>
+                    <TableHead>Unit Price</TableHead>
+                    <TableHead>In Stock</TableHead>
+                    <TableHead>Reorder Level</TableHead>
+                    <TableHead className="text-right pr-6">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredSuppliers.map((s: any) => (
-                    <TableRow key={s.id}>
-                      <TableCell className="font-medium">{s.id}</TableCell>
-                      <TableCell>{s.name}</TableCell>
-                      <TableCell>{s.contact}</TableCell>
-                      <TableCell className="tabular-nums">{s.phone}</TableCell>
-                      <TableCell>{s.email}</TableCell>
-                      <TableCell>{s.status === "Active" ? <Badge className="bg-emerald-600 text-white">Active</Badge> : <Badge variant="secondary">Inactive</Badge>}</TableCell>
-                      <TableCell className="tabular-nums">{s.lastOrder}</TableCell>
+                  {inventory.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center py-10 text-slate-400">
+                        No optical items recorded in database.
+                      </TableCell>
                     </TableRow>
-                  ))}
+                  ) : (
+                    inventory.map((item) => (
+                      <TableRow key={item.id} className="hover:bg-slate-50">
+                        <TableCell className="pl-6 font-medium text-slate-900">{item.name}</TableCell>
+                        <TableCell className="capitalize text-xs">
+                          <Badge variant="secondary">{item.category}</Badge>
+                        </TableCell>
+                        <TableCell className="text-xs text-slate-600">{item.brand || "-"}</TableCell>
+                        <TableCell className="font-bold text-slate-900 tabular-nums">
+                          {formatNGN(item.unitPrice)}
+                        </TableCell>
+                        <TableCell className="tabular-nums font-semibold">{item.quantityInStock}</TableCell>
+                        <TableCell className="tabular-nums text-slate-500">{item.reorderLevel || 5}</TableCell>
+                        <TableCell className="text-right pr-6">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 text-rose-500 hover:text-rose-700"
+                            onClick={() => handleDeleteItem(item.id, item.name)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
                 </TableBody>
               </Table>
             </div>
           </CardContent>
         </Card>
       )}
+
+      {/* Tab 5: Lab Tracking */}
+      {activeTab === "lab" && (
+        <Card className="border-slate-200/80 shadow-sm">
+          <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b pb-4">
+            <div>
+              <CardTitle className="text-base sm:text-lg font-bold">Optical Lab Tracking</CardTitle>
+              <p className="text-xs text-slate-500">Live manufacturing stages for active lens orders: cutting, edging, coating, and assembly.</p>
+            </div>
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Search lab queue..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-56 bg-white border border-slate-200 rounded-lg pl-9 pr-3 py-1.5 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+              />
+              <Search className="absolute left-3 top-2 text-slate-400 h-4 w-4" />
+            </div>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="pl-6">Production ID</TableHead>
+                    <TableHead>Lens Order</TableHead>
+                    <TableHead>Patient</TableHead>
+                    <TableHead>Lens Type</TableHead>
+                    <TableHead>Current Stage</TableHead>
+                    <TableHead>Started At</TableHead>
+                    <TableHead className="text-right pr-6">Advance Stage</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredProduction.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center py-10 text-slate-400">
+                        No active lab production orders found. Production stages are initiated as lens orders are processed.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filteredProduction.map((p) => (
+                      <TableRow key={p.id} className="hover:bg-slate-50">
+                        <TableCell className="pl-6 font-mono text-xs text-slate-600 font-medium">
+                          {p.id.slice(0, 8)}...
+                        </TableCell>
+                        <TableCell className="font-mono text-xs">{p.lensOrderId.slice(0, 8)}...</TableCell>
+                        <TableCell className="font-medium text-slate-900">
+                          {(p as any).patientName || "Assigned Patient"}
+                        </TableCell>
+                        <TableCell className="text-xs">{(p as any).lensType || "-"}</TableCell>
+                        <TableCell>
+                          <Badge className="bg-teal-600 text-white capitalize">{p.stage.replace(/_/g, " ")}</Badge>
+                        </TableCell>
+                        <TableCell className="text-xs text-slate-500">
+                          {p.startedAt ? String(p.startedAt).slice(0, 10) : "Pending"}
+                        </TableCell>
+                        <TableCell className="text-right pr-6">
+                          <select
+                            value={p.stage}
+                            onChange={(e) => handleUpdateStage(p.lensOrderId, e.target.value)}
+                            className="text-xs rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-slate-700 font-medium outline-none focus:ring-2 focus:ring-teal-500"
+                            disabled={updateStageMut.isPending}
+                          >
+                            <option value="received">Received</option>
+                            <option value="lens_cutting">Lens Cutting</option>
+                            <option value="edging">Edging</option>
+                            <option value="coating">Coating</option>
+                            <option value="assembly">Assembly</option>
+                            <option value="quality_check">Quality Check</option>
+                            <option value="ready_for_pickup">Ready for Pickup</option>
+                            <option value="completed">Completed</option>
+                          </select>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Tab 6: Sales Ledger */}
+      {activeTab === "sales" && (
+        <Card className="border-slate-200/80 shadow-sm">
+          <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b pb-4">
+            <div>
+              <CardTitle className="text-base sm:text-lg font-bold">Optical Sales Ledger</CardTitle>
+              <p className="text-xs text-slate-500">Direct dispensary point-of-sale transactions, payment receipts, and revenue reconciliation.</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <Button variant="default" size="sm" onClick={() => setIsSaleModalOpen(true)}>
+                <Plus className="h-4 w-4 mr-1.5" /> Record Optical Sale
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="pl-6">Sale #</TableHead>
+                    <TableHead>Patient / Customer</TableHead>
+                    <TableHead>Inventory Item / Reference</TableHead>
+                    <TableHead>Quantity</TableHead>
+                    <TableHead>Unit Price</TableHead>
+                    <TableHead>Total Revenue</TableHead>
+                    <TableHead>Payment Method</TableHead>
+                    <TableHead className="text-right pr-6">Date</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredSales.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={8} className="text-center py-10 text-slate-400">
+                        No optical sales recorded yet. Click &quot;Record Optical Sale&quot; to log a POS transaction.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filteredSales.map((s) => {
+                      const patientName = s.patient
+                        ? `${s.patient.firstName || ""} ${s.patient.lastName || ""}`
+                        : "Walk-in Customer";
+                      return (
+                        <TableRow key={s.id} className="hover:bg-slate-50">
+                          <TableCell className="pl-6 font-mono text-xs font-semibold text-slate-900">
+                            {s.saleNumber || s.id.slice(0, 8)}
+                          </TableCell>
+                          <TableCell className="font-medium text-slate-900">{patientName}</TableCell>
+                          <TableCell className="text-xs text-slate-600">
+                            {s.inventoryItem?.name || (s.lensOrderId ? `Lens Order #${s.lensOrderId.slice(0, 8)}` : "Optical Product")}
+                          </TableCell>
+                          <TableCell className="tabular-nums">{s.quantity}</TableCell>
+                          <TableCell className="tabular-nums text-slate-600">{formatNGN(s.unitPrice)}</TableCell>
+                          <TableCell className="font-bold text-emerald-600 tabular-nums">
+                            {formatNGN(s.totalPrice)}
+                          </TableCell>
+                          <TableCell className="uppercase text-xs font-semibold text-slate-700">
+                            <Badge variant="outline">{s.paymentMethod}</Badge>
+                          </TableCell>
+                          <TableCell className="text-right pr-6 text-xs text-slate-500">
+                            {s.createdAt ? String(s.createdAt).slice(0, 10) : "-"}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Tab 7: Suppliers */}
+      {activeTab === "suppliers" && (
+        <Card className="border-slate-200/80 shadow-sm">
+          <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b pb-4">
+            <div>
+              <CardTitle className="text-base sm:text-lg font-bold">Optical Suppliers &amp; Labs</CardTitle>
+              <p className="text-xs text-slate-500">External lens laboratories, frame manufacturers, and optical consumables distributors.</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <Button variant="default" size="sm" onClick={() => setIsSupplierModalOpen(true)}>
+                <Plus className="h-4 w-4 mr-1.5" /> Register Supplier
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="pl-6">Supplier Name</TableHead>
+                    <TableHead>Contact Person</TableHead>
+                    <TableHead>Phone</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Address</TableHead>
+                    <TableHead>Products</TableHead>
+                    <TableHead className="text-right pr-6">Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredSuppliers.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center py-10 text-slate-400">
+                        No suppliers registered yet. Click &quot;Register Supplier&quot; to add vendors.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filteredSuppliers.map((s) => (
+                      <TableRow key={s.id} className="hover:bg-slate-50">
+                        <TableCell className="pl-6 font-medium text-slate-900">{s.name}</TableCell>
+                        <TableCell className="text-xs text-slate-600">{s.contactPerson || "-"}</TableCell>
+                        <TableCell className="tabular-nums text-xs">{s.phone || "-"}</TableCell>
+                        <TableCell className="text-xs text-slate-600">{s.email || "-"}</TableCell>
+                        <TableCell className="text-xs text-slate-500">{s.address || "-"}</TableCell>
+                        <TableCell className="text-xs text-slate-600">{s.products || "Optical Goods"}</TableCell>
+                        <TableCell className="text-right pr-6">
+                          <Badge className="bg-emerald-600 text-white">Active</Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* --- MODALS --- */}
+
+      {/* 1. New Lens Order Modal */}
+      <Modal isOpen={isOrderModalOpen} onClose={() => setIsOrderModalOpen(false)} title="Create Lens Order">
+        <form onSubmit={handleCreateOrder} className="space-y-4">
+          <div>
+            <label className="text-xs font-semibold text-slate-700">Patient *</label>
+            <select
+              required
+              className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white"
+              value={orderForm.patientId}
+              onChange={(e) => setOrderForm((f) => ({ ...f, patientId: e.target.value }))}
+            >
+              <option value="">Select Patient...</option>
+              {patientsList.map((p: any) => (
+                <option key={p.id} value={p.id}>
+                  {p.firstName} {p.lastName} ({p.patientNumber || p.phone || p.id.slice(0, 6)})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-semibold text-slate-700">Lens Type *</label>
+              <input
+                type="text"
+                required
+                placeholder="e.g. Progressive 1.67 Blue-Cut"
+                className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg text-sm"
+                value={orderForm.lensType}
+                onChange={(e) => setOrderForm((f) => ({ ...f, lensType: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-slate-700">Frame Description</label>
+              <input
+                type="text"
+                placeholder="e.g. Tom Ford Titanium Black"
+                className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg text-sm"
+                value={orderForm.frameDescription}
+                onChange={(e) => setOrderForm((f) => ({ ...f, frameDescription: e.target.value }))}
+              />
+            </div>
+          </div>
+
+          <div className="bg-slate-50 p-3 rounded-xl border border-slate-200/80 space-y-3">
+            <p className="text-xs font-bold text-slate-700 uppercase tracking-wide">Right Eye (OD) Prescription</p>
+            <div className="grid grid-cols-3 gap-2">
+              <input
+                type="text"
+                placeholder="Sphere (SPH)"
+                className="px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs bg-white"
+                value={orderForm.rightEyeSphere}
+                onChange={(e) => setOrderForm((f) => ({ ...f, rightEyeSphere: e.target.value }))}
+              />
+              <input
+                type="text"
+                placeholder="Cylinder (CYL)"
+                className="px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs bg-white"
+                value={orderForm.rightEyeCylinder}
+                onChange={(e) => setOrderForm((f) => ({ ...f, rightEyeCylinder: e.target.value }))}
+              />
+              <input
+                type="text"
+                placeholder="Axis"
+                className="px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs bg-white"
+                value={orderForm.rightEyeAxis}
+                onChange={(e) => setOrderForm((f) => ({ ...f, rightEyeAxis: e.target.value }))}
+              />
+            </div>
+
+            <p className="text-xs font-bold text-slate-700 uppercase tracking-wide pt-2">Left Eye (OS) Prescription</p>
+            <div className="grid grid-cols-3 gap-2">
+              <input
+                type="text"
+                placeholder="Sphere (SPH)"
+                className="px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs bg-white"
+                value={orderForm.leftEyeSphere}
+                onChange={(e) => setOrderForm((f) => ({ ...f, leftEyeSphere: e.target.value }))}
+              />
+              <input
+                type="text"
+                placeholder="Cylinder (CYL)"
+                className="px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs bg-white"
+                value={orderForm.leftEyeCylinder}
+                onChange={(e) => setOrderForm((f) => ({ ...f, leftEyeCylinder: e.target.value }))}
+              />
+              <input
+                type="text"
+                placeholder="Axis"
+                className="px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs bg-white"
+                value={orderForm.leftEyeAxis}
+                onChange={(e) => setOrderForm((f) => ({ ...f, leftEyeAxis: e.target.value }))}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-semibold text-slate-700">Total Price (NGN) *</label>
+              <input
+                type="number"
+                required
+                placeholder="e.g. 45000"
+                className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg text-sm"
+                value={orderForm.totalPrice}
+                onChange={(e) => setOrderForm((f) => ({ ...f, totalPrice: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-slate-700">Expected Delivery</label>
+              <input
+                type="date"
+                className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white"
+                value={orderForm.expectedDeliveryDate}
+                onChange={(e) => setOrderForm((f) => ({ ...f, expectedDeliveryDate: e.target.value }))}
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-slate-700">Clinical Notes</label>
+            <textarea
+              rows={2}
+              placeholder="Special coating or pupil distance notes..."
+              className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg text-sm"
+              value={orderForm.notes}
+              onChange={(e) => setOrderForm((f) => ({ ...f, notes: e.target.value }))}
+            />
+          </div>
+
+          <div className="flex gap-2 pt-2">
+            <Button type="button" variant="outline" className="flex-1" onClick={() => setIsOrderModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" variant="default" className="flex-1" disabled={createOrderMut.isPending}>
+              {createOrderMut.isPending ? <Loader2 size={16} className="animate-spin mr-2" /> : null}
+              {createOrderMut.isPending ? "Creating..." : "Create Lens Order"}
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* 2. Add Frame / Item Modal */}
+      <Modal isOpen={isItemModalOpen} onClose={() => setIsItemModalOpen(false)} title="Add Optical Inventory Item">
+        <form onSubmit={handleCreateItem} className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-semibold text-slate-700">Category *</label>
+              <select
+                className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white"
+                value={itemForm.category}
+                onChange={(e) => setItemForm((f) => ({ ...f, category: e.target.value }))}
+              >
+                <option value="frame">Frame</option>
+                <option value="lens">Lens</option>
+                <option value="contact_lens">Contact Lens</option>
+                <option value="accessory">Accessory</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-slate-700">Brand / Maker</label>
+              <input
+                type="text"
+                placeholder="e.g. Ray-Ban, Essilor"
+                className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg text-sm"
+                value={itemForm.brand}
+                onChange={(e) => setItemForm((f) => ({ ...f, brand: e.target.value }))}
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-slate-700">Item Name *</label>
+            <input
+              type="text"
+              required
+              placeholder="e.g. Clubmaster Classic Semi-Rimless"
+              className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg text-sm"
+              value={itemForm.name}
+              onChange={(e) => setItemForm((f) => ({ ...f, name: e.target.value }))}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-semibold text-slate-700">Type / Style</label>
+              <input
+                type="text"
+                placeholder="e.g. Full Rim, Cat-Eye, Bifocal"
+                className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg text-sm"
+                value={itemForm.type}
+                onChange={(e) => setItemForm((f) => ({ ...f, type: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-slate-700">Frame Size / Lens Index</label>
+              <input
+                type="text"
+                placeholder="e.g. 52-18-140 or 1.67"
+                className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg text-sm"
+                value={itemForm.frameSize}
+                onChange={(e) => setItemForm((f) => ({ ...f, frameSize: e.target.value }))}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className="text-xs font-semibold text-slate-700">Unit Price (NGN) *</label>
+              <input
+                type="number"
+                required
+                placeholder="45000"
+                className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg text-sm"
+                value={itemForm.unitPrice}
+                onChange={(e) => setItemForm((f) => ({ ...f, unitPrice: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-slate-700">Quantity In Stock</label>
+              <input
+                type="number"
+                className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg text-sm"
+                value={itemForm.quantityInStock}
+                onChange={(e) => setItemForm((f) => ({ ...f, quantityInStock: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-slate-700">Reorder Level</label>
+              <input
+                type="number"
+                className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg text-sm"
+                value={itemForm.reorderLevel}
+                onChange={(e) => setItemForm((f) => ({ ...f, reorderLevel: e.target.value }))}
+              />
+            </div>
+          </div>
+
+          <div className="flex gap-2 pt-2">
+            <Button type="button" variant="outline" className="flex-1" onClick={() => setIsItemModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" variant="default" className="flex-1" disabled={createItemMut.isPending}>
+              {createItemMut.isPending ? <Loader2 size={16} className="animate-spin mr-2" /> : null}
+              {createItemMut.isPending ? "Saving..." : "Save to Inventory"}
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* 3. Record Optical Sale Modal */}
+      <Modal isOpen={isSaleModalOpen} onClose={() => setIsSaleModalOpen(false)} title="Record Optical Sale">
+        <form onSubmit={handleCreateSale} className="space-y-4">
+          <div>
+            <label className="text-xs font-semibold text-slate-700">Patient (Optional)</label>
+            <select
+              className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white"
+              value={saleForm.patientId}
+              onChange={(e) => setSaleForm((f) => ({ ...f, patientId: e.target.value }))}
+            >
+              <option value="">Walk-in Customer / None</option>
+              {patientsList.map((p: any) => (
+                <option key={p.id} value={p.id}>
+                  {p.firstName} {p.lastName}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-slate-700">Optical Inventory Item</label>
+            <select
+              className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white"
+              value={saleForm.inventoryItemId}
+              onChange={(e) => {
+                const selected = inventory.find((i) => i.id === e.target.value);
+                setSaleForm((f) => ({
+                  ...f,
+                  inventoryItemId: e.target.value,
+                  unitPrice: selected ? String(selected.unitPrice) : f.unitPrice,
+                }));
+              }}
+            >
+              <option value="">Select Item from stock...</option>
+              {inventory.map((i) => (
+                <option key={i.id} value={i.id}>
+                  {i.name} ({formatNGN(i.unitPrice)} - {i.quantityInStock} in stock)
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-semibold text-slate-700">Quantity</label>
+              <input
+                type="number"
+                min="1"
+                className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg text-sm"
+                value={saleForm.quantity}
+                onChange={(e) => setSaleForm((f) => ({ ...f, quantity: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-slate-700">Unit Price (NGN) *</label>
+              <input
+                type="number"
+                required
+                className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg text-sm"
+                value={saleForm.unitPrice}
+                onChange={(e) => setSaleForm((f) => ({ ...f, unitPrice: e.target.value }))}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-semibold text-slate-700">Payment Method</label>
+              <select
+                className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white"
+                value={saleForm.paymentMethod}
+                onChange={(e) => setSaleForm((f) => ({ ...f, paymentMethod: e.target.value }))}
+              >
+                <option value="cash">Cash</option>
+                <option value="pos">POS / Card</option>
+                <option value="transfer">Bank Transfer</option>
+                <option value="hmo">HMO Covered</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-slate-700">Payment Reference</label>
+              <input
+                type="text"
+                placeholder="e.g. POS-98124"
+                className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg text-sm"
+                value={saleForm.paymentReference}
+                onChange={(e) => setSaleForm((f) => ({ ...f, paymentReference: e.target.value }))}
+              />
+            </div>
+          </div>
+
+          <div className="flex gap-2 pt-2">
+            <Button type="button" variant="outline" className="flex-1" onClick={() => setIsSaleModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" variant="default" className="flex-1" disabled={createSaleMut.isPending}>
+              {createSaleMut.isPending ? <Loader2 size={16} className="animate-spin mr-2" /> : null}
+              {createSaleMut.isPending ? "Recording..." : "Record Sale"}
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* 4. Add Supplier Modal */}
+      <Modal isOpen={isSupplierModalOpen} onClose={() => setIsSupplierModalOpen(false)} title="Register Supplier / Lab">
+        <form onSubmit={handleCreateSupplier} className="space-y-4">
+          <div>
+            <label className="text-xs font-semibold text-slate-700">Company Name *</label>
+            <input
+              type="text"
+              required
+              placeholder="e.g. Essilor West Africa Ltd"
+              className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg text-sm"
+              value={supplierForm.name}
+              onChange={(e) => setSupplierForm((f) => ({ ...f, name: e.target.value }))}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-semibold text-slate-700">Contact Person</label>
+              <input
+                type="text"
+                placeholder="e.g. Adebayo T."
+                className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg text-sm"
+                value={supplierForm.contactPerson}
+                onChange={(e) => setSupplierForm((f) => ({ ...f, contactPerson: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-slate-700">Phone</label>
+              <input
+                type="text"
+                placeholder="e.g. 0803 123 4567"
+                className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg text-sm"
+                value={supplierForm.phone}
+                onChange={(e) => setSupplierForm((f) => ({ ...f, phone: e.target.value }))}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-semibold text-slate-700">Email</label>
+              <input
+                type="email"
+                placeholder="orders@supplier.ng"
+                className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg text-sm"
+                value={supplierForm.email}
+                onChange={(e) => setSupplierForm((f) => ({ ...f, email: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-slate-700">Products Provided</label>
+              <input
+                type="text"
+                placeholder="Frames, Progressive Lenses..."
+                className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg text-sm"
+                value={supplierForm.products}
+                onChange={(e) => setSupplierForm((f) => ({ ...f, products: e.target.value }))}
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-slate-700">Address / City</label>
+            <input
+              type="text"
+              placeholder="e.g. Ikeja, Lagos"
+              className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg text-sm"
+              value={supplierForm.address}
+              onChange={(e) => setSupplierForm((f) => ({ ...f, address: e.target.value }))}
+            />
+          </div>
+
+          <div className="flex gap-2 pt-2">
+            <Button type="button" variant="outline" className="flex-1" onClick={() => setIsSupplierModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" variant="default" className="flex-1" disabled={createSupplierMut.isPending}>
+              {createSupplierMut.isPending ? <Loader2 size={16} className="animate-spin mr-2" /> : null}
+              {createSupplierMut.isPending ? "Registering..." : "Register Supplier"}
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

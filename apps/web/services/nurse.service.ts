@@ -115,6 +115,10 @@ export const nurseNotesService = {
     const res = await api.get(`/observation-notes?clinicId=${clinicId}`);
     return res.data;
   },
+  getById: async (id: string): Promise<ObservationNote> => {
+    const res = await api.get(`/observation-notes/${id}`);
+    return res.data;
+  },
   create: async (data: {
     patientId: string;
     note: string;
@@ -123,6 +127,9 @@ export const nurseNotesService = {
   }): Promise<ObservationNote> => {
     const res = await api.post('/observation-notes', data);
     return res.data;
+  },
+  remove: async (id: string): Promise<void> => {
+    await api.delete(`/observation-notes/${id}`);
   },
 };
 

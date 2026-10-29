@@ -159,3 +159,10 @@ export function useAllProductionItems() {
     enabled: !!user?.clinicId && orders.length > 0,
   });
 }
+
+export type {
+  OpticalInventoryItem,
+  LensOrder,
+  OpticalSale,
+  ProductionItem,
+} from '@/services/optician.service';

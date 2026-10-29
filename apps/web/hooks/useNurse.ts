@@ -65,6 +65,14 @@ export function useClinicNotes() {
   });
 }
 
+export function useObservationNoteDetail(id: string | null) {
+  return useQuery({
+    queryKey: ['observation-note', id],
+    queryFn: () => nurseNotesService.getById(id!),
+    enabled: !!id,
+  });
+}
+
 export function useCreateNote() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -72,6 +80,19 @@ export function useCreateNote() {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['clinic-notes'] });
       queryClient.invalidateQueries({ queryKey: ['patient-notes', variables.patientId] });
+      queryClient.invalidateQueries({ queryKey: ['observation-notes'] });
+    },
+  });
+}
+
+export function useDeleteNote() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => nurseNotesService.remove(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['clinic-notes'] });
+      queryClient.invalidateQueries({ queryKey: ['patient-notes'] });
+      queryClient.invalidateQueries({ queryKey: ['observation-notes'] });
     },
   });
 }

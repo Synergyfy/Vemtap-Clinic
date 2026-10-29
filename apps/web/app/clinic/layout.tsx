@@ -8,7 +8,7 @@ import {
   Wallet, Headphones, Settings2, Bell, Search, 
   Menu, X, User, Database, Eye, Package, LogOut,
   UserCog, Building2, BarChart3, ShoppingCart,
-  ShieldCheck, TrendingUp, FileText, Activity, ArrowLeftRight, Receipt
+  ShieldCheck, TrendingUp, FileText, Activity, ArrowLeftRight, Receipt, Network
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -29,6 +29,7 @@ const sidebarLinks = [
   { name: "Debtors & Receivables", href: "/clinic/debtors", icon: Receipt },
   { name: "HMO Management", href: "/clinic/hmo", icon: Database },
   { name: "HMO Claims", href: "/clinic/hmo-advanced", icon: ShieldCheck },
+  { name: "HMO Integrations", href: "/clinic/hmo-integrations", icon: Network },
   { name: "Staff Management", href: "/clinic/staff", icon: UserCog },
   { name: "Branch Management", href: "/clinic/branches", icon: Building2 },
   { name: "Inventory Transfers", href: "/clinic/inventory-transfers", icon: ArrowLeftRight },
