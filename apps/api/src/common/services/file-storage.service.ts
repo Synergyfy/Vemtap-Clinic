@@ -1,23 +1,40 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { v2 as cloudinary } from 'cloudinary';
+import { v2 as cloudinary, UploadApiResponse } from 'cloudinary';
 import { v4 as uuidv4 } from 'uuid';
+import * as fs from 'fs';
+import * as path from 'path';
+import { FileCategory } from '../../entities/file-upload.entity';
+
+export type StorageProvider = 'local' | 'cloudinary';
 
 export interface FileUploadResult {
-  path: string;
-  url: string;
+  provider: StorageProvider;
+  // Cloudinary public_id, or the path relative to the upload dir for local storage
+  storageKey: string;
+  // Cloudinary resource type ('image' | 'raw'); unused for local storage
+  resourceType?: string;
+  // File extension without the dot, used to build download URLs
+  format: string;
   fileName: string;
   fileSize: number;
   mimeType: string;
 }
 
+export const MAX_UPLOAD_SIZE = 10 * 1024 * 1024; // 10MB
+
+const ALLOWED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.txt', '.csv'];
+// Cloudinary can only store these as 'image' assets; everything else is stored as 'raw'
+const IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.pdf'];
+const CLOUDINARY_ROOT_FOLDER = 'vemtap';
+
 @Injectable()
 export class FileStorageService {
-  private provider: string;
+  private provider: StorageProvider;
   private localUploadDir: string;
 
   constructor(private config: ConfigService) {
-    this.provider = this.config.get('FILE_STORAGE_PROVIDER') || 'local';
+    this.provider = this.config.get<StorageProvider>('FILE_STORAGE_PROVIDER') || 'local';
     this.localUploadDir = this.config.get('UPLOAD_DIR') || './uploads';
 
     if (this.provider === 'cloudinary') {
@@ -25,6 +42,10 @@ export class FileStorageService {
     } else {
       this.ensureUploadDir();
     }
+  }
+
+  getProvider(): StorageProvider {
+    return this.provider;
   }
 
   private initCloudinary() {
@@ -40,174 +61,157 @@ export class FileStorageService {
       cloud_name: cloudName,
       api_key: apiKey,
       api_secret: apiSecret,
+      secure: true,
     });
   }
 
   private ensureUploadDir() {
-    if (!fs.existsSync(this.localUploadDir)) {
-      fs.mkdirSync(this.localUploadDir, { recursive: true });
-    }
-    const categories = ['patient-documents', 'claim-documents', 'profile-images', 'general'];
-    categories.forEach(cat => {
-      const catDir = path.join(this.localUploadDir, cat);
-      if (!fs.existsSync(catDir)) {
-        fs.mkdirSync(catDir, { recursive: true });
-      }
+    Object.values(FileCategory).forEach(cat => {
+      fs.mkdirSync(path.join(this.localUploadDir, cat), { recursive: true });
     });
   }
 
   async uploadFile(
     file: Express.Multer.File,
-    category: string = 'general',
+    category: FileCategory = FileCategory.GENERAL,
     clinicId: string,
   ): Promise<FileUploadResult> {
     if (!file) {
       throw new BadRequestException('No file provided');
     }
 
-    const allowedCategories = ['patient-documents', 'claim-documents', 'profile-images', 'general'];
-    if (!allowedCategories.includes(category)) {
-      throw new BadRequestException(`Invalid category. Allowed: ${allowedCategories.join(', ')}`);
+    if (!Object.values(FileCategory).includes(category)) {
+      throw new BadRequestException(`Invalid category. Allowed: ${Object.values(FileCategory).join(', ')}`);
     }
 
     const ext = path.extname(file.originalname).toLowerCase();
-    const allowedExts = ['.jpg', '.jpeg', '.png', '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.txt', '.csv'];
-    if (!allowedExts.includes(ext)) {
-      throw new BadRequestException(`File type not allowed. Allowed: ${allowedExts.join(', ')}`);
+    if (!ALLOWED_EXTENSIONS.includes(ext)) {
+      throw new BadRequestException(`File type not allowed. Allowed: ${ALLOWED_EXTENSIONS.join(', ')}`);
     }
 
-    const maxSize = 10 * 1024 * 1024; // 10MB
-    if (file.size > maxSize) {
-      throw new BadRequestException(`File size exceeds ${maxSize / 1024 / 1024}MB limit`);
+    if (file.size > MAX_UPLOAD_SIZE) {
+      throw new BadRequestException(`File size exceeds ${MAX_UPLOAD_SIZE / 1024 / 1024}MB limit`);
     }
-
-    const fileName = `${uuidv4()}${ext}`;
-    const fullPath = `${category}/${fileName}`;
 
     if (this.provider === 'cloudinary') {
-      return this.uploadToCloudinary(file, fullPath, fileName, file.originalname, file.mimetype, file.size);
-    } else {
-      return this.uploadLocally(file, fullPath, fileName, file.originalname, file.mimetype, file.size);
+      return this.uploadToCloudinary(file, ext, category, clinicId);
     }
+    return this.uploadLocally(file, ext, category);
   }
 
   private async uploadToCloudinary(
     file: Express.Multer.File,
-    fullPath: string,
-    fileName: string,
-    originalName: string,
-    mimeType: string,
-    size: number,
+    ext: string,
+    category: FileCategory,
+    clinicId: string,
   ): Promise<FileUploadResult> {
-    return new Promise((resolve, reject) => {
+    const isImage = IMAGE_EXTENSIONS.includes(ext);
+    const id = uuidv4();
+    // Raw assets keep their extension in the public_id; image assets get it from `format`
+    const publicId = `${CLOUDINARY_ROOT_FOLDER}/${clinicId}/${category}/${isImage ? id : id + ext}`;
+
+    const result = await new Promise<UploadApiResponse>((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
         {
-          public_id: fullPath.replace(/\.[^/.]+$/, ''), // Remove extension for public_id
-          resource_type: 'auto',
-          folder: 'vemtap',
-          metadata: {
-            originalName,
-            uploadedAt: new Date().toISOString(),
-          },
+          public_id: publicId,
+          resource_type: isImage ? 'image' : 'raw',
+          // Authenticated assets cannot be fetched without a signed URL
+          type: 'authenticated',
+          overwrite: false,
         },
-        (error, result) => {
+        (error, res) => {
           if (error) {
-            reject(error);
-          } else if (!result || !result.secure_url) {
-            reject(new Error('Cloudinary upload failed: no secure_url returned'));
+            reject(new BadRequestException(`Cloudinary upload failed: ${error.message}`));
+          } else if (!res) {
+            reject(new BadRequestException('Cloudinary upload failed: empty response'));
           } else {
-            resolve({
-              path: fullPath,
-              url: result.secure_url,
-              fileName: originalName,
-              fileSize: size,
-              mimeType,
-            });
+            resolve(res);
           }
-        }
+        },
       );
       uploadStream.end(file.buffer);
     });
+
+    return {
+      provider: 'cloudinary',
+      storageKey: result.public_id,
+      resourceType: result.resource_type,
+      format: result.format || ext.slice(1),
+      fileName: file.originalname,
+      fileSize: file.size,
+      mimeType: file.mimetype,
+    };
   }
 
   private async uploadLocally(
     file: Express.Multer.File,
-    fullPath: string,
-    fileName: string,
-    originalName: string,
-    mimeType: string,
-    size: number,
+    ext: string,
+    category: FileCategory,
   ): Promise<FileUploadResult> {
-    const categoryDir = path.join(this.localUploadDir, path.dirname(fullPath));
-    if (!fs.existsSync(categoryDir)) {
-      fs.mkdirSync(categoryDir, { recursive: true });
-    }
-
-    const filePath = path.join(this.localUploadDir, fullPath);
+    const relativePath = `${category}/${uuidv4()}${ext}`;
+    const filePath = path.join(this.localUploadDir, relativePath);
+    fs.mkdirSync(path.dirname(filePath), { recursive: true });
     fs.writeFileSync(filePath, file.buffer);
 
     return {
-      path: fullPath,
-      url: `/api/file-upload/download/${fullPath}`,
-      fileName: originalName,
-      fileSize: size,
-      mimeType,
+      provider: 'local',
+      storageKey: relativePath,
+      format: ext.slice(1),
+      fileName: file.originalname,
+      fileSize: file.size,
+      mimeType: file.mimetype,
     };
   }
 
-  async deleteFile(relativePath: string): Promise<void> {
+  async deleteFile(storageKey: string, resourceType: string = 'image'): Promise<void> {
     if (this.provider === 'cloudinary') {
-      const publicId = relativePath.replace(/\.[^/.]+$/, '');
-      await cloudinary.uploader.destroy(`vemtap/${publicId}`);
+      await cloudinary.uploader.destroy(storageKey, {
+        resource_type: resourceType,
+        type: 'authenticated',
+        invalidate: true,
+      });
     } else {
-      const filePath = path.join(this.localUploadDir, relativePath);
+      const filePath = this.resolveLocalPath(storageKey);
       if (fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
       }
     }
   }
 
-  async getPresignedUploadUrl(relativePath: string, mimeType: string, expiresIn: number = 3600): Promise<string> {
+  /**
+   * Time-limited download URL for a Cloudinary asset.
+   */
+  getSignedDownloadUrl(
+    storageKey: string,
+    format: string,
+    resourceType: string = 'image',
+    expiresIn: number = 300,
+  ): { url: string; expiresAt: Date } {
     if (this.provider !== 'cloudinary') {
-      throw new BadRequestException('Presigned URLs only available with Cloudinary provider');
+      throw new BadRequestException('Signed URLs are only available with the Cloudinary provider');
     }
 
-    // Cloudinary doesn't use presigned URLs in the same way as S3
-    // Instead, we can use unsigned upload with upload presets
-    // For now, throw an error to indicate this needs Cloudinary-specific implementation
-    throw new BadRequestException('Presigned upload URLs require Cloudinary upload preset configuration');
-  }
-
-  async getPresignedDownloadUrl(relativePath: string, expiresIn: number = 3600): Promise<string> {
-    if (this.provider !== 'cloudinary') {
-      throw new BadRequestException('Presigned URLs only available with Cloudinary provider');
-    }
-
-    const publicId = relativePath.replace(/\.[^/.]+$/, '');
-    const result = await cloudinary.url(`vemtap/${publicId}`, {
-      sign_url: true,
-      type: 'upload',
-      expires_at: Math.floor(Date.now() / 1000) + expiresIn,
+    const expiresAt = Math.floor(Date.now() / 1000) + expiresIn;
+    // Raw assets already carry the extension in their public_id
+    const url = cloudinary.utils.private_download_url(storageKey, resourceType === 'raw' ? '' : format, {
+      resource_type: resourceType,
+      type: 'authenticated',
+      expires_at: expiresAt,
+      attachment: true,
     });
 
-    return result;
+    return { url, expiresAt: new Date(expiresAt * 1000) };
   }
 
-  getFileInfo(relativePath: string): { exists: boolean; size: number } {
-    if (this.provider === 'cloudinary') {
-      // For Cloudinary, we'd need an API call to check
-      return { exists: true, size: 0 };
-    } else {
-      const filePath = path.join(this.localUploadDir, relativePath);
-      if (!fs.existsSync(filePath)) {
-        return { exists: false, size: 0 };
-      }
-      const stats = fs.statSync(filePath);
-      return { exists: true, size: stats.size };
+  /**
+   * Absolute path of a locally stored file, guarded against path traversal.
+   */
+  resolveLocalPath(storageKey: string): string {
+    const root = path.resolve(this.localUploadDir);
+    const filePath = path.resolve(root, storageKey);
+    if (!filePath.startsWith(root + path.sep)) {
+      throw new BadRequestException('Invalid file path');
     }
+    return filePath;
   }
 }
-
-// Need to import missing modules
-import * as fs from 'fs';
-import * as path from 'path';
