@@ -9,7 +9,9 @@ import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
 import { PageHeader } from "@/app/clinic/_components/page-header";
 import { useBranches, useBranchStats } from "@/hooks/useBranches";
+import { useTransfers } from "@/hooks/useInventoryTransfers";
 import { useModals } from "@/lib/modal-context";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 import {
   Building2,
@@ -56,6 +58,7 @@ export default function BranchesPage() {
 
   const { data: branches = [], isLoading: loadingBranches } = useBranches();
   const { data: branchStats } = useBranchStats();
+  const { data: liveTransfers = [] } = useTransfers();
 
   // Initialize selected branch
   useEffect(() => {
@@ -63,6 +66,10 @@ export default function BranchesPage() {
       setSelectedBranchId(branches[0].id);
     }
   }, [branches, selectedBranchId]);
+
+  const totalBranches = branchStats?.total ?? branches.length;
+  const activeBranches = branchStats?.active ?? branches.filter((branch) => branch.isActive).length;
+  const inactiveBranches = branchStats?.inactive ?? totalBranches - activeBranches;
 
   // Static data for features without backend APIs
   const branchRegionalMetrics = [
@@ -112,9 +119,6 @@ export default function BranchesPage() {
   }
 
   const selectedBranch = branches.find(b => b.id === selectedBranchId);
-  const totalRevenue = branches.reduce((sum, b) => sum + b.revenue, 0);
-  const totalPatients = branches.reduce((sum, b) => sum + b.activePatients, 0);
-  const activeBranches = branches.filter(b => b.status === "Active").length;
 
   return (
     <div className="space-y-8">
@@ -152,7 +156,7 @@ export default function BranchesPage() {
               <CardContent className="p-3 sm:p-6 flex items-center justify-between gap-2">
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-slate-500">Total Branches</p>
-                  <p className="mt-1 text-2xl font-bold text-slate-900">{branches.length}</p>
+                  <p className="mt-1 text-2xl font-bold text-slate-900">{totalBranches}</p>
                 </div>
                 <Building2 size={14} className="shrink-0 text-slate-400" />
               </CardContent>
@@ -169,19 +173,19 @@ export default function BranchesPage() {
             <Card>
               <CardContent className="p-3 sm:p-6 flex items-center justify-between gap-2">
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-slate-500">Total Revenue</p>
-                  <p className="mt-1 text-2xl font-bold text-slate-900">{formatNGN(totalRevenue)}</p>
+                  <p className="text-sm font-medium text-slate-500">Inactive Branches</p>
+                  <p className="mt-1 text-2xl font-bold text-slate-900">{inactiveBranches}</p>
                 </div>
-                <DollarSign size={14} className="shrink-0 text-emerald-500" />
+                <AlertCircle size={14} className="shrink-0 text-amber-500" />
               </CardContent>
             </Card>
             <Card>
               <CardContent className="p-3 sm:p-6 flex items-center justify-between gap-2">
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-slate-500">Active Patients</p>
-                  <p className="mt-1 text-2xl font-bold text-slate-900">{totalPatients}</p>
+                  <p className="text-sm font-medium text-slate-500">Locations</p>
+                  <p className="mt-1 text-2xl font-bold text-slate-900">{branches.length}</p>
                 </div>
-                <Users size={14} className="shrink-0 text-blue-500" />
+                <MapPin size={14} className="shrink-0 text-blue-500" />
               </CardContent>
             </Card>
           </div>
@@ -196,10 +200,9 @@ export default function BranchesPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Branch</TableHead>
+                      <TableHead>Address</TableHead>
                       <TableHead>Location</TableHead>
-                      <TableHead>Manager</TableHead>
-                      <TableHead>Revenue</TableHead>
-                      <TableHead>Active Patients</TableHead>
+                      <TableHead>Contact</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
@@ -211,17 +214,16 @@ export default function BranchesPage() {
                         <TableCell>
                           <div className="flex items-center gap-2">
                             <MapPin className="h-4 w-4 text-slate-400" />
-                            <span>{b.location}</span>
+                            <span>{b.address || "—"}</span>
                           </div>
                         </TableCell>
-                        <TableCell>{b.manager}</TableCell>
-                        <TableCell className="tabular-nums">{formatNGN(b.revenue)}</TableCell>
-                        <TableCell className="tabular-nums">{b.activePatients}</TableCell>
+                        <TableCell>{[b.city, b.state].filter(Boolean).join(" / ") || "—"}</TableCell>
+                        <TableCell>{b.phone || b.email || "—"}</TableCell>
                         <TableCell>
-                          {b.status === "Active" ? (
+                          {b.isActive ? (
                             <Badge className="bg-emerald-600 text-white">Active</Badge>
                           ) : (
-                            <Badge variant="secondary">Closed</Badge>
+                            <Badge variant="secondary">Inactive</Badge>
                           )}
                         </TableCell>
                         <TableCell className="text-right">
@@ -394,41 +396,57 @@ export default function BranchesPage() {
         <div className="space-y-6">
           <Card>
             <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <CardTitle className="text-base sm:text-lg font-bold">Inter-Branch Stock Transfers</CardTitle>
-              <Button variant="outline" size="sm" className="self-start" onClick={() => setTransferModal(true)}>
-                <Plus className="h-4 w-4 mr-2" /> New Transfer
-              </Button>
+              <div>
+                <CardTitle className="text-base sm:text-lg font-bold">Inter-Branch Stock Transfers</CardTitle>
+                <p className="text-xs text-slate-500">Live inventory requisitions and shipments across branches</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Link
+                  href="/clinic/inventory-transfers"
+                  className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs uppercase tracking-wider transition-colors inline-flex items-center gap-1.5"
+                >
+                  <ArrowLeftRight size={13} /> Open Transfers Suite
+                </Link>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Transfer ID</TableHead>
+                      <TableHead>Transfer #</TableHead>
                       <TableHead>From</TableHead>
                       <TableHead>To</TableHead>
-                      <TableHead>Item</TableHead>
-                      <TableHead>Qty</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Items</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Date</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {interBranchTransfers.map((t) => (
-                      <TableRow key={t.id}>
-                        <TableCell className="font-medium">{t.id}</TableCell>
-                        <TableCell>{t.from}</TableCell>
-                        <TableCell>{t.to}</TableCell>
-                        <TableCell>{t.item}</TableCell>
-                        <TableCell className="tabular-nums">{t.qty}</TableCell>
-                        <TableCell>
-                          {t.status === "Completed" && <Badge className="bg-emerald-600 text-white">Completed</Badge>}
-                          {t.status === "In Transit" && <Badge className="bg-amber-600 text-white">In Transit</Badge>}
-                          {t.status === "Pending" && <Badge variant="secondary">Pending</Badge>}
+                    {liveTransfers.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center text-slate-400 py-6 text-xs">
+                          No active transfer requests found. Click &quot;Open Transfers Suite&quot; to create one.
                         </TableCell>
-                        <TableCell className="tabular-nums">{t.date}</TableCell>
                       </TableRow>
-                    ))}
+                    ) : (
+                      liveTransfers.slice(0, 5).map((t) => (
+                        <TableRow key={t.id}>
+                          <TableCell className="font-mono font-bold">{t.transferNumber}</TableCell>
+                          <TableCell>{t.fromBranch?.name || t.fromBranchId}</TableCell>
+                          <TableCell className="font-medium text-blue-600">{t.toBranch?.name || t.toBranchId}</TableCell>
+                          <TableCell className="uppercase text-[10px] font-bold">{t.type}</TableCell>
+                          <TableCell className="tabular-nums font-semibold">{t.items?.length || 0} items</TableCell>
+                          <TableCell>
+                            <span className="capitalize font-bold text-xs">{t.status.replace("_", " ")}</span>
+                          </TableCell>
+                          <TableCell className="tabular-nums text-slate-500">
+                            {new Date(t.createdAt).toLocaleDateString()}
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
                   </TableBody>
                 </Table>
               </div>

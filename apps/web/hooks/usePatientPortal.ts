@@ -10,6 +10,12 @@ import {
   Notification,
   OpticalItem,
   LensOrder,
+  PatientRegisterPayload,
+  PatientLoginPayload,
+  UpdatePatientProfilePayload,
+  BookAppointmentPayload,
+  RescheduleAppointmentPayload,
+  MakePaymentPayload,
 } from '@/services/patient-portal.service';
 import { useAuth } from '@/lib/auth-context';
 
@@ -19,7 +25,7 @@ const PATIENT_PORTAL_KEY = 'patient-portal';
 export function usePatientRegister() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (dto: { firstName: string; lastName: string; email: string; phone: string; password: string; dateOfBirth?: string; gender?: string }) =>
+    mutationFn: (dto: PatientRegisterPayload) =>
       patientPortalService.register(dto),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [PATIENT_PORTAL_KEY, 'profile'] });
@@ -30,7 +36,7 @@ export function usePatientRegister() {
 export function usePatientLogin() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (dto: { email: string; password: string }) =>
+    mutationFn: (dto: PatientLoginPayload) =>
       patientPortalService.login(dto),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [PATIENT_PORTAL_KEY, 'profile'] });
@@ -61,13 +67,14 @@ export function usePatientProfile() {
 export function useUpdateProfile() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (dto: { phone?: string; address?: string; city?: string; state?: string; emergencyContact?: string; emergencyPhone?: string }) =>
+    mutationFn: (dto: UpdatePatientProfilePayload) =>
       patientPortalService.updateProfile(dto),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [PATIENT_PORTAL_KEY, 'profile'] });
     },
   });
 }
+
 
 export function usePatientAppointmentsList() {
   const { user } = useAuth();
@@ -92,7 +99,7 @@ export function useBookAppointment() {
 export function useRescheduleAppointment() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, ...dto }: { id: string; appointmentDate: string; appointmentTime?: string }) =>
+    mutationFn: ({ id, ...dto }: { id: string } & RescheduleAppointmentPayload) =>
       patientPortalService.rescheduleAppointment(id, dto),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [PATIENT_PORTAL_KEY, 'appointments'] });
@@ -133,7 +140,7 @@ export function usePatientBilling() {
 export function useMakePayment() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ invoiceId, ...dto }: { invoiceId: string; amount: number; paymentMethod: string; reference?: string }) =>
+    mutationFn: ({ invoiceId, ...dto }: MakePaymentPayload) =>
       patientPortalService.makePayment(invoiceId, dto),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [PATIENT_PORTAL_KEY, 'billing'] });

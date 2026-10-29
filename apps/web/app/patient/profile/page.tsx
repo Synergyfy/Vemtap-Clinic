@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { User, Shield, MapPin, Bell, LogOut, ChevronRight, CheckCircle2, Building2 } from "lucide-react";
 import { Modal } from "@/components/ui/modal";
-import { usePatientProfile, useUpdateProfile } from "@/hooks/usePatientPortal";
+import { usePatientProfile, useUpdateProfile, usePatientLogout } from "@/hooks/usePatientPortal";
 import { useAuth } from "@/lib/auth-context";
 
 const branches = ["Main Branch", "Downtown Clinic", "Ikeja Mall", "Victoria Island", "Lekki Phase 1"];
@@ -15,6 +15,7 @@ export default function ProfilePage() {
   const { user } = useAuth();
   const { data: profile, isLoading } = usePatientProfile();
   const updateProfile = useUpdateProfile();
+  const logout = usePatientLogout();
 
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [smsEnabled, setSmsEnabled] = useState(true);
@@ -28,21 +29,36 @@ export default function ProfilePage() {
 
   const [editPhone, setEditPhone] = useState("");
   const [editAddress, setEditAddress] = useState("");
+  const [editCity, setEditCity] = useState("");
+  const [editState, setEditState] = useState("");
+  const [editEmergencyContact, setEditEmergencyContact] = useState("");
+  const [editEmergencyPhone, setEditEmergencyPhone] = useState("");
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 3000); };
 
   const handleLogout = () => {
-    try {
-      localStorage.removeItem("patient-portal-storage");
-      sessionStorage.clear();
-    } catch { /* ignore */ }
-    setShowLogoutModal(false);
-    router.replace("/login");
+    logout.mutate(undefined, {
+      onSettled: () => {
+        try {
+          localStorage.removeItem("patient-portal-storage");
+          sessionStorage.clear();
+        } catch { /* ignore */ }
+        setShowLogoutModal(false);
+        router.replace("/login");
+      },
+    });
   };
 
   const handleSaveProfile = () => {
     updateProfile.mutate(
-      { phone: editPhone, address: editAddress },
+      {
+        phone: editPhone,
+        address: editAddress,
+        city: editCity,
+        state: editState,
+        emergencyContact: editEmergencyContact,
+        emergencyPhone: editEmergencyPhone,
+      },
       {
         onSuccess: () => {
           setShowPersonalInfo(false);
@@ -55,6 +71,10 @@ export default function ProfilePage() {
   const openPersonalInfo = () => {
     setEditPhone(profile?.phone || "");
     setEditAddress(profile?.address || "");
+    setEditCity((profile as any)?.city || "");
+    setEditState((profile as any)?.state || "");
+    setEditEmergencyContact((profile as any)?.emergencyContact || "");
+    setEditEmergencyPhone((profile as any)?.emergencyPhone || "");
     setShowPersonalInfo(true);
   };
 
@@ -208,6 +228,34 @@ export default function ProfilePage() {
             <input value={editAddress} onChange={(e) => setEditAddress(e.target.value)}
               placeholder="Enter your address"
               className="w-full p-3 rounded-xl bg-slate-50 border border-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500/10 font-bold text-slate-900 text-sm" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">City</label>
+              <input value={editCity} onChange={(e) => setEditCity(e.target.value)}
+                placeholder="e.g. Lagos"
+                className="w-full p-3 rounded-xl bg-slate-50 border border-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500/10 font-bold text-slate-900 text-sm" />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">State</label>
+              <input value={editState} onChange={(e) => setEditState(e.target.value)}
+                placeholder="e.g. Lagos"
+                className="w-full p-3 rounded-xl bg-slate-50 border border-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500/10 font-bold text-slate-900 text-sm" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Emergency Contact</label>
+              <input value={editEmergencyContact} onChange={(e) => setEditEmergencyContact(e.target.value)}
+                placeholder="Contact Name"
+                className="w-full p-3 rounded-xl bg-slate-50 border border-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500/10 font-bold text-slate-900 text-sm" />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Emergency Phone</label>
+              <input value={editEmergencyPhone} onChange={(e) => setEditEmergencyPhone(e.target.value)}
+                placeholder="+234..."
+                className="w-full p-3 rounded-xl bg-slate-50 border border-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500/10 font-bold text-slate-900 text-sm" />
+            </div>
           </div>
           <div className="flex flex-col gap-2 pt-2">
             <button onClick={handleSaveProfile} disabled={updateProfile.isPending}

@@ -43,9 +43,11 @@ export interface CreateInvoiceData {
   clinicId: string;
 }
 
+export type PaymentMethod = "cash" | "card" | "transfer" | "hmo" | "online";
+
 export interface CreatePaymentData {
   amount: number;
-  paymentMethod: string;
+  paymentMethod: PaymentMethod;
   reference?: string;
   notes?: string;
   invoiceId: string;

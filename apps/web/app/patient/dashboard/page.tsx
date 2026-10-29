@@ -12,14 +12,18 @@ import {
   Plus,
   ArrowRight,
   ShieldCheck,
-  CheckCircle2
+  CheckCircle2,
+  Star
 } from "lucide-react";
 import Link from "next/link";
+import { cn } from "@/lib/utils";
+import { Modal } from "@/components/ui/modal";
 import { useAuth } from "@/lib/auth-context";
 import {
   usePatientAppointments,
   usePatientLensOrders,
 } from "@/hooks/usePatientDashboard";
+import { useSubmitFeedback } from "@/hooks/useFeedback";
 
 function getStaffName(staff: { firstName: string; lastName: string } | undefined): string {
   if (!staff) return "Doctor TBD";
@@ -55,6 +59,13 @@ export default function PatientDashboard() {
   const [checkedIn, setCheckedIn] = useState(false);
   const [toast, setToast] = useState("");
 
+  // Feedback State
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [feedbackRating, setFeedbackRating] = useState(5);
+  const [feedbackCategory, setFeedbackCategory] = useState("General Care");
+  const [feedbackComment, setFeedbackComment] = useState("");
+  const submitFeedbackMut = useSubmitFeedback();
+
   const upcomingAppt = useMemo(() =>
     appointments.find((a) => a.status === "scheduled" || a.status === "confirmed"),
     [appointments]
@@ -72,6 +83,35 @@ export default function PatientDashboard() {
   const handleCheckIn = () => {
     setCheckedIn(true);
     showToast("Checked in successfully");
+  };
+
+  const handleSubmitFeedback = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!patientId || !clinicId) {
+      showToast("Session missing required patient details");
+      return;
+    }
+
+    submitFeedbackMut.mutate(
+      {
+        rating: feedbackRating,
+        category: feedbackCategory,
+        comment: feedbackComment.trim() || undefined,
+        patientId,
+        clinicId,
+      },
+      {
+        onSuccess: () => {
+          setShowFeedbackModal(false);
+          setFeedbackRating(5);
+          setFeedbackComment("");
+          showToast("Thank you for your feedback!");
+        },
+        onError: (err: any) => {
+          showToast(err?.response?.data?.message || err?.message || "Failed to submit feedback");
+        },
+      }
+    );
   };
 
   const quickActions = [
@@ -101,7 +141,7 @@ export default function PatientDashboard() {
         </div>
         <Link href="/patient/profile" className="self-end sm:self-auto">
           <div className="w-12 h-12 rounded-full bg-teal-100 border-2 border-white shadow-sm flex items-center justify-center text-teal-700 font-bold hover:scale-105 transition-transform cursor-pointer">
-            {user?.email?.[0]?.toUpperCase() || "U"}
+            {user?.email?.[0]?.toUpperCase() }
           </div>
         </Link>
       </header>
@@ -326,6 +366,122 @@ export default function PatientDashboard() {
           </div>
         </motion.div>
       </div>
+
+      {/* Patient Feedback Prompt Card */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.25 }}
+        className="bg-gradient-to-br from-amber-500/10 via-amber-50 to-orange-50 rounded-[2.5rem] p-6 sm:p-8 border border-amber-200/60 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+      >
+        <div className="flex items-center gap-4">
+          <div className="w-14 h-14 rounded-2xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-lg shadow-amber-500/20">
+            <Star size={28} className="fill-white" />
+          </div>
+          <div>
+            <h3 className="text-lg font-black text-slate-900 tracking-tight">How was your clinic visit?</h3>
+            <p className="text-xs text-slate-500 font-medium mt-0.5">
+              Your rating and reviews help us improve care quality and service.
+            </p>
+          </div>
+        </div>
+        <button
+          onClick={() => setShowFeedbackModal(true)}
+          className="px-5 py-3 rounded-2xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-black uppercase tracking-wider shadow-lg shadow-amber-500/20 transition-all shrink-0"
+        >
+          Rate Experience
+        </button>
+      </motion.div>
+
+      {/* Feedback Submission Modal */}
+      <Modal
+        isOpen={showFeedbackModal}
+        onClose={() => setShowFeedbackModal(false)}
+        title="Share Your Feedback"
+      >
+        <form onSubmit={handleSubmitFeedback} className="space-y-4">
+          <div>
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2 text-center">
+              Overall Rating
+            </label>
+            <div className="flex items-center justify-center gap-2 text-amber-400">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <button
+                  key={star}
+                  type="button"
+                  onClick={() => setFeedbackRating(star)}
+                  className="p-1 hover:scale-110 transition-transform"
+                >
+                  <Star
+                    size={32}
+                    className={cn(
+                      star <= feedbackRating
+                        ? "fill-amber-400 text-amber-400"
+                        : "text-slate-200"
+                    )}
+                  />
+                </button>
+              ))}
+            </div>
+            <p className="text-center text-xs font-bold text-slate-600 mt-1">
+              {feedbackRating === 5 && "Excellent (5/5)"}
+              {feedbackRating === 4 && "Very Good (4/5)"}
+              {feedbackRating === 3 && "Average (3/5)"}
+              {feedbackRating === 2 && "Poor (2/5)"}
+              {feedbackRating === 1 && "Very Poor (1/5)"}
+            </p>
+          </div>
+
+          <div>
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">
+              Feedback Category
+            </label>
+            <select
+              value={feedbackCategory}
+              onChange={(e) => setFeedbackCategory(e.target.value)}
+              className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-800 focus:outline-none"
+            >
+              <option value="General Care">General Care & Facility</option>
+              <option value="Doctor Consultation">Doctor Consultation</option>
+              <option value="Wait Time">Wait Time & Queuing</option>
+              <option value="Staff Courtesy">Staff Courtesy</option>
+              <option value="Optical & Glasses">Optical & Glasses Dispensing</option>
+              <option value="Billing & Payment">Billing & Checkout</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">
+              Your Comments & Experience (Optional)
+            </label>
+            <textarea
+              rows={3}
+              value={feedbackComment}
+              onChange={(e) => setFeedbackComment(e.target.value)}
+              placeholder="Tell us what you liked or what we could improve..."
+              className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-800 focus:outline-none resize-none"
+            />
+          </div>
+
+          <div className="flex gap-3 pt-2">
+            <button
+              type="button"
+              onClick={() => setShowFeedbackModal(false)}
+              className="flex-1 py-3 rounded-xl border border-slate-200 text-slate-600 text-xs font-black uppercase tracking-wider hover:bg-slate-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={submitFeedbackMut.isPending}
+              className="flex-1 py-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-black uppercase tracking-wider shadow-lg shadow-amber-500/20 transition-all disabled:opacity-50"
+            >
+              {submitFeedbackMut.isPending ? "Submitting..." : "Submit Review"}
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

@@ -89,7 +89,8 @@ export default function ConsultationWorkspace() {
     createRecord.mutate(
       {
         patientId: id as string,
-        branchId: "",
+        staffId: user?.userId,
+        branchId: patient?.branchId || user?.clinicId || "",
         clinicId: user?.clinicId || "",
         chiefComplaint: chiefComplaint || "Consultation",
         historyOfPresentIllness: medicalHistory,
@@ -97,6 +98,20 @@ export default function ConsultationWorkspace() {
         diagnosis,
         treatmentPlan: managementPlan,
         notes,
+        eyeTest: {
+          rightEyeSphere: vaOdUnaided || undefined,
+          leftEyeSphere: vaOsUnaided || undefined,
+          rightEyeCylinder: cylOd || undefined,
+          leftEyeCylinder: cylOs || undefined,
+          rightEyeAxis: axisOd || undefined,
+          leftEyeAxis: axisOs || undefined,
+          rightEyeAdd: addOd || undefined,
+          leftEyeAdd: addOs || undefined,
+          rightEyeIOP: iopOd || undefined,
+          leftEyeIOP: iopOs || undefined,
+          diagnosis: diagnosis || undefined,
+          notes: slitLamp || undefined,
+        },
       },
       {
         onSuccess: async (record) => {

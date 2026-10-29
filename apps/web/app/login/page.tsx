@@ -177,6 +177,7 @@ export default function LoginPage() {
                 </div>
 
                 <Button 
+                  type="submit"
                   variant="default" 
                   className="w-full py-7 text-base font-black rounded-2xl shadow-xl shadow-brand-blue/20"
                   disabled={isSubmitting}
@@ -190,6 +191,19 @@ export default function LoginPage() {
                     "Authenticate"
                   )}
                 </Button>
+
+                <p className="text-center text-sm text-slate-500">
+                  Don&apos;t have an account?{' '}
+                  <Link href="/register" className="text-brand-blue font-bold hover:underline">
+                    Create one
+                  </Link>
+                </p>
+                <p className="text-center text-xs text-slate-500">
+                  Are you a patient?{' '}
+                  <Link href="/patient/login" className="text-teal-600 font-bold hover:underline">
+                    Patient Portal Login &rarr;
+                  </Link>
+                </p>
 
                 {/* Unified Quick Access */}
                 <div className="relative pt-4 border-t border-slate-50 z-[80]">

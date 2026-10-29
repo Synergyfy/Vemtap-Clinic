@@ -8,7 +8,7 @@ import {
   Wallet, Headphones, Settings2, Bell, Search, 
   Menu, X, User, Database, Eye, Package, LogOut,
   UserCog, Building2, BarChart3, ShoppingCart,
-  ShieldCheck, TrendingUp, FileText
+  ShieldCheck, TrendingUp, FileText, Activity, ArrowLeftRight, Receipt
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -21,15 +21,19 @@ const sidebarLinks = [
   { name: "Patients", href: "/clinic/patients", icon: Users },
   { name: "Appointments", href: "/clinic/appointments", icon: Calendar },
   { name: "Queue Management", href: "/clinic/queue", icon: Clock },
+  { name: "Surgery", href: "/clinic/surgery", icon: Activity },
   { name: "Optical Orders", href: "/clinic/optical", icon: Eye },
   { name: "Pharmacy", href: "/clinic/pharmacy", icon: Package },
   { name: "POS Products", href: "/clinic/products", icon: ShoppingCart },
   { name: "Finance", href: "/clinic/finance", icon: Wallet },
+  { name: "Debtors & Receivables", href: "/clinic/debtors", icon: Receipt },
   { name: "HMO Management", href: "/clinic/hmo", icon: Database },
   { name: "HMO Claims", href: "/clinic/hmo-advanced", icon: ShieldCheck },
   { name: "Staff Management", href: "/clinic/staff", icon: UserCog },
   { name: "Branch Management", href: "/clinic/branches", icon: Building2 },
+  { name: "Inventory Transfers", href: "/clinic/inventory-transfers", icon: ArrowLeftRight },
   { name: "Reports & Analytics", href: "/clinic/reports", icon: BarChart3 },
+  { name: "Clinical Reporting", href: "/clinic/clinical-reporting", icon: FileText },
   { name: "Support", href: "/clinic/support", icon: Headphones },
   { name: "Settings", href: "/clinic/settings", icon: Settings2 },
 ];

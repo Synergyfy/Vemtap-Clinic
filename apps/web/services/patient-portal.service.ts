@@ -1,4 +1,16 @@
 import { api } from '@/lib/api';
+import { useAuthState } from '@/lib/auth-state';
+
+const persistPatientAuth = (patient: { id: string; email: string; clinicId: string }, accessToken?: string) => {
+  if (!accessToken) return;
+
+  useAuthState.getState().setAuth(accessToken, {
+    userId: patient.id,
+    email: patient.email,
+    roles: ['patient'],
+    clinicId: patient.clinicId,
+  });
+};
 
 export interface PatientProfile {
   id: string;
@@ -123,19 +135,70 @@ export interface PaginatedResponse<T> {
   totalPages: number;
 }
 
+export interface PatientRegisterPayload {
+  firstName: string;
+  lastName: string;
+  dateOfBirth: string;
+  gender: "male" | "female" | "other" | string;
+  phone: string;
+  email: string;
+  password: string;
+  clinicId: string;
+  branchId: string;
+}
+
+export interface PatientLoginPayload {
+  email: string;
+  password: string;
+}
+
+export interface UpdatePatientProfilePayload {
+  phone?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  emergencyContact?: string;
+  emergencyPhone?: string;
+}
+
+export interface BookAppointmentPayload {
+  appointmentDate: string;
+  appointmentTime?: string;
+  type: "consultation" | "follow_up" | "eye_test" | string;
+  reason?: string;
+  branchId: string;
+}
+
+export interface RescheduleAppointmentPayload {
+  appointmentDate: string;
+  appointmentTime?: string;
+}
+
+export interface MakePaymentPayload {
+  invoiceId: string;
+  amount: number;
+  paymentMethod: "cash" | "card" | "transfer" | "hmo" | string;
+  reference?: string;
+}
+
 export const patientPortalService = {
-  async register(dto: { firstName: string; lastName: string; email: string; phone: string; password: string; dateOfBirth?: string; gender?: string }): Promise<{ patient: PatientProfile; accessToken: string }> {
+  async register(dto: PatientRegisterPayload): Promise<{ patient: PatientProfile; accessToken: string }> {
     const response = await api.post('/patient-portal/register', dto);
+    const { patient, accessToken } = response.data ?? {};
+    if (patient && accessToken) persistPatientAuth(patient, accessToken);
     return response.data;
   },
 
-  async login(dto: { email: string; password: string }): Promise<{ patient: PatientProfile; accessToken: string }> {
+  async login(dto: PatientLoginPayload): Promise<{ patient: PatientProfile; accessToken: string }> {
     const response = await api.post('/patient-portal/login', dto);
+    const { patient, accessToken } = response.data ?? {};
+    if (patient && accessToken) persistPatientAuth(patient, accessToken);
     return response.data;
   },
 
   async logout(): Promise<void> {
     await api.post('/patient-portal/logout');
+    useAuthState.getState().clearAuth();
   },
 
   async getProfile(): Promise<PatientProfile> {
@@ -143,7 +206,7 @@ export const patientPortalService = {
     return response.data;
   },
 
-  async updateProfile(dto: { phone?: string; address?: string; city?: string; state?: string; emergencyContact?: string; emergencyPhone?: string }): Promise<PatientProfile> {
+  async updateProfile(dto: UpdatePatientProfilePayload): Promise<PatientProfile> {
     const response = await api.put('/patient-portal/profile', dto);
     return response.data;
   },
@@ -153,21 +216,12 @@ export const patientPortalService = {
     return Array.isArray(response.data) ? response.data : (response.data?.data || []);
   },
 
-  async bookAppointment(dto: {
-    appointmentDate: string;
-    appointmentTime?: string;
-    type: string;
-    reason?: string;
-    branchId: string;
-  }): Promise<PatientAppointment> {
+  async bookAppointment(dto: BookAppointmentPayload): Promise<PatientAppointment> {
     const response = await api.post('/patient-portal/appointments', dto);
     return response.data;
   },
 
-  async rescheduleAppointment(id: string, dto: {
-    appointmentDate: string;
-    appointmentTime?: string;
-  }): Promise<PatientAppointment> {
+  async rescheduleAppointment(id: string, dto: RescheduleAppointmentPayload): Promise<PatientAppointment> {
     const response = await api.put(`/patient-portal/appointments/${id}/reschedule`, dto);
     return response.data;
   },
