@@ -3,21 +3,32 @@ import { api } from "@/lib/api";
 export interface Branch {
   id: string;
   name: string;
-  location: string;
-  manager: string;
-  revenue: number;
-  activePatients: number;
-  status: "Active" | "Closed";
+  address: string;
+  city?: string;
+  state?: string;
+  phone?: string;
+  email?: string;
+  isActive: boolean;
   clinicId: string;
-  createdAt: string;
-  updatedAt: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CreateBranchInput {
+  name: string;
+  address: string;
+  city?: string;
+  state?: string;
+  phone?: string;
+  email?: string;
+  clinicId: string;
+  isActive?: boolean;
 }
 
 export interface BranchStats {
   total: number;
-  totalRevenue: number;
-  totalActivePatients: number;
-  byStatus: Record<string, number>;
+  active: number;
+  inactive: number;
 }
 
 export async function listBranches(clinicId: string): Promise<Branch[]> {
@@ -30,7 +41,7 @@ export async function getBranchStats(clinicId: string): Promise<BranchStats> {
   return data;
 }
 
-export async function createBranch(dto: Omit<Branch, "id" | "createdAt" | "updatedAt">): Promise<Branch> {
+export async function createBranch(dto: CreateBranchInput): Promise<Branch> {
   const { data } = await api.post("/branches", dto);
   return data;
 }

@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { Modal } from "@/components/ui/modal";
 import { usePatients, useCreatePatient, Patient, PatientQueryParams } from "@/hooks/usePatients";
+import { useBranches } from "@/hooks/useBranches";
 import { useAuth } from "@/lib/auth-context";
 import { toast } from "sonner";
 
@@ -68,6 +69,9 @@ export default function PatientsPage() {
     refetch: refetchPatients 
   } = usePatients(queryParams);
 
+  const { data: branches = [] } = useBranches();
+  const [selectedBranchId, setSelectedBranchId] = useState("");
+
   const createPatientMutation = useCreatePatient();
 
   const [isCheckInModalOpen, setIsCheckInModalOpen] = useState(false);
@@ -96,6 +100,12 @@ export default function PatientsPage() {
   const [selectedPatient, setSelectedPatient] = useState<ReturnType<typeof mapApiPatientToUI> | null>(null);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [activeProfileTab, setActiveProfileTab] = useState("overview");
+
+  React.useEffect(() => {
+    if (branches.length > 0 && !selectedBranchId) {
+      setSelectedBranchId(branches[0].id);
+    }
+  }, [branches, selectedBranchId]);
 
   const patients = patientsResponse?.data.map(mapApiPatientToUI) || [];
 
@@ -142,13 +152,18 @@ export default function PatientsPage() {
   };
 
   const handleRegistration = async () => {
-    if (!user) return;
-    
+    if (!user?.clinicId) {
+      toast.error("Clinic context is missing. Please sign in again.");
+      return;
+    }
+
+    if (!selectedBranchId) {
+      toast.error("No branch is available for this clinic. Create a branch first.");
+      return;
+    }
+
     setIsCheckInLoading(true);
     try {
-      const dob = new Date(regData.dob);
-      const age = dob ? Math.floor((new Date().getTime() - dob.getTime()) / (365.25 * 86400000)) : 0;
-      
       const patientData = {
         firstName: regData.firstName,
         lastName: regData.lastName,
@@ -171,7 +186,7 @@ export default function PatientsPage() {
         genotype: undefined,
         allergies: regData.allergies || undefined,
         clinicId: user.clinicId,
-        branchId: user.clinicId, // Will need branchId from context
+        branchId: selectedBranchId,
       };
 
       await createPatientMutation.mutateAsync(patientData);

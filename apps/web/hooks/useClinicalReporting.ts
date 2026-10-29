@@ -1,89 +1,173 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth-context";
 import {
-  listTemplates, createTemplate, updateTemplate, deleteTemplate,
-  generateReport, listReports, getReport, deleteReport,
-  getReportingStats, getScheduledTemplates,
-  ReportTemplate,
+  listTemplates,
+  getTemplate,
+  createTemplate,
+  updateTemplate,
+  deleteTemplate,
+  generateReport,
+  listReports,
+  getReport,
+  deleteReport,
+  getReportingStats,
+  getScheduledTemplates,
+  type CreateReportTemplateDto,
+  type UpdateReportTemplateDto,
+  type ReportTemplateQuery,
+  type GenerateReportDto,
+  type GeneratedReportQuery,
+  type ReportTemplate,
+  type GeneratedReport,
+  type ReportType,
+  type ReportFormat,
+  type ReportStatus,
+  type ReportDeliveryMethod,
 } from "@/services/clinical-reporting.service";
 
-const CR_KEYS = {
-  templates: (clinicId: string) => ["clinical-reporting", "templates", clinicId] as const,
-  reports: (clinicId: string) => ["clinical-reporting", "reports", clinicId] as const,
-  stats: (clinicId: string) => ["clinical-reporting", "stats", clinicId] as const,
-  scheduled: (clinicId: string) => ["clinical-reporting", "scheduled", clinicId] as const,
+export type {
+  CreateReportTemplateDto,
+  UpdateReportTemplateDto,
+  ReportTemplateQuery,
+  GenerateReportDto,
+  GeneratedReportQuery,
+  ReportTemplate,
+  GeneratedReport,
+  ReportType,
+  ReportFormat,
+  ReportStatus,
+  ReportDeliveryMethod,
 };
 
-export function useReportTemplates() {
+export const CLINICAL_REPORTING_KEYS = {
+  all: ["clinical-reporting"] as const,
+  templates: (clinicId?: string, query?: Partial<ReportTemplateQuery>) =>
+    ["clinical-reporting", "templates", clinicId, query] as const,
+  template: (id?: string) => ["clinical-reporting", "template", id] as const,
+  reports: (clinicId?: string, query?: Partial<GeneratedReportQuery>) =>
+    ["clinical-reporting", "reports", clinicId, query] as const,
+  report: (id?: string) => ["clinical-reporting", "report", id] as const,
+  stats: (clinicId?: string) => ["clinical-reporting", "stats", clinicId] as const,
+  scheduled: () => ["clinical-reporting", "scheduled"] as const,
+};
+
+export function useReportTemplates(query?: Omit<ReportTemplateQuery, "clinicId">) {
   const { user } = useAuth();
+  const clinicId = user?.clinicId;
+
   return useQuery({
-    queryKey: CR_KEYS.templates(user?.clinicId ?? ""),
-    queryFn: () => listTemplates(user!.clinicId),
-    enabled: !!user?.clinicId,
+    queryKey: CLINICAL_REPORTING_KEYS.templates(clinicId, query),
+    queryFn: () => listTemplates({ ...query, clinicId }),
+    enabled: !!clinicId,
+  });
+}
+
+export function useReportTemplate(id?: string) {
+  return useQuery({
+    queryKey: CLINICAL_REPORTING_KEYS.template(id),
+    queryFn: () => getTemplate(id!),
+    enabled: !!id,
   });
 }
 
 export function useCreateTemplate() {
-  const qc = useQueryClient();
+  const queryClient = useQueryClient();
   const { user } = useAuth();
+
   return useMutation({
-    mutationFn: (dto: Omit<ReportTemplate, "id" | "createdAt" | "updatedAt">) =>
-      createTemplate({ ...dto, clinicId: user!.clinicId }),
-    onSuccess: () => { if (user?.clinicId) qc.invalidateQueries({ queryKey: CR_KEYS.templates(user.clinicId) }); },
+    mutationFn: (dto: CreateReportTemplateDto) => {
+      if (!user?.clinicId) throw new Error("Clinic ID not found");
+      return createTemplate(dto, user.clinicId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: CLINICAL_REPORTING_KEYS.all });
+    },
   });
 }
 
 export function useUpdateTemplate() {
-  const qc = useQueryClient();
-  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
   return useMutation({
-    mutationFn: ({ id, dto }: { id: string; dto: Partial<ReportTemplate> }) =>
+    mutationFn: ({ id, dto }: { id: string; dto: UpdateReportTemplateDto }) =>
       updateTemplate(id, dto),
-    onSuccess: () => { if (user?.clinicId) qc.invalidateQueries({ queryKey: CR_KEYS.templates(user.clinicId) }); },
+    onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries({ queryKey: CLINICAL_REPORTING_KEYS.all });
+      queryClient.invalidateQueries({ queryKey: CLINICAL_REPORTING_KEYS.template(id) });
+    },
   });
 }
 
 export function useDeleteTemplate() {
-  const qc = useQueryClient();
-  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: (id: string) => deleteTemplate(id),
-    onSuccess: () => { if (user?.clinicId) qc.invalidateQueries({ queryKey: CR_KEYS.templates(user.clinicId) }); },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: CLINICAL_REPORTING_KEYS.all });
+    },
   });
 }
 
 export function useGenerateReport() {
-  const qc = useQueryClient();
+  const queryClient = useQueryClient();
   const { user } = useAuth();
+
   return useMutation({
-    mutationFn: (dto: { templateId: string; name?: string }) => generateReport({ ...dto, clinicId: user!.clinicId }),
-    onSuccess: () => { if (user?.clinicId) qc.invalidateQueries({ queryKey: CR_KEYS.reports(user.clinicId) }); },
+    mutationFn: (dto: GenerateReportDto) => {
+      if (!user?.clinicId) throw new Error("Clinic ID not found");
+      return generateReport(dto, user.clinicId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: CLINICAL_REPORTING_KEYS.all });
+    },
   });
 }
 
-export function useClinicalReports() {
+export function useClinicalReports(query?: Omit<GeneratedReportQuery, "clinicId">) {
   const { user } = useAuth();
+  const clinicId = user?.clinicId;
+
   return useQuery({
-    queryKey: CR_KEYS.reports(user?.clinicId ?? ""),
-    queryFn: () => listReports(user!.clinicId),
-    enabled: !!user?.clinicId,
+    queryKey: CLINICAL_REPORTING_KEYS.reports(clinicId, query),
+    queryFn: () => listReports({ ...query, clinicId }),
+    enabled: !!clinicId,
+  });
+}
+
+export function useClinicalReport(id?: string) {
+  return useQuery({
+    queryKey: CLINICAL_REPORTING_KEYS.report(id),
+    queryFn: () => getReport(id!),
+    enabled: !!id,
+  });
+}
+
+export function useDeleteReport() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => deleteReport(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: CLINICAL_REPORTING_KEYS.all });
+    },
   });
 }
 
 export function useReportingStats() {
   const { user } = useAuth();
+  const clinicId = user?.clinicId;
+
   return useQuery({
-    queryKey: CR_KEYS.stats(user?.clinicId ?? ""),
-    queryFn: () => getReportingStats(user!.clinicId),
-    enabled: !!user?.clinicId,
+    queryKey: CLINICAL_REPORTING_KEYS.stats(clinicId),
+    queryFn: () => getReportingStats(clinicId!),
+    enabled: !!clinicId,
   });
 }
 
 export function useScheduledTemplates() {
-  const { user } = useAuth();
   return useQuery({
-    queryKey: CR_KEYS.scheduled(user?.clinicId ?? ""),
-    queryFn: () => getScheduledTemplates(user!.clinicId),
-    enabled: !!user?.clinicId,
+    queryKey: CLINICAL_REPORTING_KEYS.scheduled(),
+    queryFn: () => getScheduledTemplates(),
   });
 }

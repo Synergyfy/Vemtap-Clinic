@@ -250,7 +250,25 @@ export async function deletePlan(id: string): Promise<void> {
 }
 
 // ─── Coverage Check ───
-export async function checkCoverage(dto: { patientId: string; serviceCode: string; hmoId?: string }): Promise<{ covered: boolean; coveragePercentage: number; estimatedPatientPay: number }> {
+export interface CoverageCheckPayload {
+  patientId: string;
+  hmoId: string;
+  serviceType: "consultation" | "eye_test" | "optical" | "drug" | "surgery" | string;
+  serviceAmount: number;
+}
+
+export interface CoverageCheckResult {
+  covered: boolean;
+  coveragePercent: number;
+  copayAmount: number;
+  hmoPays: number;
+  patientPays: number;
+  requiresAuthorization: boolean;
+  remainingAllowance: number;
+  planName: string;
+}
+
+export async function checkCoverage(dto: CoverageCheckPayload): Promise<CoverageCheckResult> {
   const { data } = await api.post("/hmo/coverage-check", dto);
   return data;
 }
@@ -258,28 +276,59 @@ export async function checkCoverage(dto: { patientId: string; serviceCode: strin
 // ─── Agreements ───
 export interface HmoAgreement {
   id: string;
-  title: string;
+  agreementNumber: string;
+  startDate: string;
+  endDate: string;
+  paymentCycle?: string;
+  claimsSubmissionSchedule?: string;
+  consultationPrice?: number;
+  eyeTestPrice?: number;
+  opticalFramePrice?: number;
+  lensPrice?: number;
+  drugMarkup?: number;
+  surgeryPrice?: number;
+  isActive: boolean;
   hmoId: string;
-  effectiveDate: string;
-  expiryDate: string;
-  terms: string;
-  status: string;
   clinicId: string;
   createdAt: string;
   updatedAt: string;
+  hmo?: { id: string; name: string };
+  clinic?: { id: string; name: string };
 }
 
-export async function listAgreements(hmoId: string): Promise<HmoAgreement[]> {
-  const { data } = await api.get(`/hmo/agreements/${hmoId}`);
+export interface CreateAgreementPayload {
+  agreementNumber: string;
+  startDate: string;
+  endDate: string;
+  paymentCycle?: "monthly" | "quarterly" | "bi-annually" | "annually" | string;
+  claimsSubmissionSchedule?: "monthly" | "bi-weekly" | "weekly" | string;
+  consultationPrice?: number;
+  eyeTestPrice?: number;
+  opticalFramePrice?: number;
+  lensPrice?: number;
+  drugMarkup?: number;
+  surgeryPrice?: number;
+  hmoId: string;
+  clinicId: string;
+}
+
+export async function listAgreements(hmoId: string, clinicId?: string): Promise<HmoAgreement[]> {
+  const params = clinicId ? { clinicId } : {};
+  const { data } = await api.get(`/hmo/agreements/${hmoId}`, { params });
   return data;
 }
 
-export async function createAgreement(dto: { title: string; hmoId: string; effectiveDate: string; expiryDate: string; terms: string; clinicId: string }): Promise<HmoAgreement> {
+export async function getAgreementDetail(id: string): Promise<HmoAgreement> {
+  const { data } = await api.get(`/hmo/agreements/detail/${id}`);
+  return data;
+}
+
+export async function createAgreement(dto: CreateAgreementPayload): Promise<HmoAgreement> {
   const { data } = await api.post("/hmo/agreements", dto);
   return data;
 }
 
-export async function updateAgreement(id: string, dto: Partial<HmoAgreement>): Promise<HmoAgreement> {
+export async function updateAgreement(id: string, dto: Partial<CreateAgreementPayload> & { isActive?: boolean }): Promise<HmoAgreement> {
   const { data } = await api.put(`/hmo/agreements/${id}`, dto);
   return data;
 }
@@ -288,17 +337,48 @@ export async function updateAgreement(id: string, dto: Partial<HmoAgreement>): P
 export interface HmoAuthorization {
   id: string;
   authorizationNumber: string;
+  serviceType: string;
+  clinicalJustification?: string | null;
+  estimatedCost: number;
+  approvedAmount?: string | number | null;
+  hmoReferenceNumber?: string | null;
+  hmoNotes?: string | null;
+  rejectionReason?: string | null;
+  status: "pending" | "submitted" | "approved" | "rejected" | "expired" | "escalated" | "cancelled" | string;
+  expiryDate?: string | null;
+  approvedDate?: string | null;
   patientId: string;
   hmoId: string;
-  serviceType: string;
-  approvedAmount: number;
-  status: string;
-  validUntil: string;
-  notes: string | null;
+  planId?: string | null;
+  requestedById?: string | null;
+  approvedById?: string | null;
   clinicId: string;
   createdAt: string;
   updatedAt: string;
   patient?: { id: string; firstName: string; lastName: string };
+  hmo?: { id: string; name: string };
+}
+
+export interface CreateAuthorizationPayload {
+  authorizationNumber: string;
+  serviceType: "consultation" | "eye_test" | "optical" | "drug" | "surgery" | "procedure" | string;
+  clinicalJustification?: string;
+  estimatedCost: number;
+  patientId: string;
+  hmoId: string;
+  planId?: string;
+  requestedById?: string;
+  expiryDate?: string;
+  clinicId: string;
+}
+
+export interface UpdateAuthorizationPayload {
+  status?: string;
+  approvedAmount?: string;
+  hmoReferenceNumber?: string;
+  hmoNotes?: string;
+  rejectionReason?: string;
+  approvedById?: string;
 }
 
 export async function listAuthorizations(clinicId: string, params?: { status?: string }): Promise<HmoAuthorization[]> {
@@ -311,12 +391,17 @@ export async function getPendingAuthorizations(clinicId: string): Promise<HmoAut
   return data;
 }
 
-export async function createAuthorization(dto: { authorizationNumber: string; patientId: string; hmoId: string; serviceType: string; approvedAmount: number; validUntil: string; notes?: string; clinicId: string }): Promise<HmoAuthorization> {
+export async function getAuthorizationDetail(id: string): Promise<HmoAuthorization> {
+  const { data } = await api.get(`/hmo/authorizations/${id}`);
+  return data;
+}
+
+export async function createAuthorization(dto: CreateAuthorizationPayload): Promise<HmoAuthorization> {
   const { data } = await api.post("/hmo/authorizations", dto);
   return data;
 }
 
-export async function updateAuthorization(id: string, dto: { status?: string; notes?: string }): Promise<HmoAuthorization> {
+export async function updateAuthorization(id: string, dto: UpdateAuthorizationPayload): Promise<HmoAuthorization> {
   const { data } = await api.put(`/hmo/authorizations/${id}`, dto);
   return data;
 }
@@ -325,13 +410,35 @@ export async function updateAuthorization(id: string, dto: { status?: string; no
 export interface ClaimBatch {
   id: string;
   batchNumber: string;
+  periodStart?: string | null;
+  periodEnd?: string | null;
+  notes?: string | null;
   totalClaims: number;
   totalAmount: number;
-  status: string;
+  approvedAmount?: number | null;
+  status: "draft" | "submitted" | "processing" | "completed" | "rejected" | string;
+  submittedDate?: string | null;
+  completedDate?: string | null;
   hmoId: string;
   clinicId: string;
   createdAt: string;
   updatedAt: string;
+  hmo?: { id: string; name: string };
+}
+
+export interface CreateClaimBatchPayload {
+  batchNumber: string;
+  periodStart?: string;
+  periodEnd?: string;
+  notes?: string;
+  hmoId: string;
+  clinicId: string;
+}
+
+export interface UpdateClaimBatchPayload {
+  status?: "draft" | "submitted" | "processing" | "completed" | "rejected" | string;
+  approvedAmount?: number;
+  notes?: string;
 }
 
 export async function listClaimBatches(clinicId: string): Promise<ClaimBatch[]> {
@@ -339,7 +446,7 @@ export async function listClaimBatches(clinicId: string): Promise<ClaimBatch[]> 
   return data;
 }
 
-export async function createClaimBatch(dto: { batchNumber: string; hmoId: string; clinicId: string }): Promise<ClaimBatch> {
+export async function createClaimBatch(dto: CreateClaimBatchPayload): Promise<ClaimBatch> {
   const { data } = await api.post("/hmo/batches", dto);
   return data;
 }
@@ -349,15 +456,30 @@ export async function addClaimsToBatch(id: string, claimIds: string[]): Promise<
   return data;
 }
 
+export async function updateClaimBatch(id: string, dto: UpdateClaimBatchPayload): Promise<ClaimBatch> {
+  const { data } = await api.put(`/hmo/batches/${id}`, dto);
+  return data;
+}
+
 // ─── Claim Documents ───
 export interface ClaimDocument {
   id: string;
-  claimId: string;
   fileName: string;
   fileUrl: string;
   fileType: string;
-  uploadedById: string;
+  fileSize?: number;
+  documentType?: string;
+  claimId: string;
   createdAt: string;
+}
+
+export interface UploadClaimDocumentPayload {
+  fileName: string;
+  fileUrl: string;
+  fileType: string;
+  fileSize?: number;
+  documentType?: string;
+  claimId: string;
 }
 
 export async function listClaimDocuments(claimId: string): Promise<ClaimDocument[]> {
@@ -365,7 +487,7 @@ export async function listClaimDocuments(claimId: string): Promise<ClaimDocument
   return data;
 }
 
-export async function uploadClaimDocument(dto: { claimId: string; fileName: string; fileUrl: string; fileType: string; uploadedById: string }): Promise<ClaimDocument> {
+export async function uploadClaimDocument(dto: UploadClaimDocumentPayload): Promise<ClaimDocument> {
   const { data } = await api.post("/hmo/documents", dto);
   return data;
 }
@@ -373,3 +495,4 @@ export async function uploadClaimDocument(dto: { claimId: string; fileName: stri
 export async function deleteClaimDocument(id: string): Promise<void> {
   await api.delete(`/hmo/documents/${id}`);
 }
+

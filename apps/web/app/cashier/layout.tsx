@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { Modal } from "@/components/ui/modal";
 import { BottomNav } from "@/components/layout/bottom-nav";
+import { NotificationBell } from "@/components/layout/notification-bell";
 
 const sidebarLinks = [
   { name: "POS Terminal", href: "/cashier", icon: ShoppingCart },
@@ -119,9 +120,7 @@ export default function CashierLayout({ children }: { children: React.ReactNode 
             <Menu size={20} className="text-slate-700" />
           </button>
           <div className="flex-1" />
-          <button className="relative p-2 hover:bg-slate-100 rounded-xl" aria-label="Notifications">
-            <Bell size={18} className="text-slate-500" />
-          </button>
+          <NotificationBell accentClass="bg-emerald-500" viewAllHref="/cashier/settings" />
           <button
             onClick={() => setIsLogoutOpen(true)}
             className="ml-2 inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
@@ -142,6 +141,9 @@ export default function CashierLayout({ children }: { children: React.ReactNode 
           { label: "POS", href: "/cashier", icon: ShoppingCart },
           { label: "History", href: "/cashier/history", icon: Receipt },
           { label: "Reports", href: "/cashier/reconciliation", icon: BarChart3 },
+        ]}
+        moreItems={[
+          { label: "Settings", href: "/cashier/settings", icon: Settings2 },
         ]}
         activeColor="text-emerald-600"
       />

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -396,6 +397,12 @@ export default function FinancePage() {
               <CardTitle className="text-base sm:text-lg font-bold">Outstanding Balances</CardTitle>
               <p className="text-xs sm:text-sm text-slate-500">Patients with unpaid or partially paid invoices.</p>
             </div>
+            <Link
+              href="/clinic/debtors"
+              className="px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs uppercase tracking-wider transition-colors inline-flex items-center gap-1.5 self-start"
+            >
+              Open Debtors & Collections Suite
+            </Link>
           </CardHeader>
           <CardContent className="p-0">
             <div className="overflow-x-auto"><Table>

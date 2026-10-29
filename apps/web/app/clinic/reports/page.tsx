@@ -13,18 +13,20 @@ import { cn } from "@/lib/utils";
 import {
   BarChart3, TrendingUp, TrendingDown, Users, Clock, Building2, ShoppingCart,
   Download, Filter, Calendar, Zap, Target, LineChart, PieChart,
-  ArrowUpRight, ArrowDownRight, Loader2, Wallet
+  ArrowUpRight, ArrowDownRight, Loader2, Wallet, Star, MessageSquare, Trash2
 } from "lucide-react";
+import { useFeedback, useFeedbackStats, useDeleteFeedback } from "@/hooks/useFeedback";
 
 const formatNGN = (value: number) =>
   new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 }).format(value);
 
-type ReportTab = "revenue" | "hmo" | "queues" | "optical" | "staff";
+type ReportTab = "revenue" | "hmo" | "queues" | "optical" | "staff" | "feedback";
 
 export default function ReportsPage() {
   const { user } = useAuth();
   const { openModal } = useModals();
   const [activeTab, setActiveTab] = useState<ReportTab>("revenue");
+  const [feedbackRatingFilter, setFeedbackRatingFilter] = useState<number | "All">("All");
 
   // Backend hooks
   const { data: revenue, isLoading: revenueLoading } = useRevenueSummary();
@@ -32,6 +34,9 @@ export default function ReportsPage() {
   const { data: queueAnalytics, isLoading: queueLoading } = useQueueAnalytics();
   const { data: appointmentTrends = {}, isLoading: trendsLoading } = useAppointmentTrends();
   const { data: opticalAnalytics, isLoading: opticalLoading } = useOpticalAnalytics();
+  const { data: feedbacks = [], isLoading: feedbackLoading } = useFeedback();
+  const { data: feedbackStats } = useFeedbackStats();
+  const deleteFeedbackMut = useDeleteFeedback();
 
   const tabs = [
     { id: "revenue", label: "Revenue & Growth", icon: TrendingUp },
@@ -39,6 +44,7 @@ export default function ReportsPage() {
     { id: "queues", label: "Queue & Throughput", icon: Clock },
     { id: "optical", label: "Optical Analytics", icon: ShoppingCart },
     { id: "staff", label: "Staff KPIs", icon: Target },
+    { id: "feedback", label: "Patient Feedback", icon: Star },
   ];
 
   const formatCurrency = (val: number | undefined | null) => {
@@ -54,6 +60,7 @@ export default function ReportsPage() {
         title="Reports & Analytics"
         description="Centralized business intelligence: Monitor growth, track KPIs, and optimize clinic operations."
         actions={[
+          { label: "Clinical Reporting Engine", href: "/clinic/clinical-reporting", variant: "outline" },
           { label: "Export Report", variant: "default", onClick: () => {
             const report = `VEMTAP CLINIC REPORT\n${"=".repeat(40)}\n\nREVENUE\n-------\nTotal Revenue: ${formatNGN(revenue?.totalRevenue || 0)}\nNet Profit: ${formatNGN(revenue?.netProfit || 0)}\nOutstanding: ${formatNGN(revenue?.outstanding || 0)}\n\nEXPENSES\n--------\nTotal: ${formatNGN(revenue?.totalExpenses || 0)}\n\nSTAFF KPIs\n----------\n${staffKPIs.map(s => `${s.name}: ${s.totalAppointments} appts, ${s.completionRate}% completion`).join("\n")}\n\nGenerated: ${new Date().toLocaleString()}\n`;
             const blob = new Blob([report], { type: "text/plain" });
@@ -342,6 +349,177 @@ export default function ReportsPage() {
               </>
             )}
           </Card>
+        )}
+
+        {/* Patient Feedback Tab */}
+        {activeTab === "feedback" && (
+          <div className="space-y-6">
+            {/* Feedback Summary Metrics */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <Card className="border-none shadow-sm bg-white p-6 rounded-3xl">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Average Satisfaction</p>
+                    <div className="flex items-baseline gap-2 mt-2">
+                      <p className="text-3xl font-black text-slate-900 tabular-nums">
+                        {feedbackStats?.averageRating ? feedbackStats.averageRating.toFixed(1) : "0.0"}
+                      </p>
+                      <span className="text-sm font-bold text-slate-400">/ 5.0</span>
+                    </div>
+                    <div className="flex items-center gap-1 mt-2 text-amber-500">
+                      {[1, 2, 3, 4, 5].map((s) => (
+                        <Star
+                          key={s}
+                          size={16}
+                          className={cn(
+                            (feedbackStats?.averageRating || 0) >= s
+                              ? "fill-amber-400 text-amber-400"
+                              : (feedbackStats?.averageRating || 0) >= s - 0.5
+                              ? "fill-amber-200 text-amber-400"
+                              : "text-slate-200"
+                          )}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                  <div className="w-12 h-12 rounded-2xl bg-amber-50 flex items-center justify-center text-amber-600">
+                    <Star size={24} className="fill-amber-400 text-amber-500" />
+                  </div>
+                </div>
+              </Card>
+
+              <Card className="border-none shadow-sm bg-white p-6 rounded-3xl">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Total Reviews</p>
+                    <p className="text-3xl font-black text-slate-900 tabular-nums mt-2">
+                      {feedbackStats?.total ?? feedbacks.length}
+                    </p>
+                    <p className="text-xs font-medium text-slate-500 mt-2">Patient reviews recorded</p>
+                  </div>
+                  <div className="w-12 h-12 rounded-2xl bg-sky-50 flex items-center justify-center text-sky-600">
+                    <MessageSquare size={24} />
+                  </div>
+                </div>
+              </Card>
+
+              <Card className="border-none shadow-sm bg-white p-6 rounded-3xl">
+                <div>
+                  <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Rating Breakdown</p>
+                  <div className="space-y-1.5 text-xs">
+                    {[5, 4, 3, 2, 1].map((r) => {
+                      const count = feedbacks.filter((f) => f.rating === r).length;
+                      const pct = feedbacks.length ? Math.round((count / feedbacks.length) * 100) : 0;
+                      return (
+                        <div key={r} className="flex items-center gap-2">
+                          <span className="w-12 text-[10px] font-bold text-slate-600 flex items-center gap-1">
+                            {r} <Star size={10} className="fill-amber-400 text-amber-400" />
+                          </span>
+                          <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+                            <div className="h-full bg-amber-400 rounded-full" style={{ width: `${pct}%` }} />
+                          </div>
+                          <span className="w-8 text-right text-[10px] font-bold text-slate-400">{count}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </Card>
+            </div>
+
+            {/* Filter Bar & Reviews Table */}
+            <Card className="border-none shadow-sm rounded-3xl p-6 bg-white space-y-5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+                <div>
+                  <h3 className="text-base font-black text-slate-900">Patient Reviews & Feedback</h3>
+                  <p className="text-xs text-slate-500 mt-0.5">Verified patient ratings and comments across all departments</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-slate-500">Filter:</span>
+                  <select
+                    value={feedbackRatingFilter}
+                    onChange={(e) => setFeedbackRatingFilter(e.target.value === "All" ? "All" : Number(e.target.value))}
+                    className="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-700 focus:outline-none"
+                  >
+                    <option value="All">All Ratings</option>
+                    <option value="5">5 Stars only</option>
+                    <option value="4">4 Stars only</option>
+                    <option value="3">3 Stars only</option>
+                    <option value="2">2 Stars only</option>
+                    <option value="1">1 Star only</option>
+                  </select>
+                </div>
+              </div>
+
+              {feedbackLoading ? (
+                <div className="p-12 text-center"><Loader2 className="animate-spin text-slate-400 mx-auto" /></div>
+              ) : feedbacks.length === 0 ? (
+                <div className="p-12 text-center text-slate-400 space-y-2">
+                  <Star size={32} className="mx-auto opacity-30 text-slate-400" />
+                  <p className="text-sm font-bold text-slate-600">No patient feedback recorded yet</p>
+                  <p className="text-xs text-slate-400">Patients can submit reviews and ratings directly from their patient portal.</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-slate-100">
+                  {feedbacks
+                    .filter((f) => feedbackRatingFilter === "All" || f.rating === feedbackRatingFilter)
+                    .map((item) => (
+                      <div key={item.id} className="py-4.5 flex flex-col sm:flex-row sm:items-start justify-between gap-4 hover:bg-slate-50/50 p-3 rounded-2xl transition-colors">
+                        <div className="space-y-1.5 flex-1 min-w-0">
+                          <div className="flex items-center gap-2.5 flex-wrap">
+                            <span className="text-sm font-black text-slate-900">
+                              {item.patient ? `${item.patient.firstName} ${item.patient.lastName}` : "Verified Patient"}
+                            </span>
+                            {item.category && (
+                              <Badge variant="outline" className="text-[10px] uppercase font-bold tracking-wider bg-slate-50">
+                                {item.category}
+                              </Badge>
+                            )}
+                            <div className="flex items-center gap-0.5 text-amber-400">
+                              {[1, 2, 3, 4, 5].map((s) => (
+                                <Star
+                                  key={s}
+                                  size={13}
+                                  className={cn(s <= item.rating ? "fill-amber-400 text-amber-400" : "text-slate-200")}
+                                />
+                              ))}
+                            </div>
+                          </div>
+
+                          {item.comment ? (
+                            <p className="text-xs text-slate-700 font-medium leading-relaxed bg-slate-50/80 p-3 rounded-xl border border-slate-100">
+                              &ldquo;{item.comment}&rdquo;
+                            </p>
+                          ) : (
+                            <p className="text-xs text-slate-400 italic">No written comment provided.</p>
+                          )}
+
+                          <div className="flex items-center gap-3 text-[10px] text-slate-400 font-bold">
+                            {item.staff && (
+                              <span>Practitioner: {item.staff.firstName} {item.staff.lastName}</span>
+                            )}
+                            <span>{new Date(item.createdAt).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" })}</span>
+                          </div>
+                        </div>
+
+                        <button
+                          onClick={() => {
+                            if (confirm("Are you sure you want to remove this feedback record?")) {
+                              deleteFeedbackMut.mutate(item.id);
+                            }
+                          }}
+                          disabled={deleteFeedbackMut.isPending}
+                          className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors self-end sm:self-start shrink-0"
+                          title="Delete Feedback"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    ))}
+                </div>
+              )}
+            </Card>
+          </div>
         )}
       </div>
     </div>

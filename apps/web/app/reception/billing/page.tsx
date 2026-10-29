@@ -43,7 +43,7 @@ export default function BillingPage() {
 
   const [selectedPatient, setSelectedPatient] = useState(patients[0] || null);
   const [selectedServices, setSelectedServices] = useState<typeof serviceCatalog>([]);
-  const [paymentMethod, setPaymentMethod] = useState("Transfer");
+  const [paymentMethod, setPaymentMethod] = useState<"Cash" | "Card" | "Transfer" | "HMO">("Transfer");
   const [invoiceStatus, setInvoiceStatus] = useState<"Draft" | "Generated" | "Paid">("Draft");
   const [query, setQuery] = useState("");
   const [receiptNumber, setReceiptNumber] = useState("");
@@ -121,8 +121,11 @@ export default function BillingPage() {
     }
     if (!createdInvoiceId) return;
 
-    const methodMap: Record<string, string> = {
-      Cash: "cash", Card: "card", Transfer: "bank_transfer", "HMO cover": "hmo",
+    const methodMap: Record<string, "cash" | "card" | "transfer" | "hmo"> = {
+      Cash: "cash",
+      Card: "card",
+      Transfer: "transfer",
+      HMO: "hmo",
     };
 
     makePaymentMut.mutate({
@@ -140,7 +143,10 @@ export default function BillingPage() {
   };
 
   const paymentIcons: Record<string, typeof Banknote> = {
-    Cash: Banknote, Card: CreditCard, Transfer: BadgeCheck, "HMO cover": ShieldCheck,
+    Cash: Banknote,
+    Card: CreditCard,
+    Transfer: BadgeCheck,
+    HMO: ShieldCheck,
   };
   const PaymentIcon = paymentIcons[paymentMethod] || Banknote;
 
@@ -285,7 +291,7 @@ export default function BillingPage() {
               <p className="text-[9px] sm:text-[10px] text-white/40 font-black uppercase tracking-widest">Invoice Total</p>
               <p className="text-2xl sm:text-4xl font-black mt-1">{formatCurrency(invoiceTotal)}</p>
               <div className="mt-5 sm:mt-8 space-y-2 sm:space-y-3">
-                {["Cash", "Card", "Transfer", "HMO cover"].map((method) => (
+                {(["Cash", "Card", "Transfer", "HMO"] as const).map((method) => (
                   <button key={method} onClick={() => { setPaymentMethod(method); showToast(`Payment method: ${method}`); }}
                     className={cn("w-full p-3 sm:p-4 rounded-lg sm:rounded-2xl border text-left text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all", paymentMethod === method ? "bg-white text-slate-900 border-white" : "bg-white/10 text-white/70 border-white/10 hover:bg-white/20")}>
                     {method}

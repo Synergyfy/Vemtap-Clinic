@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { useClinic } from "@/hooks/useClinics";
 
 const tabs = [
   { id: "overview", label: "Overview", icon: Activity },
@@ -27,26 +28,19 @@ const tabs = [
 export default function ClinicDetailsPage() {
   const { id } = useParams();
   const [activeTab, setActiveTab] = useState("overview");
+  const clinicId = typeof id === 'string' ? id : '';
+  const { data: clinic, isLoading, isError } = useClinic(clinicId);
 
-  // Mock data for a single clinic
-  const clinic = {
-    id: id || "CLN-001",
-    name: "ClearVision Eye Clinic",
-    owner: "Dr. Sarah Johnson",
-    email: "contact@clearvision.com",
-    phone: "+234 812 345 6789",
-    website: "www.clearvision.com",
-    location: "Victoria Island, Lagos",
-    plan: "Growth",
-    status: "Active",
-    joined: "Oct 12, 2025",
-    stats: {
-      totalRevenue: "$124,500",
-      activePatients: "1,240",
-      totalBranches: "3",
-      totalStaff: "24",
-    }
-  };
+  if (isLoading) {
+    return <div className="p-8 text-slate-500">Loading clinic…</div>;
+  }
+
+  if (isError || !clinic) {
+    return <div className="p-8 text-rose-600">Clinic could not be loaded from the API.</div>;
+  }
+
+  const location = [clinic.city, clinic.state].filter(Boolean).join(', ') || clinic.address || '—';
+  const status = clinic.isActive ? 'Active' : 'Pending';
 
   return (
     <div className="space-y-8">
@@ -73,22 +67,25 @@ export default function ClinicDetailsPage() {
             <div>
               <div className="flex items-center gap-3 mb-2">
                 <h1 className="text-3xl font-black text-brand-navy">{clinic.name}</h1>
-                <div className="bg-emerald-50 text-emerald-600 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-widest border border-emerald-100 flex items-center gap-1">
-                  <CheckCircle2 size={12} /> {clinic.status}
+                <div className={cn(
+                  'text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-widest border flex items-center gap-1',
+                  status === 'Active' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-amber-50 text-amber-600 border-amber-100'
+                )}>
+                  <CheckCircle2 size={12} /> {status}
                 </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2">
                 <span className="flex items-center gap-2 text-sm text-slate-500 font-medium">
-                  <Users className="text-brand-blue" size={16} /> {clinic.owner}
+                  <MapPin className="text-brand-blue" size={16} /> {location}
                 </span>
                 <span className="flex items-center gap-2 text-sm text-slate-500 font-medium">
-                  <MapPin className="text-brand-blue" size={16} /> {clinic.location}
+                  <Phone className="text-brand-blue" size={16} /> {clinic.phone || '—'}
                 </span>
                 <span className="flex items-center gap-2 text-sm text-slate-500 font-medium">
-                  <Mail className="text-brand-blue" size={16} /> {clinic.email}
+                  <Mail className="text-brand-blue" size={16} /> {clinic.email || '—'}
                 </span>
                 <span className="flex items-center gap-2 text-sm text-slate-500 font-medium">
-                  <Globe className="text-brand-blue" size={16} /> {clinic.website}
+                  <Globe className="text-brand-blue" size={16} /> {clinic.website || '—'}
                 </span>
               </div>
             </div>
@@ -137,10 +134,10 @@ export default function ClinicDetailsPage() {
             {activeTab === "overview" && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {[
-                { label: "Total Revenue", val: clinic.stats.totalRevenue, icon: CreditCard, color: "blue", trend: "+12.5%" },
-                { label: "Active Patients", val: clinic.stats.activePatients, icon: Users, color: "emerald", trend: "+5.2%" },
-                { label: "Total Branches", val: clinic.stats.totalBranches, icon: MapPin, color: "purple", trend: "0%" },
-                { label: "Staff Strength", val: clinic.stats.totalStaff, icon: Users, color: "amber", trend: "+2" },
+                { label: "Plan", val: clinic.plan || 'Not set', icon: CreditCard, color: "blue", trend: status },
+                { label: "Phone", val: clinic.phone || '—', icon: Phone, color: "emerald", trend: 'Direct Line' },
+                { label: "City", val: clinic.city || '—', icon: MapPin, color: "purple", trend: clinic.state || '—' },
+                { label: "Website", val: clinic.website || '—', icon: Globe, color: "amber", trend: 'Online' },
                 ].map((stat, i) => (                  <div key={i} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
                     <div className="flex items-center justify-between mb-4">
                       <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center", 
@@ -181,15 +178,15 @@ export default function ClinicDetailsPage() {
                   <div className="space-y-4">
                     <div className="flex justify-between items-center text-sm">
                       <span className="text-slate-400 font-medium">Current Plan</span>
-                      <span className="font-bold text-brand-blue">Growth</span>
+                      <span className="font-bold text-brand-blue">{clinic.plan || 'Not set'}</span>
                     </div>
                     <div className="flex justify-between items-center text-sm">
-                      <span className="text-slate-400 font-medium">Next Billing</span>
-                      <span className="font-bold">Oct 12, 2026</span>
+                      <span className="text-slate-400 font-medium">Status</span>
+                      <span className="font-bold">{status}</span>
                     </div>
                     <div className="flex justify-between items-center text-sm">
-                      <span className="text-slate-400 font-medium">HMO Ratio</span>
-                      <span className="font-bold">64.2%</span>
+                      <span className="text-slate-400 font-medium">State</span>
+                      <span className="font-bold">{clinic.state || '—'}</span>
                     </div>
                   </div>
                   <Button className="w-full mt-10 bg-white text-brand-navy hover:bg-slate-100 font-bold rounded-xl text-sm">View Full Usage</Button>

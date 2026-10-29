@@ -9,8 +9,8 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   isHydrated: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  register: (data: RegisterData) => Promise<void>;
+  login: (email: string, password: string) => Promise<AuthUser | null>;
+  register: (data: RegisterData) => Promise<AuthUser | null>;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
   hasRole: (roles: string[]) => boolean;
@@ -51,27 +51,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [isHydrated, checkAuth]);
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string): Promise<AuthUser | null> => {
     setIsLoading(true);
     try {
       const response = await api.post('/auth/login', { email, password });
       const { accessToken: newAccessToken, user: newUser } = response.data;
       if (newAccessToken && newUser) {
         setAuth(newAccessToken, newUser);
+        return newUser;
       }
+      return null;
     } finally {
       setIsLoading(false);
     }
   };
 
-  const register = async (data: RegisterData) => {
+  const register = async (data: RegisterData): Promise<AuthUser | null> => {
     setIsLoading(true);
     try {
       const response = await api.post('/auth/register', data);
       const { accessToken: newAccessToken, user: newUser } = response.data;
       if (newAccessToken && newUser) {
         setAuth(newAccessToken, newUser);
+        return newUser;
       }
+      return null;
     } finally {
       setIsLoading(false);
     }

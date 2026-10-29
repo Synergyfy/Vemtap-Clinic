@@ -6,6 +6,10 @@ export interface AuthUser {
   email: string;
   roles: string[];
   clinicId: string;
+  branchId?: string;
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
 }
 
 interface AuthState {

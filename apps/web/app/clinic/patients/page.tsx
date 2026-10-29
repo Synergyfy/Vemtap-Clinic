@@ -9,6 +9,7 @@ import { PageHeader } from "@/app/clinic/_components/page-header";
 import { Modal } from "@/components/ui/modal";
 import { useAuth } from "@/lib/auth-context";
 import { usePatients, useCreatePatient } from "@/hooks/usePatients";
+import { useBranches } from "@/hooks/useBranches";
 import { useRecords } from "@/hooks/useRecords";
 import { useLensOrders } from "@/hooks/useOptician";
 import { PageSkeleton } from "@/components/ui/skeleton";
@@ -33,13 +34,21 @@ export default function PatientsPage() {
   const { data: patientsResponse, isLoading } = usePatients();
   const patients = patientsResponse?.data ?? [];
   const createPatient = useCreatePatient();
+  const { data: branches = [] } = useBranches();
   const { data: records = [] } = useRecords();
   const { data: opticalOrders = [] } = useLensOrders();
+  const [selectedBranchId, setSelectedBranchId] = React.useState("");
 
   const [isRegisterOpen, setIsRegisterOpen] = React.useState(false);
   const [form, setForm] = React.useState({ firstName: "", lastName: "", phone: "", dateOfBirth: "", gender: "female" as "male" | "female" | "other" });
   const [query, setQuery] = React.useState("");
   const [status, setStatus] = React.useState<"All" | string>("All");
+
+  React.useEffect(() => {
+    if (branches.length > 0 && !selectedBranchId) {
+      setSelectedBranchId(branches[0].id);
+    }
+  }, [branches, selectedBranchId]);
 
   const activeCount = patients.filter((p: any) => p.status === "Active").length;
   const newCount = patients.filter((p: any) => p.status === "New").length;
@@ -74,6 +83,10 @@ export default function PatientsPage() {
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.firstName.trim() || !form.lastName.trim() || !form.phone.trim()) return;
+    if (!user?.clinicId) return;
+    if (!selectedBranchId) {
+      return;
+    }
 
     createPatient.mutate({
       firstName: form.firstName.trim(),
@@ -81,8 +94,8 @@ export default function PatientsPage() {
       phone: form.phone.trim(),
       dateOfBirth: form.dateOfBirth || undefined,
       gender: form.gender,
-      clinicId: user?.clinicId || "",
-      branchId: user?.clinicId || "", // Using clinicId as fallback
+      clinicId: user.clinicId,
+      branchId: selectedBranchId,
     }, {
       onSuccess: () => {
         setIsRegisterOpen(false);
@@ -138,9 +151,9 @@ export default function PatientsPage() {
           <p className="text-xs sm:text-sm text-slate-500">Showing {filteredPatients.length} record(s)</p>
         </CardHeader>
         <CardContent>
-          <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-3">
-            <div className="md:col-span-2">
-              <label className="text-sm font-medium text-slate-700">Search</label>
+          <div className="mb-4 flex flex-col gap-3 md:grid md:grid-cols-[minmax(0,2fr)_minmax(200px,1fr)] md:items-end">
+            <div className="w-full">
+              <label className="block text-sm font-medium text-slate-700">Search</label>
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
@@ -148,8 +161,8 @@ export default function PatientsPage() {
                 placeholder="Search by name, phone, or patient ID..."
               />
             </div>
-            <div>
-              <label className="text-sm font-medium text-slate-700">Status</label>
+            <div className="w-full">
+              <label className="block text-sm font-medium text-slate-700">Status</label>
               <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value)}

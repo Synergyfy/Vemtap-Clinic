@@ -8,27 +8,32 @@ import {
   Wallet, Headphones, Settings2, Bell, Search, 
   Menu, X, User, Database, Eye, Package, LogOut,
   UserCog, Building2, BarChart3, ShoppingCart,
-  ShieldCheck, TrendingUp, FileText
+  ShieldCheck, TrendingUp, FileText, Activity, ArrowLeftRight, Receipt
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { Modal } from "@/components/ui/modal";
 import { BottomNav } from "@/components/layout/bottom-nav";
+import { NotificationBell } from "@/components/layout/notification-bell";
 
 const sidebarLinks = [
   { name: "Dashboard", href: "/clinic/dashboard", icon: LayoutDashboard },
   { name: "Patients", href: "/clinic/patients", icon: Users },
   { name: "Appointments", href: "/clinic/appointments", icon: Calendar },
   { name: "Queue Management", href: "/clinic/queue", icon: Clock },
+  { name: "Surgery", href: "/clinic/surgery", icon: Activity },
   { name: "Optical Orders", href: "/clinic/optical", icon: Eye },
   { name: "Pharmacy", href: "/clinic/pharmacy", icon: Package },
   { name: "POS Products", href: "/clinic/products", icon: ShoppingCart },
   { name: "Finance", href: "/clinic/finance", icon: Wallet },
+  { name: "Debtors & Receivables", href: "/clinic/debtors", icon: Receipt },
   { name: "HMO Management", href: "/clinic/hmo", icon: Database },
   { name: "HMO Claims", href: "/clinic/hmo-advanced", icon: ShieldCheck },
   { name: "Staff Management", href: "/clinic/staff", icon: UserCog },
   { name: "Branch Management", href: "/clinic/branches", icon: Building2 },
+  { name: "Inventory Transfers", href: "/clinic/inventory-transfers", icon: ArrowLeftRight },
   { name: "Reports & Analytics", href: "/clinic/reports", icon: BarChart3 },
+  { name: "Clinical Reporting", href: "/clinic/clinical-reporting", icon: FileText },
   { name: "Support", href: "/clinic/support", icon: Headphones },
   { name: "Settings", href: "/clinic/settings", icon: Settings2 },
 ];
@@ -132,17 +137,16 @@ export default function ClinicLayout({ children }: { children: React.ReactNode }
       </aside>
 
       <main className="flex-1 min-w-0 flex flex-col h-full overflow-hidden">
-        <header className="h-20 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0 z-40">
+        <header className="h-16 border-b border-slate-200 bg-white/90 backdrop-blur-sm flex items-center justify-between px-3 sm:h-20 sm:px-6 shrink-0 z-40">
           <button onClick={() => setIsSidebarOpen(true)} className="lg:hidden p-2 hover:bg-slate-100 rounded-xl">
             <Menu size={24} className="text-slate-700" />
           </button>
           <div className="flex-1" />
-          <button className="relative p-2 hover:bg-slate-100 rounded-xl" aria-label="Notifications">
-            <Bell size={20} className="text-slate-500" />
-          </button>
+          <NotificationBell accentClass="bg-sky-500" viewAllHref="/clinic/settings" />
+
           <button
             onClick={() => setIsLogoutOpen(true)}
-            className="ml-2 inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            className="ml-2 inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-2.5 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 sm:px-3"
             aria-label="Log out"
           >
             <LogOut size={16} className="text-slate-500" />
@@ -150,7 +154,7 @@ export default function ClinicLayout({ children }: { children: React.ReactNode }
           </button>
         </header>
 
-        <div className="flex-1 overflow-y-auto p-4 md:p-8 pb-20 md:pb-8">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-4 sm:px-5 md:px-8 md:py-6 pb-20 md:pb-8">
           {children}
         </div>
       </main>
@@ -160,7 +164,12 @@ export default function ClinicLayout({ children }: { children: React.ReactNode }
           { label: "Home", href: "/clinic/dashboard", icon: LayoutDashboard },
           { label: "Patients", href: "/clinic/patients", icon: Users },
           { label: "Queue", href: "/clinic/queue", icon: Clock },
+        ]}
+        moreItems={[
           { label: "Appts", href: "/clinic/appointments", icon: Calendar },
+          { label: "Optical", href: "/clinic/optical", icon: Eye },
+          { label: "Finance", href: "/clinic/finance", icon: Wallet },
+          { label: "Settings", href: "/clinic/settings", icon: Settings2 },
         ]}
         activeColor="text-sky-600"
       />

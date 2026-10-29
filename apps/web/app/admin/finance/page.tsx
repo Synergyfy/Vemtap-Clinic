@@ -159,12 +159,12 @@ export default function FinanceDashboardPage() {
 
           {/* Affiliate & Commission Tracking Section */}
           <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
-            <div className="p-8 border-b border-slate-50 flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-bold text-brand-navy">Affiliate & Commission Tracking</h2>
-                <p className="text-xs text-slate-500 font-medium">Manage partner referrals and platform earnings.</p>
+            <div className="flex flex-col gap-3 border-b border-slate-50 p-4 sm:p-6 md:flex-row md:items-center md:justify-between">
+              <div className="min-w-0">
+                <h2 className="text-lg font-bold text-brand-navy sm:text-xl">Affiliate & Commission Tracking</h2>
+                <p className="mt-1 text-xs font-medium text-slate-500">Manage partner referrals and platform earnings.</p>
               </div>
-              <Button variant="outline" size="sm" className="text-xs font-bold">Manage Affiliates</Button>
+              <Button variant="outline" size="sm" className="shrink-0 self-start text-xs font-bold md:self-auto">Manage Affiliates</Button>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left">

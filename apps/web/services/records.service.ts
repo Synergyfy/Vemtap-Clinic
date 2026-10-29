@@ -1,6 +1,25 @@
 import { api } from '@/lib/api';
 
 // ── Medical Records ──
+export interface EyeTest {
+  id?: string;
+  rightEyeSphere?: string;
+  leftEyeSphere?: string;
+  rightEyeCylinder?: string;
+  leftEyeCylinder?: string;
+  rightEyeAxis?: string;
+  leftEyeAxis?: string;
+  rightEyeAdd?: string;
+  leftEyeAdd?: string;
+  rightEyePupil?: string;
+  leftEyePupil?: string;
+  rightEyeIOP?: string;
+  leftEyeIOP?: string;
+  diagnosis?: string;
+  notes?: string;
+  medicalRecordId?: string;
+}
+
 export interface MedicalRecord {
   id: string;
   patientId: string;
@@ -27,7 +46,7 @@ export interface MedicalRecord {
     oxygenSaturation: number;
     bloodGroup: string;
   };
-  eyeTests?: any[];
+  eyeTests?: EyeTest[];
   prescriptions?: Prescription[];
   createdAt: string;
   updatedAt: string;
@@ -50,7 +69,7 @@ export interface Prescription {
 export interface CreateRecordData {
   patientId: string;
   staffId?: string;
-  branchId: string;
+  branchId?: string;
   clinicId: string;
   chiefComplaint?: string;
   historyOfPresentIllness?: string;
@@ -59,7 +78,29 @@ export interface CreateRecordData {
   treatmentPlan?: string;
   notes?: string;
   vitals?: Partial<MedicalRecord['vitals']>;
+  eyeTest?: Partial<EyeTest>;
 }
+
+const normalizeRecordPayload = (data: CreateRecordData): CreateRecordData => {
+  const next = { ...data };
+  if (!next.branchId && next.clinicId) {
+    next.branchId = next.clinicId;
+  }
+
+  if (next.vitals) {
+    next.vitals = Object.fromEntries(
+      Object.entries(next.vitals).filter(([, value]) => value !== undefined && value !== null && value !== '')
+    ) as Partial<MedicalRecord['vitals']>;
+  }
+
+  if (next.eyeTest) {
+    next.eyeTest = Object.fromEntries(
+      Object.entries(next.eyeTest).filter(([, value]) => value !== undefined && value !== null && value !== '')
+    ) as Partial<EyeTest>;
+  }
+
+  return next;
+};
 
 export interface CreatePrescriptionData {
   medicalRecordId: string;
@@ -91,11 +132,13 @@ export const recordsService = {
     return res.data;
   },
   create: async (data: CreateRecordData): Promise<MedicalRecord> => {
-    const res = await api.post('/records', data);
+    const normalized = normalizeRecordPayload(data);
+    const res = await api.post('/records', normalized);
     return res.data;
   },
   update: async (id: string, data: Partial<CreateRecordData>): Promise<MedicalRecord> => {
-    const res = await api.put(`/records/${id}`, data);
+    const normalized = normalizeRecordPayload(data as CreateRecordData);
+    const res = await api.put(`/records/${id}`, normalized);
     return res.data;
   },
 };
