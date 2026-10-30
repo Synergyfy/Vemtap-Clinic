@@ -114,12 +114,10 @@ export default function BillingPage() {
   };
 
   const handleCollectPayment = () => {
-    if (!createdInvoiceId && invoiceStatus === "Draft") {
-      // Generate first, then pay
-      handleGenerateInvoice();
+    if (!selectedPatient || selectedServices.length === 0) {
+      showToast("Select a patient and add at least one service first");
       return;
     }
-    if (!createdInvoiceId) return;
 
     const methodMap: Record<string, "cash" | "card" | "transfer" | "hmo"> = {
       Cash: "cash",
@@ -128,18 +126,45 @@ export default function BillingPage() {
       HMO: "hmo",
     };
 
-    makePaymentMut.mutate({
-      amount: invoiceTotal,
-      paymentMethod: methodMap[paymentMethod] || "cash",
-      invoiceId: createdInvoiceId,
-    }, {
-      onSuccess: () => {
-        setInvoiceStatus("Paid");
-        setShowCollect(false);
-        showToast(`Payment collected via ${paymentMethod}`);
-      },
-      onError: () => showToast("Failed to record payment"),
-    });
+    const recordPayment = (invoiceId: string) => {
+      makePaymentMut.mutate({
+        amount: invoiceTotal,
+        paymentMethod: methodMap[paymentMethod] || "cash",
+        invoiceId,
+      }, {
+        onSuccess: () => {
+          setInvoiceStatus("Paid");
+          setShowCollect(false);
+          showToast(`Payment collected via ${paymentMethod}`);
+        },
+        onError: () => showToast("Failed to record payment"),
+      });
+    };
+
+    if (!createdInvoiceId || invoiceStatus === "Draft") {
+      const invoiceNum = `INV-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 9999)).padStart(4, "0")}`;
+      const items = JSON.stringify(selectedServices.map((s) => ({ item: s.name, amount: s.amount })));
+
+      createInvoiceMut.mutate({
+        invoiceNumber: invoiceNum,
+        totalAmount: invoiceTotal,
+        items,
+        patientId: selectedPatient.id,
+        branchId: user?.clinicId ?? "",
+      }, {
+        onSuccess: (invoice) => {
+          setReceiptNumber(invoice.invoiceNumber);
+          setCreatedInvoiceId(invoice.id);
+          setInvoiceStatus("Generated");
+          setShowCollect(false);
+          recordPayment(invoice.id);
+        },
+        onError: () => showToast("Failed to generate invoice"),
+      });
+      return;
+    }
+
+    recordPayment(createdInvoiceId);
   };
 
   const paymentIcons: Record<string, typeof Banknote> = {

@@ -13,6 +13,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Modal } from "@/components/ui/modal";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { NotificationBell } from "@/components/layout/notification-bell";
+import { useAuth } from "@/lib/auth-context";
 
 const sidebarLinks = [
   { name: "Dashboard", href: "/nurse/dashboard", icon: LayoutDashboard },
@@ -31,6 +32,10 @@ export default function NurseLayout({ children }: { children: React.ReactNode })
   const [isLogoutOpen, setIsLogoutOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
+  const { user } = useAuth();
+  const displayName = user ? [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email || "" : "";
+  const roleLabel = user?.roles?.[0] ? user.roles[0].replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase()) : "";
+  const initials = displayName.split(" ").filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase() || "").join("") || "U";
 
   React.useEffect(() => {
     setIsSidebarOpen(false);
@@ -113,11 +118,11 @@ export default function NurseLayout({ children }: { children: React.ReactNode })
           <div className="p-4 border-t border-white/10 shrink-0">
             <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5">
               <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-cyan-400 font-bold">
-                NR
+                {initials}
               </div>
               <div>
-                <p className="text-sm font-bold">Nurse R. Okeke</p>
-                <p className="text-[10px] text-white/50">Senior Nursing Officer</p>
+                <p className="text-sm font-bold">{displayName}</p>
+                <p className="text-[10px] text-white/50">{roleLabel}</p>
               </div>
             </div>
           </div>

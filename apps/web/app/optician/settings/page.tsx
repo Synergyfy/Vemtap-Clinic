@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Modal } from "@/components/ui/modal";
 import { Settings2, Bell, Shield, User, Globe, Moon, PackageSearch, CheckCircle2, Eye, EyeOff } from "lucide-react";
 import { PageHeader } from "@/app/clinic/_components/page-header";
+import { useAuth } from "@/lib/auth-context";
 
 type ModalKey = "profile" | "notifications" | "lab" | "security" | "display" | "regional" | null;
 
@@ -21,11 +22,22 @@ const settingsSections = [
 export default function OpticianSettings() {
   const [modal, setModal] = useState<ModalKey>(null);
   const [toast, setToast] = useState("");
+  const { user } = useAuth();
 
-  const [profileName, setProfileName] = useState("Opt. S. Danladi");
-  const [profileEmail, setProfileEmail] = useState("s.danladi@vemtap.com");
-  const [profilePhone, setProfilePhone] = useState("+234 800 OPTIC");
-  const [licenseNo, setLicenseNo] = useState("OD-2024-0082");
+  const liveDisplayName = user ? [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email || "" : "";
+  const liveRoleLabel = user?.roles?.[0] ? user.roles[0].replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase()) : "";
+
+  const [profileName, setProfileName] = useState(liveDisplayName);
+  const [profileEmail, setProfileEmail] = useState(user?.email || "");
+  const [profilePhone, setProfilePhone] = useState(user?.phone || "");
+  const [licenseNo, setLicenseNo] = useState(user?.userId || "");
+
+  useEffect(() => {
+    setProfileName(liveDisplayName);
+    setProfileEmail(user?.email || "");
+    setProfilePhone(user?.phone || "");
+    setLicenseNo(user?.userId || "");
+  }, [liveDisplayName, user]);
 
   const [notifOrders, setNotifOrders] = useState(true);
   const [notifStock, setNotifStock] = useState(true);
@@ -85,11 +97,11 @@ export default function OpticianSettings() {
         </CardHeader>
         <CardContent className="p-4 sm:p-6 space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div className="rounded-xl border border-slate-200 p-4"><p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Staff ID</p><p className="mt-1 font-bold text-slate-900">STAFF-002</p></div>
-            <div className="rounded-xl border border-slate-200 p-4"><p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Role</p><p className="mt-1 font-bold text-slate-900">Chief Optometrist</p></div>
-            <div className="rounded-xl border border-slate-200 p-4"><p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Department</p><p className="mt-1 font-bold text-slate-900">Optical / Lab</p></div>
-            <div className="rounded-xl border border-slate-200 p-4"><p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Branch</p><p className="mt-1 font-bold text-slate-900">Vemtap Main</p></div>
-            <div className="rounded-xl border border-slate-200 p-4"><p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Email</p><p className="mt-1 font-bold text-slate-900">s.danladi@vemtap.com</p></div>
+            <div className="rounded-xl border border-slate-200 p-4"><p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Staff ID</p><p className="mt-1 font-bold text-slate-900">{user?.userId || ""}</p></div>
+            <div className="rounded-xl border border-slate-200 p-4"><p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Role</p><p className="mt-1 font-bold text-slate-900">{liveRoleLabel || ""}</p></div>
+            <div className="rounded-xl border border-slate-200 p-4"><p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Department</p><p className="mt-1 font-bold text-slate-900">{user?.clinicId ? "Optical / Lab" : ""}</p></div>
+            <div className="rounded-xl border border-slate-200 p-4"><p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Branch</p><p className="mt-1 font-bold text-slate-900">{user?.clinicId || ""}</p></div>
+            <div className="rounded-xl border border-slate-200 p-4"><p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Email</p><p className="mt-1 font-bold text-slate-900">{profileEmail}</p></div>
             <div className="rounded-xl border border-slate-200 p-4"><p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Status</p><div className="mt-1"><Badge className="bg-emerald-600 text-white">Active</Badge></div></div>
           </div>
         </CardContent>

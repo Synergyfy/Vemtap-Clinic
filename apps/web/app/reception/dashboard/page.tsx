@@ -122,7 +122,7 @@ export default function ReceptionDashboard() {
       const parts = regName.trim().split(" ");
       const firstName = parts[0];
       const lastName = parts.slice(1).join(" ") || "Patient";
-      const targetClinic = clinicId || "clinic-default";
+      const targetClinic = clinicId || "";
       const newPatient = await createPatientMut.mutateAsync({
         firstName,
         lastName,
@@ -156,7 +156,7 @@ export default function ReceptionDashboard() {
       const parts = walkName.trim().split(" ");
       const firstName = parts[0];
       const lastName = parts.slice(1).join(" ") || "Patient";
-      const targetClinic = clinicId || "clinic-default";
+      const targetClinic = clinicId || "";
       const newPatient = await createPatientMut.mutateAsync({
         firstName,
         lastName,

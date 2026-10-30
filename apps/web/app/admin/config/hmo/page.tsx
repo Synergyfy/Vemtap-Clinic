@@ -24,7 +24,7 @@ import {
 
 export default function HMODatabasePage() {
   const { user } = useAuth();
-  const clinicId = user?.clinicId || "clinic-default";
+  const clinicId = user?.clinicId || "";
 
   // Live queries
   const { data: hmos = [], isLoading: isLoadingHmos, refetch: refetchHmos } = useHmoList();

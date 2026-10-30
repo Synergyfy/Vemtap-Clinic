@@ -93,6 +93,110 @@ function normalizeFileUpload(file: any): FileUpload {
   };
 }
 
+const CLOUDINARY_CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || "";
+const CLOUDINARY_UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || "";
+
+export interface CloudinaryUploadResult {
+  url: string;
+  secureUrl: string;
+  publicId: string;
+  resourceType: string;
+  format?: string;
+  width?: number;
+  height?: number;
+  bytes?: number;
+  originalName: string;
+  mimeType: string;
+}
+
+export async function uploadFileToCloudinary(
+  file: File,
+  opts?: { folder?: string; tags?: string[]; resourceType?: "auto" | "image" | "video" | "raw" },
+): Promise<CloudinaryUploadResult> {
+  if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) {
+    throw new Error("Cloudinary is not configured. Set NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME and NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET.");
+  }
+
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+  formData.append("folder", opts?.folder || "vemtap");
+
+  if (opts?.tags?.length) {
+    formData.append("tags", opts.tags.join(","));
+  }
+
+  if (opts?.resourceType) {
+    formData.append("resource_type", opts.resourceType);
+  }
+
+  const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/auto/upload`, {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(text || "Cloudinary upload failed");
+  }
+
+  const data = await response.json();
+
+  return {
+    url: data.secure_url || data.url,
+    secureUrl: data.secure_url || data.url,
+    publicId: data.public_id,
+    resourceType: data.resource_type || opts?.resourceType || "auto",
+    format: data.format,
+    width: data.width,
+    height: data.height,
+    bytes: data.bytes,
+    originalName: file.name,
+    mimeType: file.type || "application/octet-stream",
+  };
+}
+
+export async function uploadFileAndCreateRecord(
+  file: File,
+  dto: {
+    clinicId: string;
+    patientId?: string;
+    relatedEntityId?: string;
+    relatedEntityType?: string;
+    category?: FileCategory | string;
+  },
+): Promise<FileUpload> {
+  const cloudResult = await uploadFileToCloudinary(file, {
+    folder: `vemtap/${dto.patientId || dto.clinicId || "general"}`,
+    tags: ["vemtap", dto.patientId || "general"],
+    resourceType: file.type.startsWith("image/") ? "image" : file.type.startsWith("video/") ? "video" : "auto",
+  });
+
+  const record = await createFileUpload({
+    originalName: cloudResult.originalName,
+    storedName: cloudResult.publicId,
+    mimeType: cloudResult.mimeType,
+    fileSize: cloudResult.bytes || file.size,
+    category: dto.category || FileCategory.GENERAL,
+    url: cloudResult.url,
+    patientId: dto.patientId,
+    relatedEntityId: dto.relatedEntityId,
+    relatedEntityType: dto.relatedEntityType,
+    clinicId: dto.clinicId,
+    metadata: {
+      cloudinaryPublicId: cloudResult.publicId,
+      cloudinaryUrl: cloudResult.url,
+      cloudinaryResourceType: cloudResult.resourceType,
+      format: cloudResult.format,
+      width: cloudResult.width,
+      height: cloudResult.height,
+      uploadedVia: "cloudinary",
+    },
+  });
+
+  return record;
+}
+
 /**
  * GET /api/file-upload
  * Lists file uploads filtered by clinic, patient, category, or uploader.

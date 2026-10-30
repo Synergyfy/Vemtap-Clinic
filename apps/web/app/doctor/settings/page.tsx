@@ -1,14 +1,17 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { PageHeader } from "@/app/clinic/_components/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Modal } from "@/components/ui/modal";
 import { Badge } from "@/components/ui/badge";
 import { Settings2, User, Bell, Shield, Globe, CheckCircle2, Eye, EyeOff, Save } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/lib/auth-context";
+import { api } from "@/lib/api";
 
 export default function DoctorSettings() {
+  const { user } = useAuth();
   const [profileOpen, setProfileOpen] = useState(false);
   const [consultOpen, setConsultOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -16,7 +19,41 @@ export default function DoctorSettings() {
   const [langOpen, setLangOpen] = useState(false);
   const [toast, setToast] = useState("");
 
-  const [profile, setProfile] = useState({ name: "Dr. A. Bello", email: "a.bello@vemtap.com", phone: "+234 802 345 6789", license: "MED/OPTH/9876", specialization: "Ophthalmology", bio: "Consultant Ophthalmologist with 12 years of clinical experience specializing in cataract surgery and glaucoma management." });
+  const buildProfileFromUser = (sourceUser = user) => ({
+    name: sourceUser ? [sourceUser.firstName, sourceUser.lastName].filter(Boolean).join(" ") || sourceUser.email || "Doctor" : "Doctor",
+    email: sourceUser?.email ?? "",
+    phone: sourceUser?.phone ?? "",
+    license: "",
+    specialization: sourceUser?.roles?.[0] ? sourceUser.roles[0].replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase()) : "General Medicine",
+    bio: "",
+  });
+
+  const [profile, setProfile] = useState(buildProfileFromUser());
+
+  useEffect(() => {
+    const loadProfile = async () => {
+      if (!user) return;
+
+      try {
+        const response = await api.get("/auth/profile");
+        const profileData = response.data || {};
+
+        setProfile({
+          name: [profileData.firstName, profileData.lastName].filter(Boolean).join(" ") || user.email || "Doctor",
+          email: profileData.email || user.email || "",
+          phone: profileData.phone || user.phone || "",
+          license: profileData.license || "",
+          specialization: profileData.specialization || (user.roles?.[0] ? user.roles[0].replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase()) : "General Medicine"),
+          bio: profileData.bio || "",
+        });
+      } catch {
+        setProfile(buildProfileFromUser(user));
+      }
+    };
+
+    loadProfile();
+  }, [user]);
+
   const [consultDefaults, setConsultDefaults] = useState({ template: "General Consultation", duration: "20", autoSave: true, showVitals: true });
   const [notifs, setNotifs] = useState({ newAppts: true, cancellations: true, followUps: true, messages: false, reports: true });
   const [security, setSecurity] = useState({ currentPw: "", newPw: "", confirmPw: "", twoFactor: false, showPw: false });

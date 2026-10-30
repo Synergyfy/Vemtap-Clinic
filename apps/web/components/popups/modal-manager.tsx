@@ -25,6 +25,7 @@ export const ModalManager = () => {
   const { activeModal, closeModal } = useModals();
   const { user } = useAuth();
   const createInvoiceMut = useCreateInvoice();
+  const currentManagerName = user ? [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email || "Current user" : "Current user";
   const [form, setForm] = React.useState({
     invoiceNumber: "",
     patientId: "",
@@ -259,9 +260,8 @@ export const ModalManager = () => {
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Branch Manager</label>
                 <Tooltip content="Administrator responsible for this branch">
                   <select className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-2.5 outline-none font-bold text-slate-900">
-                    <option>Select Manager</option>
-                    <option>Dr. A. Bello</option>
-                    <option>Dr. E. Nwachukwu</option>
+                    <option value="">Select Manager</option>
+                    <option value={currentManagerName}>{currentManagerName}</option>
                   </select>
                 </Tooltip>
               </div>

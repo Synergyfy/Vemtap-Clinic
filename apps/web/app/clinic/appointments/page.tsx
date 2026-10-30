@@ -114,6 +114,11 @@ export default function AppointmentsPage() {
   const appointments = appointmentsResponse?.data || [];
   const todayAppointments = todayResponse?.appointments || [];
 
+  const doctorName = React.useMemo(
+    () => (user ? [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email || "Doctor" : "Doctor"),
+    [user],
+  );
+
   const [isNewOpen, setIsNewOpen] = React.useState(false);
   const [isRescheduleOpen, setIsRescheduleOpen] = React.useState(false);
   const [rescheduleTargetId, setRescheduleTargetId] = React.useState<string | null>(null);
@@ -125,7 +130,7 @@ export default function AppointmentsPage() {
     dateISO: todayISO,
     startTime: "09:00",
     service: "Consultation",
-    provider: "Dr. A. Bello",
+    provider: doctorName,
     kind: "consultation",
     reason: "",
     type: "consultation",
@@ -160,7 +165,7 @@ export default function AppointmentsPage() {
         dateISO: todayISO,
         startTime: "09:00",
         service: "Consultation",
-        provider: "Dr. A. Bello",
+        provider: doctorName,
         kind: "Regular",
         reason: "",
         type: "consultation",
@@ -823,7 +828,7 @@ export default function AppointmentsPage() {
               value={form.provider}
               onChange={(e) => setForm((p) => ({ ...p, provider: e.target.value }))}
               className="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none focus:border-sky-300 focus:ring-2 focus:ring-sky-100"
-              placeholder="e.g., Dr. A. Bello"
+              placeholder={doctorName || "Doctor name"}
               required
             />
           </div>

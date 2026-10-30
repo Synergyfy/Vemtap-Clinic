@@ -19,7 +19,7 @@ import {
   useCreateFileUpload, 
   useDeleteFileUpload 
 } from "@/hooks/useFileUpload";
-import { FileCategory } from "@/services/file-upload.service";
+import { FileCategory, uploadFileAndCreateRecord } from "@/services/file-upload.service";
 
 const documentTypes = ["Patient form", "HMO card", "Referral letter", "ID card", "Prescription"];
 
@@ -45,21 +45,21 @@ export default function DocumentsPage() {
   const [toast, setToast] = useState("");
 
   const [extractedFields, setExtractedFields] = useState<any[]>([
-    { label: "Patient name", value: "Patient", confidence: "100%" },
-    { label: "Phone number", value: "—", confidence: "100%" },
-    { label: "Gender", value: "—", confidence: "100%" },
-    { label: "HMO provider", value: "Private", confidence: "100%" },
-    { label: "Policy number", value: "N/A", confidence: "100%" },
+    { label: "Patient name", value: "", confidence: "100%" },
+    { label: "Phone number", value: "", confidence: "100%" },
+    { label: "Gender", value: "", confidence: "100%" },
+    { label: "HMO provider", value: "", confidence: "100%" },
+    { label: "Policy number", value: "", confidence: "100%" },
   ]);
 
   React.useEffect(() => {
     if (activePatient) {
       setExtractedFields([
-        { label: "Patient name", value: `${activePatient.firstName} ${activePatient.lastName}`, confidence: "100%" },
-        { label: "Phone number", value: activePatient.phone || "—", confidence: "100%" },
-        { label: "Gender", value: activePatient.gender || "—", confidence: "100%" },
-        { label: "HMO provider", value: activePatient.hmoProvider || "Private", confidence: "100%" },
-        { label: "Policy number", value: activePatient.hmoNumber || "N/A", confidence: "100%" },
+        { label: "Patient name", value: `${activePatient.firstName ?? ""} ${activePatient.lastName ?? ""}`.trim() || "", confidence: "100%" },
+        { label: "Phone number", value: activePatient.phone || "", confidence: "100%" },
+        { label: "Gender", value: activePatient.gender || "", confidence: "100%" },
+        { label: "HMO provider", value: activePatient.hmoProvider || "", confidence: "100%" },
+        { label: "Policy number", value: activePatient.hmoNumber || "", confidence: "100%" },
       ]);
     }
   }, [activePatient]);
@@ -67,6 +67,8 @@ export default function DocumentsPage() {
   // Modals
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [uploadType, setUploadType] = useState("ID card");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [showAttachment, setShowAttachment] = useState<any | null>(null);
   const [activeTab, setActiveTab] = useState<"scan" | "attachments">("scan");
@@ -109,7 +111,7 @@ export default function DocumentsPage() {
       try {
         await createRecordMut.mutateAsync({
           patientId: activePatient.id,
-          clinicId: user?.clinicId || "clinic-default",
+          clinicId: user?.clinicId || "",
           diagnosis: `Scanned ${documentType} documentation`,
           notes: `Document verification completed for ${documentType}`,
         });
@@ -124,26 +126,37 @@ export default function DocumentsPage() {
   };
 
   const handleUpload = async () => {
-    if (activePatient?.id) {
-      try {
-        await createFileUploadMut.mutateAsync({
-          originalName: `${uploadType.replaceAll(" ", "_")}_upload.pdf`,
-          storedName: `${Date.now()}-${uploadType.replaceAll(" ", "_")}.pdf`,
-          mimeType: "application/pdf",
-          fileSize: 940000,
-          category: uploadType === "Prescription" ? FileCategory.PRESCRIPTION : uploadType === "HMO card" ? FileCategory.CLAIM_DOCUMENT : FileCategory.PATIENT_DOCUMENT,
-          patientId: activePatient.id,
-          clinicId: user?.clinicId || "",
-          metadata: { uploadedVia: "reception" },
-        });
-        showToast(`${uploadType} uploaded to live document repository`);
-      } catch {
-        showToast("Failed to upload document");
-      }
-    } else {
+    if (!activePatient?.id) {
       showToast("Please select a patient before uploading");
+      return;
     }
-    setShowUploadModal(false);
+
+    if (!user?.clinicId) {
+      showToast("No active clinic is attached to this session");
+      return;
+    }
+
+    if (!selectedFile) {
+      showToast("Please choose a file to upload");
+      return;
+    }
+
+    setIsUploading(true);
+
+    try {
+      await uploadFileAndCreateRecord(selectedFile, {
+        clinicId: user.clinicId,
+        patientId: activePatient.id,
+        category: uploadType === "Prescription" ? FileCategory.PRESCRIPTION : uploadType === "HMO card" ? FileCategory.CLAIM_DOCUMENT : FileCategory.PATIENT_DOCUMENT,
+      });
+      showToast(`${uploadType} uploaded to Cloudinary and saved to live document repository`);
+      setSelectedFile(null);
+      setShowUploadModal(false);
+    } catch (error: any) {
+      showToast(error?.message || "Failed to upload document to Cloudinary");
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const removeAttachment = async (fileId: string, fileName: string) => {
@@ -234,7 +247,7 @@ export default function DocumentsPage() {
                 <p className="text-[9px] sm:text-xs text-slate-400 font-bold uppercase tracking-widest mt-0.5 truncate">{patientName} &bull; {patientId}</p>
               </div>
               <span className={cn("px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-[8px] sm:text-[10px] font-black uppercase tracking-widest shrink-0", "bg-emerald-100 text-emerald-700")}>
-                {selectedPatient?.gender || "Private"}
+                {selectedPatient?.gender || "Not specified"}
               </span>
             </div>
 
@@ -405,15 +418,24 @@ export default function DocumentsPage() {
           </div>
           <div className="p-6 sm:p-8 rounded-xl sm:rounded-2xl border-2 border-dashed border-slate-100 bg-slate-50 text-center">
             <Upload size={24} className="mx-auto text-slate-400 mb-2" />
-            <p className="text-xs font-bold text-slate-600">Drag & drop or click to browse</p>
+            <label className="block cursor-pointer">
+              <input
+                type="file"
+                accept="image/*,.pdf,.doc,.docx"
+                className="hidden"
+                onChange={(event) => setSelectedFile(event.target.files?.[0] || null)}
+              />
+              <span className="text-xs font-bold text-slate-600">{selectedFile ? selectedFile.name : "Drag & drop or click to browse"}</span>
+            </label>
             <p className="text-[9px] text-slate-400 mt-1">PDF, JPG, PNG — up to 10 MB</p>
           </div>
           <div className="flex flex-col gap-2">
-            <button onClick={handleUpload}
-              className="w-full py-3 sm:py-4 rounded-xl sm:rounded-2xl bg-sky-600 text-white text-[10px] sm:text-xs font-black uppercase tracking-widest hover:bg-sky-700 flex items-center justify-center gap-2">
-              <Upload size={14} /> Upload {uploadType}
+            <button onClick={handleUpload} disabled={isUploading}
+              className="w-full py-3 sm:py-4 rounded-xl sm:rounded-2xl bg-sky-600 text-white text-[10px] sm:text-xs font-black uppercase tracking-widest hover:bg-sky-700 flex items-center justify-center gap-2 disabled:opacity-60">
+              {isUploading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+              {isUploading ? "Uploading..." : `Upload ${uploadType}`}
             </button>
-            <button onClick={() => setShowUploadModal(false)}
+            <button onClick={() => { setShowUploadModal(false); setSelectedFile(null); setIsUploading(false); }}
               className="w-full py-3 sm:py-4 rounded-xl sm:rounded-2xl border border-slate-200 text-slate-600 text-[10px] sm:text-xs font-black uppercase tracking-widest hover:bg-slate-50">Cancel</button>
           </div>
         </div>

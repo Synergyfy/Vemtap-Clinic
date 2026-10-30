@@ -15,6 +15,7 @@ import { patientPortalService } from "@/services/patient-portal.service";
 import { motion, AnimatePresence } from "framer-motion";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { NotificationBell } from "@/components/layout/notification-bell";
+import { useAuth } from "@/lib/auth-context";
 
 const sidebarLinks = [
   { name: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
@@ -31,6 +32,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Default closed on mobile
   const pathname = usePathname();
   const router = useRouter();
+  const { user } = useAuth();
+  const displayName = user ? [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email || "" : "";
+  const displayEmail = user?.email || "";
+  const roleLabel = user?.roles?.[0] ? user.roles[0].replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase()) : "";
+  const initials = displayName.split(" ").filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase() || "").join("") || "U";
 
   // Close sidebar on mobile when navigating
   React.useEffect(() => {
@@ -126,8 +132,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <User size={20} className="text-brand-blue" />
               </div>
               <div className={cn('flex-1 min-w-0 transition-all', !isSidebarOpen && 'lg:hidden')}>
-                <p className="text-sm font-bold truncate">Super Admin</p>
-                <p className="text-[10px] text-white/40 truncate">admin@vemtap.com</p>
+                <p className="text-sm font-bold truncate">{displayName}</p>
+                <p className="text-[10px] text-white/40 truncate">{displayEmail}</p>
               </div>
               <LogOut size={18} className={cn('text-white/40 group-hover:text-red-400 transition-colors shrink-0', !isSidebarOpen && 'lg:hidden')} />
             </button>
@@ -176,11 +182,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             
             <div className="flex items-center gap-3">
               <div className="text-right hidden md:block">
-                <p className="text-sm font-bold text-brand-navy">Vemtap Super</p>
-                <p className="text-[10px] font-bold text-brand-blue uppercase tracking-wider">System Owner</p>
+                <p className="text-sm font-bold text-brand-navy">{displayName}</p>
+                <p className="text-[10px] font-bold text-brand-blue uppercase tracking-wider">{roleLabel}</p>
               </div>
               <div className="w-9 h-9 lg:w-10 lg:h-10 rounded-xl bg-brand-soft-blue flex items-center justify-center text-brand-blue font-black text-xs lg:text-sm border border-brand-blue/10">
-                VS
+                {initials}
               </div>
             </div>
           </div>

@@ -49,8 +49,14 @@ export default function PharmacySupport() {
   const [ticketPriority, setTicketPriority] = useState<"low" | "medium" | "high" | "critical">("medium");
   const [ticketDesc, setTicketDesc] = useState("");
   const [ticketSent, setTicketSent] = useState(false);
+  const [toast, setToast] = useState("");
 
   const [detailTicket, setDetailTicket] = useState<string | null>(null);
+
+  const showToast = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(""), 3000);
+  };
 
   const filteredFaqs = faqs.filter(
     (f) => f.q.toLowerCase().includes(searchQuery.toLowerCase()) || f.a.toLowerCase().includes(searchQuery.toLowerCase())
@@ -59,12 +65,17 @@ export default function PharmacySupport() {
   const sendTicket = async () => {
     if (!ticketSubject.trim() || !ticketDesc.trim()) return;
     try {
+      if (!user?.clinicId) {
+        showToast("No active clinic is attached to this session");
+        return;
+      }
+
       await createTicketMut.mutateAsync({
         subject: ticketSubject.trim(),
         description: ticketDesc.trim(),
         priority: ticketPriority,
         type: "support",
-        clinicId: user?.clinicId || "clinic-default",
+        clinicId: user.clinicId,
       });
       setTicketSent(true);
       setTimeout(() => { 

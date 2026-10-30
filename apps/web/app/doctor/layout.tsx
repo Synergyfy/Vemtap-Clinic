@@ -13,6 +13,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Modal } from "@/components/ui/modal";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { NotificationBell } from "@/components/layout/notification-bell";
+import { useAuth } from "@/lib/auth-context";
 
 const sidebarLinks = [
   { name: "Dashboard", href: "/doctor/dashboard", icon: LayoutDashboard },
@@ -30,6 +31,10 @@ export default function DoctorLayout({ children }: { children: React.ReactNode }
   const [isLogoutOpen, setIsLogoutOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
+  const { user } = useAuth();
+
+  const doctorDisplayName = user ? [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email || "Doctor" : "Doctor";
+  const doctorRoleLabel = user?.roles?.[0] ? user.roles[0].replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase()) : "Doctor";
 
   React.useEffect(() => {
     setIsSidebarOpen(false);
@@ -115,8 +120,8 @@ export default function DoctorLayout({ children }: { children: React.ReactNode }
                 DR
               </div>
               <div>
-                <p className="text-sm font-bold">Dr. A. Bello</p>
-                <p className="text-[10px] text-white/50">Consultant Ophthalmologist</p>
+                <p className="text-sm font-bold">{doctorDisplayName}</p>
+                <p className="text-[10px] text-white/50">{doctorRoleLabel}</p>
               </div>
             </div>
           </div>

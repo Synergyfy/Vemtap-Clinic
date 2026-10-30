@@ -1,14 +1,18 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Modal } from "@/components/ui/modal";
 import { User, Bell, Shield, Palette, Save, LogOut, ChevronRight, CheckCircle2, Eye, EyeOff } from "lucide-react";
 import { PageHeader } from "@/app/clinic/_components/page-header";
+import { useAuth } from "@/lib/auth-context";
 
 export default function PharmacySettings() {
   const [toast, setToast] = useState("");
+  const { user } = useAuth();
+  const liveDisplayName = user ? [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email || "" : "";
+  const liveRoleLabel = user?.roles?.[0] ? user.roles[0].replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase()) : "";
 
   // Notification toggles
   const [lowStockAlert, setLowStockAlert] = useState(true);
@@ -19,9 +23,15 @@ export default function PharmacySettings() {
 
   // Profile state
   const [profileModal, setProfileModal] = useState(false);
-  const [profName, setProfName] = useState("Pharm. Peter Okafor");
-  const [profEmail, setProfEmail] = useState("peter.okafor@vemtap.com");
-  const [profPhone, setProfPhone] = useState("+234 800 123 4567");
+  const [profName, setProfName] = useState(liveDisplayName);
+  const [profEmail, setProfEmail] = useState(user?.email || "");
+  const [profPhone, setProfPhone] = useState(user?.phone || "");
+
+  useEffect(() => {
+    setProfName(liveDisplayName);
+    setProfEmail(user?.email || "");
+    setProfPhone(user?.phone || "");
+  }, [liveDisplayName, user]);
 
   // Security modals
   const [passwordModal, setPasswordModal] = useState(false);
@@ -69,14 +79,14 @@ export default function PharmacySettings() {
         <Card className="hover:border-emerald-200 transition-all cursor-pointer" onClick={() => setProfileModal(true)}>
           <CardHeader className="flex-row items-center gap-3 px-4 sm:px-6 py-3 sm:py-4">
             <div className="p-2 rounded-lg bg-emerald-50 text-emerald-700"><User size={18} /></div>
-            <div><CardTitle className="text-base">Profile</CardTitle><p className="text-xs text-slate-500">{profName} &bull; PharmD, MPH</p></div>
+            <div><CardTitle className="text-base">Profile</CardTitle><p className="text-xs text-slate-500">{profName} &bull; {liveRoleLabel}</p></div>
           </CardHeader>
           <CardContent className="px-4 sm:px-6 pb-4 sm:pb-6 space-y-1">
-            <div className="flex items-center justify-between py-2 border-b border-slate-50"><span className="text-sm text-slate-700">Staff ID</span><span className="text-sm text-slate-900">PH-2024-001</span></div>
-            <div className="flex items-center justify-between py-2 border-b border-slate-50"><span className="text-sm text-slate-700">Email</span><span className="text-sm text-slate-900">{profEmail}</span></div>
-            <div className="flex items-center justify-between py-2 border-b border-slate-50"><span className="text-sm text-slate-700">Phone</span><span className="text-sm text-slate-900">{profPhone}</span></div>
-            <div className="flex items-center justify-between py-2 border-b border-slate-50"><span className="text-sm text-slate-700">License No.</span><span className="text-sm text-slate-900">PCN-0421-9876</span></div>
-            <div className="flex items-center justify-between py-2"><span className="text-sm text-slate-700">Role</span><span className="text-sm text-slate-900">Senior Pharmacist</span></div>
+            <div className="flex items-center justify-between py-2 border-b border-slate-50"><span className="text-sm text-slate-700">Staff ID</span><span className="text-sm text-slate-900">{user?.userId || ""}</span></div>
+            <div className="flex items-center justify-between py-2 border-b border-slate-50"><span className="text-sm text-slate-700">Email</span><span className="text-sm text-slate-900">{profEmail || ""}</span></div>
+            <div className="flex items-center justify-between py-2 border-b border-slate-50"><span className="text-sm text-slate-700">Phone</span><span className="text-sm text-slate-900">{profPhone || "Not provided"}</span></div>
+            <div className="flex items-center justify-between py-2 border-b border-slate-50"><span className="text-sm text-slate-700">License No.</span><span className="text-sm text-slate-900">{user?.userId || ""}</span></div>
+            <div className="flex items-center justify-between py-2"><span className="text-sm text-slate-700">Role</span><span className="text-sm text-slate-900">{liveRoleLabel}</span></div>
           </CardContent>
         </Card>
 

@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
+import { useAuth } from "@/lib/auth-context";
 import { 
   Building2, Users, CreditCard, Activity, 
   AlertCircle, Ticket, ArrowUpRight, ArrowDownRight,
@@ -20,6 +21,9 @@ const formatNGN = (value: number) =>
 export default function AdminDashboard() {
   const router = useRouter();
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
+  const { user } = useAuth();
+  const adminName = user ? [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email || "Admin" : "Admin";
+  const adminRole = user?.roles?.[0] ? user.roles[0].replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase()) : "Admin";
 
   // Live Query from backend API
   const { data: overview, isLoading, isError, refetch } = usePlatformOverview();
@@ -77,7 +81,7 @@ export default function AdminDashboard() {
         <div>
           <h1 className="text-2xl lg:text-3xl font-bold text-brand-navy">Platform Overview</h1>
           <p className="text-sm lg:text-base text-slate-500 mt-1">
-            Welcome back, Super Admin. Live multi-clinic metrics and infrastructure monitoring.
+            Welcome back, {adminName}. {adminRole} overview with live multi-clinic metrics and infrastructure monitoring.
           </p>
         </div>
         <div className="flex items-center gap-2 sm:gap-3">

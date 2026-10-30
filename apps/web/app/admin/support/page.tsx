@@ -48,9 +48,14 @@ export default function SupportDashboardPage() {
     if (!newTicket.subject.trim() || !newTicket.description.trim()) return;
 
     try {
+      if (!user?.clinicId) {
+        console.error("No active clinic is attached to this session");
+        return;
+      }
+
       await createMutation.mutateAsync({
         ...newTicket,
-        clinicId: user?.clinicId || "clinic-default",
+        clinicId: user.clinicId,
       });
       setIsCreateModalOpen(false);
       setNewTicket({

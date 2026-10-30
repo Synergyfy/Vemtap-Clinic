@@ -29,7 +29,7 @@ function formatNGN(amount: number) {
 
 export default function FramesCatalogPage() {
   const { user } = useAuth();
-  const clinicId = user?.clinicId || "clinic-default";
+  const clinicId = user?.clinicId || "";
 
   const { data: items = [], isLoading } = useOpticalInventory("frame");
   const createItemMutation = useCreateOpticalItem();

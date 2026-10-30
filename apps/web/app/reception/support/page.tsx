@@ -77,12 +77,17 @@ export default function SupportPage() {
   const createTicket = async () => {
     if (!newTicket.subject.trim()) return;
     try {
+      if (!user?.clinicId) {
+        showToast("No active clinic is attached to this session");
+        return;
+      }
+
       await createTicketMut.mutateAsync({
         subject: newTicket.subject,
         description: newTicket.description || newTicket.subject,
         type: newTicket.type,
         priority: newTicket.priority,
-        clinicId: user?.clinicId || "clinic-default",
+        clinicId: user.clinicId,
       });
       setNewTicket({ subject: "", description: "", type: "support", priority: "medium" });
       setShowNewTicket(false);
