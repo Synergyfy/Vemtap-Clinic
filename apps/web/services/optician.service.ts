@@ -4,12 +4,20 @@ export interface OpticalInventoryItem {
   id: string;
   name: string;
   brand?: string;
+  model?: string;
+  sku?: string;
   category: string;
-  type: string;
+  type?: string;
   frameSize?: string;
   lensType?: string;
+  material?: string;
+  color?: string;
+  costPrice: number;
+  sellingPrice: number;
   unitPrice: number;
   quantityInStock: number;
+  quantityOnHand?: number;
+  minQuantity?: number;
   reorderLevel?: number;
   isActive?: boolean;
   clinicId: string;
@@ -63,6 +71,7 @@ export interface ProductionItem {
   lensOrder?: LensOrder;
   inventoryItemId?: string;
   inventoryItem?: { id?: string; name?: string };
+  technicianId?: string;
   stage: string;
   notes?: string;
   startedAt?: string;
@@ -79,8 +88,10 @@ function normalizeList<T>(payload: unknown): T[] {
 }
 
 export const opticalInventoryService = {
-  getItems: async (clinicId: string): Promise<OpticalInventoryItem[]> => {
-    const res = await api.get('/optical/items', { params: { clinicId } });
+  getItems: async (clinicId: string, type?: string): Promise<OpticalInventoryItem[]> => {
+    const params: Record<string, string> = { clinicId };
+    if (type) params.type = type;
+    const res = await api.get('/optical/items', { params });
     return normalizeList<OpticalInventoryItem>(res.data);
   },
   getItem: async (id: string): Promise<OpticalInventoryItem> => {

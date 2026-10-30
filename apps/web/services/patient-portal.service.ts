@@ -1,3 +1,4 @@
+import axios from 'axios';
 import { api } from '@/lib/api';
 import { useAuthState } from '@/lib/auth-state';
 
@@ -197,8 +198,22 @@ export const patientPortalService = {
   },
 
   async logout(): Promise<void> {
-    await api.post('/patient-portal/logout');
-    useAuthState.getState().clearAuth();
+    const token = useAuthState.getState().accessToken;
+
+    if (!token) {
+      useAuthState.getState().clearAuth();
+      return;
+    }
+
+    try {
+      await api.post('/patient-portal/logout');
+    } catch (error) {
+      if (!axios.isAxiosError(error) || error.response?.status !== 401) {
+        throw error;
+      }
+    } finally {
+      useAuthState.getState().clearAuth();
+    }
   },
 
   async getProfile(): Promise<PatientProfile> {

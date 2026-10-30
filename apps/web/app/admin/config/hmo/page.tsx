@@ -1,80 +1,112 @@
 "use client";
 
 import React, { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { 
   Search, Plus, Filter, MoreVertical, 
   ShieldCheck, Globe, Building2, CheckCircle2,
   Clock, AlertCircle, ArrowLeft, Download,
   ExternalLink, Trash2, Edit3, Activity,
-  Info, Layers, ListTodo, CreditCard, Settings2,
-  ChevronRight, Layout, Phone, Mail, MapPin, X
+  Info, Layers, Settings2, ChevronRight, Phone, Mail, Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { Modal } from "@/components/ui/modal";
-
-// --- Mock Data ---
-const initialHmos = [
-  { 
-    id: "HMO-001", 
-    name: "Reliance HMO", 
-    type: "Private", 
-    clinics: 242, 
-    status: "Active", 
-    country: "Nigeria",
-    email: "providers@reliancehealth.com",
-    phone: "+234 1 700 7333",
-    website: "https://reliancehealth.com"
-  },
-  { id: "HMO-002", name: "AXA Mansard", type: "Private", clinics: 186, status: "Active", country: "Nigeria" },
-  { id: "HMO-003", name: "Hygeia HMO", type: "Private", clinics: 154, status: "Active", country: "Nigeria" },
-  { id: "HMO-004", name: "NHIA", type: "Government", clinics: 412, status: "Active", country: "Nigeria" },
-  { id: "HMO-005", name: "Leadway Health", type: "Private", clinics: 94, status: "Active", country: "Nigeria" },
-  { id: "HMO-006", name: "Total Health", type: "Private", clinics: 12, status: "Maintenance", country: "Ghana" },
-];
-
-const initialPlans = [
-  { name: "HyBasic", code: "HYB-01", coverage: "100%", limit: "₦50k/yr", status: "Active" },
-  { name: "HyClassic", code: "HYC-02", coverage: "100%", limit: "₦150k/yr", status: "Active" },
-  { name: "HyPremium", code: "HYP-03", coverage: "100%", limit: "₦500k/yr", status: "Active" },
-  { name: "Executive Plan", code: "HYE-04", coverage: "100%", limit: "Unlimited", status: "Active" },
-];
+import { useAuth } from "@/lib/auth-context";
+import { 
+  useHmoList, 
+  useCreateHmo, 
+  useHmoPlans, 
+  useCreatePlan,
+  type HmoItem,
+  type HmoPlan
+} from "@/hooks/useHmo";
 
 export default function HMODatabasePage() {
+  const { user } = useAuth();
+  const clinicId = user?.clinicId || "clinic-default";
+
+  // Live queries
+  const { data: hmos = [], isLoading: isLoadingHmos, refetch: refetchHmos } = useHmoList();
+  const createHmoMutation = useCreateHmo();
+
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedHmo, setSelectedHmo] = useState<any>(null);
-  const [hmos, setHmos] = useState(initialHmos);
-  const [plans, setPlans] = useState(initialPlans);
+  const [selectedHmo, setSelectedHmo] = useState<HmoItem | null>(null);
 
   // Modal States
   const [isAddProviderOpen, setIsAddProviderOpen] = useState(false);
   const [isAddPlanOpen, setIsAddPlanOpen] = useState(false);
   const [isConfigureRulesOpen, setIsConfigureRulesOpen] = useState(false);
-  const [activePlanForRule, setActivePlanForRule] = useState<any>(null);
+  const [activePlanForRule, setActivePlanForRule] = useState<HmoPlan | null>(null);
 
   // Form States
-  const [newHmo, setNewHmo] = useState({ name: "", type: "Private", country: "Nigeria" });
-  const [newPlan, setNewPlan] = useState({ name: "", code: "", limit: "" });
+  const [newHmo, setNewHmo] = useState({ 
+    name: "", 
+    contactPerson: "", 
+    email: "", 
+    phone: "", 
+    address: "Nigeria",
+    commissionRate: 10 
+  });
 
-  // --- Handlers ---
-  const handleAddHmo = (e: React.FormEvent) => {
+  const [newPlan, setNewPlan] = useState({ 
+    name: "", 
+    description: "", 
+    coveragePercentage: 100 
+  });
+
+  // Fetch plans for selected HMO
+  const { data: plans = [], isLoading: isLoadingPlans } = useHmoPlans(selectedHmo?.id || "");
+  const createPlanMutation = useCreatePlan();
+
+  // Handlers
+  const handleAddHmo = async (e: React.FormEvent) => {
     e.preventDefault();
-    const id = `HMO-00${hmos.length + 1}`;
-    setHmos([{ ...newHmo, id, clinics: 0, status: "Active" } as any, ...hmos]);
-    setIsAddProviderOpen(false);
-    setNewHmo({ name: "", type: "Private", country: "Nigeria" });
+    if (!newHmo.name.trim()) return;
+
+    try {
+      await createHmoMutation.mutateAsync({
+        name: newHmo.name,
+        contactPerson: newHmo.contactPerson || undefined,
+        email: newHmo.email || undefined,
+        phone: newHmo.phone || undefined,
+        address: newHmo.address || undefined,
+        commissionRate: Number(newHmo.commissionRate) || 10,
+        clinicId: clinicId,
+      });
+      setIsAddProviderOpen(false);
+      setNewHmo({ name: "", contactPerson: "", email: "", phone: "", address: "Nigeria", commissionRate: 10 });
+    } catch (err) {
+      console.error("Failed to create HMO provider", err);
+    }
   };
 
-  const handleAddPlan = (e: React.FormEvent) => {
+  const handleAddPlan = async (e: React.FormEvent) => {
     e.preventDefault();
-    setPlans([...plans, { ...newPlan, coverage: "100%", status: "Active" }]);
-    setIsAddPlanOpen(false);
-    setNewPlan({ name: "", code: "", limit: "" });
+    if (!newPlan.name.trim() || !selectedHmo) return;
+
+    try {
+      await createPlanMutation.mutateAsync({
+        name: newPlan.name,
+        description: newPlan.description || undefined,
+        coveragePercentage: Number(newPlan.coveragePercentage) || 100,
+        hmoId: selectedHmo.id,
+      });
+      setIsAddPlanOpen(false);
+      setNewPlan({ name: "", description: "", coveragePercentage: 100 });
+    } catch (err) {
+      console.error("Failed to create HMO plan", err);
+    }
   };
 
-  // --- Render Components ---
+  const filteredHmos = hmos.filter((h) => 
+    h.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (h.contactPerson && h.contactPerson.toLowerCase().includes(searchQuery.toLowerCase())) ||
+    h.id.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const activeCount = hmos.filter(h => h.isActive).length;
+  const inactiveCount = hmos.length - activeCount;
 
   // Modal: Add Provider
   const AddProviderModal = () => (
@@ -85,36 +117,71 @@ export default function HMODatabasePage() {
           <input 
             required
             className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-brand-blue/20 outline-none"
-            placeholder="e.g. Wellness Health"
+            placeholder="e.g. HMO name"
             value={newHmo.name}
             onChange={(e) => setNewHmo({...newHmo, name: e.target.value})}
           />
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <label className="text-sm font-bold text-slate-700">Type</label>
-            <select 
-              className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none bg-white"
-              value={newHmo.type}
-              onChange={(e) => setNewHmo({...newHmo, type: e.target.value})}
-            >
-              <option>Private</option>
-              <option>Government</option>
-              <option>International</option>
-            </select>
-          </div>
-          <div className="space-y-2">
-            <label className="text-sm font-bold text-slate-700">Country</label>
+            <label className="text-sm font-bold text-slate-700">Contact Person</label>
             <input 
               className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none"
-              placeholder="Nigeria"
-              value={newHmo.country}
-              onChange={(e) => setNewHmo({...newHmo, country: e.target.value})}
+              placeholder="e.g. Dr. John Adeleke"
+              value={newHmo.contactPerson}
+              onChange={(e) => setNewHmo({...newHmo, contactPerson: e.target.value})}
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-bold text-slate-700">Phone</label>
+            <input 
+              className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none"
+              placeholder="+234 800 000 0000"
+              value={newHmo.phone}
+              onChange={(e) => setNewHmo({...newHmo, phone: e.target.value})}
             />
           </div>
         </div>
-        <Button variant="default" className="w-full py-4 rounded-xl mt-4 font-bold shadow-lg shadow-brand-blue/20">
-          Save Provider
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <label className="text-sm font-bold text-slate-700">Support Email</label>
+            <input 
+              type="email"
+              className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none"
+              placeholder="providers@hmo.com"
+              value={newHmo.email}
+              onChange={(e) => setNewHmo({...newHmo, email: e.target.value})}
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-bold text-slate-700">Commission Rate (%)</label>
+            <input 
+              type="number"
+              min="0"
+              max="100"
+              className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none"
+              placeholder="10"
+              value={newHmo.commissionRate}
+              onChange={(e) => setNewHmo({...newHmo, commissionRate: Number(e.target.value)})}
+            />
+          </div>
+        </div>
+        <div className="space-y-2">
+          <label className="text-sm font-bold text-slate-700">Office / Region</label>
+          <input 
+            className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none"
+            placeholder="Lagos, Nigeria"
+            value={newHmo.address}
+            onChange={(e) => setNewHmo({...newHmo, address: e.target.value})}
+          />
+        </div>
+        <Button 
+          type="submit" 
+          disabled={createHmoMutation.isPending}
+          variant="default" 
+          className="w-full py-4 rounded-xl mt-4 font-bold shadow-lg shadow-brand-blue/20"
+        >
+          {createHmoMutation.isPending ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : "Save Provider"}
         </Button>
       </form>
     </Modal>
@@ -122,42 +189,49 @@ export default function HMODatabasePage() {
 
   // Modal: Add Plan
   const AddPlanModal = () => (
-    <Modal isOpen={isAddPlanOpen} onClose={() => setIsAddPlanOpen(false)} title="Create Member Plan">
+    <Modal isOpen={isAddPlanOpen} onClose={() => setIsAddPlanOpen(false)} title={`Create Member Plan for ${selectedHmo?.name}`}>
       <form onSubmit={handleAddPlan} className="space-y-4">
         <div className="space-y-2">
           <label className="text-sm font-bold text-slate-700">Plan Name</label>
           <input 
             required
             className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none"
-            placeholder="e.g. Platinum Plus"
+            placeholder="e.g. Platinum Plus, HyBasic"
             value={newPlan.name}
             onChange={(e) => setNewPlan({...newPlan, name: e.target.value})}
           />
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <label className="text-sm font-bold text-slate-700">Plan Code</label>
+            <label className="text-sm font-bold text-slate-700">Coverage Percentage (%)</label>
             <input 
               required
+              type="number"
+              min="1"
+              max="100"
               className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none"
-              placeholder="PLT-01"
-              value={newPlan.code}
-              onChange={(e) => setNewPlan({...newPlan, code: e.target.value})}
+              placeholder="100"
+              value={newPlan.coveragePercentage}
+              onChange={(e) => setNewPlan({...newPlan, coveragePercentage: Number(e.target.value)})}
             />
           </div>
           <div className="space-y-2">
-            <label className="text-sm font-bold text-slate-700">Annual Limit</label>
+            <label className="text-sm font-bold text-slate-700">Description / Tier</label>
             <input 
-              required
               className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none"
-              placeholder="₦1,000,000"
-              value={newPlan.limit}
-              onChange={(e) => setNewPlan({...newPlan, limit: e.target.value})}
+              placeholder="e.g. Standard Corporate Tier"
+              value={newPlan.description}
+              onChange={(e) => setNewPlan({...newPlan, description: e.target.value})}
             />
           </div>
         </div>
-        <Button variant="default" className="w-full py-4 rounded-xl mt-4 font-bold">
-          Create Plan
+        <Button 
+          type="submit" 
+          disabled={createPlanMutation.isPending}
+          variant="default" 
+          className="w-full py-4 rounded-xl mt-4 font-bold"
+        >
+          {createPlanMutation.isPending ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : "Create Plan"}
         </Button>
       </form>
     </Modal>
@@ -171,40 +245,37 @@ export default function HMODatabasePage() {
       title={`Configure Rules: ${activePlanForRule?.name}`}
     >
       <div className="space-y-6">
-        <p className="text-sm text-slate-500 leading-relaxed">Define specific coverage exceptions and authorization logic for this plan.</p>
+        <p className="text-sm text-slate-500 leading-relaxed">Coverage specifications and pre-authorization rules for this tariff plan.</p>
         
         <div className="space-y-3">
           {[
+            { label: "Coverage Percentage", val: `${activePlanForRule?.coveragePercentage || 100}%` },
+            { label: "Pre-Auth Required", val: activePlanForRule?.requiresPreAuth ? "Yes" : "No" },
             { label: "Optical Frame Limit", val: "₦25,000" },
-            { label: "Drug Co-pay", val: "10%" },
-            { label: "Surgery Auth required", val: "Yes", active: true },
-            { label: "Wait period for Eye Test", val: "6 Months" },
+            { label: "Consultation Co-Pay", val: "0%" },
           ].map((rule, i) => (
             <div key={i} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
               <span className="text-xs font-bold text-slate-600">{rule.label}</span>
-              <div className="flex items-center gap-3">
-                <span className="text-xs font-black text-brand-navy">{rule.val}</span>
-                <Edit3 size={14} className="text-slate-400 cursor-pointer" />
-              </div>
+              <span className="text-xs font-black text-brand-navy">{rule.val}</span>
             </div>
           ))}
         </div>
 
         <Button variant="default" className="w-full py-4 rounded-xl font-bold" onClick={() => setIsConfigureRulesOpen(false)}>
-          Apply All Rules
+          Close
         </Button>
       </div>
     </Modal>
   );
 
-  // --- Main Render ---
-
+  // --- Selected Detail View ---
   if (selectedHmo) {
     return (
       <div className="space-y-6 lg:space-y-8 pb-20">
         <AddPlanModal />
         <ConfigureRulesModal />
-        {/* Detail Header - Mobile Responsive */}
+        
+        {/* Detail Header */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
           <div className="flex items-start gap-4">
             <Button 
@@ -221,35 +292,41 @@ export default function HMODatabasePage() {
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2 lg:gap-3 mb-1">
                 <h1 className="text-xl lg:text-3xl font-black text-brand-navy tracking-tight truncate">{selectedHmo.name}</h1>
-                <span className="bg-emerald-50 text-emerald-600 text-[8px] lg:text-[10px] font-black px-2 lg:px-3 py-1 rounded-full uppercase tracking-widest border border-emerald-100 shrink-0">
-                  {selectedHmo.status}
+                <span className={cn(
+                  "text-[8px] lg:text-[10px] font-black px-2 lg:px-3 py-1 rounded-full uppercase tracking-widest border shrink-0",
+                  selectedHmo.isActive ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-slate-100 text-slate-500 border-slate-200"
+                )}>
+                  {selectedHmo.isActive ? "Active" : "Inactive"}
                 </span>
               </div>
               <p className="text-slate-500 font-medium text-xs lg:text-sm flex items-center gap-2 truncate">
-                {selectedHmo.id} • <span className="hidden sm:inline">{selectedHmo.type} Provider •</span> <Globe size={14} className="text-slate-400 shrink-0" /> {selectedHmo.country}
+                {selectedHmo.id.slice(0, 8)} • <Globe size={14} className="text-slate-400 shrink-0" /> {selectedHmo.address || "Nigeria"}
               </p>
             </div>
           </div>
           <div className="flex items-center gap-2 lg:gap-3">
-            <Button variant="outline" className="flex-1 lg:flex-none rounded-xl font-bold h-11 lg:h-12 px-6 border-slate-200 text-sm" onClick={() => setSelectedHmo(null)}>Close</Button>
-            <Button variant="default" className="flex-1 lg:flex-none rounded-xl font-bold h-11 lg:h-12 px-6 shadow-lg shadow-brand-blue/20 text-sm">Update Profile</Button>
+            <Button variant="outline" className="flex-1 lg:flex-none rounded-xl font-bold h-11 lg:h-12 px-6 border-slate-200 text-sm" onClick={() => setSelectedHmo(null)}>Back to HMOs</Button>
+            <Button variant="default" className="flex-1 lg:flex-none rounded-xl font-bold h-11 lg:h-12 px-6 shadow-lg shadow-brand-blue/20 text-sm" onClick={() => setIsAddPlanOpen(true)}>
+              <Plus size={16} className="mr-1" /> Add Plan
+            </Button>
           </div>
         </div>
 
-        {/* Tabbed Interface for Blueprint Sections - Stacked on Mobile */}
+        {/* 2-Column Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
           
-          {/* Left Column: General Info & Business Settings */}
+          {/* Left Column: General Info */}
           <div className="space-y-6 lg:space-y-8 order-2 lg:order-1">
             <div className="bg-white p-6 lg:p-8 rounded-[2rem] lg:rounded-[2.5rem] border border-slate-100 shadow-sm">
               <h3 className="text-base lg:text-lg font-bold text-brand-navy mb-6 flex items-center gap-2">
-                <Info size={18} className="text-brand-blue" /> Provider Info
+                <Info size={18} className="text-brand-blue" /> Provider Contact & Details
               </h3>
               <div className="space-y-5">
                 {[
                   { icon: Mail, label: "Support Email", val: selectedHmo.email || "providers@hmo.com" },
-                  { icon: Phone, label: "Provider Line", val: selectedHmo.phone || "+234 800 000 0000" },
-                  { icon: ExternalLink, label: "Claims Portal", val: "Login to Portal", link: true },
+                  { icon: Phone, label: "Provider Line", val: selectedHmo.phone || "Not set" },
+                  { icon: Building2, label: "Contact Person", val: selectedHmo.contactPerson || "Not assigned" },
+                  { icon: Globe, label: "Commission Rate", val: `${selectedHmo.commissionRate || 0}%` },
                 ].map((item, i) => (
                   <div key={i} className="flex items-center gap-4">
                     <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 shrink-0 border border-slate-100">
@@ -257,7 +334,7 @@ export default function HMODatabasePage() {
                     </div>
                     <div className="min-w-0">
                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{item.label}</p>
-                      <p className={cn("text-sm font-bold text-brand-navy truncate", item.link && "text-brand-blue underline cursor-pointer")}>{item.val}</p>
+                      <p className="text-sm font-bold text-brand-navy truncate">{item.val}</p>
                     </div>
                   </div>
                 ))}
@@ -267,14 +344,14 @@ export default function HMODatabasePage() {
             <div className="bg-brand-navy p-6 lg:p-8 rounded-[2rem] lg:rounded-[2.5rem] text-white overflow-hidden relative group">
               <div className="absolute top-0 right-0 w-32 h-32 bg-brand-blue/20 blur-[60px] rounded-full group-hover:scale-150 transition-transform duration-700"></div>
               <h3 className="text-base lg:text-lg font-bold mb-6 flex items-center gap-2 relative z-10">
-                <Settings2 size={18} className="text-brand-blue" /> Business Settings
+                <Settings2 size={18} className="text-brand-blue" /> Integration Parameters
               </h3>
               <div className="space-y-4 relative z-10">
                 {[
-                  { label: "Claims Method", val: "Digital API / Portal" },
-                  { label: "Payment Cycle", val: "30 Days (Net)" },
-                  { label: "Authorization", val: "Required for Surgery" },
-                  { label: "Pricing Model", val: "Fixed Tariff" },
+                  { label: "Claims Channel", val: "Digital Automated Submission" },
+                  { label: "Turnaround Time", val: "30-Day Reconciliation" },
+                  { label: "Pre-Auth Mode", val: "Online Verification" },
+                  { label: "Tariff Base", val: "Clinic Standard Negotiated" },
                 ].map((item, i) => (
                   <div key={i} className="flex justify-between border-b border-white/5 pb-3">
                     <span className="text-[10px] lg:text-xs text-slate-400 font-bold">{item.label}</span>
@@ -285,95 +362,68 @@ export default function HMODatabasePage() {
             </div>
           </div>
 
-          {/* Center Column: Plan Management */}
+          {/* Right Column: Plans */}
           <div className="lg:col-span-2 space-y-6 lg:space-y-8 order-1 lg:order-2">
             <div className="bg-white p-6 lg:p-8 rounded-[2rem] lg:rounded-[2.5rem] border border-slate-100 shadow-sm">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
                 <div>
-                  <h3 className="text-lg lg:text-xl font-bold text-brand-navy">HMO Plan Management</h3>
-                  <p className="text-xs lg:text-sm text-slate-500 font-medium mt-0.5">Configure coverage limits and rules for each member plan.</p>
+                  <h3 className="text-lg lg:text-xl font-bold text-brand-navy">Member Plans ({plans.length})</h3>
+                  <p className="text-xs lg:text-sm text-slate-500 font-medium mt-0.5">Active coverage tiers and benefit packages for {selectedHmo.name}.</p>
                 </div>
                 <Button variant="outline" size="sm" className="w-full sm:w-auto rounded-xl font-bold gap-2 h-11 px-6 border-slate-200" onClick={() => setIsAddPlanOpen(true)}>
                   <Plus size={16} /> New Plan
                 </Button>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {plans.map((plan, i) => (
-                  <div key={i} className="p-5 lg:p-6 bg-slate-50 rounded-[2rem] border border-slate-100 hover:border-brand-blue/30 hover:bg-white hover:shadow-lg transition-all group">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-brand-blue shadow-sm border border-slate-50">
-                        <Layers size={20} />
+              {isLoadingPlans ? (
+                <div className="p-8 text-center"><Loader2 className="w-6 h-6 animate-spin mx-auto text-brand-blue" /></div>
+              ) : plans.length === 0 ? (
+                <div className="p-8 text-center border border-dashed border-slate-200 rounded-2xl">
+                  <p className="text-sm font-bold text-slate-500">No member plans configured yet.</p>
+                  <Button variant="ghost" className="mt-3 text-brand-blue font-bold text-xs" onClick={() => setIsAddPlanOpen(true)}>
+                    + Create First Plan
+                  </Button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {plans.map((plan) => (
+                    <div key={plan.id} className="p-5 lg:p-6 bg-slate-50 rounded-[2rem] border border-slate-100 hover:border-brand-blue/30 hover:bg-white hover:shadow-lg transition-all group">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-brand-blue shadow-sm border border-slate-50">
+                          <Layers size={20} />
+                        </div>
+                        <span className="text-[8px] font-black px-2 py-1 bg-emerald-100 text-emerald-700 rounded-full uppercase tracking-widest shrink-0">
+                          Active
+                        </span>
                       </div>
-                      <span className="text-[8px] font-black px-2 py-1 bg-emerald-100 text-emerald-700 rounded-full uppercase tracking-widest shrink-0">
-                        {plan.status}
-                      </span>
+                      <h4 className="text-base lg:text-lg font-black text-brand-navy mb-1 truncate">{plan.name}</h4>
+                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-4">{plan.description || "Coverage Plan"}</p>
+                      
+                      <div className="space-y-3 pt-4 border-t border-slate-200/50">
+                        <div className="flex justify-between items-center">
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Coverage</span>
+                          <span className="text-[11px] lg:text-xs font-black text-brand-navy">{plan.coveragePercentage}%</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Pre-Auth</span>
+                          <span className="text-[11px] lg:text-xs font-black text-brand-blue">{plan.requiresPreAuth ? "Required" : "Not Required"}</span>
+                        </div>
+                      </div>
+                      
+                      <Button 
+                        variant="ghost" 
+                        className="w-full mt-6 rounded-xl text-brand-blue font-bold text-xs gap-2 group-hover:bg-brand-soft-blue h-10"
+                        onClick={() => {
+                          setActivePlanForRule(plan);
+                          setIsConfigureRulesOpen(true);
+                        }}
+                      >
+                        Configure Rules <ChevronRight size={14} />
+                      </Button>
                     </div>
-                    <h4 className="text-base lg:text-lg font-black text-brand-navy mb-1 truncate">{plan.name}</h4>
-                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-4">Code: {plan.code}</p>
-                    
-                    <div className="space-y-3 pt-4 border-t border-slate-200/50">
-                      <div className="flex justify-between items-center">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Annual Limit</span>
-                        <span className="text-[11px] lg:text-xs font-black text-brand-navy">{plan.limit}</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Optical Allowance</span>
-                        <span className="text-[11px] lg:text-xs font-black text-brand-blue">₦15,000</span>
-                      </div>
-                    </div>
-                    
-                    <Button 
-                      variant="ghost" 
-                      className="w-full mt-6 rounded-xl text-brand-blue font-bold text-xs gap-2 group-hover:bg-brand-soft-blue h-10"
-                      onClick={() => {
-                        setActivePlanForRule(plan);
-                        setIsConfigureRulesOpen(true);
-                      }}
-                    >
-                      Configure Rules <ChevronRight size={14} />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Service Intelligence - Optimized Table/List */}
-            <div className="bg-white p-6 lg:p-8 rounded-[2rem] lg:rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden relative">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
-                <h3 className="text-lg lg:text-xl font-bold text-brand-navy">Global Service Catalog</h3>
-                <Button variant="ghost" className="w-full sm:w-auto text-brand-blue font-bold text-xs lg:text-sm gap-2 h-11 px-4 lg:bg-transparent bg-brand-soft-blue rounded-xl">
-                  Manage Services <ExternalLink size={16} />
-                </Button>
-              </div>
-              <div className="space-y-2">
-                {[
-                  { service: "General Consultation", cat: "Clinical", coverage: "Full", auth: "No" },
-                  { service: "Refraction & Eye Test", cat: "Optical", coverage: "Full", auth: "No" },
-                  { service: "Cataract Surgery", cat: "Surgery", coverage: "Requires Auth", auth: "Yes" },
-                  { service: "Anti-Reflection Lenses", cat: "Optical", coverage: "Partial (50%)", auth: "No" },
-                ].map((s, i) => (
-                  <div key={i} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 hover:bg-slate-50 rounded-2xl transition-colors border border-transparent hover:border-slate-100 gap-4 sm:gap-0">
-                    <div className="flex items-center gap-4">
-                      <div className="w-2 h-2 rounded-full bg-brand-blue shrink-0"></div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-bold text-slate-700 truncate">{s.service}</p>
-                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{s.cat}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between sm:justify-end gap-6 lg:gap-10 border-t sm:border-0 pt-3 sm:pt-0">
-                      <div className="text-left sm:text-right">
-                        <p className="text-[8px] lg:text-[10px] font-black text-slate-400 uppercase tracking-widest">Coverage</p>
-                        <p className={cn("text-[11px] lg:text-xs font-bold", s.coverage === "Full" ? "text-emerald-600" : "text-amber-600")}>{s.coverage}</p>
-                      </div>
-                      <div className="text-right w-12 sm:w-16">
-                        <p className="text-[8px] lg:text-[10px] font-black text-slate-400 uppercase tracking-widest">Auth</p>
-                        <p className="text-[11px] lg:text-xs font-bold text-brand-navy">{s.auth}</p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
@@ -382,12 +432,12 @@ export default function HMODatabasePage() {
     );
   }
 
-  // --- Standard List View ---
+  // --- Main List View ---
   return (
     <div className="space-y-6 lg:space-y-8 pb-10">
       <AddProviderModal />
       
-      {/* Breadcrumbs & Back - Mobile Responsive */}
+      {/* Breadcrumbs */}
       <div className="flex flex-wrap items-center gap-2 lg:gap-4">
         <Link href="/admin/config">
           <Button variant="ghost" size="sm" className="gap-2 h-9 px-3 rounded-xl text-xs">
@@ -398,16 +448,13 @@ export default function HMODatabasePage() {
         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate">HMO Database</p>
       </div>
 
-      {/* Header - Mobile Responsive */}
+      {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
           <h1 className="text-2xl lg:text-3xl font-bold text-brand-navy font-black tracking-tight">HMO Database</h1>
-          <p className="text-sm lg:text-base text-slate-500 font-medium mt-0.5">Manage global insurance providers and standardized tariff plans.</p>
+          <p className="text-sm lg:text-base text-slate-500 font-medium mt-0.5">Manage insurance providers, contracted commission rates, and member plans.</p>
         </div>
         <div className="flex items-center gap-2 lg:gap-3">
-          <Button variant="outline" size="sm" className="flex-1 sm:flex-none gap-2 h-11 px-4 lg:px-6 rounded-xl font-bold border-slate-200 text-xs lg:text-sm">
-            <Download size={16} /> <span className="hidden xs:inline">Export Tariffs</span><span className="xs:hidden">Export</span>
-          </Button>
           <Button 
             onClick={() => setIsAddProviderOpen(true)}
             variant="default" 
@@ -419,13 +466,13 @@ export default function HMODatabasePage() {
         </div>
       </div>
 
-      {/* Stats Quick View - Responsive Grid */}
+      {/* Stats Quick View */}
       <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
         {[
           { label: "Total Providers", val: hmos.length.toString(), icon: ShieldCheck, color: "blue" },
-          { label: "Active Claims", val: "12,402", icon: Activity, color: "emerald" },
-          { label: "Govt. Schemes", val: hmos.filter(h => h.type === "Government" || h.type === "Government").length.toString(), icon: Building2, color: "purple" },
-          { label: "Maintenance", val: "2", icon: AlertCircle, color: "amber" },
+          { label: "Active Contracts", val: activeCount.toString(), icon: Activity, color: "emerald" },
+          { label: "Inactive Providers", val: inactiveCount.toString(), icon: AlertCircle, color: "amber" },
+          { label: "Database Status", val: "Live Synced", icon: Building2, color: "purple" },
         ].map((stat, i) => (
           <div key={i} className="bg-white p-5 lg:p-6 rounded-[2rem] border border-slate-100 shadow-sm flex items-center gap-4 group hover:shadow-md transition-all">
             <div className={cn("w-10 h-10 lg:w-12 lg:h-12 rounded-xl lg:rounded-2xl flex items-center justify-center shrink-0 transition-colors", 
@@ -444,7 +491,7 @@ export default function HMODatabasePage() {
         ))}
       </div>
 
-      {/* Filters & Search - Mobile Responsive */}
+      {/* Search & Filter */}
       <div className="bg-white p-5 lg:p-6 rounded-[2rem] border border-slate-100 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4 lg:gap-6">
         <div className="relative flex-1 w-full max-w-md group">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-brand-blue transition-colors" size={18} />
@@ -456,99 +503,95 @@ export default function HMODatabasePage() {
             className="w-full h-11 lg:h-12 pl-12 pr-6 py-3 rounded-xl bg-slate-50 border border-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-blue/20 focus:bg-white transition-all text-xs lg:text-sm font-medium"
           />
         </div>
-        
-        <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto pb-1 md:pb-0 scrollbar-hide">
-          <Button variant="outline" size="sm" className="gap-2 shrink-0 h-10 lg:h-11 px-4 lg:px-6 rounded-xl border-slate-100 bg-slate-50/50 hover:bg-white transition-all font-bold text-xs">
-            <Filter size={14} /> <span className="hidden sm:inline">Filter Type</span><span className="sm:hidden">Type</span>
-          </Button>
-          <Button variant="outline" size="sm" className="gap-2 shrink-0 h-10 lg:h-11 px-4 lg:px-6 rounded-xl border-slate-100 bg-slate-50/50 hover:bg-white transition-all font-bold text-xs">
-            <Globe size={14} /> <span className="hidden sm:inline">Region: All</span><span className="sm:hidden">All Regions</span>
-          </Button>
-        </div>
       </div>
 
-      {/* Providers Table - Mobile Optimized */}
+      {/* Providers Table */}
       <div className="bg-white rounded-[2rem] lg:rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
         <div className="overflow-x-auto scrollbar-hide">
           <table className="w-full text-left min-w-[700px] lg:min-w-0">
             <thead>
               <tr className="bg-slate-50/50 border-b border-slate-100">
                 <th className="px-6 lg:px-8 py-4 lg:py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">HMO Provider</th>
-                <th className="px-6 lg:px-8 py-4 lg:py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Type</th>
-                <th className="px-6 lg:px-8 py-4 lg:py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Usage</th>
+                <th className="px-6 lg:px-8 py-4 lg:py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Contact</th>
+                <th className="px-6 lg:px-8 py-4 lg:py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Commission</th>
                 <th className="px-6 lg:px-8 py-4 lg:py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
                 <th className="px-6 lg:px-8 py-4 lg:py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-              {hmos.map((hmo, i) => (
-                <tr key={i} className="group hover:bg-slate-50/30 transition-colors">
-                  <td className="px-6 lg:px-8 py-5 lg:py-6">
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-xl lg:rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-400 group-hover:bg-brand-blue/10 group-hover:text-brand-blue group-hover:border-brand-blue/20 transition-all shrink-0">
-                        <ShieldCheck size={20} className="lg:w-6 lg:h-6" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-sm lg:text-base font-bold text-brand-navy truncate">{hmo.name}</p>
-                        <p className="text-[9px] lg:text-[10px] text-slate-400 flex items-center gap-1 mt-0.5 font-bold uppercase tracking-widest truncate">
-                          <Globe size={10} className="shrink-0" /> {hmo.country} • {hmo.id}
-                        </p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 lg:px-8 py-5 lg:py-6">
-                    <span className={cn(
-                      "text-[9px] lg:text-[10px] font-black px-2 lg:px-3 py-1 rounded-full uppercase tracking-widest shrink-0 whitespace-nowrap",
-                      hmo.type === "Government" ? "bg-purple-100 text-purple-700" : "bg-blue-100 text-blue-700"
-                    )}>
-                      {hmo.type}
-                    </span>
-                  </td>
-                  <td className="px-6 lg:px-8 py-5 lg:py-6">
-                    <div className="flex items-center gap-1.5 text-xs lg:text-sm font-black text-brand-navy whitespace-nowrap">
-                      <Building2 size={16} className="text-brand-blue shrink-0" />
-                      {hmo.clinics} <span className="text-[9px] lg:text-[10px] text-slate-400 uppercase font-black tracking-widest ml-1">Clinics</span>
-                    </div>
-                  </td>
-                  <td className="px-6 lg:px-8 py-5 lg:py-6">
-                    <div className={cn(
-                      "inline-flex items-center gap-1.5 px-2 lg:px-3 py-1 rounded-full text-[9px] lg:text-[10px] font-black uppercase tracking-widest whitespace-nowrap",
-                      hmo.status === "Active" ? "bg-emerald-50 text-emerald-600" : 
-                      hmo.status === "Maintenance" ? "bg-amber-50 text-amber-600" : "bg-slate-100 text-slate-500"
-                    )}>
-                      {hmo.status === "Active" ? <CheckCircle2 size={14} className="shrink-0" /> : <Clock size={14} className="shrink-0" />}
-                      {hmo.status}
-                    </div>
-                  </td>
-                  <td className="px-6 lg:px-8 py-5 lg:py-6 text-right">
-                    <div className="flex items-center justify-end gap-1 lg:gap-2">
-                      <Button 
-                        onClick={() => setSelectedHmo(hmo)}
-                        variant="ghost" 
-                        size="sm" 
-                        className="h-9 lg:h-10 px-3 lg:px-4 rounded-xl gap-2 font-black text-[9px] lg:text-[10px] uppercase tracking-widest text-brand-blue hover:bg-brand-soft-blue transition-all"
-                      >
-                        <Settings2 size={16} className="shrink-0" /> <span className="hidden sm:inline">Configure</span>
-                      </Button>
-                      <Button variant="ghost" size="sm" className="h-9 w-9 lg:h-10 lg:w-10 p-0 rounded-xl text-slate-400 hover:text-brand-navy shrink-0">
-                        <MoreVertical size={18} />
-                      </Button>
-                    </div>
+              {isLoadingHmos ? (
+                <tr>
+                  <td colSpan={5} className="py-12 text-center text-slate-400">
+                    <Loader2 className="w-6 h-6 animate-spin mx-auto text-brand-blue" />
+                    <p className="mt-2 text-xs font-bold">Loading live HMO providers...</p>
                   </td>
                 </tr>
-              ))}
+              ) : filteredHmos.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="py-12 text-center text-slate-400">
+                    <p className="text-sm font-bold text-slate-600">No HMO providers found</p>
+                    <p className="text-xs text-slate-400 mt-1">Add your first insurance provider to start linking patients and submitting claims.</p>
+                    <Button 
+                      onClick={() => setIsAddProviderOpen(true)}
+                      variant="outline" 
+                      size="sm" 
+                      className="mt-4 rounded-xl font-bold"
+                    >
+                      <Plus size={14} className="mr-1" /> Add Provider
+                    </Button>
+                  </td>
+                </tr>
+              ) : (
+                filteredHmos.map((hmo) => (
+                  <tr key={hmo.id} className="group hover:bg-slate-50/30 transition-colors">
+                    <td className="px-6 lg:px-8 py-5 lg:py-6">
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-xl lg:rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-400 group-hover:bg-brand-blue/10 group-hover:text-brand-blue group-hover:border-brand-blue/20 transition-all shrink-0">
+                          <ShieldCheck size={20} className="lg:w-6 lg:h-6" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm lg:text-base font-bold text-brand-navy truncate">{hmo.name}</p>
+                          <p className="text-[9px] lg:text-[10px] text-slate-400 flex items-center gap-1 mt-0.5 font-bold uppercase tracking-widest truncate">
+                            <Globe size={10} className="shrink-0" /> {hmo.address || "Nigeria"} • {hmo.id.slice(0, 8)}
+                          </p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 lg:px-8 py-5 lg:py-6">
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-slate-700 truncate">{hmo.contactPerson || "Primary Admin"}</p>
+                        <p className="text-[10px] text-slate-400 truncate">{hmo.email || hmo.phone || "No contact info"}</p>
+                      </div>
+                    </td>
+                    <td className="px-6 lg:px-8 py-5 lg:py-6">
+                      <span className="text-xs font-black text-brand-navy">{hmo.commissionRate || 0}%</span>
+                    </td>
+                    <td className="px-6 lg:px-8 py-5 lg:py-6">
+                      <div className={cn(
+                        "inline-flex items-center gap-1.5 px-2 lg:px-3 py-1 rounded-full text-[9px] lg:text-[10px] font-black uppercase tracking-widest whitespace-nowrap",
+                        hmo.isActive ? "bg-emerald-50 text-emerald-600" : "bg-slate-100 text-slate-500"
+                      )}>
+                        {hmo.isActive ? <CheckCircle2 size={14} className="shrink-0" /> : <Clock size={14} className="shrink-0" />}
+                        {hmo.isActive ? "Active" : "Inactive"}
+                      </div>
+                    </td>
+                    <td className="px-6 lg:px-8 py-5 lg:py-6 text-right">
+                      <div className="flex items-center justify-end gap-1 lg:gap-2">
+                        <Button 
+                          onClick={() => setSelectedHmo(hmo)}
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-9 lg:h-10 px-3 lg:px-4 rounded-xl gap-2 font-black text-[9px] lg:text-[10px] uppercase tracking-widest text-brand-blue hover:bg-brand-soft-blue transition-all"
+                        >
+                          <Settings2 size={16} className="shrink-0" /> <span className="hidden sm:inline">Configure</span>
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
-        </div>
-        
-        {/* Pagination - Mobile Responsive */}
-        <div className="p-5 lg:p-6 bg-slate-50/50 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Showing 1 to {hmos.length} of {hmos.length} providers</p>
-          <div className="flex items-center gap-1.5">
-            <Button variant="outline" className="rounded-xl font-bold px-4 lg:px-6 h-9 lg:h-10 border-slate-200 text-xs">Prev</Button>
-            <Button variant="outline" className="rounded-xl font-bold w-9 h-9 lg:w-10 lg:h-10 p-0 bg-white border-brand-blue text-brand-blue text-xs shadow-sm">1</Button>
-            <Button variant="outline" className="rounded-xl font-bold px-4 lg:px-6 h-9 lg:h-10 border-slate-200 text-xs">Next</Button>
-          </div>
         </div>
       </div>
     </div>

@@ -1420,7 +1420,7 @@ export default function HMOPage() {
               <p className="text-xs text-slate-400 py-3 bg-slate-50 text-center rounded-xl">No documents attached to this claim yet.</p>
             ) : (
               <div className="space-y-2">
-                {claimDocuments.map(doc => (
+                {claimDocuments.map((doc: any) => (
                   <div key={doc.id} className="flex items-center justify-between p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs">
                     <div className="flex items-center gap-2 min-w-0">
                       <FileCheck className="h-4 w-4 text-emerald-600 shrink-0" />

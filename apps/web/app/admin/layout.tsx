@@ -10,6 +10,8 @@ import {
   Database, ShieldAlert, Globe, Zap
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useRouter } from "next/navigation";
+import { patientPortalService } from "@/services/patient-portal.service";
 import { motion, AnimatePresence } from "framer-motion";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { NotificationBell } from "@/components/layout/notification-bell";
@@ -28,6 +30,7 @@ const sidebarLinks = [
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Default closed on mobile
   const pathname = usePathname();
+  const router = useRouter();
 
   // Close sidebar on mobile when navigating
   React.useEffect(() => {
@@ -108,16 +111,26 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
           {/* Footer */}
           <div className="p-4 border-t border-white/5 shrink-0 bg-brand-navy/50">
-            <Link href="/login" className={cn("flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 cursor-pointer transition-all group", !isSidebarOpen && "lg:justify-center")}>
+            <button
+              onClick={async () => {
+                try {
+                  await patientPortalService.logout();
+                  router.push('/login');
+                } catch (e) {
+                  console.error('Logout error', e);
+                }
+              }}
+              className={cn('flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 cursor-pointer transition-all group', !isSidebarOpen && 'lg:justify-center')}
+            >
               <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center border border-white/10 shrink-0">
                 <User size={20} className="text-brand-blue" />
               </div>
-              <div className={cn("flex-1 min-w-0 transition-all", !isSidebarOpen && "lg:hidden")}>
+              <div className={cn('flex-1 min-w-0 transition-all', !isSidebarOpen && 'lg:hidden')}>
                 <p className="text-sm font-bold truncate">Super Admin</p>
                 <p className="text-[10px] text-white/40 truncate">admin@vemtap.com</p>
               </div>
-              <LogOut size={18} className={cn("text-white/40 group-hover:text-red-400 transition-colors shrink-0", !isSidebarOpen && "lg:hidden")} />
-            </Link>
+              <LogOut size={18} className={cn('text-white/40 group-hover:text-red-400 transition-colors shrink-0', !isSidebarOpen && 'lg:hidden')} />
+            </button>
           </div>
         </div>
       </aside>
@@ -157,7 +170,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </div>
 
           <div className="flex items-center gap-2 lg:gap-4 shrink-0">
-            <NotificationBell accentClass="bg-red-500" viewAllHref="/admin/settings" />
+            <NotificationBell accentClass="bg-red-500" viewAllHref="/notifications" />
             
             <div className="w-px h-8 bg-slate-200 mx-1 lg:mx-2 hidden xs:block"></div>
             

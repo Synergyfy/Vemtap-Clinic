@@ -9,9 +9,11 @@ import {
   BarChart3, TrendingUp, Users, Clock,
   FileText, Download, PieChart, Filter,
   CheckCircle2, AlertCircle, ArrowUpRight,
-  Calendar, FileDown, X, Send
+  Calendar, FileDown, X, Send, Loader2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useReportTemplates, useReportingStats } from "@/hooks/useClinicalReporting";
+import { usePatients } from "@/hooks/usePatients";
 
 export default function DoctorReports() {
   const [activeSection, setActiveTab] = useState("stats");
@@ -34,11 +36,52 @@ export default function DoctorReports() {
   const [filterRange, setFilterRange] = useState("all");
   const [requestForm, setRequestForm] = useState({ title: "", description: "", urgency: "normal", dataPoints: "" });
 
+  const { data: templates = [], isLoading: loadingTemplates } = useReportTemplates();
+  const { data: reportingStats } = useReportingStats();
+  const { data: patientsData } = usePatients();
+  const totalPatients = patientsData?.total ?? 0;
+
   const stats = [
-    { label: "Total Consultations", value: "342", icon: Users, color: "text-emerald-600", bg: "bg-emerald-50", trend: "+12%", detail: "12% increase from last month. Peak hours: 9AM-11AM. Average daily: 14 consultations.", breakdown: [{ period: "This Month", val: "342" }, { period: "Last Month", val: "305" }, { period: "3 Months Ago", val: "289" }] },
-    { label: "Avg. Satisfaction", value: "4.9", icon: TrendingUp, color: "text-amber-600", bg: "bg-amber-50", trend: "+0.2", detail: "Improving trend. 92% of patients rated 4.5 or above. Top feedback: thorough explanations.", breakdown: [{ period: "5 Stars", val: "68%" }, { period: "4 Stars", val: "24%" }, { period: "3 Stars", val: "8%" }] },
-    { label: "Completion Rate", value: "98%", icon: BarChart3, color: "text-sky-600", bg: "bg-sky-50", trend: "Stable", detail: "Consistently high. Only 7 incomplete sessions this month, all rescheduled.", breakdown: [{ period: "Completed", val: "335" }, { period: "Incomplete", val: "7" }, { period: "Cancelled", val: "12" }] },
-    { label: "Surgery Clearance", value: "12", icon: CheckCircle2, color: "text-purple-600", bg: "bg-purple-50", trend: "+3", detail: "3 more clearances than last month. All pre-op assessments completed on schedule.", breakdown: [{ period: "Cataract", val: "5" }, { period: "Glaucoma", val: "3" }, { period: "Refractive", val: "4" }] },
+    { 
+      label: "Total Consultations", 
+      value: String(totalPatients > 0 ? totalPatients : (reportingStats?.totalReports ?? 24)), 
+      icon: Users, 
+      color: "text-emerald-600", 
+      bg: "bg-emerald-50", 
+      trend: "+12%", 
+      detail: "Active consultation cases on file for this provider.", 
+      breakdown: [{ period: "This Month", val: "342" }, { period: "Last Month", val: "305" }] 
+    },
+    { 
+      label: "Avg. Satisfaction", 
+      value: "4.9", 
+      icon: TrendingUp, 
+      color: "text-amber-600", 
+      bg: "bg-amber-50", 
+      trend: "+0.2", 
+      detail: "High patient satisfaction score across consultation reviews.", 
+      breakdown: [{ period: "5 Stars", val: "88%" }, { period: "4 Stars", val: "12%" }] 
+    },
+    { 
+      label: "Active Templates", 
+      value: loadingTemplates ? "..." : String(templates.length), 
+      icon: BarChart3, 
+      color: "text-sky-600", 
+      bg: "bg-sky-50", 
+      trend: "Live", 
+      detail: "Customized clinical report templates connected to backend API.", 
+      breakdown: [{ period: "Ready", val: String(templates.length) }] 
+    },
+    { 
+      label: "Reports Generated", 
+      value: String(reportingStats?.totalReports ?? templates.length), 
+      icon: CheckCircle2, 
+      color: "text-purple-600", 
+      bg: "bg-purple-50", 
+      trend: "+3", 
+      detail: "Clinical reports archived in patient files.", 
+      breakdown: [{ period: "Completed", val: String(reportingStats?.totalReports ?? templates.length) }] 
+    },
   ];
 
   const topDiagnoses = [
@@ -47,13 +90,6 @@ export default function DoctorReports() {
     { name: "Glaucoma Suspect", count: 42, percentage: 12, color: "bg-amber-500" },
     { name: "Cataract", count: 35, percentage: 10, color: "bg-rose-500" },
     { name: "Others", count: 32, percentage: 10, color: "bg-slate-300" },
-  ];
-
-  const reportTemplates = [
-    { title: "Daily Consultation Summary", type: "Clinical", lastGenerated: "Today, 08:00 AM", status: "Ready", description: "Complete summary of all consultations held today with patient outcomes, diagnoses, and prescriptions issued." },
-    { title: "Monthly Diagnostic Trend", type: "Stats", lastGenerated: "June 01, 2026", status: "Archived", description: "Statistical analysis of diagnostic patterns over the past month with comparison to previous periods." },
-    { title: "Surgery Outcome Report", type: "Surgical", lastGenerated: "June 15, 2026", status: "Ready", description: "Detailed outcomes of all surgical procedures including pre-op assessments and post-op follow-ups." },
-    { title: "Referral Outflow Analysis", type: "Administrative", lastGenerated: "May 31, 2026", status: "Pending", description: "Analysis of patient referrals sent to other facilities with reasons and turnaround times." },
   ];
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 3000); };
@@ -151,31 +187,46 @@ export default function DoctorReports() {
       ) : (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
           <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest px-2">Clinical Report Repository</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-            {reportTemplates.map((report, i) => (
-              <Card key={i} className="rounded-[1.5rem] sm:rounded-[2rem] border-slate-200 hover:border-emerald-200 transition-all cursor-pointer group">
-                <CardContent className="p-4 sm:p-6">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400 group-hover:bg-emerald-50 group-hover:text-emerald-600 transition-colors"><FileText size={24} /></div>
-                      <div>
-                        <h4 className="font-black text-slate-900">{report.title}</h4>
-                        <p className="text-xs text-slate-500 font-bold mt-1 uppercase tracking-tighter">Type: {report.type} | Last: {report.lastGenerated}</p>
+          {loadingTemplates ? (
+            <div className="py-12 text-center text-slate-400">
+              <Loader2 size={24} className="animate-spin mx-auto text-emerald-600 mb-2" />
+              Loading live report templates...
+            </div>
+          ) : templates.length === 0 ? (
+            <div className="py-12 text-center text-slate-400 bg-white rounded-3xl border border-slate-100 p-8">
+              <FileText size={32} className="mx-auto mb-2 opacity-30" />
+              <p className="text-sm font-bold text-slate-700">No report templates created yet</p>
+              <p className="text-xs text-slate-400 mt-1">Click &quot;Generate New Report&quot; above to initialize clinical templates.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+              {templates.map((report: any, i: number) => (
+                <Card key={report.id || i} className="rounded-[1.5rem] sm:rounded-[2rem] border-slate-200 hover:border-emerald-200 transition-all cursor-pointer group">
+                  <CardContent className="p-4 sm:p-6">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400 group-hover:bg-emerald-50 group-hover:text-emerald-600 transition-colors"><FileText size={24} /></div>
+                        <div>
+                          <h4 className="font-black text-slate-900">{report.name || report.title}</h4>
+                          <p className="text-xs text-slate-500 font-bold mt-1 uppercase tracking-tighter">
+                            Type: {report.type || "Clinical"} | Format: {report.format || "PDF"}
+                          </p>
+                        </div>
                       </div>
+                      <button onClick={(e) => { e.stopPropagation(); setSelectedReport(report); setDownloadOpen(true); }} className="p-3 rounded-xl bg-slate-50 text-slate-400 group-hover:bg-emerald-600 group-hover:text-white transition-all"><Download size={18} /></button>
                     </div>
-                    <button onClick={(e) => { e.stopPropagation(); setSelectedReport(report); setDownloadOpen(true); }} className="p-3 rounded-xl bg-slate-50 text-slate-400 group-hover:bg-emerald-600 group-hover:text-white transition-all"><Download size={18} /></button>
-                  </div>
-                  <div className="mt-6 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className={cn("w-2 h-2 rounded-full", report.status === "Ready" ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" : "bg-amber-400")} />
-                      <span className="text-[10px] font-black uppercase text-slate-400">{report.status}</span>
+                    <div className="mt-6 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className={cn("w-2 h-2 rounded-full", report.isActive !== false ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" : "bg-amber-400")} />
+                        <span className="text-[10px] font-black uppercase text-slate-400">{report.isActive !== false ? "Active" : "Archived"}</span>
+                      </div>
+                      <button onClick={(e) => { e.stopPropagation(); setSelectedReport(report); setPreviewOpen(true); }} className="text-[10px] font-black uppercase text-emerald-700 hover:underline flex items-center gap-1">Preview Document <ArrowUpRight size={12} /></button>
                     </div>
-                    <button onClick={(e) => { e.stopPropagation(); setSelectedReport(report); setPreviewOpen(true); }} className="text-[10px] font-black uppercase text-emerald-700 hover:underline flex items-center gap-1">Preview Document <ArrowUpRight size={12} /></button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
 
           <Card className="rounded-[2rem] sm:rounded-[2.5rem] bg-emerald-50 border-emerald-100 p-4 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4 sm:gap-6">

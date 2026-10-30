@@ -121,7 +121,7 @@ export default function OpticianLayout({ children }: { children: React.ReactNode
             <Menu size={24} className="text-slate-700" />
           </button>
           <div className="flex-1" />
-          <NotificationBell accentClass="bg-amber-500" viewAllHref="/optician/settings" />
+          <NotificationBell accentClass="bg-amber-500" viewAllHref="/notifications" />
           <button
             onClick={() => setIsLogoutOpen(true)}
             className="ml-2 inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"

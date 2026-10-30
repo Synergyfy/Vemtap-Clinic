@@ -38,7 +38,10 @@ class ApiClient {
         async (error: AxiosError) => {
           const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
-          if (error.response?.status === 401 && !originalRequest._retry) {
+          const url = originalRequest.url || '';
+          const isAuthEndpoint = url.includes('/auth/refresh') || url.includes('/auth/login') || url.includes('/auth/logout');
+
+          if (error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
             if (this.isRefreshing) {
               return new Promise((resolve, reject) => {
                 this.failedQueue.push({ resolve, reject });
@@ -56,8 +59,9 @@ class ApiClient {
             this.isRefreshing = true;
 
             try {
-              const response = await this.getClient().post('/auth/refresh');
-              const newAccessToken = response.data.accessToken;
+              // Use plain axios call to avoid self-intercepting 401 into an infinite loop
+              const response = await axios.post(`${API_URL}/auth/refresh`, {}, { withCredentials: true });
+              const newAccessToken = response.data?.accessToken;
 
               if (newAccessToken) {
                 this.processQueue(null, newAccessToken);
@@ -69,9 +73,6 @@ class ApiClient {
             } catch (refreshError) {
               this.processQueue(refreshError as Error, '');
               clearAuth();
-              if (typeof window !== 'undefined') {
-                window.location.assign('/login');
-              }
               return Promise.reject(refreshError);
             } finally {
               this.isRefreshing = false;

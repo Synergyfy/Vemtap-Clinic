@@ -17,32 +17,36 @@ const faqs = [
   { q: "How do I reset my password?", a: "Contact the IT department at it@vemtap.com or call extension 2100." },
 ];
 
-const supportTickets = [
-  { id: "TKT-001", subject: "Unable to dispense drug", status: "Open", priority: "High", date: "2026-07-14" },
-  { id: "TKT-002", subject: "Inventory sync error", status: "In Progress", priority: "Medium", date: "2026-07-13" },
-  { id: "TKT-003", subject: "New supplier request", status: "Resolved", priority: "Low", date: "2026-07-12" },
-];
+import { useAuth } from "@/lib/auth-context";
+import { useSupportTickets, useCreateSupportTicket, type SupportTicket } from "@/hooks/useSupportTickets";
+import { Loader2 } from "lucide-react";
 
 function priorityBadge(p: string) {
-  if (p === "High") return <Badge className="bg-rose-600 text-white">High</Badge>;
-  if (p === "Medium") return <Badge className="bg-amber-600 text-white">Medium</Badge>;
-  if (p === "Low") return <Badge variant="secondary">Low</Badge>;
-  return <Badge variant="outline">{p}</Badge>;
+  const pLower = p?.toLowerCase();
+  if (pLower === "high" || pLower === "urgent") return <Badge className="bg-rose-600 text-white capitalize">{p}</Badge>;
+  if (pLower === "medium") return <Badge className="bg-amber-600 text-white capitalize">{p}</Badge>;
+  if (pLower === "low") return <Badge variant="secondary" className="capitalize">{p}</Badge>;
+  return <Badge variant="outline" className="capitalize">{p}</Badge>;
 }
 
 function ticketStatusBadge(s: string) {
-  if (s === "Open") return <Badge className="bg-sky-600 text-white">Open</Badge>;
-  if (s === "In Progress") return <Badge className="bg-amber-600 text-white">In Progress</Badge>;
-  if (s === "Resolved") return <Badge className="bg-emerald-600 text-white">Resolved</Badge>;
-  return <Badge variant="outline">{s}</Badge>;
+  const sLower = s?.toLowerCase();
+  if (sLower === "open") return <Badge className="bg-sky-600 text-white capitalize">{s}</Badge>;
+  if (sLower === "in_progress" || sLower === "in progress") return <Badge className="bg-amber-600 text-white capitalize">In Progress</Badge>;
+  if (sLower === "resolved") return <Badge className="bg-emerald-600 text-white capitalize">{s}</Badge>;
+  return <Badge variant="outline" className="capitalize">{s}</Badge>;
 }
 
 export default function PharmacySupport() {
+  const { user } = useAuth();
+  const { data: supportTickets = [], isLoading: loadingTickets } = useSupportTickets();
+  const createTicketMut = useCreateSupportTicket();
+
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [newTicketModal, setNewTicketModal] = useState(false);
   const [ticketSubject, setTicketSubject] = useState("");
-  const [ticketPriority, setTicketPriority] = useState("Low");
+  const [ticketPriority, setTicketPriority] = useState<"low" | "medium" | "high" | "critical">("medium");
   const [ticketDesc, setTicketDesc] = useState("");
   const [ticketSent, setTicketSent] = useState(false);
 
@@ -52,10 +56,27 @@ export default function PharmacySupport() {
     (f) => f.q.toLowerCase().includes(searchQuery.toLowerCase()) || f.a.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const sendTicket = () => {
+  const sendTicket = async () => {
     if (!ticketSubject.trim() || !ticketDesc.trim()) return;
-    setTicketSent(true);
-    setTimeout(() => { setNewTicketModal(false); setTicketSent(false); setTicketSubject(""); setTicketDesc(""); setTicketPriority("Low"); }, 1500);
+    try {
+      await createTicketMut.mutateAsync({
+        subject: ticketSubject.trim(),
+        description: ticketDesc.trim(),
+        priority: ticketPriority,
+        type: "support",
+        clinicId: user?.clinicId || "clinic-default",
+      });
+      setTicketSent(true);
+      setTimeout(() => { 
+        setNewTicketModal(false); 
+        setTicketSent(false); 
+        setTicketSubject(""); 
+        setTicketDesc(""); 
+        setTicketPriority("medium"); 
+      }, 1500);
+    } catch {
+      // Handled
+    }
   };
 
   const selectedTicket = detailTicket ? supportTickets.find((t) => t.id === detailTicket) : null;
@@ -122,43 +143,60 @@ export default function PharmacySupport() {
             <CardTitle className="flex items-center gap-2 text-base sm:text-lg"><MessageSquare size={18} /> Recent Tickets</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            <div className="md:hidden divide-y divide-slate-100">
-              {supportTickets.map((t) => (
-                <div key={t.id} onClick={() => setDetailTicket(t.id)} className="p-4 hover:bg-slate-50 transition-colors cursor-pointer">
-                  <div className="flex items-center justify-between gap-3 mb-2">
-                    <div className="min-w-0 flex-1">
-                      <p className="font-medium text-slate-900 text-sm truncate">{t.subject}</p>
-                      <span className="text-[9px] font-mono text-slate-400">{t.id}</span>
-                    </div>
-                    {ticketStatusBadge(t.status)}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {priorityBadge(t.priority)}
-                    <span className="text-[10px] text-slate-400">{t.date}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="hidden md:block overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Ticket</TableHead><TableHead>Subject</TableHead><TableHead>Priority</TableHead><TableHead>Status</TableHead><TableHead>Date</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
+            {loadingTickets ? (
+              <div className="py-12 text-center text-slate-400">
+                <Loader2 size={24} className="animate-spin mx-auto text-teal-600 mb-2" />
+                Loading live tickets...
+              </div>
+            ) : supportTickets.length === 0 ? (
+              <div className="py-12 text-center text-slate-400 text-sm">
+                No support tickets found. Click &quot;Submit Ticket&quot; above to log an inquiry.
+              </div>
+            ) : (
+              <>
+                <div className="md:hidden divide-y divide-slate-100">
                   {supportTickets.map((t) => (
-                    <TableRow key={t.id} className="cursor-pointer hover:bg-slate-50" onClick={() => setDetailTicket(t.id)}>
-                      <TableCell className="text-xs font-mono text-slate-500">{t.id}</TableCell>
-                      <TableCell className="text-sm text-slate-900">{t.subject}</TableCell>
-                      <TableCell>{priorityBadge(t.priority)}</TableCell>
-                      <TableCell>{ticketStatusBadge(t.status)}</TableCell>
-                      <TableCell className="text-xs text-slate-500">{t.date}</TableCell>
-                    </TableRow>
+                    <div key={t.id} onClick={() => setDetailTicket(t.id)} className="p-4 hover:bg-slate-50 transition-colors cursor-pointer">
+                      <div className="flex items-center justify-between gap-3 mb-2">
+                        <div className="min-w-0 flex-1">
+                          <p className="font-medium text-slate-900 text-sm truncate">{t.subject}</p>
+                          <span className="text-[9px] font-mono text-slate-400">{t.id.slice(0, 8).toUpperCase()}</span>
+                        </div>
+                        {ticketStatusBadge(t.status)}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {priorityBadge(t.priority)}
+                        <span className="text-[10px] text-slate-400">
+                          {t.updatedAt ? new Date(t.updatedAt).toLocaleDateString() : "Today"}
+                        </span>
+                      </div>
+                    </div>
                   ))}
-                </TableBody>
-              </Table>
-            </div>
+                </div>
+                <div className="hidden md:block overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Ticket</TableHead><TableHead>Subject</TableHead><TableHead>Priority</TableHead><TableHead>Status</TableHead><TableHead>Date</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {supportTickets.map((t) => (
+                        <TableRow key={t.id} className="cursor-pointer hover:bg-slate-50" onClick={() => setDetailTicket(t.id)}>
+                          <TableCell className="text-xs font-mono text-slate-500">{t.id.slice(0, 8).toUpperCase()}</TableCell>
+                          <TableCell className="text-sm text-slate-900">{t.subject}</TableCell>
+                          <TableCell>{priorityBadge(t.priority)}</TableCell>
+                          <TableCell>{ticketStatusBadge(t.status)}</TableCell>
+                          <TableCell className="text-xs text-slate-500">
+                            {t.updatedAt ? new Date(t.updatedAt).toLocaleDateString() : "Today"}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -171,7 +209,9 @@ export default function PharmacySupport() {
               <div className="w-14 h-14 rounded-full bg-teal-50 flex items-center justify-center text-teal-700"><MessageSquare size={24} /></div>
               <div>
                 <h4 className="text-lg font-bold text-slate-900">{selectedTicket.subject}</h4>
-                <p className="text-sm text-slate-500 font-mono">{selectedTicket.id} &bull; {selectedTicket.date}</p>
+                <p className="text-sm text-slate-500 font-mono">
+                  {selectedTicket.id.slice(0, 8).toUpperCase()} &bull; {selectedTicket.createdAt ? new Date(selectedTicket.createdAt).toLocaleDateString() : "Today"}
+                </p>
                 <div className="mt-1 flex gap-2">{priorityBadge(selectedTicket.priority)}{ticketStatusBadge(selectedTicket.status)}</div>
               </div>
             </div>
@@ -199,8 +239,8 @@ export default function PharmacySupport() {
             </div>
             <div>
               <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Priority</label>
-              <select value={ticketPriority} onChange={(e) => setTicketPriority(e.target.value)} className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/50">
-                <option>Low</option><option>Medium</option><option>High</option>
+              <select value={ticketPriority} onChange={(e) => setTicketPriority(e.target.value as any)} className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/50">
+                <option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="critical">Critical</option>
               </select>
             </div>
             <div>

@@ -23,6 +23,8 @@ import {
   type CreateRemittanceData, type UpdateRemittanceData,
 } from "@/services/hmo.service";
 
+export type { HmoItem, HmoPlan, HmoClaim, HmoAppeal, HmoRemittance, HmoAgreement, HmoAuthorization };
+
 
 const HMO_KEYS = {
   all: ["hmo"] as const,
@@ -173,13 +175,12 @@ export function useHmoStats() {
   });
 }
 
-// ─── HMO List ───
-export function useHmoList() {
+export function useHmoList(clinicId?: string) {
   const { user } = useAuth();
+  const cId = clinicId !== undefined ? clinicId : user?.clinicId;
   return useQuery({
-    queryKey: HMO_KEYS.list(),
-    queryFn: () => listHmos(user?.clinicId),
-    enabled: !!user?.clinicId,
+    queryKey: [...HMO_KEYS.list(), cId || "all"],
+    queryFn: () => listHmos(cId || undefined),
   });
 }
 

@@ -14,35 +14,53 @@ import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { Modal } from "@/components/ui/modal";
 
-const stats = [
-  { label: "Today's Queue", value: "24", icon: Users, color: "text-sky-600", bg: "bg-sky-50", href: "/reception/queue" },
-  { label: "Pending HMO", value: "8", icon: ShieldCheck, color: "text-amber-600", bg: "bg-amber-50", href: "/reception/billing#hmo-queue" },
-  { label: "Bookings", value: "12", icon: CalendarDays, color: "text-emerald-600", bg: "bg-emerald-50", href: "/reception/appointments" },
-  { label: "Avg. Wait", value: "15m", icon: Clock, color: "text-rose-600", bg: "bg-rose-50", href: "/reception/queue" },
-];
-
-const todayAppointments = [
-  { id: "APT-1042", patient: "Chidimma Okoro", time: "09:00 AM", type: "Eye Consultation", status: "Arrived", hmo: "Reliance Health" },
-  { id: "APT-1043", patient: "Babatunde Lawal", time: "10:30 AM", type: "Lens Purchase", status: "Scheduled", hmo: "Private" },
-  { id: "APT-1044", patient: "Yuki Tanaka", time: "11:15 AM", type: "Follow-up", status: "Confirmed", hmo: "Axa Mansard" },
-  { id: "APT-1045", patient: "Sarah Mensah", time: "12:00 PM", type: "Emergency", status: "Emergency", hmo: "Private" },
-];
-
-const queueItems = [
-  { id: "V001", patient: "Fatima Yusuf", time: "10 mins ago", status: "HMO Verifying", color: "amber" },
-  { id: "V002", patient: "John Doe", time: "15 mins ago", status: "To Nurse", color: "sky" },
-  { id: "V003", patient: "Emeka Obi", time: "22 mins ago", status: "In Consultation", color: "emerald" },
-];
-
-const hmoPendingList = [
-  { patient: "Chidimma Okoro", provider: "Reliance Health", code: "HMO-901", amount: "NGN 12,000" },
-  { patient: "Yuki Tanaka", provider: "Axa Mansard", code: "HMO-902", amount: "NGN 8,000" },
-  { patient: "Emeka Obi", provider: "Hygeia", code: "HMO-903", amount: "NGN 35,000" },
-];
+import { useAuth } from "@/lib/auth-context";
+import { 
+  useQueue, 
+  useQueueStats, 
+  useCreateQueueEntry, 
+  useUpdateQueueEntry, 
+  useCancelQueueEntry 
+} from "@/hooks/useQueue";
+import { 
+  useTodayAppointments, 
+  useUpdateAppointment, 
+  type Appointment 
+} from "@/hooks/useAppointments";
+import { useHmoClaims } from "@/hooks/useHmo";
+import { useCreatePatient } from "@/hooks/usePatients";
+import { Loader2 } from "lucide-react";
 
 export default function ReceptionDashboard() {
   const router = useRouter();
+  const { user } = useAuth();
+  const clinicId = user?.clinicId ?? "";
+
   const [toast, setToast] = useState("");
+
+  // Live queries
+  const { data: queueData, isLoading: loadingQueue } = useQueue(clinicId ? { clinicId } : {});
+  const queueEntries = Array.isArray(queueData?.data) 
+    ? queueData.data 
+    : Array.isArray(queueData) 
+    ? queueData 
+    : [];
+
+  const { data: queueStats } = useQueueStats(clinicId || null);
+  const { data: todayAppointmentsRes, isLoading: loadingApts } = useTodayAppointments(clinicId || null);
+  const todayAppointments = Array.isArray(todayAppointmentsRes) 
+    ? todayAppointmentsRes 
+    : (todayAppointmentsRes?.appointments ?? []);
+
+  const { data: hmoClaims = [], isLoading: loadingHmo } = useHmoClaims();
+  const hmoPendingList = hmoClaims.filter((c: any) => c.status === "pending" || c.status === "submitted");
+
+  // Live mutations
+  const createPatientMut = useCreatePatient();
+  const createQueueMut = useCreateQueueEntry();
+  const updateQueueMut = useUpdateQueueEntry();
+  const cancelQueueMut = useCancelQueueEntry();
+  const updateAptMut = useUpdateAppointment();
 
   // Modal states
   const [queueAction, setQueueAction] = useState<any>(null);
@@ -76,10 +94,133 @@ export default function ReceptionDashboard() {
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 3000); };
 
-  const handleQueueAction = (action: string) => {
-    setQueueAction(null);
-    showToast(`${action} for ${queueAction?.patient}`);
+  const handleQueueAction = async (action: string) => {
+    if (!queueAction?.id) return;
+    try {
+      if (action.includes("Remove")) {
+        await cancelQueueMut.mutateAsync(queueAction.id);
+      } else {
+        await updateQueueMut.mutateAsync({
+          id: queueAction.id,
+          data: {
+            notes: action,
+            status: action.includes("Arrived") ? "waiting" : action.includes("Nursing") ? "in_progress" : undefined,
+          }
+        });
+      }
+      showToast(`${action} for ${queueAction?.patient?.firstName || queueAction?.patientName || "Patient"}`);
+    } catch (e: any) {
+      showToast(e?.message || `Failed to perform ${action}`);
+    } finally {
+      setQueueAction(null);
+    }
   };
+
+  const handleQuickRegSubmit = async () => {
+    if (!regName.trim() || !regPhone.trim()) return;
+    try {
+      const parts = regName.trim().split(" ");
+      const firstName = parts[0];
+      const lastName = parts.slice(1).join(" ") || "Patient";
+      const targetClinic = clinicId || "clinic-default";
+      const newPatient = await createPatientMut.mutateAsync({
+        firstName,
+        lastName,
+        phone: regPhone.trim(),
+        clinicId: targetClinic,
+        branchId: targetClinic,
+        gender: "other",
+        dateOfBirth: "1990-01-01",
+      });
+
+      await createQueueMut.mutateAsync({
+        clinicId: targetClinic,
+        branchId: targetClinic,
+        patientId: newPatient.id,
+        serviceType: "consultation",
+        priority: "Normal",
+      });
+
+      setShowQuickReg(false);
+      setRegName("");
+      setRegPhone("");
+      showToast(`${firstName} ${lastName} registered & placed in live queue`);
+    } catch (e: any) {
+      showToast(e?.message || "Failed to register patient");
+    }
+  };
+
+  const handleWalkInSubmit = async () => {
+    if (!walkName.trim() || !walkPhone.trim()) return;
+    try {
+      const parts = walkName.trim().split(" ");
+      const firstName = parts[0];
+      const lastName = parts.slice(1).join(" ") || "Patient";
+      const targetClinic = clinicId || "clinic-default";
+      const newPatient = await createPatientMut.mutateAsync({
+        firstName,
+        lastName,
+        phone: walkPhone.trim(),
+        email: walkEmail.trim() || undefined,
+        clinicId: targetClinic,
+        branchId: targetClinic,
+        gender: "other",
+        dateOfBirth: "1990-01-01",
+      });
+
+      await createQueueMut.mutateAsync({
+        clinicId: targetClinic,
+        branchId: targetClinic,
+        patientId: newPatient.id,
+        serviceType: "consultation",
+        priority: "Normal",
+      });
+
+      setShowWalkIn(false);
+      setWalkName("");
+      setWalkPhone("");
+      setWalkEmail("");
+      setWalkIdNumber("");
+      showToast(`${firstName} ${lastName} walk-in registered to live system`);
+    } catch (e: any) {
+      showToast(e?.message || "Failed to register walk-in patient");
+    }
+  };
+
+  const stats = [
+    { 
+      label: "Today's Queue", 
+      value: loadingQueue ? "..." : String(queueStats?.total ?? queueEntries.length), 
+      icon: Users, 
+      color: "text-sky-600", 
+      bg: "bg-sky-50", 
+      href: "/reception/queue" 
+    },
+    { 
+      label: "Pending HMO", 
+      value: loadingHmo ? "..." : String(hmoPendingList.length), 
+      icon: ShieldCheck, 
+      color: "text-amber-600", 
+      bg: "bg-amber-50", 
+      href: "/reception/billing#hmo-queue" 
+    },
+    { 
+      label: "Bookings", 
+      value: loadingApts ? "..." : String(todayAppointments.length), 
+      icon: CalendarDays, 
+      color: "text-emerald-600", 
+      bg: "bg-emerald-50", 
+      href: "/reception/appointments" 
+    },
+    { 
+      label: "Avg. Wait", 
+      value: queueStats?.avgWaitTime ? `${queueStats.avgWaitTime}m` : "10m", 
+      icon: Clock, 
+      color: "text-rose-600", 
+      bg: "bg-rose-50", 
+      href: "/reception/queue" 
+    },
+  ];
 
   return (
     <div className="space-y-8 max-w-[1600px] mx-auto">
@@ -181,31 +322,51 @@ export default function ReceptionDashboard() {
               </Link>
             </div>
             <div className="divide-y divide-slate-50">
-              {queueItems.map((item) => (
-                <div key={item.id} className="p-4 sm:p-6 flex items-center justify-between hover:bg-slate-50 transition-colors">
-                  <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-slate-50 flex items-center justify-center font-black text-slate-400 text-[10px] sm:text-xs shrink-0">
-                      {item.id}
-                    </div>
-                    <div className="min-w-0">
-                      <h4 className="text-sm font-bold text-slate-900 truncate">{item.patient}</h4>
-                      <p className="text-[10px] sm:text-[11px] text-slate-400 font-medium">{item.time}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 sm:gap-6 shrink-0">
-                    <div className={cn(
-                      "px-2 sm:px-3 py-1 rounded-full text-[8px] sm:text-[10px] font-black uppercase tracking-widest",
-                      item.color === "amber" ? "bg-amber-100 text-amber-700" : 
-                      item.color === "sky" ? "bg-sky-100 text-sky-700" : "bg-emerald-100 text-emerald-700"
-                    )}>
-                      {item.status}
-                    </div>
-                    <button onClick={() => setQueueAction(item)} className="p-2 hover:bg-white rounded-lg transition-colors text-slate-400 hover:text-slate-900">
-                      <MoreHorizontal size={18} />
-                    </button>
-                  </div>
+              {loadingQueue ? (
+                <div className="p-12 text-center text-slate-400">
+                  <Loader2 size={24} className="animate-spin mx-auto text-sky-500 mb-2" />
+                  Loading live queue...
                 </div>
-              ))}
+              ) : queueEntries.length === 0 ? (
+                <div className="p-12 text-center text-slate-400">
+                  <Users size={28} className="mx-auto mb-2 opacity-30" />
+                  <p className="text-sm font-bold text-slate-600">No patients currently in queue</p>
+                  <p className="text-xs text-slate-400 mt-1">Use &quot;Quick Registration&quot; or &quot;Walk-in Entry&quot; above to add patients.</p>
+                </div>
+              ) : (
+                queueEntries.slice(0, 5).map((item: any) => {
+                  const patientName = item.patient ? `${item.patient.firstName} ${item.patient.lastName}` : item.patientName || "Walk-in Patient";
+                  const time = item.createdAt ? new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Recently";
+                  const status = item.status === "in_progress" ? "In Consultation" : item.status === "waiting" ? "Waiting" : item.status;
+                  const color = item.status === "in_progress" ? "emerald" : item.status === "waiting" ? "sky" : "amber";
+
+                  return (
+                    <div key={item.id} className="p-4 sm:p-6 flex items-center justify-between hover:bg-slate-50 transition-colors">
+                      <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+                        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-slate-50 flex items-center justify-center font-black text-slate-400 text-[10px] sm:text-xs shrink-0">
+                          {item.ticketNumber || item.id.slice(0, 4).toUpperCase()}
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="text-sm font-bold text-slate-900 truncate">{patientName}</h4>
+                          <p className="text-[10px] sm:text-[11px] text-slate-400 font-medium">{time}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 sm:gap-6 shrink-0">
+                        <div className={cn(
+                          "px-2 sm:px-3 py-1 rounded-full text-[8px] sm:text-[10px] font-black uppercase tracking-widest",
+                          color === "amber" ? "bg-amber-100 text-amber-700" : 
+                          color === "sky" ? "bg-sky-100 text-sky-700" : "bg-emerald-100 text-emerald-700"
+                        )}>
+                          {status}
+                        </div>
+                        <button onClick={() => setQueueAction(item)} className="p-2 hover:bg-white rounded-lg transition-colors text-slate-400 hover:text-slate-900">
+                          <MoreHorizontal size={18} />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
             </div>
           </section>
         </div>
@@ -219,34 +380,53 @@ export default function ReceptionDashboard() {
               <p className="text-[10px] sm:text-xs text-slate-400 font-bold uppercase tracking-tight">Scheduled Appointments</p>
             </div>
             <div className="p-3 sm:p-4 space-y-3">
-              {todayAppointments.map((apt) => (
-                <div key={apt.id} onClick={() => setAptDetail(apt)}
-                  className="p-4 sm:p-5 rounded-[1.5rem] border border-slate-50 bg-slate-50/30 hover:bg-white hover:shadow-lg hover:shadow-slate-200/50 transition-all cursor-pointer">
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="min-w-0">
-                      <p className="text-[10px] sm:text-xs font-black text-sky-600 mb-1">{apt.time}</p>
-                      <h4 className="text-sm font-bold text-slate-900 truncate">{apt.patient}</h4>
-                    </div>
-                    {apt.status === "Arrived" ? (
-                      <CheckCircle2 size={18} className="text-emerald-500 shrink-0" />
-                    ) : apt.status === "Emergency" ? (
-                      <AlertCircle size={18} className="text-rose-500 animate-pulse shrink-0" />
-                    ) : null}
-                  </div>
-                  <div className="flex items-center justify-between gap-2 flex-wrap">
-                    <span className="text-[9px] sm:text-[10px] text-slate-400 font-bold uppercase tracking-tight">{apt.type}</span>
-                    <span className={cn(
-                      "text-[8px] sm:text-[9px] font-black px-2 py-0.5 rounded-md",
-                      apt.hmo === "Private" ? "bg-slate-200 text-slate-600" : "bg-sky-100 text-sky-700"
-                    )}>
-                      {apt.hmo}
-                    </span>
-                  </div>
+              {loadingApts ? (
+                <div className="py-8 text-center text-slate-400">
+                  <Loader2 size={20} className="animate-spin mx-auto text-sky-500 mb-1" />
+                  <p className="text-xs">Loading appointments...</p>
                 </div>
-              ))}
+              ) : todayAppointments.length === 0 ? (
+                <div className="py-8 text-center text-slate-400">
+                  <CalendarDays size={24} className="mx-auto mb-1 opacity-40" />
+                  <p className="text-xs font-bold text-slate-500">No bookings scheduled for today</p>
+                </div>
+              ) : (
+                todayAppointments.slice(0, 5).map((apt: any) => {
+                  const patientName = apt.patient ? `${apt.patient.firstName} ${apt.patient.lastName}` : apt.patientName || "Patient";
+                  const time = apt.startTime ? new Date(apt.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "09:00 AM";
+                  const hmo = apt.hmoProvider || "Private";
+                  const type = apt.type || "Consultation";
+
+                  return (
+                    <div key={apt.id} onClick={() => setAptDetail({ ...apt, patient: patientName, time, hmo, type })}
+                      className="p-4 sm:p-5 rounded-[1.5rem] border border-slate-50 bg-slate-50/30 hover:bg-white hover:shadow-lg hover:shadow-slate-200/50 transition-all cursor-pointer">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="min-w-0">
+                          <p className="text-[10px] sm:text-xs font-black text-sky-600 mb-1">{time}</p>
+                          <h4 className="text-sm font-bold text-slate-900 truncate">{patientName}</h4>
+                        </div>
+                        {apt.status === "arrived" || apt.status === "Arrived" ? (
+                          <CheckCircle2 size={18} className="text-emerald-500 shrink-0" />
+                        ) : apt.status === "emergency" || apt.status === "Emergency" ? (
+                          <AlertCircle size={18} className="text-rose-500 animate-pulse shrink-0" />
+                        ) : null}
+                      </div>
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <span className="text-[9px] sm:text-[10px] text-slate-400 font-bold uppercase tracking-tight">{type}</span>
+                        <span className={cn(
+                          "text-[8px] sm:text-[9px] font-black px-2 py-0.5 rounded-md",
+                          hmo === "Private" ? "bg-slate-200 text-slate-600" : "bg-sky-100 text-sky-700"
+                        )}>
+                          {hmo}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
             </div>
             <div className="p-4 sm:p-6">
-              <Link href="/reception/appointments#lookup"
+              <Link href="/reception/appointments"
                 className="w-full py-3 sm:py-4 rounded-2xl bg-slate-900 text-white text-[10px] sm:text-xs font-black uppercase tracking-widest hover:bg-slate-800 transition-all flex items-center justify-center gap-2 shadow-lg shadow-slate-900/20">
                 <CalendarDays size={16} /> Manage All Appointments
               </Link>
@@ -259,9 +439,11 @@ export default function ReceptionDashboard() {
             <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-3xl -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-700" />
             <ShieldCheck size={40} className="mb-4 sm:mb-6 opacity-80" />
             <h3 className="text-lg sm:text-xl font-black mb-2">HMO Verification Queue</h3>
-            <p className="text-xs sm:text-sm text-white/80 font-medium mb-4 sm:mb-6">There are 8 pending HMO verifications that require immediate attention from the front desk.</p>
+            <p className="text-xs sm:text-sm text-white/80 font-medium mb-4 sm:mb-6">
+              There are {hmoPendingList.length} pending HMO verification requests that require immediate frontdesk attention.
+            </p>
             <div className="inline-flex px-5 sm:px-6 py-2.5 sm:py-3 bg-white text-amber-600 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest hover:bg-amber-50 transition-all items-center gap-2">
-              Process Queue <ArrowRight size={16} />
+              Process Queue ({hmoPendingList.length}) <ArrowRight size={16} />
             </div>
           </button>
         </div>
@@ -437,34 +619,43 @@ export default function ReceptionDashboard() {
         <div className="space-y-5">
           <p className="text-sm text-slate-600">Review and verify pending HMO authorizations.</p>
           <div className="space-y-3">
-            {hmoPendingList.map((item) => {
-              const verified = hmoVerified.includes(item.code);
-              return (
-                <div key={item.code} className={cn(
-                  "p-4 rounded-2xl border transition-all",
-                  verified ? "bg-emerald-50 border-emerald-200" : "bg-amber-50 border-amber-100"
-                )}>
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold text-slate-900">{item.patient}</p>
-                      <p className="text-[10px] text-slate-500 font-medium">{item.provider} &bull; {item.code}</p>
-                      <p className="text-xs font-black text-slate-700 mt-1">{item.amount}</p>
-                    </div>
-                    <div className="shrink-0 flex flex-col items-end gap-2">
-                      {verified ? (
-                        <span className="px-3 py-1 rounded-full bg-emerald-200 text-emerald-800 text-[8px] font-black uppercase tracking-widest">Verified</span>
-                      ) : (
-                        <>
-                          <span className="px-3 py-1 rounded-full bg-amber-200 text-amber-800 text-[8px] font-black uppercase tracking-widest">Pending</span>
-                          <button onClick={() => setHmoVerified(prev => [...prev, item.code])}
-                            className="px-4 py-2 rounded-xl bg-amber-600 text-white text-[9px] font-black uppercase tracking-widest hover:bg-amber-700">Approve</button>
-                        </>
-                      )}
+            {hmoPendingList.length === 0 ? (
+              <p className="text-xs text-slate-400 text-center py-4">No pending HMO claims to verify.</p>
+            ) : (
+              hmoPendingList.map((item: any) => {
+                const claimId = item.id;
+                const verified = hmoVerified.includes(claimId);
+                const pName = item.patient ? `${item.patient.firstName} ${item.patient.lastName}` : "Patient";
+                const provName = item.hmo?.name || "HMO Provider";
+                const amountStr = item.amountClaimed ? `NGN ${item.amountClaimed.toLocaleString()}` : "NGN 0";
+
+                return (
+                  <div key={claimId} className={cn(
+                    "p-4 rounded-2xl border transition-all",
+                    verified ? "bg-emerald-50 border-emerald-200" : "bg-amber-50 border-amber-100"
+                  )}>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-slate-900">{pName}</p>
+                        <p className="text-[10px] text-slate-500 font-medium">{provName} &bull; {item.claimNumber || claimId.slice(0, 6)}</p>
+                        <p className="text-xs font-black text-slate-700 mt-1">{amountStr}</p>
+                      </div>
+                      <div className="shrink-0 flex flex-col items-end gap-2">
+                        {verified ? (
+                          <span className="px-3 py-1 rounded-full bg-emerald-200 text-emerald-800 text-[8px] font-black uppercase tracking-widest">Verified</span>
+                        ) : (
+                          <>
+                            <span className="px-3 py-1 rounded-full bg-amber-200 text-amber-800 text-[8px] font-black uppercase tracking-widest">Pending</span>
+                            <button onClick={() => setHmoVerified(prev => [...prev, claimId])}
+                              className="px-4 py-2 rounded-xl bg-amber-600 text-white text-[9px] font-black uppercase tracking-widest hover:bg-amber-700">Approve</button>
+                          </>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })
+            )}
           </div>
           {hmoVerified.length > 0 && (
             <button onClick={() => { setShowHmoModal(false); showToast(`${hmoVerified.length} HMO requests verified`); }}
@@ -513,10 +704,11 @@ export default function ReceptionDashboard() {
               </div>
             </div>
           </div>
-          <button onClick={() => { setShowQuickReg(false); setRegName(""); setRegPhone(""); showToast(`${regName || "Patient"} registered & added to queue`); }}
-            disabled={!regName || !regPhone}
+          <button onClick={handleQuickRegSubmit}
+            disabled={!regName.trim() || !regPhone.trim() || createPatientMut.isPending}
             className="w-full p-4 rounded-2xl bg-sky-600 text-white text-xs font-black uppercase tracking-widest hover:bg-sky-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
-            <UserPlus size={16} /> Register & Add to Queue
+            {createPatientMut.isPending ? <Loader2 size={16} className="animate-spin" /> : <UserPlus size={16} />} 
+            {createPatientMut.isPending ? "Registering..." : "Register & Add to Live Queue"}
           </button>
         </div>
       </Modal>
@@ -581,10 +773,11 @@ export default function ReceptionDashboard() {
               </div>
             </div>
           </div>
-          <button onClick={() => { setShowWalkIn(false); showToast(`${walkName || "Walk-in patient"} registered`); setWalkName(""); setWalkPhone(""); setWalkEmail(""); setWalkIdNumber(""); }}
-            disabled={!walkName || !walkPhone}
+          <button onClick={handleWalkInSubmit}
+            disabled={!walkName.trim() || !walkPhone.trim() || createPatientMut.isPending}
             className="w-full p-4 rounded-2xl bg-emerald-600 text-white text-xs font-black uppercase tracking-widest hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
-            <Plus size={16} /> Complete Registration
+            {createPatientMut.isPending ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />} 
+            {createPatientMut.isPending ? "Registering..." : "Complete Registration"}
           </button>
         </div>
       </Modal>

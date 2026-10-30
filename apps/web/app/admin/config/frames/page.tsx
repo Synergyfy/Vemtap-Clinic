@@ -5,27 +5,216 @@ import {
   Search, Plus, Filter, MoreVertical, 
   Frame, Activity, Building2, CheckCircle2,
   Clock, AlertCircle, ArrowLeft, Download,
-  Edit3, Trash2, Tag, Box, Briefcase
+  Edit3, Trash2, Tag, Box, Briefcase, Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
+import { Modal } from "@/components/ui/modal";
+import { useAuth } from "@/lib/auth-context";
+import { 
+  useOpticalInventory, 
+  useCreateOpticalItem, 
+  useDeleteOpticalItem,
+  type OpticalInventoryItem 
+} from "@/hooks/useOptician";
 
-const frameItems = [
-  { id: "FRM-001", brand: "Ray-Ban", model: "Aviator Classic", material: "Metal", gender: "Unisex", price: "$150.00" },
-  { id: "FRM-002", brand: "Oakley", model: "Holbrook", material: "O Matter", gender: "Men", price: "$130.00" },
-  { id: "FRM-003", brand: "Gucci", model: "GG0006O", material: "Acetate", gender: "Women", price: "$320.00" },
-  { id: "FRM-004", brand: "Prada", model: "PR 16MV", material: "Plastic", gender: "Women", price: "$280.00" },
-  { id: "FRM-005", brand: "Tom Ford", model: "FT5401", material: "Acetate", gender: "Men", price: "$350.00" },
-  { id: "FRM-006", brand: "Vogue", model: "VO5211", material: "Nylon", gender: "Women", price: "$90.00" },
-];
+function formatNGN(amount: number) {
+  return new Intl.NumberFormat("en-NG", {
+    style: "currency",
+    currency: "NGN",
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
 
 export default function FramesCatalogPage() {
+  const { user } = useAuth();
+  const clinicId = user?.clinicId || "clinic-default";
+
+  const { data: items = [], isLoading } = useOpticalInventory("frame");
+  const createItemMutation = useCreateOpticalItem();
+  const deleteItemMutation = useDeleteOpticalItem();
+
   const [searchQuery, setSearchQuery] = useState("");
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [newFrame, setNewFrame] = useState({
+    name: "",
+    brand: "",
+    model: "",
+    material: "Acetate",
+    color: "Black",
+    costPrice: 0,
+    sellingPrice: 0,
+    quantityOnHand: 1,
+    minQuantity: 2,
+  });
+
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newFrame.name || !newFrame.brand) return;
+
+    try {
+      await createItemMutation.mutateAsync({
+        name: newFrame.name,
+        category: "frames",
+        type: "frame",
+        brand: newFrame.brand,
+        model: newFrame.model,
+        material: newFrame.material,
+        color: newFrame.color,
+        costPrice: Number(newFrame.costPrice),
+        sellingPrice: Number(newFrame.sellingPrice),
+        unitPrice: Number(newFrame.sellingPrice),
+        quantityInStock: Number(newFrame.quantityOnHand),
+        quantityOnHand: Number(newFrame.quantityOnHand),
+        minQuantity: Number(newFrame.minQuantity),
+        clinicId,
+      });
+      setIsAddModalOpen(false);
+      setNewFrame({
+        name: "",
+        brand: "",
+        model: "",
+        material: "Acetate",
+        color: "Black",
+        costPrice: 0,
+        sellingPrice: 0,
+        quantityOnHand: 1,
+        minQuantity: 2,
+      });
+    } catch (err) {
+      console.error("Failed to add frame item", err);
+    }
+  };
+
+  const filteredFrames = items.filter((f) =>
+    (f.brand && f.brand.toLowerCase().includes(searchQuery.toLowerCase())) ||
+    (f.model && f.model.toLowerCase().includes(searchQuery.toLowerCase())) ||
+    f.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const totalStock = items.reduce((acc, curr) => acc + (curr.quantityOnHand || 0), 0);
+  const uniqueBrands = new Set(items.map(i => i.brand).filter(Boolean)).size;
 
   return (
     <div className="space-y-8">
-      {/* Breadcrumbs & Back */}
+      {/* Modal */}
+      <Modal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} title="Add Frame to Global Catalog">
+        <form onSubmit={handleCreate} className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-bold text-slate-700">Brand</label>
+              <input
+                required
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none"
+                placeholder="e.g. Ray-Ban, Gucci"
+                value={newFrame.brand}
+                onChange={(e) => setNewFrame({ ...newFrame, brand: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-bold text-slate-700">Model</label>
+              <input
+                required
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none"
+                placeholder="e.g. Aviator Classic, RB3025"
+                value={newFrame.model}
+                onChange={(e) => setNewFrame({ ...newFrame, model: e.target.value })}
+              />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-bold text-slate-700">Display Name</label>
+            <input
+              required
+              className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none"
+              placeholder="e.g. Ray-Ban Aviator Gold/Green"
+              value={newFrame.name}
+              onChange={(e) => setNewFrame({ ...newFrame, name: e.target.value })}
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-bold text-slate-700">Material</label>
+              <select
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none bg-white"
+                value={newFrame.material}
+                onChange={(e) => setNewFrame({ ...newFrame, material: e.target.value })}
+              >
+                <option>Acetate</option>
+                <option>Metal</option>
+                <option>Titanium</option>
+                <option>TR90</option>
+                <option>Mixed</option>
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-bold text-slate-700">Color</label>
+              <input
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none"
+                placeholder="Black, Tortoise, Gold"
+                value={newFrame.color}
+                onChange={(e) => setNewFrame({ ...newFrame, color: e.target.value })}
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-bold text-slate-700">Cost Price (₦)</label>
+              <input
+                type="number"
+                required
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none"
+                placeholder="15000"
+                value={newFrame.costPrice}
+                onChange={(e) => setNewFrame({ ...newFrame, costPrice: Number(e.target.value) })}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-bold text-slate-700">Selling Price (₦)</label>
+              <input
+                type="number"
+                required
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none"
+                placeholder="30000"
+                value={newFrame.sellingPrice}
+                onChange={(e) => setNewFrame({ ...newFrame, sellingPrice: Number(e.target.value) })}
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-bold text-slate-700">Initial Stock</label>
+              <input
+                type="number"
+                required
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none"
+                value={newFrame.quantityOnHand}
+                onChange={(e) => setNewFrame({ ...newFrame, quantityOnHand: Number(e.target.value) })}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-bold text-slate-700">Min Alert Level</label>
+              <input
+                type="number"
+                required
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none"
+                value={newFrame.minQuantity}
+                onChange={(e) => setNewFrame({ ...newFrame, minQuantity: Number(e.target.value) })}
+              />
+            </div>
+          </div>
+          <Button 
+            type="submit" 
+            disabled={createItemMutation.isPending}
+            className="w-full py-4 rounded-xl font-bold mt-4 shadow-lg shadow-brand-blue/20"
+          >
+            {createItemMutation.isPending ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : "Save Frame"}
+          </Button>
+        </form>
+      </Modal>
+
+      {/* Breadcrumbs */}
       <div className="flex items-center gap-4">
         <Link href="/admin/config">
           <Button variant="ghost" size="sm" className="gap-2">
@@ -39,14 +228,16 @@ export default function FramesCatalogPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-brand-navy font-black tracking-tight text-brand-navy">Frames Catalog</h1>
-          <p className="text-slate-500 font-medium mt-1">Global frame directory with brand, material, and style tracking.</p>
+          <h1 className="text-3xl font-bold text-brand-navy font-black tracking-tight">Frames Catalog</h1>
+          <p className="text-slate-500 font-medium mt-1">Global frame directory with brand, material, and live pricing tracking.</p>
         </div>
         <div className="flex items-center gap-3">
-          <Button variant="outline" size="sm" className="gap-2 h-11 px-6 rounded-xl font-bold border-slate-200">
-            <Download size={16} /> Export Inventory
-          </Button>
-          <Button variant="default" size="sm" className="gap-2 h-11 px-6 rounded-xl font-bold shadow-lg shadow-brand-blue/20">
+          <Button 
+            onClick={() => setIsAddModalOpen(true)}
+            variant="default" 
+            size="sm" 
+            className="gap-2 h-11 px-6 rounded-xl font-bold shadow-lg shadow-brand-blue/20"
+          >
             <Plus size={16} /> Add New Frame
           </Button>
         </div>
@@ -55,10 +246,10 @@ export default function FramesCatalogPage() {
       {/* Stats Quick View */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {[
-          { label: "Total Styles", val: "15,400", icon: Frame, color: "purple" },
-          { label: "Partner Brands", val: "84", icon: Briefcase, color: "blue" },
-          { label: "Available Stock", val: "42,000", icon: Box, color: "emerald" },
-          { label: "New Arrivals", val: "120", icon: Activity, color: "amber" },
+          { label: "Total Styles", val: items.length.toString(), icon: Frame, color: "purple" },
+          { label: "Partner Brands", val: uniqueBrands.toString(), icon: Briefcase, color: "blue" },
+          { label: "Available Stock Units", val: totalStock.toString(), icon: Box, color: "emerald" },
+          { label: "Database Status", val: "Live Synced", icon: Activity, color: "amber" },
         ].map((stat, i) => (
           <div key={i} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex items-center gap-4">
             <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center shrink-0", 
@@ -88,15 +279,6 @@ export default function FramesCatalogPage() {
             className="w-full h-12 pl-12 pr-6 py-3 rounded-xl bg-slate-50 border border-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-blue/20 focus:bg-white transition-all text-sm font-medium"
           />
         </div>
-        
-        <div className="flex items-center gap-3 w-full md:w-auto overflow-x-auto pb-2 md:pb-0">
-          <Button variant="outline" size="sm" className="gap-2 shrink-0 h-11 px-6 rounded-xl border-slate-100 bg-slate-50/50 hover:bg-white transition-all font-bold">
-            <Filter size={16} /> Material
-          </Button>
-          <Button variant="outline" size="sm" className="gap-2 shrink-0 h-11 px-6 rounded-xl border-slate-100 bg-slate-50/50 hover:bg-white transition-all font-bold">
-            <Briefcase size={16} /> Brand: All
-          </Button>
-        </div>
       </div>
 
       {/* Table */}
@@ -106,67 +288,86 @@ export default function FramesCatalogPage() {
             <thead>
               <tr className="bg-slate-50/50 border-b border-slate-100">
                 <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Brand & Model</th>
-                <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Material</th>
-                <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Gender</th>
+                <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Material & Color</th>
+                <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Stock Units</th>
                 <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Price</th>
                 <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
                 <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-              {frameItems.map((frame, i) => (
-                <tr key={i} className="group hover:bg-slate-50/30 transition-colors">
-                  <td className="px-8 py-6">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-400 group-hover:bg-purple-500/10 group-hover:text-purple-600 group-hover:border-purple-500/20 transition-all">
-                        <Frame size={24} />
-                      </div>
-                      <div>
-                        <p className="text-base font-bold text-brand-navy">{frame.brand}</p>
-                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">{frame.model} • {frame.id}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-8 py-6 text-sm font-medium text-slate-600">
-                    {frame.material}
-                  </td>
-                  <td className="px-8 py-6">
-                    <span className="text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest bg-slate-100 text-slate-600">
-                      {frame.gender}
-                    </span>
-                  </td>
-                  <td className="px-8 py-6">
-                    <p className="text-sm font-black text-brand-navy">{frame.price}</p>
-                  </td>
-                  <td className="px-8 py-6">
-                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-emerald-50 text-emerald-600">
-                      <CheckCircle2 size={14} /> Available
-                    </div>
-                  </td>
-                  <td className="px-8 py-6 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <Button variant="ghost" size="sm" className="h-10 px-4 rounded-xl gap-2 font-black text-[10px] uppercase tracking-widest text-brand-blue hover:bg-brand-soft-blue transition-all">
-                        <Edit3 size={16} /> Edit
-                      </Button>
-                      <Button variant="ghost" size="sm" className="h-10 w-10 p-0 rounded-xl">
-                        <MoreVertical size={18} />
-                      </Button>
-                    </div>
+              {isLoading ? (
+                <tr>
+                  <td colSpan={6} className="py-12 text-center text-slate-400">
+                    <Loader2 className="w-6 h-6 animate-spin mx-auto text-brand-blue" />
+                    <p className="mt-2 text-xs font-bold">Loading live frames catalog...</p>
                   </td>
                 </tr>
-              ))}
+              ) : filteredFrames.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="py-12 text-center text-slate-400">
+                    <p className="text-sm font-bold text-slate-600">No frames found</p>
+                    <p className="text-xs text-slate-400 mt-1">Add your first frame style to populate the optical catalog.</p>
+                    <Button 
+                      onClick={() => setIsAddModalOpen(true)}
+                      variant="outline" 
+                      size="sm" 
+                      className="mt-4 rounded-xl font-bold"
+                    >
+                      <Plus size={14} className="mr-1" /> Add Frame
+                    </Button>
+                  </td>
+                </tr>
+              ) : (
+                filteredFrames.map((frame) => (
+                  <tr key={frame.id} className="group hover:bg-slate-50/30 transition-colors">
+                    <td className="px-8 py-6">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-400 group-hover:bg-purple-500/10 group-hover:text-purple-600 group-hover:border-purple-500/20 transition-all">
+                          <Frame size={24} />
+                        </div>
+                        <div>
+                          <p className="text-base font-bold text-brand-navy">{frame.brand || frame.name}</p>
+                          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">{frame.model || frame.name} • {frame.id.slice(0, 8)}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-8 py-6 text-sm font-medium text-slate-600">
+                      {frame.material || "Standard"} • {frame.color || "Default"}
+                    </td>
+                    <td className="px-8 py-6">
+                      <span className={cn(
+                        "text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest",
+                        (frame.quantityOnHand || 0) > (frame.minQuantity || 0) ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"
+                      )}>
+                        {frame.quantityOnHand || 0} in stock
+                      </span>
+                    </td>
+                    <td className="px-8 py-6">
+                      <p className="text-sm font-black text-brand-navy">{formatNGN(frame.sellingPrice || 0)}</p>
+                    </td>
+                    <td className="px-8 py-6">
+                      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-emerald-50 text-emerald-600">
+                        <CheckCircle2 size={14} /> Available
+                      </div>
+                    </td>
+                    <td className="px-8 py-6 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <Button 
+                          onClick={() => deleteItemMutation.mutate(frame.id)}
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-10 w-10 p-0 rounded-xl text-rose-500 hover:bg-rose-50"
+                        >
+                          <Trash2 size={16} />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
-        </div>
-        
-        {/* Pagination */}
-        <div className="p-6 bg-slate-50/50 border-t border-slate-100 flex items-center justify-between">
-          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Showing 1 to 6 of 15,400 styles</p>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" className="rounded-xl font-bold px-6 h-10 border-slate-200">Previous</Button>
-            <Button variant="outline" className="rounded-xl font-bold w-10 h-10 p-0 bg-white border-brand-blue text-brand-blue">1</Button>
-            <Button variant="outline" className="rounded-xl font-bold px-6 h-10 border-slate-200">Next</Button>
-          </div>
         </div>
       </div>
     </div>

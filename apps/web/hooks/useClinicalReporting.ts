@@ -51,14 +51,13 @@ export const CLINICAL_REPORTING_KEYS = {
   scheduled: () => ["clinical-reporting", "scheduled"] as const,
 };
 
-export function useReportTemplates(query?: Omit<ReportTemplateQuery, "clinicId">) {
+export function useReportTemplates(query?: ReportTemplateQuery) {
   const { user } = useAuth();
-  const clinicId = user?.clinicId;
+  const clinicId = query?.clinicId || user?.clinicId;
 
   return useQuery({
     queryKey: CLINICAL_REPORTING_KEYS.templates(clinicId, query),
-    queryFn: () => listTemplates({ ...query, clinicId }),
-    enabled: !!clinicId,
+    queryFn: () => listTemplates({ ...query, clinicId: clinicId || undefined }),
   });
 }
 

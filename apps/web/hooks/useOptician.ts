@@ -2,11 +2,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/auth-context';
 import { opticalInventoryService, lensOrderService, opticalSalesService } from '@/services/optician.service';
 
-export function useOpticalInventory() {
+export function useOpticalInventory(type?: string) {
   const { user } = useAuth();
   return useQuery({
-    queryKey: ['optical-items', user?.clinicId],
-    queryFn: () => opticalInventoryService.getItems(user!.clinicId!),
+    queryKey: ['optical-items', user?.clinicId, type || 'all'],
+    queryFn: () => opticalInventoryService.getItems(user!.clinicId!, type),
     enabled: !!user?.clinicId,
   });
 }

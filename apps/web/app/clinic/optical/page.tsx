@@ -770,7 +770,7 @@ export default function OpticalPage() {
                             <TableCell className="capitalize text-xs">{f.type || "Full Rim"}</TableCell>
                             <TableCell className="text-xs text-slate-600">{f.frameSize || "Standard"}</TableCell>
                             <TableCell className="font-bold text-slate-900 tabular-nums">
-                              {formatNGN(f.unitPrice)}
+                              {formatNGN(f.unitPrice || 0)}
                             </TableCell>
                             <TableCell className="tabular-nums font-semibold text-slate-800">{stock} units</TableCell>
                             <TableCell>
@@ -846,7 +846,7 @@ export default function OpticalPage() {
                         <TableCell className="pl-6 font-medium text-slate-900">{l.name}</TableCell>
                         <TableCell className="text-xs">{l.type || "Prescription Lens"}</TableCell>
                         <TableCell className="text-xs text-slate-600">{l.lensType || "Standard Index"}</TableCell>
-                        <TableCell className="font-bold text-slate-900 tabular-nums">{formatNGN(l.unitPrice)}</TableCell>
+                        <TableCell className="font-bold text-slate-900 tabular-nums">{formatNGN(l.unitPrice || 0)}</TableCell>
                         <TableCell className="tabular-nums font-semibold">{l.quantityInStock || 0} blanks</TableCell>
                         <TableCell className="text-right pr-6">
                           <Button
@@ -912,7 +912,7 @@ export default function OpticalPage() {
                         </TableCell>
                         <TableCell className="text-xs text-slate-600">{item.brand || "-"}</TableCell>
                         <TableCell className="font-bold text-slate-900 tabular-nums">
-                          {formatNGN(item.unitPrice)}
+                          {formatNGN(item.unitPrice || 0)}
                         </TableCell>
                         <TableCell className="tabular-nums font-semibold">{item.quantityInStock}</TableCell>
                         <TableCell className="tabular-nums text-slate-500">{item.reorderLevel || 5}</TableCell>
@@ -1071,7 +1071,7 @@ export default function OpticalPage() {
                             {s.inventoryItem?.name || (s.lensOrderId ? `Lens Order #${s.lensOrderId.slice(0, 8)}` : "Optical Product")}
                           </TableCell>
                           <TableCell className="tabular-nums">{s.quantity}</TableCell>
-                          <TableCell className="tabular-nums text-slate-600">{formatNGN(s.unitPrice)}</TableCell>
+                          <TableCell className="tabular-nums text-slate-600">{formatNGN(s.unitPrice || 0)}</TableCell>
                           <TableCell className="font-bold text-emerald-600 tabular-nums">
                             {formatNGN(s.totalPrice)}
                           </TableCell>
@@ -1437,7 +1437,7 @@ export default function OpticalPage() {
               <option value="">Select Item from stock...</option>
               {inventory.map((i) => (
                 <option key={i.id} value={i.id}>
-                  {i.name} ({formatNGN(i.unitPrice)} - {i.quantityInStock} in stock)
+                  {i.name} ({formatNGN(i.unitPrice || 0)} - {i.quantityInStock || 0} in stock)
                 </option>
               ))}
             </select>

@@ -20,11 +20,11 @@ const categoryLabels: Record<string, string> = {
   other: "Other",
 };
 
-const mockToBackend: Record<string, string> = {
-  General: "general",
-  Medication: "treatment",
-  Procedure: "treatment",
-};
+
+
+
+
+
 
 function categoryBadge(category: string) {
   const label = categoryLabels[category] || category;

@@ -9,6 +9,7 @@ import { PageHeader } from "@/app/clinic/_components/page-header";
 import { Modal } from "@/components/ui/modal";
 import { useAuth } from "@/lib/auth-context";
 import { useQueue, useCreateQueueEntry, useUpdateQueueEntry } from "@/hooks/useQueue";
+import { usePatients } from "@/hooks/usePatients";
 import { PageSkeleton } from "@/components/ui/skeleton";
 
 function stageBadge(stage: string) {
@@ -116,8 +117,10 @@ export default function QueuePage() {
   const [selectedStage, setSelectedStage] = React.useState<string>("Reception");
   const [queue, setQueue] = React.useState<any[]>([]);
   const [isAddOpen, setIsAddOpen] = React.useState(false);
+  const { data: patientsResponse, isLoading: patientsLoading } = usePatients({ clinicId: user?.clinicId || "", limit: 100 });
   const [addForm, setAddForm] = React.useState({
     patientName: "",
+    patientId: "",
     stage: "Reception" as string,
     priority: "Normal" as string,
   });
@@ -171,19 +174,19 @@ export default function QueuePage() {
 
   const submitAdd = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!addForm.patientName.trim()) return;
+    if (!addForm.patientId) return;
     createEntry.mutate({
       patientName: addForm.patientName.trim(),
       serviceType: addForm.stage,
       priority: addForm.priority,
-      patientId: "", // TODO: Select patient
+      patientId: addForm.patientId,
       branchId: user?.clinicId || "",
       clinicId: user?.clinicId || "",
     }, {
       onSuccess: (newItem) => {
         setQueue((prev) => [newItem, ...prev]);
         setIsAddOpen(false);
-        setAddForm({ patientName: "", stage: "Reception", priority: "Normal" });
+        setAddForm({ patientName: "", patientId: "", stage: "Reception", priority: "Normal" });
       },
     });
   };
@@ -934,14 +937,20 @@ export default function QueuePage() {
       <Modal isOpen={isAddOpen} onClose={() => setIsAddOpen(false)} title="Add patient to queue">
         <form onSubmit={submitAdd} className="space-y-4">
           <div>
-            <label className="text-sm font-medium text-slate-700">Patient name</label>
-            <input
-              value={addForm.patientName}
-              onChange={(e) => setAddForm((p) => ({ ...p, patientName: e.target.value }))}
+            <label className="text-sm font-medium text-slate-700">Patient</label>
+            <select
+              value={addForm.patientId}
+              onChange={(e) => setAddForm((p) => ({ ...p, patientId: e.target.value }))}
               className="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none focus:border-sky-300 focus:ring-2 focus:ring-sky-100"
-              placeholder="e.g., Fatima Yusuf"
               required
-            />
+            >
+              <option value="">Select patient...</option>
+              {(patientsResponse?.data ?? []).map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.firstName} {p.lastName}
+                </option>
+              ))}
+            </select>
           </div>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div>

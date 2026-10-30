@@ -11,9 +11,84 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
 import { Headphones, ChevronRight, Zap, Send, ShieldAlert, MessageCircle, Activity } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/lib/auth-context";
+import { useCreateInvoice } from "@/hooks/useBilling";
+
+const createInvoiceReference = () => {
+  const now = new Date();
+  const stamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}`;
+  const suffix = Math.random().toString(36).slice(2, 8).toUpperCase();
+  return `INV-${stamp}-${suffix}`;
+};
 
 export const ModalManager = () => {
   const { activeModal, closeModal } = useModals();
+  const { user } = useAuth();
+  const createInvoiceMut = useCreateInvoice();
+  const [form, setForm] = React.useState({
+    invoiceNumber: "",
+    patientId: "",
+    totalAmount: "",
+    items: "",
+    dueDate: "",
+    notes: "",
+  });
+  const [submitError, setSubmitError] = React.useState("");
+
+  React.useEffect(() => {
+    if (activeModal === "invoice") {
+      setSubmitError("");
+      setForm((current) => ({
+        ...current,
+        invoiceNumber: current.invoiceNumber || createInvoiceReference(),
+      }));
+    }
+  }, [activeModal]);
+
+  const handleChange = (field: keyof typeof form, value: string) => {
+    setForm((current) => ({ ...current, [field]: value }));
+  };
+
+  const handleSubmit = (event: React.FormEvent) => {
+    event.preventDefault();
+
+    if (!user?.clinicId) {
+      setSubmitError("Your clinic is not available. Please sign in again.");
+      return;
+    }
+
+    if (!form.patientId.trim() || !form.totalAmount || !form.items.trim()) {
+      setSubmitError("Patient ID, service description, and amount are required.");
+      return;
+    }
+
+    const totalAmount = Number(form.totalAmount);
+
+    if (!Number.isFinite(totalAmount) || totalAmount <= 0) {
+      setSubmitError("Amount must be greater than zero.");
+      return;
+    }
+
+    createInvoiceMut.mutate(
+      {
+        invoiceNumber: form.invoiceNumber || createInvoiceReference(),
+        totalAmount,
+        items: JSON.stringify([{ item: form.items.trim(), amount: totalAmount }]),
+        patientId: form.patientId.trim(),
+        branchId: user.clinicId,
+        dueDate: form.dueDate || undefined,
+        notes: form.notes.trim() || undefined,
+      },
+      {
+        onSuccess: () => {
+          closeModal();
+        },
+        onError: () => {
+          setSubmitError("The invoice could not be created. Please try again.");
+        },
+      },
+    );
+  };
 
   return (
     <>
@@ -28,34 +103,73 @@ export const ModalManager = () => {
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={closeModal} />
           <div className="relative bg-white p-8 rounded-3xl shadow-xl w-full max-w-lg">
-            <h2 className="text-xl font-bold text-brand-navy mb-6">Manage Invoice</h2>
+            <h2 className="text-xl font-bold text-brand-navy mb-6">Create Invoice</h2>
             
-            <div className="space-y-6">
+            <form className="space-y-6" onSubmit={handleSubmit}>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Invoice ID</label>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Invoice Number</label>
                   <Tooltip content="Unique reference for this invoice">
-                    <input type="text" defaultValue="INV-2024-001" className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-900 outline-none" />
+                    <input
+                      type="text"
+                      value={form.invoiceNumber}
+                      onChange={(event) => handleChange("invoiceNumber", event.target.value)}
+                      className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-900 outline-none"
+                    />
                   </Tooltip>
                 </div>
                 <div>
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Status</label>
-                  <Tooltip content="Current payment status">
-                    <select className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-900 outline-none">
-                        <option>Pending</option>
-                        <option>Paid</option>
-                        <option>Overdue</option>
-                    </select>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Due Date</label>
+                  <Tooltip content="When payment is expected">
+                    <input
+                      type="date"
+                      value={form.dueDate}
+                      onChange={(event) => handleChange("dueDate", event.target.value)}
+                      className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-900 outline-none"
+                    />
                   </Tooltip>
                 </div>
+              </div>
+
+              <div>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Patient ID</label>
+                <Tooltip content="UUID of the patient receiving the invoice">
+                  <input
+                    type="text"
+                    value={form.patientId}
+                    onChange={(event) => handleChange("patientId", event.target.value)}
+                    placeholder="Enter patient UUID"
+                    className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-900 outline-none"
+                  />
+                </Tooltip>
+              </div>
+
+              <div>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Service / Item</label>
+                <Tooltip content="Main invoice description or service rendered">
+                  <input
+                    type="text"
+                    value={form.items}
+                    onChange={(event) => handleChange("items", event.target.value)}
+                    placeholder="Consultation, eye test, surgery..."
+                    className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-900 outline-none"
+                  />
+                </Tooltip>
               </div>
 
               <div>
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Amount Due</label>
                 <Tooltip content="Total amount to be paid by the patient or HMO">
                   <div className="relative">
-                    <span className="absolute left-4 top-2.5 text-slate-400 font-bold">$</span>
-                    <input type="number" defaultValue="1240.00" className="w-full bg-slate-50 border border-slate-100 rounded-xl pl-8 pr-4 py-2.5 text-sm font-bold text-slate-900 outline-none" />
+                    <span className="absolute left-4 top-2.5 text-slate-400 font-bold">₦</span>
+                    <input
+                      type="number"
+                      min="1"
+                      step="0.01"
+                      value={form.totalAmount}
+                      onChange={(event) => handleChange("totalAmount", event.target.value)}
+                      className="w-full bg-slate-50 border border-slate-100 rounded-xl pl-8 pr-4 py-2.5 text-sm font-bold text-slate-900 outline-none"
+                    />
                   </div>
                 </Tooltip>
               </div>
@@ -63,18 +177,26 @@ export const ModalManager = () => {
               <div>
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Notes</label>
                 <Tooltip content="Additional information for internal or patient use">
-                  <textarea className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-600 outline-none min-h-[100px]" placeholder="Add invoice notes..."></textarea>
+                  <textarea
+                    value={form.notes}
+                    onChange={(event) => handleChange("notes", event.target.value)}
+                    className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-600 outline-none min-h-[100px]"
+                    placeholder="Add invoice notes..."
+                  ></textarea>
                 </Tooltip>
               </div>
 
+              {submitError && (
+                <p className="text-xs font-medium text-red-600">{submitError}</p>
+              )}
+
               <div className="flex items-center gap-3 pt-4 border-t border-slate-50">
-                <Button variant="ghost" className="flex-1" onClick={closeModal}>Cancel</Button>
-                <Button className="flex-1 bg-brand-blue hover:bg-brand-blue/90 text-white rounded-xl" onClick={() => {
-                  console.log("Saving invoice...");
-                  closeModal();
-                }}>Save Changes</Button>
+                <Button type="button" variant="ghost" className="flex-1" onClick={closeModal}>Cancel</Button>
+                <Button type="submit" className="flex-1 bg-brand-blue hover:bg-brand-blue/90 text-white rounded-xl" disabled={createInvoiceMut.isPending}>
+                  {createInvoiceMut.isPending ? "Creating..." : "Create Invoice"}
+                </Button>
               </div>
-            </div>
+            </form>
           </div>
         </div>
       )}

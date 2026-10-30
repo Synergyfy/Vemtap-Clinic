@@ -15,7 +15,7 @@ export const REFRESH_TOKEN_OPTIONS: CookieOptions = {
   httpOnly: true,
   secure: process.env.NODE_ENV === 'production',
   sameSite: 'lax',
-  path: '/api/auth/refresh', // only sent to refresh endpoint
+  path: '/',
   maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
 };
 

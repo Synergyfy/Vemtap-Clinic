@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useQuery } from "@tanstack/react-query";
 import { 
   Building2, MapPin, Users, CheckCircle2, 
   ArrowLeft, Mail, Phone, Globe, Calendar,
@@ -13,8 +14,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
-import { useParams } from "next/navigation";
-import { useClinic } from "@/hooks/useClinics";
+import { useParams, useRouter } from "next/navigation";
+import { useClinic, useUpdateClinic } from "@/hooks/useClinics";
+import { listBranches } from "@/services/branches.service";
+import { listAuditLogs } from "@/services/audit-logs.service";
 
 const tabs = [
   { id: "overview", label: "Overview", icon: Activity },
@@ -25,11 +28,52 @@ const tabs = [
   { id: "audit", label: "Audit Logs", icon: ListTodo },
 ];
 
+const formatRelativeTime = (value?: string) => {
+  if (!value) return 'Recently';
+
+  const diffMs = Date.now() - new Date(value).getTime();
+  const diffMinutes = Math.max(0, Math.floor(diffMs / 60000));
+
+  if (diffMinutes < 60) return `${diffMinutes} minute${diffMinutes === 1 ? '' : 's'} ago`;
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24) return `${diffHours} hour${diffHours === 1 ? '' : 's'} ago`;
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays < 30) return `${diffDays} day${diffDays === 1 ? '' : 's'} ago`;
+  const diffMonths = Math.floor(diffDays / 30);
+  return `${diffMonths} month${diffMonths === 1 ? '' : 's'} ago`;
+};
+
 export default function ClinicDetailsPage() {
   const { id } = useParams();
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState("overview");
   const clinicId = typeof id === 'string' ? id : '';
   const { data: clinic, isLoading, isError } = useClinic(clinicId);
+  const updateClinicMutation = useUpdateClinic();
+
+  const { data: branches = [], isLoading: isBranchesLoading, isError: isBranchesError } = useQuery({
+    queryKey: ['branches', clinicId],
+    queryFn: () => listBranches(clinicId),
+    enabled: !!clinicId,
+  });
+
+  const { data: auditLogs = [], isLoading: isAuditLogsLoading } = useQuery({
+    queryKey: ['audit-logs', clinicId],
+    queryFn: () => listAuditLogs({ clinicId }),
+    enabled: !!clinicId,
+  });
+
+  const recentActivity = useMemo(() => {
+    if (!auditLogs.length) {
+      return [];
+    }
+
+    return auditLogs.slice(0, 3).map((log) => ({
+      type: log.action?.toLowerCase().includes('staff') ? 'staff' : log.action?.toLowerCase().includes('billing') ? 'billing' : log.action?.toLowerCase().includes('hmo') ? 'hmo' : 'general',
+      text: log.details || log.action || 'Clinic activity recorded',
+      time: formatRelativeTime(log.createdAt),
+    }));
+  }, [auditLogs]);
 
   if (isLoading) {
     return <div className="p-8 text-slate-500">Loading clinic…</div>;
@@ -41,6 +85,15 @@ export default function ClinicDetailsPage() {
 
   const location = [clinic.city, clinic.state].filter(Boolean).join(', ') || clinic.address || '—';
   const status = clinic.isActive ? 'Active' : 'Pending';
+
+  const handleToggleStatus = () => {
+    if (!clinicId || !clinic) return;
+
+    updateClinicMutation.mutate({
+      id: clinicId,
+      dto: { isActive: !clinic.isActive },
+    });
+  };
 
   return (
     <div className="space-y-8">
@@ -92,10 +145,10 @@ export default function ClinicDetailsPage() {
           </div>
 
           <div className="flex flex-wrap gap-3">
-            <Button variant="outline" size="sm" className="gap-2">
-              <ShieldAlert size={16} /> Suspend Clinic
+            <Button variant="outline" size="sm" className="gap-2" onClick={handleToggleStatus} disabled={updateClinicMutation.isPending}>
+              <ShieldAlert size={16} /> {clinic.isActive ? 'Suspend Clinic' : 'Activate Clinic'}
             </Button>
-            <Button variant="default" size="sm" className="gap-2">
+            <Button variant="default" size="sm" className="gap-2" onClick={() => router.push(`/admin/analytics?clinicId=${clinicId}`)}>
               <Settings2 size={16} /> Edit Settings
             </Button>
           </div>
@@ -156,21 +209,23 @@ export default function ClinicDetailsPage() {
                 
                 <div className="lg:col-span-3 bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
                   <h3 className="text-lg font-bold text-brand-navy mb-6">Recent Activity</h3>
-                  <div className="space-y-6">
-                    {[
-                      { type: "staff", text: "New staff 'Dr. Emeka' added to VI Branch", time: "2 hours ago" },
-                      { type: "billing", text: "Subscription renewed for Growth Plan", time: "1 day ago" },
-                      { type: "hmo", text: "HMO Tariff updated for Reliance HMO", time: "3 days ago" },
-                    ].map((item, i) => (
-                      <div key={i} className="flex items-start gap-4">
-                        <div className="w-2 h-2 rounded-full bg-brand-blue mt-1.5"></div>
-                        <div>
-                          <p className="text-sm font-medium text-slate-700">{item.text}</p>
-                          <p className="text-xs text-slate-400">{item.time}</p>
+                  {isAuditLogsLoading ? (
+                    <p className="text-sm text-slate-500">Loading recent activity…</p>
+                  ) : recentActivity.length === 0 ? (
+                    <p className="text-sm text-slate-500">No recent activity available for this clinic yet.</p>
+                  ) : (
+                    <div className="space-y-6">
+                      {recentActivity.map((item, i) => (
+                        <div key={`${item.text}-${i}`} className="flex items-start gap-4">
+                          <div className="w-2 h-2 rounded-full bg-brand-blue mt-1.5"></div>
+                          <div>
+                            <p className="text-sm font-medium text-slate-700">{item.text}</p>
+                            <p className="text-xs text-slate-400">{item.time}</p>
+                          </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <div className="lg:col-span-1 bg-brand-navy p-8 rounded-[2.5rem] text-white">
@@ -189,7 +244,9 @@ export default function ClinicDetailsPage() {
                       <span className="font-bold">{clinic.state || '—'}</span>
                     </div>
                   </div>
-                  <Button className="w-full mt-10 bg-white text-brand-navy hover:bg-slate-100 font-bold rounded-xl text-sm">View Full Usage</Button>
+                  <Button className="w-full mt-10 bg-white text-brand-navy hover:bg-slate-100 font-bold rounded-xl text-sm" onClick={() => router.push(`/admin/analytics?clinicId=${clinicId}`)}>
+                    View Full Usage
+                  </Button>
                 </div>
               </div>
             )}
@@ -200,34 +257,39 @@ export default function ClinicDetailsPage() {
                   <h3 className="text-xl font-bold text-brand-navy">Active Branches</h3>
                   <Button variant="default" size="sm" className="gap-2"><Plus size={16} /> Add Branch</Button>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 p-8 gap-6">
-                  {[
-                    { name: "Victoria Island (HQ)", address: "123 Adetokunbo Ademola", manager: "Sarah J.", phone: "+234 801..." },
-                    { name: "Ikeja Branch", address: "45 Allen Avenue", manager: "Ahmad B.", phone: "+234 802..." },
-                    { name: "Lekki Outlet", address: "Block A, Palms Mall", manager: "Chioma O.", phone: "+234 803..." },
-                  ].map((br, i) => (
-                    <div key={i} className="p-6 rounded-3xl border border-slate-100 bg-slate-50/50 hover:bg-white hover:shadow-lg transition-all group">
-                      <div className="flex justify-between items-start mb-4">
-                        <div className="w-10 h-10 rounded-xl bg-white border border-slate-100 flex items-center justify-center text-brand-blue shadow-sm">
-                          <MapPin size={20} />
+
+                {isBranchesLoading ? (
+                  <div className="p-8 text-sm text-slate-500">Loading branches…</div>
+                ) : isBranchesError ? (
+                  <div className="p-8 text-sm text-rose-600">Branches could not be loaded from the API.</div>
+                ) : branches.length === 0 ? (
+                  <div className="p-8 text-sm text-slate-500">No branches have been created for this clinic yet.</div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 p-8 gap-6">
+                    {branches.map((branch) => (
+                      <div key={branch.id} className="p-6 rounded-3xl border border-slate-100 bg-slate-50/50 hover:bg-white hover:shadow-lg transition-all group">
+                        <div className="flex justify-between items-start mb-4">
+                          <div className="w-10 h-10 rounded-xl bg-white border border-slate-100 flex items-center justify-center text-brand-blue shadow-sm">
+                            <MapPin size={20} />
+                          </div>
+                          <Button variant="ghost" size="sm" className="w-8 h-8 p-0 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity">
+                            <MoreVertical size={14} />
+                          </Button>
                         </div>
-                        <Button variant="ghost" size="sm" className="w-8 h-8 p-0 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity">
-                          <MoreVertical size={14} />
-                        </Button>
+                        <h4 className="font-bold text-brand-navy mb-1">{branch.name}</h4>
+                        <p className="text-xs text-slate-500 mb-4">{branch.address || branch.city || 'Branch address unavailable'}</p>
+                        <div className="flex items-center gap-4 pt-4 border-t border-slate-100">
+                          <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-600">
+                            <Users size={12} className="text-brand-blue" /> {branch.city || 'Location unavailable'}
+                          </div>
+                          <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-600">
+                            <Phone size={12} className="text-brand-blue" /> {branch.phone || '—'}
+                          </div>
+                        </div>
                       </div>
-                      <h4 className="font-bold text-brand-navy mb-1">{br.name}</h4>
-                      <p className="text-xs text-slate-500 mb-4">{br.address}</p>
-                      <div className="flex items-center gap-4 pt-4 border-t border-slate-100">
-                        <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-600">
-                          <Users size={12} className="text-brand-blue" /> {br.manager}
-                        </div>
-                        <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-600">
-                          <Phone size={12} className="text-brand-blue" /> {br.phone}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 

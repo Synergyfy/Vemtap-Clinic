@@ -143,7 +143,7 @@ export default function ClinicLayout({ children }: { children: React.ReactNode }
             <Menu size={24} className="text-slate-700" />
           </button>
           <div className="flex-1" />
-          <NotificationBell accentClass="bg-sky-500" viewAllHref="/clinic/settings" />
+          <NotificationBell accentClass="bg-sky-500" viewAllHref="/notifications" />
 
           <button
             onClick={() => setIsLogoutOpen(true)}

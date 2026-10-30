@@ -4,6 +4,7 @@ import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { Bell } from "lucide-react";
 import { useState } from "react";
+import { useNotifications, useUnreadCount } from "@/hooks/useNotifications";
 
 type NotificationItem = {
   id: string;
@@ -15,7 +16,7 @@ type NotificationItem = {
 
 export function NotificationBell({
   accentClass = "bg-sky-500",
-  viewAllHref = "/clinic/settings",
+  viewAllHref = "/notifications",
   notifications = [],
 }: {
   accentClass?: string;
@@ -23,34 +24,18 @@ export function NotificationBell({
   notifications?: NotificationItem[];
 }) {
   const [isOpen, setIsOpen] = useState(false);
+  const { data: liveNotifications = [] } = useNotifications();
+  const { data: unreadCount = 0 } = useUnreadCount();
 
-  const items = notifications.length
-    ? notifications.slice(0, 5)
-    : [
-        {
-          id: "demo-1",
-          title: "Patient checked in",
-          message: "Mrs. Grace Adeyemi has arrived for consultation.",
-          createdAt: new Date().toISOString(),
-          read: false,
-        },
-        {
-          id: "demo-2",
-          title: "Lens pickup ready",
-          message: "Order #L-1042 is ready for collection.",
-          createdAt: new Date(Date.now() - 1800000).toISOString(),
-          read: true,
-        },
-        {
-          id: "demo-3",
-          title: "HMO claim updated",
-          message: "Claim approval status has changed for B. Chidi.",
-          createdAt: new Date(Date.now() - 3600000).toISOString(),
-          read: false,
-        },
-      ];
+  const normalizedNotifications = Array.isArray(liveNotifications)
+    ? liveNotifications
+    : Array.isArray((liveNotifications as any)?.data)
+      ? (liveNotifications as any).data
+      : Array.isArray(notifications)
+        ? notifications
+        : [];
 
-  const unreadCount = items.filter((item) => !item.read).length;
+  const items = normalizedNotifications.slice(0, 5) as NotificationItem[];
 
   return (
     <div className="relative">
@@ -78,7 +63,7 @@ export function NotificationBell({
             <div className="flex items-center justify-between border-b border-slate-200 px-3 py-2.5 sm:px-4 sm:py-3">
               <div>
                 <p className="text-xs font-semibold text-slate-900 sm:text-sm">Notifications</p>
-                <p className="text-[10px] text-slate-500 sm:text-xs">{unreadCount} unread</p>
+                <p className="text-[10px] text-slate-500 sm:text-xs">{unreadCount ?? 0} unread</p>
               </div>
               <button
                 type="button"

@@ -225,6 +225,7 @@ export interface HmoPlan {
   hmoId: string;
   description: string | null;
   coveragePercentage: number;
+  requiresPreAuth?: boolean;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;

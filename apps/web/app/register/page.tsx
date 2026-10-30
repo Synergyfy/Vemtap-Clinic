@@ -14,6 +14,8 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "@/lib/api";
 
 const steps = ["Account", "Clinic"];
 
@@ -35,6 +37,13 @@ export default function RegisterPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { register, isAuthenticated } = useAuth();
   const router = useRouter();
+  const { data: clinics = [], isLoading: clinicsLoading, isError: clinicsError } = useQuery({
+    queryKey: ["public-clinics"],
+    queryFn: async () => {
+      const { data } = await api.get("/auth/clinics");
+      return data;
+    },
+  });
 
   const nextStep = () => setCurrentStep((prev) => Math.min(prev + 1, steps.length - 1));
   const prevStep = () => setCurrentStep((prev) => Math.max(prev - 1, 0));
@@ -220,13 +229,21 @@ export default function RegisterPage() {
                   onChange={(e) => updateForm("clinicId", e.target.value)}
                   className="w-full px-6 py-4 rounded-2xl bg-slate-50 border border-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-blue/50"
                   required
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || clinicsLoading}
                 >
-                  <option value="">Select a clinic...</option>
-                  <option value="clinic-1">Vemtap Eye Clinic - Lagos</option>
-                  <option value="clinic-2">Vision Care Center - Abuja</option>
-                  <option value="clinic-3">Eye Specialist Hospital - Port Harcourt</option>
+                  <option value="">
+                    {clinicsLoading ? "Loading clinics..." : clinicsError ? "Unable to load clinics" : clinics.length === 0 ? "No clinics available" : "Select a clinic..."}
+                  </option>
+                  {clinics.map((clinic: { id: string; name: string; city?: string | null }) => (
+                    <option key={clinic.id} value={clinic.id}>
+                      {clinic.name}
+                      {clinic.city ? ` - ${clinic.city}` : ""}
+                    </option>
+                  ))}
                 </select>
+                {clinicsError && (
+                  <p className="text-xs text-red-600">The clinic list could not be loaded. Please refresh or contact support.</p>
+                )}
               </div>
             </div>
 
@@ -236,7 +253,7 @@ export default function RegisterPage() {
                 variant="default" 
                 className="flex-1 py-4 rounded-2xl font-bold" 
                 onClick={handleSubmit}
-                disabled={!formData.clinicId || isSubmitting}
+                disabled={!formData.clinicId || isSubmitting || clinicsLoading || clinics.length === 0}
               >
                 {isSubmitting ? (
                   <span className="flex items-center justify-center gap-2">

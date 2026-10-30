@@ -27,13 +27,10 @@ import {
   Download
 } from "lucide-react";
 
-type SupportTab = "tickets" | "success" | "kb" | "health";
+import { useSupportTickets, useSupportTicketStats, type SupportTicket } from "@/hooks/useSupportTickets";
+import { Loader2 } from "lucide-react";
 
-const supportTickets = [
-  { id: "SUP-701", subject: "POS reversal not reflecting", priority: "High", status: "Open", updatedISO: "2026-05-26T12:40:00" },
-  { id: "SUP-702", subject: "Appointment reminders not sending", priority: "Medium", status: "Awaiting user", updatedISO: "2026-05-26T10:05:00" },
-  { id: "SUP-703", subject: "Add new HMO tariff list", priority: "Low", status: "Resolved", updatedISO: "2026-05-25T15:11:00" },
-];
+type SupportTab = "tickets" | "success" | "kb" | "health";
 
 const knowledgeBase = [
   { id: "KB-001", title: "Generating HMO Claims", category: "Billing", readTime: "5m" },
@@ -76,6 +73,9 @@ function priorityBadge(priority: string) {
 
 export default function SupportPage() {
   const { openModal } = useModals();
+  const { data: supportTickets = [], isLoading: loadingTickets } = useSupportTickets();
+  const { data: stats } = useSupportTicketStats();
+
   const [activeTab, setActiveTab] = useState<SupportTab>("tickets");
   const [bookingOpen, setBookingOpen] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
@@ -92,6 +92,9 @@ export default function SupportPage() {
     { id: "kb", label: "Knowledge Base", icon: BookOpen },
     { id: "health", label: "System Health", icon: Activity },
   ];
+
+  const totalTickets = stats?.total ?? supportTickets.length;
+  const openCount = stats?.open ?? supportTickets.filter(t => t.status === "open").length;
 
   return (
     <div className="space-y-6">
@@ -127,8 +130,8 @@ export default function SupportPage() {
           <div className="space-y-6">
              <div className="grid grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-4">
                 {[
-                  { label: "Total Tickets", value: supportTickets.length, icon: MessageSquare, color: "text-slate-600" },
-                  { label: "Open Now", value: supportTickets.filter(t => t.status === "Open").length, icon: Clock, color: "text-sky-600" },
+                  { label: "Total Tickets", value: totalTickets, icon: MessageSquare, color: "text-slate-600" },
+                  { label: "Open Now", value: openCount, icon: Clock, color: "text-sky-600" },
                   { label: "Avg Resolution", value: "4.2h", icon: CheckCircle2, color: "text-emerald-600" },
                   { label: "Network Uptime", value: "99.98%", icon: Activity, color: "text-blue-600" },
                 ].map((stat, i) => (
@@ -160,17 +163,32 @@ export default function SupportPage() {
                       </TableRow>
                    </TableHeader>
                    <TableBody>
-                      {supportTickets.map((t) => (
-                         <TableRow key={t.id} className="hover:bg-slate-50/50 border-slate-50">
-                            <TableCell className="px-8 py-5 font-bold text-slate-900">{t.id}</TableCell>
-                            <TableCell className="py-5 font-medium text-slate-700">{t.subject}</TableCell>
-                            <TableCell className="py-5">{priorityBadge(t.priority)}</TableCell>
-                            <TableCell className="py-5">{statusBadge(t.status)}</TableCell>
-                            <TableCell className="py-5 pr-8 text-right font-medium text-slate-500 tabular-nums">
-                               {t.updatedISO.split("T")[0]}
-                            </TableCell>
-                         </TableRow>
-                      ))}
+                      {loadingTickets ? (
+                        <TableRow>
+                          <TableCell colSpan={5} className="py-12 text-center text-slate-400">
+                            <Loader2 size={24} className="animate-spin mx-auto text-primary mb-2" />
+                            Loading live tickets...
+                          </TableCell>
+                        </TableRow>
+                      ) : supportTickets.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={5} className="py-12 text-center text-slate-400">
+                            No tickets currently on file. Click &quot;Create New Ticket&quot; above to submit an inquiry.
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        supportTickets.map((t) => (
+                          <TableRow key={t.id} className="hover:bg-slate-50/50 border-slate-50">
+                             <TableCell className="px-8 py-5 font-bold text-slate-900">{t.id.slice(0, 8).toUpperCase()}</TableCell>
+                             <TableCell className="py-5 font-medium text-slate-700">{t.subject}</TableCell>
+                             <TableCell className="py-5">{priorityBadge(t.priority)}</TableCell>
+                             <TableCell className="py-5">{statusBadge(t.status)}</TableCell>
+                             <TableCell className="py-5 pr-8 text-right font-medium text-slate-500 tabular-nums">
+                                {t.updatedAt ? new Date(t.updatedAt).toISOString().split("T")[0] : "Today"}
+                             </TableCell>
+                          </TableRow>
+                        ))
+                      )}
                    </TableBody>
                  </Table></div>
               </Card>

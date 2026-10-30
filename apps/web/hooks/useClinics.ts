@@ -4,10 +4,13 @@ import {
   listClinics,
   getClinicById,
   getClinicStats,
+  getPlatformOverview,
   createClinic,
   updateClinic,
   deleteClinic,
   Clinic,
+  ClinicStats,
+  PlatformOverview,
   CreateClinicInput,
   UpdateClinicInput,
 } from '@/services/clinics.service';
@@ -16,6 +19,7 @@ const CLINIC_KEYS = {
   all: ['clinics'] as const,
   detail: (id: string) => ['clinics', id] as const,
   stats: ['clinics', 'stats'] as const,
+  overview: ['clinics', 'platform-overview'] as const,
 };
 
 export function useClinics(params?: { search?: string; isActive?: boolean; plan?: string }) {
@@ -37,6 +41,15 @@ export function useClinicStats() {
   return useQuery({
     queryKey: CLINIC_KEYS.stats,
     queryFn: getClinicStats,
+  });
+}
+
+export function usePlatformOverview() {
+  return useQuery({
+    queryKey: CLINIC_KEYS.overview,
+    queryFn: getPlatformOverview,
+    retry: 1,
+    staleTime: 30000,
   });
 }
 
