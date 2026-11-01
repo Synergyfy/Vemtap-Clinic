@@ -31,6 +31,7 @@ export class StaffService {
       existingAuthUser.role = this.mapStaffRoleToUserRole(dto.role);
       existingAuthUser.clinicId = dto.clinicId;
       existingAuthUser.isActive = true;
+      existingAuthUser.password = await bcrypt.hash(dto.password ?? 'password123', 10);
       await this.userRepository.save(existingAuthUser);
       return savedStaff;
     }
@@ -71,7 +72,7 @@ export class StaffService {
     }
   }
 
-  async findAll(query: StaffQueryDto): Promise<Staff[]> {
+  async findAll(query: StaffQueryDto): Promise<{ data: Staff[]; total: number; page: number; limit: number; totalPages: number }> {
     const where: any = {};
     if (query.clinicId) where.clinicId = query.clinicId;
     if (query.branchId) where.branchId = query.branchId;
@@ -85,17 +86,23 @@ export class StaffService {
     const sortBy = query.sortBy || 'createdAt';
     const sortOrder = query.sortOrder || 'DESC';
     const page = Math.max(1, Number(query.page ?? 1));
-    const limit = Number(query.limit ?? 0);
-    const take = limit > 0 ? limit : undefined;
-    const skip = take ? (page - 1) * take : undefined;
+    const limit = Math.max(1, Number(query.limit ?? 10));
 
-    return this.staffRepository.find({
+    const [data, total] = await this.staffRepository.findAndCount({
       where,
       relations: ['clinic', 'branch'],
       order: { [sortBy]: sortOrder },
-      skip,
-      take,
+      skip: (page - 1) * limit,
+      take: limit,
     });
+
+    return {
+      data,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
   async findOne(id: string): Promise<Staff> {

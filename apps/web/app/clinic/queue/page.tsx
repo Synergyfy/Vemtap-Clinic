@@ -86,6 +86,11 @@ function renderClinicalPath(currentStage: string, stageOrder: string[]) {
   );
 }
 
+function getQueuePatientName(entry?: { patientName?: string; patient?: { firstName?: string; lastName?: string } }) {
+  const derived = entry?.patientName || [entry?.patient?.firstName, entry?.patient?.lastName].filter(Boolean).join(" ").trim();
+  return derived || "Unknown patient";
+}
+
 type QueueTab = "Live board" | "Waiting patients" | "Doctor queue" | "Emergency queue" | "Analytics";
 
 function tabButtonClass(active: boolean) {
@@ -358,7 +363,7 @@ export default function QueuePage() {
                             ].join(" ")}>
                               <TableCell className="font-mono font-bold text-slate-600">{q.id}</TableCell>
                               <TableCell>
-                                <div className="font-bold text-slate-900 text-sm">{q.patientName}</div>
+                                <div className="font-bold text-slate-900 text-sm">{getQueuePatientName(q)}</div>
                                 <div className="text-xs text-slate-400 font-medium">Patient ID: {q.patientId}</div>
                               </TableCell>
                               <TableCell>{stageBadge(q.stage)}</TableCell>
@@ -440,7 +445,7 @@ export default function QueuePage() {
                         ].join(" ")}>
                           <div className="flex items-start justify-between gap-2">
                             <div>
-                              <div className="font-bold text-slate-900 text-sm">{q.patientName}</div>
+                              <div className="font-bold text-slate-900 text-sm">{getQueuePatientName(q)}</div>
                               <div className="text-xs text-slate-400 font-mono font-medium mt-0.5">#{q.id} • ID: {q.patientId}</div>
                             </div>
                             <div className="flex flex-col items-end gap-1 shrink-0">
@@ -599,7 +604,7 @@ export default function QueuePage() {
                                   </div>
                                   <div className="space-y-1">
                                     <div className="flex items-center gap-2">
-                                      <h4 className="font-bold text-slate-900 text-base">{q.patientName}</h4>
+                                      <h4 className="font-bold text-slate-900 text-base">{getQueuePatientName(q)}</h4>
                                       {priorityBadge(q.priority)}
                                       {statusBadge(q.status)}
                                     </div>
@@ -711,7 +716,7 @@ export default function QueuePage() {
                               <div className="flex flex-col gap-3">
                                 <div className="flex items-start justify-between gap-2">
                                   <div className="min-w-0">
-                                    <p className="font-bold text-slate-900 text-sm leading-tight">{q.patientName}</p>
+                                    <p className="font-bold text-slate-900 text-sm leading-tight">{getQueuePatientName(q)}</p>
                                     <p className="text-xs text-slate-400 font-mono mt-0.5">#{q.id}</p>
                                   </div>
                                   <div className="flex flex-col items-end gap-1 shrink-0">
@@ -813,7 +818,7 @@ export default function QueuePage() {
                   )
                   .map((q) => (
                     <TableRow key={q.id}>
-                      <TableCell className="font-medium">{q.patientName}</TableCell>
+                      <TableCell className="font-medium">{getQueuePatientName(q)}</TableCell>
                       <TableCell>{stageBadge(q.stage)}</TableCell>
                       <TableCell>{priorityBadge(q.priority)}</TableCell>
                       <TableCell className="tabular-nums">{q.waitMinutes}m</TableCell>
@@ -852,7 +857,7 @@ export default function QueuePage() {
                   )
                   .map((q) => (
                     <TableRow key={q.id}>
-                      <TableCell className="font-medium">{q.patientName}</TableCell>
+                      <TableCell className="font-medium">{getQueuePatientName(q)}</TableCell>
                       <TableCell>{stageBadge(q.stage)}</TableCell>
                       <TableCell>{priorityBadge(q.priority)}</TableCell>
                       <TableCell className="tabular-nums">{q.waitMinutes}m</TableCell>
@@ -887,7 +892,7 @@ export default function QueuePage() {
                   .sort((a, b) => b.waitMinutes - a.waitMinutes)
                   .map((q) => (
                     <TableRow key={q.id}>
-                      <TableCell className="font-medium">{q.patientName}</TableCell>
+                      <TableCell className="font-medium">{getQueuePatientName(q)}</TableCell>
                       <TableCell>{stageBadge(q.stage)}</TableCell>
                       <TableCell className="tabular-nums">{q.waitMinutes}m</TableCell>
                       <TableCell>{statusBadge(q.status)}</TableCell>

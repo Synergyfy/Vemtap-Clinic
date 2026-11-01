@@ -14,6 +14,7 @@ import {
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { useAppointments, useCreateAppointment, useUpdateAppointment, useTodayAppointments, Appointment, AppointmentQueryParams } from "@/hooks/useAppointments";
+import { useBranches } from "@/hooks/useBranches";
 import { useAuth } from "@/lib/auth-context";
 import { toast } from "sonner";
 
@@ -39,8 +40,18 @@ function formatMonthYear(date: Date | undefined) {
 
 export default function DoctorAppointments() {
   const { user } = useAuth();
+  const { data: branches = [] } = useBranches();
+  const [selectedBranchId, setSelectedBranchId] = useState("");
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [view, setView] = useState<"list" | "calendar">("calendar");
+
+  React.useEffect(() => {
+    if (branches.length > 0 && !selectedBranchId) {
+      setSelectedBranchId(branches[0].id);
+    }
+  }, [branches, selectedBranchId]);
+
+  const effectiveBranchId = user?.branchId?.trim() || selectedBranchId || undefined;
 
   const queryParams: AppointmentQueryParams = {
     clinicId: user?.clinicId,
@@ -85,7 +96,8 @@ export default function DoctorAppointments() {
 
   const handleBookAppointment = async () => {
     if (!bookForm.patientName || !bookForm.patientId || !bookForm.dateISO || !bookForm.startTime || !user) return;
-    if (!user.branchId) {
+    const safeBranchId = effectiveBranchId;
+    if (!safeBranchId) {
       toast.error("No branch is available for this clinic. Create a branch before booking appointments.");
       return;
     }
@@ -96,7 +108,7 @@ export default function DoctorAppointments() {
         type: bookForm.kind as any,
         reason: bookForm.reason,
         patientId: bookForm.patientId,
-        branchId: user.branchId,
+        branchId: safeBranchId,
         clinicId: user.clinicId,
       });
       toast.success(`Appointment booked for ${bookForm.patientName} on ${bookForm.dateISO} at ${bookForm.startTime}`);

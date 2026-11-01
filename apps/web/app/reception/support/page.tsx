@@ -19,12 +19,6 @@ import {
 } from "@/hooks/useSupportTickets";
 import { Loader2 } from "lucide-react";
 
-const faqItems = [
-  { q: "How to reset a patient password?", a: "Go to Settings > Security > Reset Password. Enter the patient ID to generate a reset link." },
-  { q: "HMO claim not appearing?", a: "Verify the policy number is correct. If the issue persists, escalate to the HMO queue in Billing." },
-  { q: "System running slow?", a: "Try clearing your browser cache. If it continues, submit a ticket with your system specs." },
-];
-
 const statusStyles: Record<string, string> = {
   open: "bg-rose-100 text-rose-700",
   in_progress: "bg-amber-100 text-amber-700",
@@ -39,6 +33,8 @@ const priorityStyles: Record<string, string> = {
   medium: "bg-amber-100 text-amber-700",
   low: "bg-sky-100 text-sky-700",
 };
+
+const faqItems: Array<{ q: string; a: string }> = [];
 
 export default function SupportPage() {
   const { user } = useAuth();
@@ -63,9 +59,7 @@ export default function SupportPage() {
   const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null);
 
   const [showChat, setShowChat] = useState(false);
-  const [chatMessages, setChatMessages] = useState([
-    { from: "bot", text: "Hi! I'm the Vemtap support assistant. How can I help you today?" },
-  ]);
+  const [chatMessages, setChatMessages] = useState<{ from: "bot" | "user"; text: string }[]>([]);
   const [chatInput, setChatInput] = useState("");
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 3000); };
@@ -126,7 +120,7 @@ export default function SupportPage() {
           {[
             { label: "Open", value: String(openCount), icon: AlertTriangle, tab: "tickets" },
             { label: "Resolved", value: String(resolvedCount), icon: CheckCircle2, tab: "tickets" },
-            { label: "FAQ", value: "6", icon: BookOpen, tab: "faq" },
+            { label: "FAQ", value: "0", icon: BookOpen, tab: "faq" },
           ].map((stat) => (
             <button key={stat.label} onClick={() => setActiveTab(stat.tab as "tickets" | "faq")}
               className={cn("bg-white border rounded-xl sm:rounded-[1.5rem] px-3 sm:px-5 py-3 sm:py-4 shadow-sm text-left transition-all hover:shadow-md", activeTab === stat.tab ? "border-sky-200 bg-sky-50" : "border-slate-100")}>
@@ -223,7 +217,11 @@ export default function SupportPage() {
 
       {activeTab === "faq" && (
         <div className="max-w-3xl mx-auto space-y-3 sm:space-y-4">
-          {faqItems.map((faq, i) => (
+          {faqItems.length === 0 ? (
+            <div className="bg-white border border-slate-100 rounded-2xl sm:rounded-[2rem] p-8 text-center text-sm text-slate-500 shadow-sm">
+              No FAQ items are available yet. Use live support tickets for current guidance.
+            </div>
+          ) : faqItems.map((faq, i) => (
             <details key={i} className="group bg-white border border-slate-100 rounded-2xl sm:rounded-[2rem] shadow-sm overflow-hidden">
               <summary className="p-4 sm:p-6 cursor-pointer text-sm sm:text-base font-black text-slate-900 flex items-center justify-between gap-4">
                 {faq.q}

@@ -35,7 +35,8 @@ export class AuthService {
   ) {}
 
   async register(dto: RegisterDto, reqInfo?: { userAgent?: string; ip?: string }): Promise<{ tokens: TokenPair; user: AuthUser }> {
-    const existing = await this.userRepository.findOne({ where: { email: dto.email } });
+    const normalizedEmail = dto.email.trim().toLowerCase();
+    const existing = await this.userRepository.findOne({ where: { email: normalizedEmail } });
     if (existing) {
       throw new ConflictException('Email already exists');
     }
@@ -43,6 +44,7 @@ export class AuthService {
     const hashedPassword = await bcrypt.hash(dto.password, 10);
     const user = this.userRepository.create({
       ...dto,
+      email: normalizedEmail,
       role: UserRole.ADMIN,
       clinicId: dto.clinicId ?? null,
       password: hashedPassword,
@@ -54,8 +56,9 @@ export class AuthService {
   }
 
   async login(dto: LoginDto, reqInfo?: { userAgent?: string; ip?: string }): Promise<{ tokens: TokenPair; user: AuthUser }> {
+    const normalizedEmail = dto.email.trim().toLowerCase();
     const user = await this.userRepository.findOne({
-      where: { email: dto.email },
+      where: { email: normalizedEmail },
       select: ['id', 'firstName', 'lastName', 'email', 'password', 'role', 'clinicId', 'isActive'],
     });
 

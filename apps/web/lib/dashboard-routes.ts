@@ -24,11 +24,15 @@ export function getDashboardRoute(userOrRole?: DashboardUserLike) {
     }
 
     const role = normalizedRoles[0] ?? '';
-    if (userOrRole.clinicId && role) {
+    if (role) {
+      return dashboardRedirectMap[role] ?? '/admin/dashboard';
+    }
+
+    if (userOrRole.clinicId) {
       return '/clinic/dashboard';
     }
 
-    return dashboardRedirectMap[role] ?? '/admin/dashboard';
+    return '/admin/dashboard';
   }
 
   const role = typeof userOrRole === 'string' ? userOrRole.toLowerCase() : '';

@@ -28,6 +28,7 @@ import {
   PatientType
 } from "@/hooks/useQueue";
 import { useAuth } from "@/lib/auth-context";
+import { useBranches } from "@/hooks/useBranches";
 import { toast } from "sonner";
 
 const stationFilters = [
@@ -97,6 +98,16 @@ function getHmoName(hmoName: string | undefined): string {
 
 export default function QueuePage() {
   const { user } = useAuth();
+  const { data: branches = [] } = useBranches();
+  const [selectedBranchId, setSelectedBranchId] = useState("");
+
+  React.useEffect(() => {
+    if (branches.length > 0 && !selectedBranchId) {
+      setSelectedBranchId(branches[0].id);
+    }
+  }, [branches, selectedBranchId]);
+
+  const effectiveBranchId = user?.branchId?.trim() || selectedBranchId || undefined;
 
   const [activeStation, setActiveStation] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -280,7 +291,8 @@ export default function QueuePage() {
 
   const handleAddPatient = async () => {
     if (!addForm.patientName.trim() || !user) return;
-    if (!user.branchId) {
+    const safeBranchId = effectiveBranchId;
+    if (!safeBranchId) {
       toast.error("No branch is available for this clinic. Create a branch before adding patients to the queue.");
       return;
     }
@@ -288,7 +300,7 @@ export default function QueuePage() {
       const patientId = "temp-patient-id";
       await createQueueEntryMutation.mutateAsync({
         patientId,
-        branchId: user.branchId,
+        branchId: safeBranchId,
         clinicId: user.clinicId,
         station: addForm.station,
         priority: addForm.priority,

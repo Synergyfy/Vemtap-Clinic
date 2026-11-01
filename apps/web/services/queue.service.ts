@@ -35,6 +35,7 @@ export interface QueueEntry {
   calledAt?: string | null;
   completedAt?: string | null;
   patientId: string;
+  patientName?: string;
   patient?: {
     id: string;
     firstName: string;
@@ -159,6 +160,9 @@ const normalizeQueueEntry = (entry: Partial<QueueEntry> = {}): QueueEntry => {
   const station = entry.station ?? entry.stage ?? 'reception';
   const priority = entry.priority ?? 'Normal';
   const status = normalizeQueueStatus(entry.status as string | undefined);
+  const derivedPatientName =
+    (entry.patientName ?? [entry.patient?.firstName, entry.patient?.lastName].filter(Boolean).join(' ')) ||
+    'Unknown patient';
 
   return {
     id: entry.id ?? '',
@@ -170,6 +174,7 @@ const normalizeQueueEntry = (entry: Partial<QueueEntry> = {}): QueueEntry => {
     calledAt: entry.calledAt ?? null,
     completedAt: entry.completedAt ?? null,
     patientId: entry.patientId ?? '',
+    patientName: derivedPatientName,
     patient: entry.patient,
     branchId: entry.branchId ?? '',
     clinicId: entry.clinicId ?? '',

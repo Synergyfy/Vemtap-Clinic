@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Modal } from "@/components/ui/modal";
 import {
-  BarChart3, TrendingUp, Users, Clock,
+  BarChart3, Users, Clock,
   FileText, Download, PieChart, Filter,
   CheckCircle2, AlertCircle, ArrowUpRight,
   Calendar, FileDown, X, Send, Loader2
@@ -43,56 +43,83 @@ export default function DoctorReports() {
   const { data: reportingStats } = useReportingStats();
   const { data: patientsData } = usePatients();
   const totalPatients = patientsData?.total ?? 0;
+  const patientList = patientsData?.data ?? [];
+  const totalTemplateCount = templates.length;
+
+  const reportTypeCounts = templates.reduce<Record<string, number>>((acc, template) => {
+    const key = template.type || "custom";
+    acc[key] = (acc[key] ?? 0) + 1;
+    return acc;
+  }, {});
+
+  const reportTypeDistribution = Object.entries(reportTypeCounts)
+    .map(([name, count]) => ({
+      name: name.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase()),
+      count,
+      percentage: totalTemplateCount > 0 ? Math.round((count / totalTemplateCount) * 100) : 0,
+      color: ["bg-emerald-500", "bg-sky-500", "bg-amber-500", "bg-rose-500", "bg-violet-500", "bg-slate-300"][Math.abs(name.length) % 6],
+    }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 5);
+
+  const maleCount = patientList.filter((patient) => String(patient.gender).toLowerCase() === "male").length;
+  const femaleCount = patientList.filter((patient) => String(patient.gender).toLowerCase() === "female").length;
+  const otherCount = patientList.filter((patient) => !["male", "female"].includes(String(patient.gender).toLowerCase())).length;
+  const totalGenderCount = maleCount + femaleCount + otherCount;
+  const genderRatio = totalGenderCount > 0
+    ? {
+        male: Math.round((maleCount / totalGenderCount) * 100),
+        female: Math.round((femaleCount / totalGenderCount) * 100),
+        other: Math.round((otherCount / totalGenderCount) * 100),
+      }
+    : { male: 0, female: 0, other: 0 };
+
+  const ageGroups = patientList.reduce(
+    (acc, patient) => {
+      if (!patient.dateOfBirth) return acc;
+      const dob = new Date(patient.dateOfBirth);
+      if (Number.isNaN(dob.getTime())) return acc;
+      const age = new Date().getFullYear() - dob.getFullYear();
+      if (age <= 17) acc.pediatric += 1;
+      else if (age <= 60) acc.adult += 1;
+      else acc.geriatric += 1;
+      return acc;
+    },
+    { pediatric: 0, adult: 0, geriatric: 0 }
+  );
+  const totalAgeCount = Object.values(ageGroups).reduce((sum, value) => sum + value, 0);
 
   const stats = [
-    { 
-      label: "Total Consultations", 
-      value: String(totalPatients > 0 ? totalPatients : (reportingStats?.totalReports ?? 24)), 
-      icon: Users, 
-      color: "text-emerald-600", 
-      bg: "bg-emerald-50", 
-      trend: "+12%", 
-      detail: "Active consultation cases on file for this provider.", 
-      breakdown: [{ period: "This Month", val: "342" }, { period: "Last Month", val: "305" }] 
+    {
+      label: "Total Consultations",
+      value: String(totalPatients || reportingStats?.totalReports || 0),
+      icon: Users,
+      color: "text-emerald-600",
+      bg: "bg-emerald-50",
+      trend: totalPatients ? "Live" : "No data",
+      detail: "Patients currently recorded for this clinic.",
+      breakdown: [{ period: "Patients", val: String(totalPatients || 0) }],
     },
-    { 
-      label: "Avg. Satisfaction", 
-      value: "4.9", 
-      icon: TrendingUp, 
-      color: "text-amber-600", 
-      bg: "bg-amber-50", 
-      trend: "+0.2", 
-      detail: "High patient satisfaction score across consultation reviews.", 
-      breakdown: [{ period: "5 Stars", val: "88%" }, { period: "4 Stars", val: "12%" }] 
+    {
+      label: "Active Templates",
+      value: loadingTemplates ? "..." : String(totalTemplateCount),
+      icon: BarChart3,
+      color: "text-sky-600",
+      bg: "bg-sky-50",
+      trend: "Live",
+      detail: "Customized clinical report templates connected to the backend API.",
+      breakdown: [{ period: "Ready", val: String(totalTemplateCount) }],
     },
-    { 
-      label: "Active Templates", 
-      value: loadingTemplates ? "..." : String(templates.length), 
-      icon: BarChart3, 
-      color: "text-sky-600", 
-      bg: "bg-sky-50", 
-      trend: "Live", 
-      detail: "Customized clinical report templates connected to backend API.", 
-      breakdown: [{ period: "Ready", val: String(templates.length) }] 
+    {
+      label: "Reports Generated",
+      value: String(reportingStats?.totalReports ?? 0),
+      icon: CheckCircle2,
+      color: "text-purple-600",
+      bg: "bg-purple-50",
+      trend: reportingStats?.totalReports ? "Live" : "No data",
+      detail: "Reports archived for this clinic.",
+      breakdown: [{ period: "Completed", val: String(reportingStats?.totalReports ?? 0) }],
     },
-    { 
-      label: "Reports Generated", 
-      value: String(reportingStats?.totalReports ?? templates.length), 
-      icon: CheckCircle2, 
-      color: "text-purple-600", 
-      bg: "bg-purple-50", 
-      trend: "+3", 
-      detail: "Clinical reports archived in patient files.", 
-      breakdown: [{ period: "Completed", val: String(reportingStats?.totalReports ?? templates.length) }] 
-    },
-  ];
-
-  const topDiagnoses = [
-    { name: "Refractive Error", count: 145, percentage: 42, color: "bg-emerald-500" },
-    { name: "Allergic Conjunctivitis", count: 88, percentage: 26, color: "bg-sky-500" },
-    { name: "Glaucoma Suspect", count: 42, percentage: 12, color: "bg-amber-500" },
-    { name: "Cataract", count: 35, percentage: 10, color: "bg-rose-500" },
-    { name: "Others", count: 32, percentage: 10, color: "bg-slate-300" },
   ];
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 3000); };
@@ -141,23 +168,27 @@ export default function DoctorReports() {
             <Card className="lg:col-span-2 rounded-[2rem] sm:rounded-[2.5rem] border-slate-200 shadow-xl shadow-slate-100/50">
               <CardHeader className="flex flex-row items-center justify-between p-4 sm:p-8 border-b border-slate-50">
                 <div>
-                  <CardTitle className="text-base sm:text-xl font-black text-slate-900">Diagnostic Distribution</CardTitle>
-                  <p className="text-[10px] sm:text-sm font-bold text-slate-400 mt-1">Breakdown of primary diagnoses for current period</p>
+                  <CardTitle className="text-base sm:text-xl font-black text-slate-900">Report Type Distribution</CardTitle>
+                  <p className="text-[10px] sm:text-sm font-bold text-slate-400 mt-1">Live breakdown by report template type</p>
                 </div>
                 <button onClick={() => setFilterOpen(true)} className="p-2 sm:p-3 rounded-xl bg-slate-50 text-slate-400 hover:text-slate-600 transition-colors"><Filter size={18} className="sm:w-5 sm:h-5" /></button>
               </CardHeader>
               <CardContent className="p-4 sm:p-8 space-y-4 sm:space-y-6">
-                {topDiagnoses.map((diag, i) => (
-                  <div key={i} className="space-y-2">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="font-bold text-slate-700">{diag.name}</span>
-                      <span className="font-black text-slate-900">{diag.count} cases ({diag.percentage}%)</span>
+                {reportTypeDistribution.length === 0 ? (
+                  <div className="py-8 text-center text-sm font-bold text-slate-500">No report template data available yet.</div>
+                ) : (
+                  reportTypeDistribution.map((diag, i) => (
+                    <div key={i} className="space-y-2">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="font-bold text-slate-700">{diag.name}</span>
+                        <span className="font-black text-slate-900">{diag.count} reports ({diag.percentage}%)</span>
+                      </div>
+                      <div className="h-3 w-full bg-slate-100 rounded-full overflow-hidden">
+                        <div className={cn("h-full rounded-full transition-all duration-1000", diag.color)} style={{ width: `${diag.percentage}%` }} />
+                      </div>
                     </div>
-                    <div className="h-3 w-full bg-slate-100 rounded-full overflow-hidden">
-                      <div className={cn("h-full rounded-full transition-all duration-1000", diag.color)} style={{ width: `${diag.percentage}%` }} />
-                    </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </CardContent>
             </Card>
 
@@ -167,21 +198,29 @@ export default function DoctorReports() {
                 <div className="space-y-4">
                   <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Age Group Distribution</p>
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="p-4 rounded-3xl bg-white/5 border border-white/10 text-center"><p className="text-2xl font-black text-emerald-400">14%</p><p className="text-[10px] font-bold text-slate-400 uppercase mt-1">Pediatric (0-17)</p></div>
-                    <div className="p-4 rounded-3xl bg-white/5 border border-white/10 text-center"><p className="text-2xl font-black text-sky-400">58%</p><p className="text-[10px] font-bold text-slate-400 uppercase mt-1">Adult (18-60)</p></div>
-                    <div className="p-4 rounded-3xl bg-white/5 border border-white/10 text-center col-span-2"><p className="text-2xl font-black text-amber-400">28%</p><p className="text-[10px] font-bold text-slate-400 uppercase mt-1">Geriatric (60+)</p></div>
+                    <div className="p-4 rounded-3xl bg-white/5 border border-white/10 text-center"><p className="text-2xl font-black text-emerald-400">{totalAgeCount > 0 ? Math.round((ageGroups.pediatric / totalAgeCount) * 100) : 0}%</p><p className="text-[10px] font-bold text-slate-400 uppercase mt-1">Pediatric (0-17)</p></div>
+                    <div className="p-4 rounded-3xl bg-white/5 border border-white/10 text-center"><p className="text-2xl font-black text-sky-400">{totalAgeCount > 0 ? Math.round((ageGroups.adult / totalAgeCount) * 100) : 0}%</p><p className="text-[10px] font-bold text-slate-400 uppercase mt-1">Adult (18-60)</p></div>
+                    <div className="p-4 rounded-3xl bg-white/5 border border-white/10 text-center col-span-2"><p className="text-2xl font-black text-amber-400">{totalAgeCount > 0 ? Math.round((ageGroups.geriatric / totalAgeCount) * 100) : 0}%</p><p className="text-[10px] font-bold text-slate-400 uppercase mt-1">Geriatric (60+)</p></div>
                   </div>
                 </div>
                 <div className="pt-8 border-t border-white/5">
                   <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4">Patient Gender Ratio</p>
-                  <div className="flex items-center gap-2 h-4 w-full rounded-full overflow-hidden">
-                    <div className="h-full bg-emerald-500" style={{ width: "62%" }} />
-                    <div className="h-full bg-sky-500" style={{ width: "38%" }} />
-                  </div>
-                  <div className="flex items-center justify-between mt-3 text-xs font-bold">
-                    <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-emerald-500" /><span className="text-slate-300">Female (62%)</span></div>
-                    <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-sky-500" /><span className="text-slate-300">Male (38%)</span></div>
-                  </div>
+                  {totalGenderCount === 0 ? (
+                    <div className="text-sm font-bold text-slate-400">No patient demographics available yet.</div>
+                  ) : (
+                    <>
+                      <div className="flex items-center gap-2 h-4 w-full rounded-full overflow-hidden">
+                        <div className="h-full bg-emerald-500" style={{ width: `${genderRatio.female || 0}%` }} />
+                        <div className="h-full bg-sky-500" style={{ width: `${genderRatio.male || 0}%` }} />
+                        {genderRatio.other > 0 && <div className="h-full bg-violet-500" style={{ width: `${genderRatio.other}%` }} />}
+                      </div>
+                      <div className="flex items-center justify-between mt-3 text-xs font-bold gap-2 flex-wrap">
+                        <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-emerald-500" /><span className="text-slate-300">Female ({genderRatio.female || 0}%)</span></div>
+                        <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-sky-500" /><span className="text-slate-300">Male ({genderRatio.male || 0}%)</span></div>
+                        {genderRatio.other > 0 && <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-violet-500" /><span className="text-slate-300">Other ({genderRatio.other || 0}%)</span></div>}
+                      </div>
+                    </>
+                  )}
                 </div>
               </CardContent>
             </Card>

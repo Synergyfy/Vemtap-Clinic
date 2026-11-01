@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Headphones, ChevronRight, Zap, Send, ShieldAlert, MessageCircle, Activity } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-context";
+import { useBranches } from "@/hooks/useBranches";
 import { useCreateInvoice } from "@/hooks/useBilling";
 
 const createInvoiceReference = () => {
@@ -24,8 +25,18 @@ const createInvoiceReference = () => {
 export const ModalManager = () => {
   const { activeModal, closeModal } = useModals();
   const { user } = useAuth();
+  const { data: branches = [] } = useBranches();
+  const [selectedBranchId, setSelectedBranchId] = React.useState("");
   const createInvoiceMut = useCreateInvoice();
   const currentManagerName = user ? [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email || "Current user" : "Current user";
+
+  React.useEffect(() => {
+    if (branches.length > 0 && !selectedBranchId) {
+      setSelectedBranchId(branches[0].id);
+    }
+  }, [branches, selectedBranchId]);
+
+  const effectiveBranchId = user?.branchId?.trim() || selectedBranchId || undefined;
   const [form, setForm] = React.useState({
     invoiceNumber: "",
     patientId: "",
@@ -58,7 +69,8 @@ export const ModalManager = () => {
       return;
     }
 
-    if (!user.branchId) {
+    const safeBranchId = effectiveBranchId;
+    if (!safeBranchId) {
       setSubmitError("No branch is available for this clinic. Create a branch before creating invoices.");
       return;
     }
@@ -81,7 +93,7 @@ export const ModalManager = () => {
         totalAmount,
         items: JSON.stringify([{ item: form.items.trim(), amount: totalAmount }]),
         patientId: form.patientId.trim(),
-        branchId: user.branchId,
+        branchId: safeBranchId,
         dueDate: form.dueDate || undefined,
         notes: form.notes.trim() || undefined,
       },

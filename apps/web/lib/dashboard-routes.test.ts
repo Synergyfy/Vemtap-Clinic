@@ -12,8 +12,8 @@ test('returns admin dashboard for platform admins without a clinic', () => {
   assert.equal(getDashboardRoute({ clinicId: null, roles: ['admin'] }), '/admin/dashboard');
 });
 
-test('returns clinic dashboard for clinic users', () => {
-  assert.equal(getDashboardRoute({ clinicId: 'clinic-123', roles: ['doctor'] }), '/clinic/dashboard');
+test('returns doctor dashboard for staff users with a role even when they belong to a clinic', () => {
+  assert.equal(getDashboardRoute({ clinicId: 'clinic-123', roles: ['doctor'] }), '/doctor/dashboard');
 });
 
 test('returns doctor dashboard for doctors without a clinic', () => {

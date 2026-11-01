@@ -32,7 +32,7 @@ export default function ReceptionLayout({ children }: { children: React.ReactNod
   const [isLogoutOpen, setIsLogoutOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, logout: logoutUser } = useAuth();
   const displayName = user ? [user.firstName, user.lastName].filter(Boolean).join(" ").trim() || "User" : "User";
   const roleLabel = user?.roles?.[0] ? user.roles[0].replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase()) : "";
   const initials = displayName.split(" ").filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase() || "").join("");
@@ -41,23 +41,13 @@ export default function ReceptionLayout({ children }: { children: React.ReactNod
     setIsSidebarOpen(false);
   }, [pathname]);
 
-  const logout = () => {
+  const logout = async () => {
     try {
-      const keysToRemove = [
-        "vemtap:session",
-        "vemtap:clinic",
-        "vemtap:user",
-        "vemtap_auth",
-        "authToken",
-        "token",
-      ];
-      keysToRemove.forEach((k) => localStorage.removeItem(k));
-      sessionStorage.clear();
-    } catch {
-      // ignore storage errors
+      await logoutUser();
+    } finally {
+      setIsLogoutOpen(false);
+      router.replace("/login");
     }
-    setIsLogoutOpen(false);
-    router.replace("/login");
   };
 
   return (

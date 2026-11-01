@@ -9,6 +9,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Modal } from "@/components/ui/modal";
 import { useAuth } from "@/lib/auth-context";
+import { useBranches } from "@/hooks/useBranches";
 import { usePatients } from "@/hooks/usePatients";
 import { useProducts } from "@/hooks/useProducts";
 import { useCreateInvoice, useMakePayment } from "@/hooks/useBilling";
@@ -18,7 +19,17 @@ const formatCurrency = (value: number) => `NGN ${value.toLocaleString("en-NG")}`
 
 export default function BillingPage() {
   const { user } = useAuth();
+  const { data: branches = [] } = useBranches();
+  const [selectedBranchId, setSelectedBranchId] = React.useState("");
   const { data: patientsResponse, isLoading: patientsLoading } = usePatients();
+
+  React.useEffect(() => {
+    if (branches.length > 0 && !selectedBranchId) {
+      setSelectedBranchId(branches[0].id);
+    }
+  }, [branches, selectedBranchId]);
+
+  const effectiveBranchId = user?.branchId?.trim() || selectedBranchId || undefined;
   const patientsData = patientsResponse?.data ?? [];
   const { data: productsData = [], isLoading: productsLoading } = useProducts();
   const createInvoiceMut = useCreateInvoice();
@@ -92,7 +103,8 @@ export default function BillingPage() {
 
   const handleGenerateInvoice = () => {
     if (!selectedPatient || !user) return;
-    if (!user.branchId) {
+    const safeBranchId = effectiveBranchId;
+    if (!safeBranchId) {
       showToast("No branch is available for this clinic. Create a branch first.");
       return;
     }
@@ -104,7 +116,7 @@ export default function BillingPage() {
       totalAmount: invoiceTotal,
       items,
       patientId: selectedPatient.id,
-      branchId: user.branchId,
+      branchId: safeBranchId,
     }, {
       onSuccess: (invoice) => {
         setReceiptNumber(invoice.invoiceNumber);
@@ -149,7 +161,8 @@ export default function BillingPage() {
       const invoiceNum = `INV-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 9999)).padStart(4, "0")}`;
       const items = JSON.stringify(selectedServices.map((s) => ({ item: s.name, amount: s.amount })));
 
-      if (!user?.branchId) {
+      const fallbackBranchId = effectiveBranchId;
+      if (!fallbackBranchId) {
         showToast("No branch is available for this clinic. Create a branch first.");
         return;
       }
@@ -159,7 +172,7 @@ export default function BillingPage() {
         totalAmount: invoiceTotal,
         items,
         patientId: selectedPatient.id,
-        branchId: user.branchId,
+        branchId: fallbackBranchId,
       }, {
         onSuccess: (invoice) => {
           setReceiptNumber(invoice.invoiceNumber);

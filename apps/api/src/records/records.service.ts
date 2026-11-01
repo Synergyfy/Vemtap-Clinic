@@ -34,18 +34,24 @@ export class RecordsService {
     return this.findOne(saved.id);
   }
 
-  async findAll(query: MedicalRecordQueryDto): Promise<MedicalRecord[]> {
+  async findAll(query: MedicalRecordQueryDto): Promise<{ data: MedicalRecord[]; total: number; page: number; limit: number; totalPages: number }> {
+    const page = query.page || 1;
+    const limit = query.limit || 10;
     const where: any = {};
     if (query.clinicId) where.clinicId = query.clinicId;
     if (query.patientId) where.patientId = query.patientId;
     if (query.staffId) where.staffId = query.staffId;
     if (query.branchId) where.branchId = query.branchId;
 
-    return this.recordRepository.find({
+    const [data, total] = await this.recordRepository.findAndCount({
       where,
       relations: ['patient', 'staff', 'branch', 'vitals', 'eyeTests'],
       order: { createdAt: 'DESC' },
+      skip: (page - 1) * limit,
+      take: limit,
     });
+
+    return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 
   async findOne(id: string): Promise<MedicalRecord> {

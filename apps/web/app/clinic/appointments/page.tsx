@@ -10,6 +10,7 @@ import { Modal } from "@/components/ui/modal";
 import { useAppointments, useCreateAppointment, useUpdateAppointment, useTodayAppointments, Appointment, AppointmentQueryParams, AppointmentStatus } from "@/hooks/useAppointments";
 import { usePatients } from "@/hooks/usePatients";
 import { useStaff } from "@/hooks/useStaff";
+import { useBranches } from "@/hooks/useBranches";
 import { useAuth } from "@/lib/auth-context";
 import { toast } from "sonner";
 
@@ -91,7 +92,17 @@ function formatDayNumber(iso: string) {
 
 export default function AppointmentsPage() {
   const { user } = useAuth();
+  const { data: branches = [] } = useBranches();
+  const [selectedBranchId, setSelectedBranchId] = React.useState("");
   const todayISO = React.useMemo(() => toISODate(new Date()), []);
+
+  React.useEffect(() => {
+    if (branches.length > 0 && !selectedBranchId) {
+      setSelectedBranchId(branches[0].id);
+    }
+  }, [branches, selectedBranchId]);
+
+  const effectiveBranchId = user?.branchId?.trim() || selectedBranchId || undefined;
   const tomorrowISO = React.useMemo(() => {
     const d = new Date();
     d.setDate(d.getDate() + 1);
@@ -171,7 +182,8 @@ export default function AppointmentsPage() {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.patientId || !user) return;
-    if (!user.branchId) {
+    const safeBranchId = effectiveBranchId;
+    if (!safeBranchId) {
       toast.error("No branch is available for this clinic. Create a branch before booking appointments.");
       return;
     }
@@ -189,7 +201,7 @@ export default function AppointmentsPage() {
         reason: form.reason,
         patientId: form.patientId,
         staffId: form.providerId || undefined,
-        branchId: user.branchId,
+        branchId: safeBranchId,
         clinicId: user.clinicId,
       });
       toast.success("Appointment created successfully");

@@ -29,20 +29,20 @@ export default function PharmacyLayout({ children }: { children: React.ReactNode
   const [isLogoutOpen, setIsLogoutOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, logout: logoutUser } = useAuth();
   const displayName = user ? [user.firstName, user.lastName].filter(Boolean).join(" ").trim() || "User" : "User";
   const roleLabel = user?.roles?.[0] ? user.roles[0].replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase()) : "";
   const initials = displayName.split(" ").filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase() || "").join("");
 
   React.useEffect(() => { setIsSidebarOpen(false); }, [pathname]);
 
-  const logout = () => {
+  const logout = async () => {
     try {
-      ["vemtap:session", "vemtap:clinic", "vemtap:user", "vemtap_auth", "authToken", "token"].forEach((k) => localStorage.removeItem(k));
-      sessionStorage.clear();
-    } catch { /* ignore */ }
-    setIsLogoutOpen(false);
-    router.replace("/login");
+      await logoutUser();
+    } finally {
+      setIsLogoutOpen(false);
+      router.replace("/login");
+    }
   };
 
   return (
