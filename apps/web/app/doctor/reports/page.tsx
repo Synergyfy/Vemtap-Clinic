@@ -18,7 +18,7 @@ import { usePatients } from "@/hooks/usePatients";
 
 export default function DoctorReports() {
   const { user } = useAuth();
-  const doctorDisplayName = user ? [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email || "Doctor" : "Doctor";
+  const doctorDisplayName = user ? [user.firstName, user.lastName].filter(Boolean).join(" ").trim() || "Doctor" : "Doctor";
   const [activeSection, setActiveTab] = useState("stats");
 
   const [exportAuditOpen, setExportAuditOpen] = useState(false);

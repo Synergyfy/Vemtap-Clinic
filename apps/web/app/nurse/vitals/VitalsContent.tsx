@@ -51,11 +51,16 @@ export default function VitalsContent() {
   const handleRecord = () => {
     if (!selectedPatientId) return;
     const entry = queueEntries.find((e) => e.patientId === selectedPatientId);
+    const branchId = entry?.branchId || user?.branchId || "";
+    if (!branchId) {
+      setSuccessMsg("No branch is available for this clinic. Create a branch before recording vitals.");
+      return;
+    }
     createRecord.mutate(
       {
         patientId: selectedPatientId,
         staffId: user?.userId,
-        branchId: entry?.branchId || user?.clinicId || "",
+        branchId,
         clinicId: entry?.clinicId || user?.clinicId || "",
         chiefComplaint: "Vitals recording",
         vitals: {

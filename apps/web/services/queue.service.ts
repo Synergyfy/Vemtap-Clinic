@@ -195,8 +195,9 @@ export const queueService = {
   async getAll(params: QueueQueryParams = {}): Promise<PaginatedQueueResponse> {
     const searchParams = new URLSearchParams();
     Object.entries(params).forEach(([key, value]) => {
-      if (value !== undefined && value !== null) {
-        searchParams.append(key, String(value));
+      const normalizedValue = typeof value === 'string' ? value.trim() : value;
+      if (normalizedValue !== undefined && normalizedValue !== null && normalizedValue !== '') {
+        searchParams.append(key, String(normalizedValue));
       }
     });
 

@@ -36,10 +36,18 @@ export function usePatientStats(clinicId: string | null) {
 
 export function useCreatePatient() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: (data: CreatePatientData) => patientsService.create(data),
-    onSuccess: () => {
+    onSuccess: (createdPatient) => {
+      queryClient.setQueryData<PaginatedPatientsResponse | undefined>([PATIENTS_QUERY_KEY], (previous) => {
+        if (!previous) return previous;
+
+        return {
+          ...previous,
+          data: [createdPatient, ...previous.data.filter((patient) => patient.id !== createdPatient.id)],
+        };
+      });
       queryClient.invalidateQueries({ queryKey: [PATIENTS_QUERY_KEY] });
     },
   });

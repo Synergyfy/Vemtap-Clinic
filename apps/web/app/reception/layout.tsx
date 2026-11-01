@@ -33,9 +33,9 @@ export default function ReceptionLayout({ children }: { children: React.ReactNod
   const pathname = usePathname();
   const router = useRouter();
   const { user } = useAuth();
-  const displayName = user ? [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email || "" : "";
+  const displayName = user ? [user.firstName, user.lastName].filter(Boolean).join(" ").trim() || "User" : "User";
   const roleLabel = user?.roles?.[0] ? user.roles[0].replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase()) : "";
-  const initials = displayName.split(" ").filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase() || "").join("") || "U";
+  const initials = displayName.split(" ").filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase() || "").join("");
 
   React.useEffect(() => {
     setIsSidebarOpen(false);
@@ -116,13 +116,20 @@ export default function ReceptionLayout({ children }: { children: React.ReactNod
           </nav>
 
           <div className="p-4 border-t border-white/10 shrink-0">
-            <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5">
-              <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-sky-400 font-bold">
-                {initials}
-              </div>
-              <div>
-                <p className="text-sm font-bold">{displayName}</p>
-                <p className="text-[10px] text-white/50">{roleLabel}</p>
+            <div className="flex min-w-0 items-center gap-3 rounded-xl bg-white/5 p-3">
+              {initials ? (
+                <div className="h-10 w-10 shrink-0 rounded-full bg-slate-800 flex items-center justify-center text-sky-400 font-bold">
+                  {initials}
+                </div>
+              ) : (
+                <div className="h-10 w-10 shrink-0 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 font-bold">
+                  •
+                </div>
+              )}
+              <div className="min-w-0 flex-1 overflow-hidden">
+                <p className="truncate text-sm font-bold text-white">{displayName || "User"}</p>
+                <p className="truncate text-[10px] text-white/60">{user?.email || "user@example.com"}</p>
+                <p className="truncate text-[10px] text-white/40">{roleLabel || "Staff"}</p>
               </div>
             </div>
           </div>

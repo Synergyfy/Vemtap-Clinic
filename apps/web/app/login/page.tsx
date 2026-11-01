@@ -16,6 +16,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-context";
+import { getDashboardRoute } from "@/lib/dashboard-routes";
 
 type IconProps = {
   size?: number;
@@ -54,22 +55,9 @@ export default function LoginPage() {
   const { login, isAuthenticated, user } = useAuth();
   const router = useRouter();
 
-  const redirectMap: Record<string, string> = {
-    admin: "/admin/dashboard",
-    doctor: "/doctor/dashboard",
-    nurse: "/nurse/dashboard",
-    optometrist: "/optician/dashboard",
-    pharmacist: "/pharmacy/dashboard",
-    receptionist: "/reception/dashboard",
-    cashier: "/cashier",
-    patient: "/patient/dashboard",
-  };
-
-  const getDashboardRoute = (role?: string) => redirectMap[role ?? ""] ?? "/clinic/dashboard";
-
   React.useEffect(() => {
     if (!isAuthenticated || !user) return;
-    router.replace(getDashboardRoute(user.roles?.[0]));
+    router.replace(getDashboardRoute(user));
   }, [isAuthenticated, user, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -79,8 +67,7 @@ export default function LoginPage() {
 
     try {
       const authenticatedUser = await login(formData.email, formData.password);
-      const role = authenticatedUser?.roles?.[0] ?? user?.roles?.[0] ?? "";
-      router.push(getDashboardRoute(role));
+      router.push(getDashboardRoute(authenticatedUser ?? user));
     } catch (err: any) {
       setError(err?.response?.data?.message ?? "Invalid credentials. Please try again.");
     } finally {

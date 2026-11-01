@@ -22,7 +22,6 @@ export interface CreateBranchInput {
   phone?: string;
   email?: string;
   clinicId: string;
-  isActive?: boolean;
 }
 
 export interface BranchStats {

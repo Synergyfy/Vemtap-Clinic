@@ -3,6 +3,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { UserRole } from '../entities/user.entity';
 import { ClinicsService } from './clinics.service';
 import { CreateClinicDto, UpdateClinicDto, ClinicQueryDto } from './dto/clinic.dto';
@@ -17,15 +18,15 @@ export class ClinicsController {
   @Get('platform-overview')
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Get multi-clinic platform overview for Super Admin' })
-  getPlatformOverview() {
-    return this.clinicsService.getPlatformOverview();
+  getPlatformOverview(@CurrentUser() user: any) {
+    return this.clinicsService.getPlatformOverview(user);
   }
 
   @Get('stats')
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Get total, active, and inactive clinic statistics' })
-  getStats() {
-    return this.clinicsService.getStats();
+  getStats(@CurrentUser() user: any) {
+    return this.clinicsService.getStats(user);
   }
 
   @Get(':id')
@@ -35,16 +36,16 @@ export class ClinicsController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'List all clinics with optional search and active status filters' })
-  findAll(@Query() query: ClinicQueryDto) {
-    return this.clinicsService.findAll(query);
+  @ApiOperation({ summary: 'List the current user\'s clinics with optional search and active status filters' })
+  findAll(@CurrentUser() user: any, @Query() query: ClinicQueryDto) {
+    return this.clinicsService.findAll(query, user);
   }
 
   @Post()
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Register/Onboard a new clinic' })
-  create(@Body() dto: CreateClinicDto) {
-    return this.clinicsService.create(dto);
+  create(@CurrentUser() user: any, @Body() dto: CreateClinicDto) {
+    return this.clinicsService.create(dto, user?.userId ?? user?.sub ?? null);
   }
 
   @Put(':id')

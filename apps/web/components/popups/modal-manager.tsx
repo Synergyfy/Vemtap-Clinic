@@ -58,6 +58,11 @@ export const ModalManager = () => {
       return;
     }
 
+    if (!user.branchId) {
+      setSubmitError("No branch is available for this clinic. Create a branch before creating invoices.");
+      return;
+    }
+
     if (!form.patientId.trim() || !form.totalAmount || !form.items.trim()) {
       setSubmitError("Patient ID, service description, and amount are required.");
       return;
@@ -76,7 +81,7 @@ export const ModalManager = () => {
         totalAmount,
         items: JSON.stringify([{ item: form.items.trim(), amount: totalAmount }]),
         patientId: form.patientId.trim(),
-        branchId: user.clinicId,
+        branchId: user.branchId,
         dueDate: form.dueDate || undefined,
         notes: form.notes.trim() || undefined,
       },

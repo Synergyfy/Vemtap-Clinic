@@ -18,6 +18,7 @@ export function useStaff(params: StaffQueryParams = {}) {
   return useQuery({
     queryKey: [STAFF_QUERY_KEY, params],
     queryFn: () => staffService.getAll(params),
+    enabled: !!params.clinicId,
     staleTime: 30_000,
     gcTime: 5 * 60_000,
   });

@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { OnboardingModal } from "@/components/popups/onboarding-modal";
 import { ClinicActionModal } from "@/components/popups/clinic-action-modal";
 import { useClinics, useClinicStats } from "@/hooks/useClinics";
@@ -28,6 +29,7 @@ const ExternalLinkIcon = ExternalLink as React.ComponentType<{ size?: number; cl
 const MoreVerticalIcon = MoreVertical as React.ComponentType<{ size?: number; className?: string }>;
 
 export default function ClinicsListPage() {
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
@@ -173,27 +175,23 @@ export default function ClinicsListPage() {
                               <span className="flex items-center gap-1 whitespace-nowrap">
                                 <MapPinIcon size={10} /> {clinic.address || location}
                               </span>
-                              <span className="flex items-center gap-1 whitespace-nowrap">
-                                <Building2Icon size={10} /> {clinic.id}
-                              </span>
                             </div>
                           </div>
                         </div>
                       </td>
                       <td className="px-6 py-5 align-middle">
-                        <div className="min-w-0">
+                        <div className="min-w-0 flex flex-col gap-2">
                           <span className={cn(
-                            "inline-flex rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-tighter",
+                            "inline-flex w-fit rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-tighter",
                             clinic.plan === 'Enterprise' ? 'bg-purple-100 text-purple-700' :
                             clinic.plan === 'Growth' ? 'bg-brand-soft-blue text-brand-blue' :
                             clinic.plan === 'Starter' ? 'bg-slate-100 text-slate-600' : 'bg-slate-100 text-slate-600'
                           )}>
                             {clinic.plan || 'Not set'}
                           </span>
-                          <div className="mt-2 flex items-center gap-3 text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                            <span className="flex items-center gap-1 whitespace-nowrap">
-                              <Mail size={12} className="text-brand-blue" /> {clinic.email || '—'}
-                            </span>
+                          <div className="flex items-start gap-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-400 break-all">
+                            <Mail size={12} className="mt-0.5 shrink-0 text-brand-blue" />
+                            <span className="min-w-0 break-all">{clinic.email || '—'}</span>
                           </div>
                         </div>
                       </td>
@@ -211,11 +209,14 @@ export default function ClinicsListPage() {
                       </td>
                       <td className="px-6 py-5 text-right align-middle">
                         <div className="flex items-center justify-end gap-2">
-                          <Link href={`/admin/clinics/${clinic.id}`}>
-                            <Button variant="ghost" size="sm" className="h-10 w-10 rounded-xl p-0 transition-all hover:bg-brand-soft-blue hover:text-brand-blue">
-                              <ExternalLinkIcon size={18} />
-                            </Button>
-                          </Link>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-10 w-10 rounded-xl p-0 transition-all hover:bg-brand-soft-blue hover:text-brand-blue"
+                            onClick={() => router.push(`/clinic/dashboard?clinicId=${encodeURIComponent(clinic.id)}`)}
+                          >
+                            <ExternalLinkIcon size={18} />
+                          </Button>
                           <Button 
                             variant="ghost" 
                             size="sm" 

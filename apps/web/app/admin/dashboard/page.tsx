@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { useAuth } from "@/lib/auth-context";
@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { usePlatformOverview } from "@/hooks/useClinics";
 import { OnboardingModal } from "@/components/popups/onboarding-modal";
+import { getDashboardRoute } from "@/lib/dashboard-routes";
 
 const formatNGN = (value: number) =>
   new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 }).format(value);
@@ -22,8 +23,16 @@ export default function AdminDashboard() {
   const router = useRouter();
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
   const { user } = useAuth();
-  const adminName = user ? [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email || "Admin" : "Admin";
+  const adminName = user ? [user.firstName, user.lastName].filter(Boolean).join(" ").trim() || "Admin" : "Admin";
   const adminRole = user?.roles?.[0] ? user.roles[0].replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase()) : "Admin";
+
+  useEffect(() => {
+    if (!user) return;
+
+    if (user.clinicId && !user.roles?.includes('admin')) {
+      router.replace(getDashboardRoute(user));
+    }
+  }, [user, router]);
 
   // Live Query from backend API
   const { data: overview, isLoading, isError, refetch } = usePlatformOverview();

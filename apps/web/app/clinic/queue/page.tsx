@@ -8,9 +8,11 @@ import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/app/clinic/_components/page-header";
 import { Modal } from "@/components/ui/modal";
 import { useAuth } from "@/lib/auth-context";
-import { useQueue, useCreateQueueEntry, useUpdateQueueEntry } from "@/hooks/useQueue";
+import { useQueue, useCreateQueueEntry, useUpdateQueueEntry, useQueueStats } from "@/hooks/useQueue";
 import { usePatients } from "@/hooks/usePatients";
+import { useBranches } from "@/hooks/useBranches";
 import { PageSkeleton } from "@/components/ui/skeleton";
+import { toast } from "sonner";
 
 function stageBadge(stage: string) {
   if (stage === "Reception") return <Badge variant="secondary">Reception</Badge>;
@@ -107,7 +109,20 @@ function shortISODateTime(iso: string) {
 
 export default function QueuePage() {
   const { user } = useAuth();
-  const { data: apiQueueResponse, isLoading } = useQueue();
+  const clinicId = user?.clinicId?.trim() || "";
+  const { data: branches = [] } = useBranches();
+  const [selectedBranchId, setSelectedBranchId] = React.useState("");
+
+  React.useEffect(() => {
+    if (branches.length > 0 && !selectedBranchId) {
+      setSelectedBranchId(branches[0].id);
+    }
+  }, [branches, selectedBranchId]);
+
+  const effectiveBranchId = user?.branchId?.trim() || selectedBranchId || undefined;
+
+  const { data: apiQueueResponse, isLoading } = useQueue({ clinicId: clinicId || undefined, branchId: effectiveBranchId });
+  const { data: queueStatsResponse } = useQueueStats(clinicId);
   const apiQueue = apiQueueResponse?.data ?? [];
   const createEntry = useCreateQueueEntry();
   const updateEntry = useUpdateQueueEntry();
@@ -118,6 +133,7 @@ export default function QueuePage() {
   const [queue, setQueue] = React.useState<any[]>([]);
   const [isAddOpen, setIsAddOpen] = React.useState(false);
   const { data: patientsResponse, isLoading: patientsLoading } = usePatients({ clinicId: user?.clinicId || "", limit: 100 });
+  const prevQueueKeyRef = React.useRef<string | null>(null);
   const [addForm, setAddForm] = React.useState({
     patientName: "",
     patientId: "",
@@ -126,17 +142,33 @@ export default function QueuePage() {
   });
 
   React.useEffect(() => {
-    if (apiQueue.length > 0) setQueue(apiQueue);
-  }, [apiQueue]);
+    if (!clinicId) return;
+    const nextQueueKey = JSON.stringify(apiQueue);
+    if (prevQueueKeyRef.current !== nextQueueKey) {
+      prevQueueKeyRef.current = nextQueueKey;
+      setQueue(apiQueue);
+    }
+  }, [apiQueue, clinicId]);
 
   const stageOrder = ["Reception", "Vitals", "Consultation", "Refraction", "Optical", "Billing"];
 
   const activeQueue = queue.filter((q) => q.status !== "Done");
-  const waiting = activeQueue.filter((q) => q.status === "Waiting").length;
-  const inService = activeQueue.filter((q) => q.status === "In-service").length;
-  const urgentCount = activeQueue.filter((q) => q.priority === "Urgent").length;
-  const avgWait = Math.round(activeQueue.reduce((acc, q) => acc + q.waitMinutes, 0) / Math.max(1, activeQueue.length));
-  const longestWait = Math.max(0, ...activeQueue.map((q) => q.waitMinutes));
+  const waitingCount = activeQueue.filter((q) => q.status === "Waiting").length;
+  const liveStats = queueStatsResponse ?? {
+    total: activeQueue.length,
+    waiting: waitingCount,
+    inProgress: activeQueue.filter((q) => q.status === "In-service").length,
+    completed: 0,
+    cancelled: 0,
+    avgWaitTime: 0,
+    byStation: {},
+    byPriority: {},
+  };
+  const waiting = liveStats.waiting ?? waitingCount;
+  const inService = liveStats.inProgress ?? activeQueue.filter((q) => q.status === "In-service").length;
+  const urgentCount = liveStats.byPriority?.Urgent ?? activeQueue.filter((q) => q.priority === "Urgent").length;
+  const avgWait = Math.round(activeQueue.reduce((acc, q) => acc + (q.waitMinutes ?? 0), 0) / Math.max(1, activeQueue.length));
+  const longestWait = Math.max(0, ...activeQueue.map((q) => q.waitMinutes ?? 0));
 
   const stageCounts = stageOrder.map((stage) => ({
     stage,
@@ -175,13 +207,18 @@ export default function QueuePage() {
   const submitAdd = (e: React.FormEvent) => {
     e.preventDefault();
     if (!addForm.patientId) return;
+    const safeBranchId = effectiveBranchId || selectedBranchId;
+    if (!safeBranchId) {
+      toast.error("No branch is available for this clinic. Create a branch before adding a patient to the queue.");
+      return;
+    }
     createEntry.mutate({
       patientName: addForm.patientName.trim(),
       serviceType: addForm.stage,
       priority: addForm.priority,
       patientId: addForm.patientId,
-      branchId: user?.clinicId || "",
-      clinicId: user?.clinicId || "",
+      branchId: safeBranchId,
+      clinicId,
     }, {
       onSuccess: (newItem) => {
         setQueue((prev) => [newItem, ...prev]);

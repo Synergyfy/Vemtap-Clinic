@@ -10,6 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useCreateClinic } from "@/hooks/useClinics";
+import { useRouter } from "next/navigation";
 
 interface OnboardingModalProps {
   isOpen: boolean;
@@ -22,6 +23,13 @@ const steps = [
   { id: 3, title: "Admin Setup", icon: User },
 ];
 
+const planOptions = [
+  { id: "free", name: "Free", price: "$0", desc: "Best for trying the platform and getting a clinic online quickly." },
+  { id: "starter", name: "Starter", price: "$49/mo", desc: "Single branch, up to 5 staff members." },
+  { id: "growth", name: "Growth", price: "$149/mo", desc: "Up to 3 branches, unlimited staff." },
+  { id: "enterprise", name: "Enterprise", price: "Custom", desc: "Unlimited branches, API access, & support." },
+];
+
 const defaultForm = {
   name: "",
   email: "",
@@ -31,9 +39,11 @@ const defaultForm = {
   phone: "",
   ownerName: "",
   adminUsername: "",
+  plan: "free",
 };
 
 export function OnboardingModal({ isOpen, onClose }: OnboardingModalProps) {
+  const router = useRouter();
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState(defaultForm);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -75,6 +85,7 @@ export function OnboardingModal({ isOpen, onClose }: OnboardingModalProps) {
         city: formData.city.trim() || undefined,
         state: formData.state.trim() || undefined,
         phone: formData.phone.trim() || undefined,
+        plan: formData.plan || "free",
       });
 
       setIsSuccess(true);
@@ -226,27 +237,41 @@ export function OnboardingModal({ isOpen, onClose }: OnboardingModalProps) {
 
                     {currentStep === 2 && (
                       <div className="space-y-6">
-                        <p className="text-sm text-slate-500 mb-6">This step is informational and currently maps to the backend clinic profile fields above.</p>
+                        <p className="text-sm text-slate-500 mb-6">Choose the right starting point. You can always upgrade later, and Free is available for first-time clinic setup.</p>
                         <div className="grid grid-cols-1 gap-4">
-                          {[
-                            { id: "starter", name: "Starter", price: "$49/mo", desc: "Single branch, up to 5 staff members." },
-                            { id: "growth", name: "Growth", price: "$149/mo", desc: "Up to 3 branches, unlimited staff." },
-                            { id: "enterprise", name: "Enterprise", price: "Custom", desc: "Unlimited branches, API access, & support." },
-                          ].map((plan) => (
-                            <label key={plan.id} className="relative flex items-center justify-between p-6 rounded-2xl border-2 border-slate-100 hover:border-brand-blue/30 cursor-pointer transition-all group has-[:checked]:border-brand-blue has-[:checked]:bg-brand-soft-blue/30">
-                              <input type="radio" name="plan" className="hidden peer" defaultChecked={plan.id === "growth"} />
-                              <div>
-                                <h4 className="font-bold text-brand-navy">{plan.name}</h4>
-                                <p className="text-xs text-slate-500 mt-0.5">{plan.desc}</p>
-                              </div>
-                              <div className="text-right">
-                                <p className="font-black text-brand-navy">{plan.price}</p>
-                                <div className="w-5 h-5 rounded-full border-2 border-slate-200 mt-2 flex items-center justify-center peer-checked:border-brand-blue peer-checked:bg-brand-blue transition-all">
-                                  <Check size={12} className="text-white opacity-0 peer-checked:opacity-100" />
+                          {planOptions.map((plan) => {
+                            const isSelected = (formData.plan || "free") === plan.id;
+
+                            return (
+                              <label
+                                key={plan.id}
+                                className="relative flex items-center justify-between p-6 rounded-2xl border-2 border-slate-100 hover:border-brand-blue/30 cursor-pointer transition-all group"
+                              >
+                                <input
+                                  type="radio"
+                                  name="plan"
+                                  checked={isSelected}
+                                  onChange={() => updateField("plan", plan.id)}
+                                  className="sr-only"
+                                />
+                                <div>
+                                  <h4 className="font-bold text-brand-navy">{plan.name}</h4>
+                                  <p className="text-xs text-slate-500 mt-0.5">{plan.desc}</p>
                                 </div>
-                              </div>
-                            </label>
-                          ))}
+                                <div className="text-right">
+                                  <p className="font-black text-brand-navy">{plan.price}</p>
+                                  <div className={cn(
+                                    "w-5 h-5 rounded-full border-2 mt-2 flex items-center justify-center transition-all",
+                                    isSelected
+                                      ? "border-brand-blue bg-brand-blue"
+                                      : "border-slate-200 bg-white",
+                                  )}>
+                                    <Check size={12} className={cn("text-white", isSelected ? "opacity-100" : "opacity-0")} />
+                                  </div>
+                                </div>
+                              </label>
+                            );
+                          })}
                         </div>
                       </div>
                     )}
@@ -336,8 +361,15 @@ export function OnboardingModal({ isOpen, onClose }: OnboardingModalProps) {
                 {successName} has been successfully registered and saved to the backend.
               </p>
               <div className="flex flex-col gap-3">
-                <Button variant="default" className="w-full py-6 rounded-2xl text-lg font-bold" onClick={onClose}>
-                  Go to Clinics List
+                <Button
+                  variant="default"
+                  className="w-full py-6 rounded-2xl text-lg font-bold"
+                  onClick={() => {
+                    onClose();
+                    router.push('/clinic/dashboard');
+                  }}
+                >
+                  Go to Clinic Dashboard
                 </Button>
                 <Button variant="ghost" className="font-bold text-brand-blue" onClick={resetState}>
                   Onboard Another Clinic

@@ -33,7 +33,7 @@ export default function DoctorLayout({ children }: { children: React.ReactNode }
   const router = useRouter();
   const { user } = useAuth();
 
-  const doctorDisplayName = user ? [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email || "Doctor" : "Doctor";
+  const doctorDisplayName = user ? [user.firstName, user.lastName].filter(Boolean).join(" ").trim() || "Doctor" : "Doctor";
   const doctorRoleLabel = user?.roles?.[0] ? user.roles[0].replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase()) : "Doctor";
 
   React.useEffect(() => {

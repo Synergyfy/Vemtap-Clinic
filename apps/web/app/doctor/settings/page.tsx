@@ -39,7 +39,7 @@ export default function DoctorSettings() {
         const profileData = response.data || {};
 
         setProfile({
-          name: [profileData.firstName, profileData.lastName].filter(Boolean).join(" ") || user.email || "Doctor",
+          name: [profileData.firstName, profileData.lastName].filter(Boolean).join(" ").trim() || "Doctor",
           email: profileData.email || user.email || "",
           phone: profileData.phone || user.phone || "",
           license: profileData.license || "",

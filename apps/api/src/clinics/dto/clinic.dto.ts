@@ -30,6 +30,11 @@ export class CreateClinicDto {
   @IsOptional()
   @IsEmail()
   email?: string;
+
+  @ApiPropertyOptional({ example: 'free' })
+  @IsOptional()
+  @IsString()
+  plan?: string;
 }
 
 export class UpdateClinicDto {
@@ -62,6 +67,11 @@ export class UpdateClinicDto {
   @IsOptional()
   @IsEmail()
   email?: string;
+
+  @ApiPropertyOptional({ example: 'free' })
+  @IsOptional()
+  @IsString()
+  plan?: string;
 
   @ApiPropertyOptional({ example: true })
   @IsOptional()

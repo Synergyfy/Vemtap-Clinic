@@ -85,6 +85,10 @@ export default function DoctorAppointments() {
 
   const handleBookAppointment = async () => {
     if (!bookForm.patientName || !bookForm.patientId || !bookForm.dateISO || !bookForm.startTime || !user) return;
+    if (!user.branchId) {
+      toast.error("No branch is available for this clinic. Create a branch before booking appointments.");
+      return;
+    }
     try {
       await createAppointmentMutation.mutateAsync({
         appointmentDate: bookForm.dateISO,
@@ -92,7 +96,7 @@ export default function DoctorAppointments() {
         type: bookForm.kind as any,
         reason: bookForm.reason,
         patientId: bookForm.patientId,
-        branchId: user.clinicId,
+        branchId: user.branchId,
         clinicId: user.clinicId,
       });
       toast.success(`Appointment booked for ${bookForm.patientName} on ${bookForm.dateISO} at ${bookForm.startTime}`);

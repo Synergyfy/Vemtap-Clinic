@@ -1,7 +1,45 @@
 import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios';
-import { getAccessToken, clearAuth } from './auth-state';
+import { getAccessToken, clearAuth, useAuthState } from './auth-state';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api';
+
+const shouldDropEmptyIdValue = (key?: string) => {
+  if (!key) return false;
+  const normalized = key.toLowerCase();
+  return normalized === 'clinicid' || normalized === 'branchid' || normalized.endsWith('id');
+};
+
+const sanitizeNullishValues = (value: unknown, key?: string): unknown => {
+  if (value === null || value === undefined) {
+    return undefined;
+  }
+
+  if (typeof value === 'string' && value.trim() === '' && shouldDropEmptyIdValue(key)) {
+    return undefined;
+  }
+
+  if (value instanceof FormData || value instanceof URLSearchParams || value instanceof Blob) {
+    return value;
+  }
+
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => sanitizeNullishValues(item, key))
+      .filter((item) => item !== undefined);
+  }
+
+  if (typeof value === 'object') {
+    return Object.entries(value as Record<string, unknown>).reduce<Record<string, unknown>>((acc, [entryKey, item]) => {
+      const sanitized = sanitizeNullishValues(item, entryKey);
+      if (sanitized !== undefined) {
+        acc[entryKey] = sanitized;
+      }
+      return acc;
+    }, {});
+  }
+
+  return value;
+};
 
 class ApiClient {
   private client: AxiosInstance | null = null;
@@ -24,6 +62,25 @@ class ApiClient {
 
       this.client.interceptors.request.use(
         (config: InternalAxiosRequestConfig) => {
+          const url = config.url || '';
+          const isPublicAuthEndpoint =
+            url.includes('/auth/clinics') ||
+            url.includes('/auth/login') ||
+            url.includes('/auth/register') ||
+            url.includes('/auth/refresh');
+
+          if (config.params) {
+            config.params = sanitizeNullishValues(config.params) as Record<string, unknown>;
+          }
+
+          if (config.data && typeof config.data === 'object' && !(config.data instanceof FormData)) {
+            config.data = sanitizeNullishValues(config.data) as typeof config.data;
+          }
+
+          if (isPublicAuthEndpoint) {
+            return config;
+          }
+
           const token = getAccessToken();
           if (token && config.headers) {
             config.headers.Authorization = `Bearer ${token}`;
@@ -62,8 +119,22 @@ class ApiClient {
               // Use plain axios call to avoid self-intercepting 401 into an infinite loop
               const response = await axios.post(`${API_URL}/auth/refresh`, {}, { withCredentials: true });
               const newAccessToken = response.data?.accessToken;
+              const refreshedUser = response.data?.user ?? useAuthState.getState().user;
+
+              if (newAccessToken && refreshedUser) {
+                useAuthState.getState().setAuth(newAccessToken, refreshedUser);
+                this.processQueue(null, newAccessToken);
+                if (originalRequest.headers) {
+                  originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+                }
+                return this.getClient()(originalRequest);
+              }
 
               if (newAccessToken) {
+                const currentUser = useAuthState.getState().user;
+                if (currentUser) {
+                  useAuthState.getState().setAuth(newAccessToken, currentUser);
+                }
                 this.processQueue(null, newAccessToken);
                 if (originalRequest.headers) {
                   originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;

@@ -280,11 +280,15 @@ export default function QueuePage() {
 
   const handleAddPatient = async () => {
     if (!addForm.patientName.trim() || !user) return;
+    if (!user.branchId) {
+      toast.error("No branch is available for this clinic. Create a branch before adding patients to the queue.");
+      return;
+    }
     try {
       const patientId = "temp-patient-id";
       await createQueueEntryMutation.mutateAsync({
         patientId,
-        branchId: user.clinicId,
+        branchId: user.branchId,
         clinicId: user.clinicId,
         station: addForm.station,
         priority: addForm.priority,

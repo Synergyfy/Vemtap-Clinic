@@ -195,6 +195,10 @@ export default function AppointmentsPage() {
 
   const handleCreateBooking = async () => {
     if (!newBooking.patientId || !user) return;
+    if (!user.branchId) {
+      toast.error("No branch is available for this clinic. Create a branch first, then try again.");
+      return;
+    }
     
     try {
       await createAppointmentMutation.mutateAsync({
@@ -203,7 +207,7 @@ export default function AppointmentsPage() {
         type: newBooking.type as any,
         reason: newBooking.purpose,
         patientId: newBooking.patientId,
-        branchId: user.clinicId, // using clinicId as fallback for branchId
+        branchId: user.branchId,
         clinicId: user.clinicId,
       });
       toast.success("Appointment created successfully");

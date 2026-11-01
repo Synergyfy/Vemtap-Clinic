@@ -4,7 +4,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
 import { ConfigService } from '@nestjs/config';
-import { User } from '../entities/user.entity';
+import { User, UserRole } from '../entities/user.entity';
 import { RefreshToken } from '../entities/refresh-token.entity';
 import { LoginDto, RegisterDto, ChangePasswordDto, ResetPasswordDto } from './dto/auth.dto';
 import { generateOpaqueToken, sha256Hex } from './utils/crypto.util';
@@ -18,7 +18,9 @@ export interface AuthUser {
   userId: string;
   email: string;
   roles: string[];
-  clinicId: string;
+  clinicId: string | null;
+  firstName?: string;
+  lastName?: string;
 }
 
 @Injectable()
@@ -41,6 +43,8 @@ export class AuthService {
     const hashedPassword = await bcrypt.hash(dto.password, 10);
     const user = this.userRepository.create({
       ...dto,
+      role: UserRole.ADMIN,
+      clinicId: dto.clinicId ?? null,
       password: hashedPassword,
       isActive: true,
     });
@@ -183,6 +187,7 @@ export class AuthService {
     const refreshTokenEntity = this.refreshTokenRepository.create({
       tokenHash: refreshTokenHash,
       userId: user.id,
+      clinicId: user.clinicId,
       expiresAt,
       userAgent: reqInfo?.userAgent ?? null,
       ip: reqInfo?.ip ?? null,
@@ -208,6 +213,7 @@ export class AuthService {
     const newTokenEntity = this.refreshTokenRepository.create({
       tokenHash: newRefreshTokenHash,
       userId: oldToken.userId,
+      clinicId: oldToken.clinicId ?? undefined,
       expiresAt,
       userAgent: reqInfo?.userAgent ?? null,
       ip: reqInfo?.ip ?? null,
@@ -246,6 +252,8 @@ export class AuthService {
       email: user.email,
       roles: [user.role],
       clinicId: user.clinicId,
+      firstName: user.firstName,
+      lastName: user.lastName,
     };
   }
 

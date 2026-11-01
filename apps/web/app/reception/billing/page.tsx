@@ -92,6 +92,10 @@ export default function BillingPage() {
 
   const handleGenerateInvoice = () => {
     if (!selectedPatient || !user) return;
+    if (!user.branchId) {
+      showToast("No branch is available for this clinic. Create a branch first.");
+      return;
+    }
     const invoiceNum = `INV-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 9999)).padStart(4, "0")}`;
     const items = JSON.stringify(selectedServices.map((s) => ({ item: s.name, amount: s.amount })));
 
@@ -100,7 +104,7 @@ export default function BillingPage() {
       totalAmount: invoiceTotal,
       items,
       patientId: selectedPatient.id,
-      branchId: user.clinicId, // Using clinicId as branch fallback
+      branchId: user.branchId,
     }, {
       onSuccess: (invoice) => {
         setReceiptNumber(invoice.invoiceNumber);
@@ -145,12 +149,17 @@ export default function BillingPage() {
       const invoiceNum = `INV-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 9999)).padStart(4, "0")}`;
       const items = JSON.stringify(selectedServices.map((s) => ({ item: s.name, amount: s.amount })));
 
+      if (!user?.branchId) {
+        showToast("No branch is available for this clinic. Create a branch first.");
+        return;
+      }
+
       createInvoiceMut.mutate({
         invoiceNumber: invoiceNum,
         totalAmount: invoiceTotal,
         items,
         patientId: selectedPatient.id,
-        branchId: user?.clinicId ?? "",
+        branchId: user.branchId,
       }, {
         onSuccess: (invoice) => {
           setReceiptNumber(invoice.invoiceNumber);

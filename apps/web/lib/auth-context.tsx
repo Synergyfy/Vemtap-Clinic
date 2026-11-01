@@ -1,7 +1,8 @@
 'use client';
 
 import { createContext, useContext, useEffect, useCallback, useState, ReactNode } from 'react';
-import { useAuthState, AuthUser } from './auth-state';
+import { useQueryClient } from '@tanstack/react-query';
+import { useAuthState, AuthUser, normalizeAuthUser } from './auth-state';
 import { api } from './api';
 
 interface AuthContextType {
@@ -21,28 +22,37 @@ interface RegisterData {
   lastName: string;
   email: string;
   password: string;
-  clinicId: string;
+  clinicId?: string | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const { user, isAuthenticated, isHydrated, setAuth, clearAuth: clearAuthState } = useAuthState();
+  const queryClient = useQueryClient();
+  const { user, isAuthenticated, isHydrated, isLoggedOut, setAuth, clearAuth: clearAuthState } = useAuthState();
   const [isLoading, setIsLoading] = useState(true);
 
   const checkAuth = useCallback(async () => {
+    if (isLoggedOut) {
+      setIsLoading(false);
+      return;
+    }
+
     try {
       const response = await api.post('/auth/refresh');
       const { accessToken: newAccessToken, user: newUser } = response.data;
       if (newAccessToken && newUser) {
-        setAuth(newAccessToken, newUser);
+        const normalizedUser = normalizeAuthUser(newUser);
+        if (normalizedUser) {
+          setAuth(newAccessToken, normalizedUser);
+        }
       }
     } catch {
       clearAuthState();
     } finally {
       setIsLoading(false);
     }
-  }, [setAuth, clearAuthState]);
+  }, [isLoggedOut, setAuth, clearAuthState]);
 
   useEffect(() => {
     if (isHydrated) {
@@ -57,8 +67,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const response = await api.post('/auth/login', { email, password });
       const { accessToken: newAccessToken, user: newUser } = response.data;
       if (newAccessToken && newUser) {
-        setAuth(newAccessToken, newUser);
-        return newUser;
+        const normalizedUser = normalizeAuthUser(newUser);
+        if (normalizedUser) {
+          setAuth(newAccessToken, normalizedUser);
+          return normalizedUser;
+        }
       }
       return null;
     } finally {
@@ -72,8 +85,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const response = await api.post('/auth/register', data);
       const { accessToken: newAccessToken, user: newUser } = response.data;
       if (newAccessToken && newUser) {
-        setAuth(newAccessToken, newUser);
-        return newUser;
+        const normalizedUser = normalizeAuthUser(newUser);
+        if (normalizedUser) {
+          setAuth(newAccessToken, normalizedUser);
+          return normalizedUser;
+        }
       }
       return null;
     } finally {
@@ -85,6 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await api.post('/auth/logout');
     } finally {
+      queryClient.clear();
       clearAuthState();
     }
   };

@@ -2,6 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +14,7 @@ import { useBranches } from "@/hooks/useBranches";
 import { useRecords } from "@/hooks/useRecords";
 import { useLensOrders } from "@/hooks/useOptician";
 import { PageSkeleton } from "@/components/ui/skeleton";
+import { toast } from "sonner";
 
 function statusBadge(status: string) {
   if (status === "Active") return <Badge className="bg-emerald-600 text-white">Active</Badge>;
@@ -30,6 +32,7 @@ function lastVisitLabel(iso: string) {
 }
 
 export default function PatientsPage() {
+  const router = useRouter();
   const { user } = useAuth();
   const { data: patientsResponse, isLoading } = usePatients();
   const patients = patientsResponse?.data ?? [];
@@ -80,28 +83,47 @@ export default function PatientsPage() {
     });
   }, [patients, query, status]);
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.firstName.trim() || !form.lastName.trim() || !form.phone.trim()) return;
-    if (!user?.clinicId) return;
-    if (!selectedBranchId) {
+
+    if (!form.firstName.trim() || !form.lastName.trim() || !form.phone.trim()) {
+      toast.error("Please fill in first name, last name, and phone number.");
       return;
     }
 
-    createPatient.mutate({
-      firstName: form.firstName.trim(),
-      lastName: form.lastName.trim(),
-      phone: form.phone.trim(),
-      dateOfBirth: form.dateOfBirth || undefined,
-      gender: form.gender,
-      clinicId: user.clinicId,
-      branchId: selectedBranchId,
-    }, {
-      onSuccess: () => {
-        setIsRegisterOpen(false);
-        setForm({ firstName: "", lastName: "", phone: "", dateOfBirth: "", gender: "female" });
-      },
-    });
+    if (!form.dateOfBirth) {
+      toast.error("Please enter the patient's date of birth.");
+      return;
+    }
+
+    if (!user?.clinicId) {
+      toast.error("Clinic context is missing. Please sign in again.");
+      return;
+    }
+
+    if (!selectedBranchId) {
+      toast.error("No branch is available for this clinic yet. Create a branch first.");
+      router.push("/clinic/branches");
+      return;
+    }
+
+    try {
+      const createdPatient = await createPatient.mutateAsync({
+        firstName: form.firstName.trim(),
+        lastName: form.lastName.trim(),
+        phone: form.phone.trim(),
+        dateOfBirth: form.dateOfBirth,
+        gender: form.gender,
+        clinicId: user.clinicId,
+        branchId: selectedBranchId,
+      });
+
+      setIsRegisterOpen(false);
+      setForm({ firstName: "", lastName: "", phone: "", dateOfBirth: "", gender: "female" });
+      router.push(`/clinic/patients/${createdPatient.id}`);
+    } catch (error) {
+      console.error("Failed to create patient", error);
+    }
   };
 
   if (isLoading) return <PageSkeleton />;
@@ -257,6 +279,7 @@ export default function PatientsPage() {
                 value={form.dateOfBirth}
                 onChange={(e) => setForm((p) => ({ ...p, dateOfBirth: e.target.value }))}
                 className="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none focus:border-sky-300 focus:ring-2 focus:ring-sky-100"
+                required
               />
             </div>
           </div>

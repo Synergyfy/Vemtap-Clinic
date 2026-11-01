@@ -59,6 +59,7 @@ export interface CreateStaffData {
   licenseNumber?: string;
   clinicId: string;
   branchId: string;
+  password?: string;
 }
 
 export interface UpdateStaffData {

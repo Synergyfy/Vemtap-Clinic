@@ -31,7 +31,21 @@ export class QueueService {
     if (query.branchId) where.branchId = query.branchId;
     if (query.status) where.status = query.status;
     if (query.station) where.station = query.station;
-    return this.queueRepository.find({ where, relations: ['patient', 'branch'], order: { ticketNumber: 'ASC' } });
+
+    const sortBy = query.sortBy || 'ticketNumber';
+    const sortOrder = query.sortOrder || 'ASC';
+    const page = Math.max(1, Number(query.page ?? 1));
+    const limit = Number(query.limit ?? 0);
+    const take = limit > 0 ? limit : undefined;
+    const skip = take ? (page - 1) * take : undefined;
+
+    return this.queueRepository.find({
+      where,
+      relations: ['patient', 'branch'],
+      order: { [sortBy]: sortOrder },
+      skip,
+      take,
+    });
   }
 
   async findOne(id: string): Promise<QueueEntry> {

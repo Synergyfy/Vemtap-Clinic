@@ -9,7 +9,7 @@ import { useAuth } from "@/lib/auth-context";
 export default function ReceptionSettings() {
   const [toast, setToast] = useState("");
   const { user } = useAuth();
-  const liveDisplayName = user ? [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email || "" : "";
+  const liveDisplayName = user ? [user.firstName, user.lastName].filter(Boolean).join(" ").trim() || "User" : "User";
   const liveRoleLabel = user?.roles?.[0] ? user.roles[0].replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase()) : "";
 
   const [newPatientNotif, setNewPatientNotif] = useState(true);

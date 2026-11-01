@@ -4,6 +4,46 @@ import { Repository, In } from 'typeorm';
 import { FileUpload, FileCategory } from '../entities/file-upload.entity';
 import { CreateFileUploadDto, UpdateFileUploadDto, FileUploadQueryDto } from './dto';
 
+export function mapCloudinaryResult(
+  input: {
+    originalName: string;
+    mimeType: string;
+    fileSize: number;
+    category: FileCategory | string;
+    clinicId: string;
+    patientId?: string;
+    uploadedById: string;
+    relatedEntityId?: string;
+    relatedEntityType?: string;
+  },
+  result: {
+    public_id: string;
+    secure_url: string;
+    resource_type: string;
+    format?: string;
+    bytes?: number;
+  },
+) {
+  return {
+    originalName: input.originalName,
+    storedName: result.public_id,
+    url: result.secure_url,
+    mimeType: input.mimeType,
+    fileSize: input.fileSize,
+    category: input.category,
+    clinicId: input.clinicId,
+    patientId: input.patientId,
+    uploadedById: input.uploadedById,
+    relatedEntityId: input.relatedEntityId,
+    relatedEntityType: input.relatedEntityType,
+    metadata: {
+      cloudinaryPublicId: result.public_id,
+      resourceType: result.resource_type,
+      format: result.format ?? null,
+    },
+  };
+}
+
 @Injectable()
 export class FileUploadService {
   constructor(

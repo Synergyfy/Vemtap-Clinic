@@ -27,9 +27,9 @@ export default function CashierLayout({ children }: { children: React.ReactNode 
   const pathname = usePathname();
   const router = useRouter();
   const { user } = useAuth();
-  const displayName = user ? [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email || "" : "";
+  const displayName = user ? [user.firstName, user.lastName].filter(Boolean).join(" ").trim() || "User" : "User";
   const roleLabel = user?.roles?.[0] ? user.roles[0].replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase()) : "";
-  const initials = displayName.split(" ").filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase() || "").join("") || "U";
+  const initials = displayName.split(" ").filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase() || "").join("");
 
   React.useEffect(() => {
     setIsSidebarOpen(false);
@@ -108,11 +108,11 @@ export default function CashierLayout({ children }: { children: React.ReactNode 
           <div className="p-3 border-t border-white/10 shrink-0">
             <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5">
               <div className="w-9 h-9 rounded-full bg-emerald-800 flex items-center justify-center text-emerald-400 font-bold text-sm">
-                {initials}
+                {initials || "•"}
               </div>
               <div>
-                <p className="text-sm font-bold">{displayName}</p>
-                <p className="text-[9px] text-white/50">{roleLabel}</p>
+                <p className="text-sm font-bold">{displayName || "User"}</p>
+                <p className="text-[9px] text-white/50">{roleLabel || "Staff"}</p>
               </div>
             </div>
           </div>

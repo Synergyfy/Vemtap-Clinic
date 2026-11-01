@@ -8,17 +8,21 @@ import {
   AlertCircle, Loader2, CheckCircle2 
 } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { usePatientRegister } from "@/hooks/usePatientPortal";
 import { useAuth } from "@/lib/auth-context";
 
 export default function PatientRegisterPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user } = useAuth();
   const registerMutation = usePatientRegister();
 
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const clinicIdFromQuery = searchParams.get("clinicId") ?? user?.clinicId ?? "";
+  const branchIdFromQuery = searchParams.get("branchId") ?? user?.branchId ?? "";
 
   const [formData, setFormData] = useState({
     firstName: "",
@@ -28,13 +32,21 @@ export default function PatientRegisterPage() {
     phone: "",
     email: "",
     password: "",
-    clinicId: user?.clinicId || "11111111-1111-1111-1111-111111111111",
-    branchId: user?.branchId || "22222222-2222-2222-2222-222222222222",
+    clinicId: clinicIdFromQuery,
+    branchId: branchIdFromQuery,
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    const clinicId = formData.clinicId.trim();
+    const branchId = formData.branchId.trim();
+
+    if (!clinicId || !branchId) {
+      setError("A valid clinic and branch are required to complete patient registration. Use the clinic invite link or sign in through the clinic portal.");
+      return;
+    }
 
     if (formData.password.length < 6) {
       setError("Password must be at least 6 characters long.");
@@ -55,8 +67,8 @@ export default function PatientRegisterPage() {
         phone: formData.phone.trim(),
         email: formData.email.trim().toLowerCase(),
         password: formData.password,
-        clinicId: formData.clinicId.trim(),
-        branchId: formData.branchId.trim(),
+        clinicId,
+        branchId,
       },
       {
         onSuccess: () => {
@@ -253,7 +265,7 @@ export default function PatientRegisterPage() {
                       required
                       value={formData.clinicId}
                       onChange={(e) => setFormData({ ...formData, clinicId: e.target.value })}
-                      placeholder="Clinic UUID"
+                      placeholder="Required: clinic UUID"
                       className="w-full pl-11 pr-4 py-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-slate-900 text-xs font-semibold outline-none focus:ring-2 focus:ring-teal-500 transition-all font-mono"
                     />
                   </div>
@@ -270,12 +282,16 @@ export default function PatientRegisterPage() {
                       required
                       value={formData.branchId}
                       onChange={(e) => setFormData({ ...formData, branchId: e.target.value })}
-                      placeholder="Branch UUID"
+                      placeholder="Required: branch UUID"
                       className="w-full pl-11 pr-4 py-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-slate-900 text-xs font-semibold outline-none focus:ring-2 focus:ring-teal-500 transition-all font-mono"
                     />
                   </div>
                 </div>
               </div>
+
+              <p className="text-[11px] text-slate-500 font-medium">
+                Use the exact clinic and branch IDs from your clinic invite or branch setup. These values are tenant-scoped and cannot be guessed.
+              </p>
 
               <button
                 type="submit"

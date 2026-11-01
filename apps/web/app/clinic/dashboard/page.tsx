@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -16,6 +17,9 @@ import {
 } from "@/hooks/useDashboard";
 import { useQueue } from "@/hooks/useQueue";
 import { useStaff } from "@/hooks/useStaff";
+import { useBranches } from "@/hooks/useBranches";
+import { useCreatePatient } from "@/hooks/usePatients";
+import { toast } from "sonner";
 import {
   Calendar,
   Clock,
@@ -72,8 +76,21 @@ function getPatientName(patient: { firstName: string; lastName: string } | undef
 type DatePreset = "7d" | "14d" | "30d" | "90d" | "custom";
 
 export default function ClinicDashboard() {
+  const router = useRouter();
   const { user } = useAuth();
   const clinicId = user?.clinicId || null;
+  const createPatient = useCreatePatient();
+
+  const [isRegisterOpen, setIsRegisterOpen] = useState(false);
+  const [selectedBranchId, setSelectedBranchId] = useState("");
+  const [form, setForm] = useState({
+    firstName: "",
+    lastName: "",
+    phone: "",
+    dateOfBirth: "",
+    gender: "female" as "male" | "female" | "other",
+  });
+  const { data: branches = [] } = useBranches();
 
   // Date Range Filter
   const [datePreset, setDatePreset] = useState<DatePreset>("7d");
@@ -116,6 +133,55 @@ export default function ClinicDashboard() {
     refetchRevenue();
     refetchAppointments();
     refetchHmo();
+  };
+
+  React.useEffect(() => {
+    if (branches.length > 0 && !selectedBranchId) {
+      setSelectedBranchId(branches[0].id);
+    }
+  }, [branches, selectedBranchId]);
+
+  const handleCreatePatient = async (event: React.FormEvent) => {
+    event.preventDefault();
+
+    if (!form.firstName.trim() || !form.lastName.trim() || !form.phone.trim()) {
+      toast.error("Please fill in first name, last name, and phone number.");
+      return;
+    }
+
+    if (!form.dateOfBirth) {
+      toast.error("Please enter the patient's date of birth.");
+      return;
+    }
+
+    if (!user?.clinicId) {
+      toast.error("Clinic context is missing. Please sign in again.");
+      return;
+    }
+
+    if (!selectedBranchId) {
+      toast.error("No branch is available for this clinic yet. Create a branch first.");
+      router.push("/clinic/branches");
+      return;
+    }
+
+    try {
+      const createdPatient = await createPatient.mutateAsync({
+        firstName: form.firstName.trim(),
+        lastName: form.lastName.trim(),
+        phone: form.phone.trim(),
+        dateOfBirth: form.dateOfBirth,
+        gender: form.gender,
+        clinicId: user.clinicId,
+        branchId: selectedBranchId,
+      });
+
+      setIsRegisterOpen(false);
+      setForm({ firstName: "", lastName: "", phone: "", dateOfBirth: "", gender: "female" });
+      router.push(`/clinic/patients/${createdPatient.id}`);
+    } catch (error) {
+      console.error("Failed to create patient from dashboard", error);
+    }
   };
 
   // Computations for Revenue
@@ -182,7 +248,7 @@ export default function ClinicDashboard() {
         title="Clinic Operations & Analytics Hub"
         description="Comprehensive real-time command center: patient flow, queue throughput, appointment analytics, revenue reports, and HMO recovery."
         actions={[
-          { label: "Register patient", href: "/clinic/patients", variant: "default" },
+          { label: "Register patient", onClick: () => setIsRegisterOpen(true), variant: "default" },
           { label: "Book appointment", href: "/clinic/appointments" },
           { label: "Verify HMO", href: "/clinic/hmo" },
           { label: "Create invoice", href: "/clinic/finance" },
@@ -252,6 +318,104 @@ export default function ClinicDashboard() {
           </Button>
         </div>
       </div>
+
+      {isRegisterOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/30 backdrop-blur-sm">
+          <div className="w-full max-w-xl rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl">
+            <div className="mb-5 flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-xl font-bold text-slate-900">Register patient</h2>
+                <p className="text-sm text-slate-500">Create a new patient record for this clinic.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsRegisterOpen(false)}
+                className="rounded-full border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
+              >
+                Close
+              </button>
+            </div>
+
+            <form onSubmit={handleCreatePatient} className="space-y-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div>
+                  <label className="text-sm font-medium text-slate-700">First name</label>
+                  <input
+                    value={form.firstName}
+                    onChange={(e) => setForm((prev) => ({ ...prev, firstName: e.target.value }))}
+                    className="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none focus:border-sky-300 focus:ring-2 focus:ring-sky-100"
+                    placeholder="e.g., Jane"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-slate-700">Last name</label>
+                  <input
+                    value={form.lastName}
+                    onChange={(e) => setForm((prev) => ({ ...prev, lastName: e.target.value }))}
+                    className="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none focus:border-sky-300 focus:ring-2 focus:ring-sky-100"
+                    placeholder="e.g., Doe"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div>
+                  <label className="text-sm font-medium text-slate-700">Phone</label>
+                  <input
+                    value={form.phone}
+                    onChange={(e) => setForm((prev) => ({ ...prev, phone: e.target.value }))}
+                    className="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none focus:border-sky-300 focus:ring-2 focus:ring-sky-100"
+                    placeholder="e.g., 0803 555 0192"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-slate-700">Date of birth</label>
+                  <input
+                    type="date"
+                    value={form.dateOfBirth}
+                    onChange={(e) => setForm((prev) => ({ ...prev, dateOfBirth: e.target.value }))}
+                    className="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none focus:border-sky-300 focus:ring-2 focus:ring-sky-100"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-slate-700">Gender</label>
+                <select
+                  value={form.gender}
+                  onChange={(e) => setForm((prev) => ({ ...prev, gender: e.target.value as "female" | "male" | "other" }))}
+                  className="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none focus:border-sky-300 focus:ring-2 focus:ring-sky-100"
+                >
+                  <option value="female">Female</option>
+                  <option value="male">Male</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsRegisterOpen(false)}
+                  className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-5 py-2.5 text-sm font-medium text-slate-900 hover:bg-slate-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={createPatient.isPending}
+                  className="inline-flex items-center justify-center rounded-full bg-sky-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-sky-700 disabled:opacity-50"
+                >
+                  {createPatient.isPending ? "Creating..." : "Create patient"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* 1. CLINIC DASHBOARD OVERVIEW (GET /api/dashboard) */}
       <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">

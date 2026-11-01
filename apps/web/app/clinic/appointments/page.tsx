@@ -8,6 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/app/clinic/_components/page-header";
 import { Modal } from "@/components/ui/modal";
 import { useAppointments, useCreateAppointment, useUpdateAppointment, useTodayAppointments, Appointment, AppointmentQueryParams, AppointmentStatus } from "@/hooks/useAppointments";
+import { usePatients } from "@/hooks/usePatients";
+import { useStaff } from "@/hooks/useStaff";
 import { useAuth } from "@/lib/auth-context";
 import { toast } from "sonner";
 
@@ -90,14 +92,23 @@ function formatDayNumber(iso: string) {
 export default function AppointmentsPage() {
   const { user } = useAuth();
   const todayISO = React.useMemo(() => toISODate(new Date()), []);
+  const tomorrowISO = React.useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    return toISODate(d);
+  }, []);
   const [tab, setTab] = React.useState<AppointmentsTab>("Calendar");
 
   const queryParams: AppointmentQueryParams = {
     clinicId: user?.clinicId,
     page: 1,
-    limit: 100,
+    limit: 200,
     sortBy: "appointmentDate",
     sortOrder: "ASC",
+    ...(tab === "Upcoming" ? { status: "scheduled", startDate: tomorrowISO, endDate: "2999-12-31" } : {}),
+    ...(tab === "Follow-ups" ? { type: "follow_up" } : {}),
+    ...(tab === "Walk-ins" ? { type: "emergency" } : {}),
+    ...(tab === "Missed" ? { status: "no_show" } : {}),
   };
 
   const { 
@@ -106,6 +117,24 @@ export default function AppointmentsPage() {
     refetch: refetchAppointments 
   } = useAppointments(queryParams);
 
+  const { data: patientsResponse } = usePatients({
+    clinicId: user?.clinicId,
+    page: 1,
+    limit: 100,
+    sortBy: "firstName",
+    sortOrder: "ASC",
+  });
+
+  const { data: staffResponse } = useStaff({
+    clinicId: user?.clinicId,
+    page: 1,
+    limit: 200,
+    sortBy: "firstName",
+    sortOrder: "ASC",
+  });
+
+  const patients = patientsResponse?.data || [];
+  const staffMembers = staffResponse?.data || [];
   const { data: todayResponse } = useTodayAppointments(user?.clinicId || null);
 
   const createAppointmentMutation = useCreateAppointment();
@@ -113,11 +142,6 @@ export default function AppointmentsPage() {
 
   const appointments = appointmentsResponse?.data || [];
   const todayAppointments = todayResponse?.appointments || [];
-
-  const doctorName = React.useMemo(
-    () => (user ? [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email || "Doctor" : "Doctor"),
-    [user],
-  );
 
   const [isNewOpen, setIsNewOpen] = React.useState(false);
   const [isRescheduleOpen, setIsRescheduleOpen] = React.useState(false);
@@ -127,10 +151,11 @@ export default function AppointmentsPage() {
   const [form, setForm] = React.useState({
     patientName: "",
     patientId: "",
+    providerId: "",
+    provider: "",
     dateISO: todayISO,
     startTime: "09:00",
     service: "Consultation",
-    provider: doctorName,
     kind: "consultation",
     reason: "",
     type: "consultation",
@@ -145,8 +170,17 @@ export default function AppointmentsPage() {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.patientName.trim() || !form.patientId || !user) return;
-    
+    if (!form.patientId || !user) return;
+    if (!user.branchId) {
+      toast.error("No branch is available for this clinic. Create a branch before booking appointments.");
+      return;
+    }
+
+    const selectedPatient = patients.find((patient) => patient.id === form.patientId);
+    if (selectedPatient) {
+      setForm((p) => ({ ...p, patientName: `${selectedPatient.firstName} ${selectedPatient.lastName}` }));
+    }
+
     try {
       await createAppointmentMutation.mutateAsync({
         appointmentDate: form.dateISO,
@@ -154,7 +188,8 @@ export default function AppointmentsPage() {
         type: form.type as any,
         reason: form.reason,
         patientId: form.patientId,
-        branchId: user.clinicId,
+        staffId: form.providerId || undefined,
+        branchId: user.branchId,
         clinicId: user.clinicId,
       });
       toast.success("Appointment created successfully");
@@ -162,11 +197,12 @@ export default function AppointmentsPage() {
       setForm({
         patientName: "",
         patientId: "",
+        providerId: "",
+        provider: "",
         dateISO: todayISO,
         startTime: "09:00",
         service: "Consultation",
-        provider: doctorName,
-        kind: "Regular",
+        kind: "consultation",
         reason: "",
         type: "consultation",
       });
@@ -194,6 +230,7 @@ export default function AppointmentsPage() {
           appointmentTime: form.startTime,
           type: form.type as any,
           reason: form.reason,
+          staffId: form.providerId || undefined,
         },
       });
       toast.success("Appointment rescheduled successfully");
@@ -430,10 +467,11 @@ export default function AppointmentsPage() {
                             setForm({
                               patientName: a.patient?.firstName ? `${a.patient.firstName} ${a.patient.lastName}` : "",
                               patientId: a.patientId,
+                              providerId: a.staffId || "",
+                              provider: a.staff?.firstName ? `${a.staff.firstName} ${a.staff.lastName}` : "",
                               dateISO: a.appointmentDate.split("T")[0],
                               startTime: a.appointmentTime || "09:00",
                               service: a.reason || a.type,
-                              provider: a.staff?.firstName ? `${a.staff.firstName} ${a.staff.lastName}` : "",
                               kind: a.type,
                               reason: a.notes || "",
                               type: a.type,
@@ -509,7 +547,6 @@ export default function AppointmentsPage() {
               </TableHeader>
               <TableBody>
                 {appointments
-                  .filter(a => a.appointmentDate.split("T")[0] > todayISO && a.status === "scheduled")
                   .map((a) => (
                     <TableRow key={a.id}>
                       <TableCell className="tabular-nums">{a.appointmentDate.split("T")[0]}</TableCell>
@@ -530,10 +567,11 @@ export default function AppointmentsPage() {
                             setForm({
                               patientName: a.patient?.firstName ? `${a.patient.firstName} ${a.patient.lastName}` : "",
                               patientId: a.patientId,
+                              providerId: a.staffId || "",
+                              provider: a.staff?.firstName ? `${a.staff.firstName} ${a.staff.lastName}` : "",
                               dateISO: a.appointmentDate.split("T")[0],
                               startTime: a.appointmentTime || "09:00",
                               service: a.reason || a.type,
-                              provider: a.staff?.firstName ? `${a.staff.firstName} ${a.staff.lastName}` : "",
                               kind: a.type,
                               reason: a.notes || "",
                               type: a.type,
@@ -578,7 +616,6 @@ export default function AppointmentsPage() {
               </TableHeader>
               <TableBody>
                 {appointments
-                  .filter((a) => a.type === "follow_up")
                   .map((a) => (
                     <TableRow key={a.id}>
                       <TableCell className="tabular-nums">{a.appointmentDate.split("T")[0]}</TableCell>
@@ -594,10 +631,11 @@ export default function AppointmentsPage() {
                             setForm({
                               patientName: a.patient?.firstName ? `${a.patient.firstName} ${a.patient.lastName}` : "",
                               patientId: a.patientId,
+                              providerId: a.staffId || "",
+                              provider: a.staff?.firstName ? `${a.staff.firstName} ${a.staff.lastName}` : "",
                               dateISO: a.appointmentDate.split("T")[0],
                               startTime: a.appointmentTime || "09:00",
                               service: a.reason || a.type,
-                              provider: a.staff?.firstName ? `${a.staff.firstName} ${a.staff.lastName}` : "",
                               kind: a.type,
                               reason: a.notes || "",
                               type: a.type,
@@ -642,7 +680,6 @@ export default function AppointmentsPage() {
               </TableHeader>
               <TableBody>
                 {appointments
-                  .filter((a) => a.type === "emergency")
                   .map((a) => (
                     <TableRow key={a.id}>
                       <TableCell className="tabular-nums">{a.appointmentDate.split("T")[0]}</TableCell>
@@ -658,10 +695,11 @@ export default function AppointmentsPage() {
                             setForm({
                               patientName: a.patient?.firstName ? `${a.patient.firstName} ${a.patient.lastName}` : "",
                               patientId: a.patientId,
+                              providerId: a.staffId || "",
+                              provider: a.staff?.firstName ? `${a.staff.firstName} ${a.staff.lastName}` : "",
                               dateISO: a.appointmentDate.split("T")[0],
                               startTime: a.appointmentTime || "09:00",
                               service: a.reason || a.type,
-                              provider: a.staff?.firstName ? `${a.staff.firstName} ${a.staff.lastName}` : "",
                               kind: a.type,
                               reason: a.notes || "",
                               type: a.type,
@@ -707,7 +745,6 @@ export default function AppointmentsPage() {
               </TableHeader>
               <TableBody>
                 {appointments
-                  .filter((a) => a.status === "no_show")
                   .map((a) => (
                     <TableRow key={a.id}>
                       <TableCell className="tabular-nums">{a.appointmentDate.split("T")[0]}</TableCell>
@@ -724,10 +761,11 @@ export default function AppointmentsPage() {
                             setForm({
                               patientName: a.patient?.firstName ? `${a.patient.firstName} ${a.patient.lastName}` : "",
                               patientId: a.patientId,
+                              providerId: a.staffId || "",
+                              provider: a.staff?.firstName ? `${a.staff.firstName} ${a.staff.lastName}` : "",
                               dateISO: todayISO,
                               startTime: a.appointmentTime || "09:00",
                               service: a.reason || a.type,
-                              provider: a.staff?.firstName ? `${a.staff.firstName} ${a.staff.lastName}` : "",
                               kind: a.type,
                               reason: a.notes || "",
                               type: a.type,
@@ -751,24 +789,30 @@ export default function AppointmentsPage() {
       <Modal isOpen={isNewOpen} onClose={() => setIsNewOpen(false)} title="New appointment">
         <form onSubmit={submit} className="space-y-4">
           <div>
-            <label className="text-sm font-medium text-slate-700">Patient name</label>
-            <input
-              value={form.patientName}
-              onChange={(e) => setForm((p) => ({ ...p, patientName: e.target.value }))}
-              className="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none focus:border-sky-300 focus:ring-2 focus:ring-sky-100"
-              placeholder="e.g., Fatima Yusuf"
-              required
-            />
-          </div>
-          <div>
-            <label className="text-sm font-medium text-slate-700">Patient ID</label>
-            <input
+            <label className="text-sm font-medium text-slate-700">Patient</label>
+            <select
               value={form.patientId}
-              onChange={(e) => setForm((p) => ({ ...p, patientId: e.target.value }))}
+              onChange={(e) => {
+                const selectedPatient = patients.find((patient) => patient.id === e.target.value);
+                setForm((p) => ({
+                  ...p,
+                  patientId: e.target.value,
+                  patientName: selectedPatient ? `${selectedPatient.firstName} ${selectedPatient.lastName}` : "",
+                }));
+              }}
               className="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none focus:border-sky-300 focus:ring-2 focus:ring-sky-100"
-              placeholder="e.g., PT-2024-001"
               required
-            />
+            >
+              <option value="">Select a patient</option>
+              {patients.map((patient) => (
+                <option key={patient.id} value={patient.id}>
+                  {patient.firstName} {patient.lastName} {patient.phone ? `• ${patient.phone}` : ""}
+                </option>
+              ))}
+            </select>
+            {patients.length === 0 ? (
+              <p className="mt-1 text-xs text-amber-600">No patients found for this clinic yet. Add a patient first.</p>
+            ) : null}
           </div>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div>
@@ -824,13 +868,29 @@ export default function AppointmentsPage() {
           </div>
           <div>
             <label className="text-sm font-medium text-slate-700">Provider</label>
-            <input
-              value={form.provider}
-              onChange={(e) => setForm((p) => ({ ...p, provider: e.target.value }))}
+            <select
+              value={form.providerId}
+              onChange={(e) => {
+                const selectedStaff = staffMembers.find((staff) => staff.id === e.target.value);
+                setForm((p) => ({
+                  ...p,
+                  providerId: e.target.value,
+                  provider: selectedStaff ? `${selectedStaff.firstName} ${selectedStaff.lastName}` : "",
+                }));
+              }}
               className="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none focus:border-sky-300 focus:ring-2 focus:ring-sky-100"
-              placeholder={doctorName || "Doctor name"}
               required
-            />
+            >
+              <option value="">Select a provider</option>
+              {staffMembers.map((staff) => (
+                <option key={staff.id} value={staff.id}>
+                  {staff.firstName} {staff.lastName} • {staff.role}
+                </option>
+              ))}
+            </select>
+            {staffMembers.length === 0 ? (
+              <p className="mt-1 text-xs text-amber-600">No clinic staff found yet. Add staff before creating appointments.</p>
+            ) : null}
           </div>
           <div>
             <label className="text-sm font-medium text-slate-700">Reason (optional)</label>
@@ -867,13 +927,27 @@ export default function AppointmentsPage() {
           </p>
 
           <div>
-            <label className="text-sm font-medium text-slate-700">Patient name</label>
-            <input
-              value={form.patientName}
-              onChange={(e) => setForm((p) => ({ ...p, patientName: e.target.value }))}
+            <label className="text-sm font-medium text-slate-700">Patient</label>
+            <select
+              value={form.patientId}
+              onChange={(e) => {
+                const selectedPatient = patients.find((patient) => patient.id === e.target.value);
+                setForm((p) => ({
+                  ...p,
+                  patientId: e.target.value,
+                  patientName: selectedPatient ? `${selectedPatient.firstName} ${selectedPatient.lastName}` : "",
+                }));
+              }}
               className="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none focus:border-sky-300 focus:ring-2 focus:ring-sky-100"
               required
-            />
+            >
+              <option value="">Select a patient</option>
+              {patients.map((patient) => (
+                <option key={patient.id} value={patient.id}>
+                  {patient.firstName} {patient.lastName} {patient.phone ? `• ${patient.phone}` : ""}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -931,12 +1005,26 @@ export default function AppointmentsPage() {
 
           <div>
             <label className="text-sm font-medium text-slate-700">Provider</label>
-            <input
-              value={form.provider}
-              onChange={(e) => setForm((p) => ({ ...p, provider: e.target.value }))}
+            <select
+              value={form.providerId}
+              onChange={(e) => {
+                const selectedStaff = staffMembers.find((staff) => staff.id === e.target.value);
+                setForm((p) => ({
+                  ...p,
+                  providerId: e.target.value,
+                  provider: selectedStaff ? `${selectedStaff.firstName} ${selectedStaff.lastName}` : "",
+                }));
+              }}
               className="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none focus:border-sky-300 focus:ring-2 focus:ring-sky-100"
               required
-            />
+            >
+              <option value="">Select a provider</option>
+              {staffMembers.map((staff) => (
+                <option key={staff.id} value={staff.id}>
+                  {staff.firstName} {staff.lastName} • {staff.role}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div>

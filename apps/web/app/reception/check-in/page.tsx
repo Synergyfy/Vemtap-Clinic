@@ -62,13 +62,17 @@ export default function CheckInPage() {
   const handleFinalCheckIn = () => {
     setStep("VERIFYING");
     if (selectedPatient && selectedPurpose) {
+      if (!user?.branchId) {
+        setStep("IDENTIFY");
+        return;
+      }
       createEntry.mutate({
         patientId: selectedPatient.id,
         patientName: `${selectedPatient.firstName} ${selectedPatient.lastName}`,
         serviceType: selectedPurpose,
         priority: "Normal",
-        clinicId: user?.clinicId || "",
-        branchId: user?.clinicId || "",
+        clinicId: user.clinicId,
+        branchId: user.branchId,
       }, {
         onSuccess: (entry) => {
           setTimeout(() => setStep("COMPLETE"), 1500);

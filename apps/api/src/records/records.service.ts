@@ -23,11 +23,11 @@ export class RecordsService {
     const saved = await this.recordRepository.save(record);
 
     if (vitals) {
-      const v = this.vitalsRepository.create({ ...vitals, medicalRecordId: saved.id });
+      const v = this.vitalsRepository.create({ ...vitals, medicalRecordId: saved.id, clinicId: saved.clinicId });
       await this.vitalsRepository.save(v);
     }
     if (eyeTest) {
-      const e = this.eyeTestRepository.create({ ...eyeTest, medicalRecordId: saved.id });
+      const e = this.eyeTestRepository.create({ ...eyeTest, medicalRecordId: saved.id, clinicId: saved.clinicId });
       await this.eyeTestRepository.save(e);
     }
 

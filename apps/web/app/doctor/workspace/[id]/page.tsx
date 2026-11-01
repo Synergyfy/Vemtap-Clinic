@@ -86,11 +86,17 @@ export default function ConsultationWorkspace() {
       `Rx: OD SPH ${sphOd || "—"} CYL ${cylOd || "—"} AXIS ${axisOd || "—"} ADD ${addOd || "—"} | OS SPH ${sphOs || "—"} CYL ${cylOs || "—"} AXIS ${axisOs || "—"} ADD ${addOs || "—"}`,
     ].filter(Boolean).join("\n");
 
+    const branchId = patient?.branchId || user?.branchId || "";
+    if (!branchId) {
+      showToast("No branch is available for this clinic. Create a branch before saving consultation notes.");
+      return;
+    }
+
     createRecord.mutate(
       {
         patientId: id as string,
         staffId: user?.userId,
-        branchId: patient?.branchId || user?.clinicId || "",
+        branchId,
         clinicId: user?.clinicId || "",
         chiefComplaint: chiefComplaint || "Consultation",
         historyOfPresentIllness: medicalHistory,
