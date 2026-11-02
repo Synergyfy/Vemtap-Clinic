@@ -1,4 +1,5 @@
 import { IsString, IsEmail, MinLength, IsOptional } from 'class-validator';
+import { Transform } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class LoginDto {
@@ -31,6 +32,7 @@ export class RegisterDto {
   password: string;
 
   @ApiProperty({ example: 'clinic-uuid', required: false, nullable: true })
+  @Transform(({ value }) => (value === '' || value === null ? undefined : value))
   @IsOptional()
   @IsString()
   clinicId?: string | null;

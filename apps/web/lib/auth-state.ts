@@ -12,18 +12,32 @@ export interface AuthUser {
   phone?: string;
 }
 
+const normalizeIdValue = (value: unknown): string => {
+  if (typeof value === 'string') {
+    return value.trim();
+  }
+
+  if (typeof value === 'number' || typeof value === 'boolean') {
+    return String(value);
+  }
+
+  return '';
+};
+
 export const normalizeAuthUser = (user: Partial<AuthUser> | null | undefined): AuthUser | null => {
   if (!user) return null;
 
   const roles = Array.isArray(user.roles) ? user.roles.map((role) => String(role).toLowerCase()) : [];
+  const normalizedClinicId = normalizeIdValue(user.clinicId);
+  const normalizedBranchId = normalizeIdValue(user.branchId);
 
   return {
     ...user,
     userId: user.userId ?? '',
     email: user.email ?? '',
     roles,
-    clinicId: user.clinicId ?? '',
-    branchId: user.branchId,
+    clinicId: normalizedClinicId,
+    branchId: normalizedBranchId || undefined,
     firstName: user.firstName,
     lastName: user.lastName,
     phone: user.phone,

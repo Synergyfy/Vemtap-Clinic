@@ -25,6 +25,17 @@ interface RegisterData {
   clinicId?: string | null;
 }
 
+const sanitizeRegisterPayload = (data: RegisterData) => {
+  const payload = { ...data };
+  const clinicId = typeof payload.clinicId === 'string' ? payload.clinicId.trim() : '';
+
+  if (!clinicId) {
+    delete payload.clinicId;
+  }
+
+  return payload;
+};
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -82,7 +93,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const register = async (data: RegisterData): Promise<AuthUser | null> => {
     setIsLoading(true);
     try {
-      const response = await api.post('/auth/register', data);
+      const cleanData = sanitizeRegisterPayload(data);
+      const response = await api.post('/auth/register', cleanData);
       const { accessToken: newAccessToken, user: newUser } = response.data;
       if (newAccessToken && newUser) {
         const normalizedUser = normalizeAuthUser(newUser);
