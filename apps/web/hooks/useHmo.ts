@@ -7,17 +7,24 @@ import {
   getAgingReport, getHmoTotals, getHmoStats,
   listHmos, createHmo, getHmo, updateHmo,
   listPlans, createPlan, updatePlan, deletePlan,
-  checkCoverage,
-  listAgreements, createAgreement, updateAgreement,
-  listAuthorizations, getPendingAuthorizations, createAuthorization, updateAuthorization,
-  listClaimBatches, createClaimBatch, addClaimsToBatch,
+  checkCoverage, type CoverageCheckPayload, type CoverageCheckResult,
+  listAgreements, getAgreementDetail, createAgreement, updateAgreement,
+  type CreateAgreementPayload,
+  listAuthorizations, getPendingAuthorizations, getAuthorizationDetail, createAuthorization, updateAuthorization,
+  type CreateAuthorizationPayload, type UpdateAuthorizationPayload,
+  listClaimBatches, createClaimBatch, addClaimsToBatch, updateClaimBatch,
+  type CreateClaimBatchPayload, type UpdateClaimBatchPayload,
   listClaimDocuments, uploadClaimDocument, deleteClaimDocument,
+  type UploadClaimDocumentPayload,
   type HmoClaim, type HmoAppeal, type HmoRemittance, type HmoItem, type HmoPlan, type HmoAgreement,
   type HmoAuthorization, type ClaimBatch, type ClaimDocument,
   type CreateClaimData, type UpdateClaimData,
   type CreateAppealData, type UpdateAppealData,
   type CreateRemittanceData, type UpdateRemittanceData,
 } from "@/services/hmo.service";
+
+export type { HmoItem, HmoPlan, HmoClaim, HmoAppeal, HmoRemittance, HmoAgreement, HmoAuthorization };
+
 
 const HMO_KEYS = {
   all: ["hmo"] as const,
@@ -168,13 +175,12 @@ export function useHmoStats() {
   });
 }
 
-// ─── HMO List ───
-export function useHmoList() {
+export function useHmoList(clinicId?: string) {
   const { user } = useAuth();
+  const cId = clinicId !== undefined ? clinicId : user?.clinicId;
   return useQuery({
-    queryKey: HMO_KEYS.list(),
-    queryFn: () => listHmos(user?.clinicId),
-    enabled: !!user?.clinicId,
+    queryKey: [...HMO_KEYS.list(), cId || "all"],
+    queryFn: () => listHmos(cId || undefined),
   });
 }
 
@@ -226,27 +232,48 @@ export function useDeletePlan() {
 // ─── Coverage Check ───
 export function useCheckCoverage() {
   return useMutation({
-    mutationFn: (dto: { patientId: string; serviceCode: string; hmoId?: string }) =>
-      checkCoverage(dto),
+    mutationFn: (dto: CoverageCheckPayload) => checkCoverage(dto),
   });
 }
 
 // ─── Agreements ───
 export function useHmoAgreements(hmoId: string) {
+  const { user } = useAuth();
   return useQuery({
-    queryKey: ["hmo", "agreements", hmoId] as const,
-    queryFn: () => listAgreements(hmoId),
+    queryKey: ["hmo", "agreements", hmoId, user?.clinicId] as const,
+    queryFn: () => listAgreements(hmoId, user?.clinicId),
     enabled: !!hmoId,
+  });
+}
+
+export function useAgreementDetail(id: string) {
+  return useQuery({
+    queryKey: ["hmo", "agreement", id] as const,
+    queryFn: () => getAgreementDetail(id),
+    enabled: !!id,
   });
 }
 
 export function useCreateAgreement() {
   const qc = useQueryClient();
+  const { user } = useAuth();
   return useMutation({
-    mutationFn: (dto: { title: string; hmoId: string; effectiveDate: string; expiryDate: string; terms: string; clinicId: string }) =>
-      createAgreement(dto),
+    mutationFn: (dto: Omit<CreateAgreementPayload, "clinicId">) =>
+      createAgreement({ ...dto, clinicId: user!.clinicId }),
     onSuccess: (_data, variables) => {
       qc.invalidateQueries({ queryKey: ["hmo", "agreements", variables.hmoId] });
+      if (user?.clinicId) qc.invalidateQueries({ queryKey: HMO_KEYS.all });
+    },
+  });
+}
+
+export function useUpdateAgreement() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, dto }: { id: string; dto: Partial<CreateAgreementPayload> & { isActive?: boolean } }) =>
+      updateAgreement(id, dto),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: HMO_KEYS.all });
     },
   });
 }
@@ -270,13 +297,23 @@ export function usePendingAuthorizations() {
   });
 }
 
+export function useAuthorizationDetail(id: string) {
+  return useQuery({
+    queryKey: ["hmo", "authorization", id] as const,
+    queryFn: () => getAuthorizationDetail(id),
+    enabled: !!id,
+  });
+}
+
 export function useCreateAuthorization() {
   const qc = useQueryClient();
   const { user } = useAuth();
   return useMutation({
-    mutationFn: (dto: { authorizationNumber: string; patientId: string; hmoId: string; serviceType: string; approvedAmount: number; validUntil: string; notes?: string }) =>
+    mutationFn: (dto: Omit<CreateAuthorizationPayload, "clinicId">) =>
       createAuthorization({ ...dto, clinicId: user!.clinicId }),
-    onSuccess: () => { if (user?.clinicId) qc.invalidateQueries({ queryKey: HMO_KEYS.authorizations(user.clinicId) }); },
+    onSuccess: () => {
+      if (user?.clinicId) qc.invalidateQueries({ queryKey: HMO_KEYS.authorizations(user.clinicId) });
+    },
   });
 }
 
@@ -284,8 +321,11 @@ export function useUpdateAuthorization() {
   const qc = useQueryClient();
   const { user } = useAuth();
   return useMutation({
-    mutationFn: ({ id, dto }: { id: string; dto: { status?: string; notes?: string } }) => updateAuthorization(id, dto),
-    onSuccess: () => { if (user?.clinicId) qc.invalidateQueries({ queryKey: HMO_KEYS.authorizations(user.clinicId) }); },
+    mutationFn: ({ id, dto }: { id: string; dto: UpdateAuthorizationPayload }) =>
+      updateAuthorization(id, dto),
+    onSuccess: () => {
+      if (user?.clinicId) qc.invalidateQueries({ queryKey: HMO_KEYS.authorizations(user.clinicId) });
+    },
   });
 }
 
@@ -303,9 +343,11 @@ export function useCreateClaimBatch() {
   const qc = useQueryClient();
   const { user } = useAuth();
   return useMutation({
-    mutationFn: (dto: { batchNumber: string; hmoId: string }) =>
+    mutationFn: (dto: Omit<CreateClaimBatchPayload, "clinicId">) =>
       createClaimBatch({ ...dto, clinicId: user!.clinicId }),
-    onSuccess: () => { if (user?.clinicId) qc.invalidateQueries({ queryKey: HMO_KEYS.batches(user.clinicId) }); },
+    onSuccess: () => {
+      if (user?.clinicId) qc.invalidateQueries({ queryKey: HMO_KEYS.batches(user.clinicId) });
+    },
   });
 }
 
@@ -313,8 +355,26 @@ export function useAddClaimsToBatch() {
   const qc = useQueryClient();
   const { user } = useAuth();
   return useMutation({
-    mutationFn: ({ id, claimIds }: { id: string; claimIds: string[] }) => addClaimsToBatch(id, claimIds),
-    onSuccess: () => { if (user?.clinicId) qc.invalidateQueries({ queryKey: HMO_KEYS.batches(user.clinicId) }); },
+    mutationFn: ({ id, claimIds }: { id: string; claimIds: string[] }) =>
+      addClaimsToBatch(id, claimIds),
+    onSuccess: () => {
+      if (user?.clinicId) {
+        qc.invalidateQueries({ queryKey: HMO_KEYS.batches(user.clinicId) });
+        qc.invalidateQueries({ queryKey: HMO_KEYS.claims(user.clinicId) });
+      }
+    },
+  });
+}
+
+export function useUpdateClaimBatch() {
+  const qc = useQueryClient();
+  const { user } = useAuth();
+  return useMutation({
+    mutationFn: ({ id, dto }: { id: string; dto: UpdateClaimBatchPayload }) =>
+      updateClaimBatch(id, dto),
+    onSuccess: () => {
+      if (user?.clinicId) qc.invalidateQueries({ queryKey: HMO_KEYS.batches(user.clinicId) });
+    },
   });
 }
 
@@ -330,10 +390,22 @@ export function useClaimDocuments(claimId: string) {
 export function useUploadClaimDocument() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (dto: { claimId: string; fileName: string; fileUrl: string; fileType: string; uploadedById: string }) =>
+    mutationFn: (dto: UploadClaimDocumentPayload) =>
       uploadClaimDocument(dto),
     onSuccess: (_data, variables) => {
       qc.invalidateQueries({ queryKey: HMO_KEYS.documents(variables.claimId) });
     },
   });
 }
+
+export function useDeleteClaimDocument() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, claimId }: { id: string; claimId: string }) =>
+      deleteClaimDocument(id),
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: HMO_KEYS.documents(variables.claimId) });
+    },
+  });
+}
+

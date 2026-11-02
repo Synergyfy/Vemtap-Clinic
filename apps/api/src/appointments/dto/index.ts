@@ -1,5 +1,6 @@
-import { IsString, IsOptional, IsEnum, IsUUID, IsDateString, MaxLength } from 'class-validator';
+import { IsString, IsOptional, IsEnum, IsUUID, IsDateString, MaxLength, IsNumber } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Transform } from 'class-transformer';
 import { AppointmentStatus } from '../../entities/appointment.entity';
 
 export class CreateAppointmentDto {
@@ -63,8 +64,34 @@ export class AppointmentQueryDto {
   @ApiPropertyOptional() @IsOptional() @IsUUID() patientId?: string;
   @ApiPropertyOptional() @IsOptional() @IsUUID() staffId?: string;
   @ApiPropertyOptional({ enum: AppointmentStatus }) @IsOptional() @IsEnum(AppointmentStatus) status?: AppointmentStatus;
+  @ApiPropertyOptional({ enum: ['consultation', 'follow_up', 'emergency', 'eye_test', 'surgery'] })
+  @IsOptional()
+  @IsEnum(['consultation', 'follow_up', 'emergency', 'eye_test', 'surgery'])
+  type?: string;
   @ApiPropertyOptional() @IsOptional() @IsDateString() startDate?: string;
   @ApiPropertyOptional() @IsOptional() @IsDateString() endDate?: string;
+
+  @ApiPropertyOptional({ example: 1 })
+  @IsOptional()
+  @Transform(({ value }) => Number(value))
+  @IsNumber()
+  page?: number = 1;
+
+  @ApiPropertyOptional({ example: 100 })
+  @IsOptional()
+  @Transform(({ value }) => Number(value))
+  @IsNumber()
+  limit?: number = 100;
+
+  @ApiPropertyOptional({ example: 'appointmentDate' })
+  @IsOptional()
+  @IsString()
+  sortBy?: string = 'appointmentDate';
+
+  @ApiPropertyOptional({ enum: ['ASC', 'DESC'] })
+  @IsOptional()
+  @IsEnum(['ASC', 'DESC'])
+  sortOrder?: 'ASC' | 'DESC' = 'ASC';
 }
 
 export class CalendarViewDto {

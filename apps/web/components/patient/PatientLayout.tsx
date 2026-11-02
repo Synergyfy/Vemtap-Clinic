@@ -13,6 +13,11 @@ export default function PatientLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const isAuthPage = pathname.startsWith("/patient/login") || pathname.startsWith("/patient/register");
+
+  if (isAuthPage) {
+    return <>{children}</>;
+  }
 
   return (
     <div className="h-full bg-gray-50/50 min-h-screen">

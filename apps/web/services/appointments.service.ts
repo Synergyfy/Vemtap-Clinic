@@ -59,6 +59,7 @@ export interface AppointmentQueryParams {
   patientId?: string;
   staffId?: string;
   status?: AppointmentStatus;
+  type?: AppointmentType;
   startDate?: string;
   endDate?: string;
   page?: number;

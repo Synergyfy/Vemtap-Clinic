@@ -3,11 +3,14 @@ import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
+import * as nodemailer from 'nodemailer';
 import { ConfigService } from '@nestjs/config';
-import { User } from '../entities/user.entity';
+import { User, UserRole } from '../entities/user.entity';
 import { RefreshToken } from '../entities/refresh-token.entity';
 import { LoginDto, RegisterDto, ChangePasswordDto, ResetPasswordDto } from './dto/auth.dto';
 import { generateOpaqueToken, sha256Hex } from './utils/crypto.util';
+
+const PASSWORD_RESET_TTL_MS = 15 * 60 * 1000;
 
 export interface TokenPair {
   accessToken: string;
@@ -18,11 +21,15 @@ export interface AuthUser {
   userId: string;
   email: string;
   roles: string[];
-  clinicId: string;
+  clinicId: string | null;
+  firstName?: string;
+  lastName?: string;
 }
 
 @Injectable()
 export class AuthService {
+  private readonly passwordResetTokens = new Map<string, { email: string; expiresAt: number }>();
+
   constructor(
     @InjectRepository(User)
     private userRepository: Repository<User>,
@@ -33,7 +40,8 @@ export class AuthService {
   ) {}
 
   async register(dto: RegisterDto, reqInfo?: { userAgent?: string; ip?: string }): Promise<{ tokens: TokenPair; user: AuthUser }> {
-    const existing = await this.userRepository.findOne({ where: { email: dto.email } });
+    const normalizedEmail = dto.email.trim().toLowerCase();
+    const existing = await this.findUserByEmail(normalizedEmail);
     if (existing) {
       throw new ConflictException('Email already exists');
     }
@@ -41,6 +49,9 @@ export class AuthService {
     const hashedPassword = await bcrypt.hash(dto.password, 10);
     const user = this.userRepository.create({
       ...dto,
+      email: normalizedEmail,
+      role: UserRole.ADMIN,
+      clinicId: dto.clinicId ?? null,
       password: hashedPassword,
       isActive: true,
     });
@@ -50,10 +61,20 @@ export class AuthService {
   }
 
   async login(dto: LoginDto, reqInfo?: { userAgent?: string; ip?: string }): Promise<{ tokens: TokenPair; user: AuthUser }> {
-    const user = await this.userRepository.findOne({
-      where: { email: dto.email },
-      select: ['id', 'firstName', 'lastName', 'email', 'password', 'role', 'clinicId', 'isActive'],
-    });
+    const normalizedEmail = dto.email.trim().toLowerCase();
+    const user = await this.userRepository.createQueryBuilder('user')
+      .where('LOWER(user.email) = :email', { email: normalizedEmail })
+      .select([
+        'user.id',
+        'user.firstName',
+        'user.lastName',
+        'user.email',
+        'user.password',
+        'user.role',
+        'user.clinicId',
+        'user.isActive',
+      ])
+      .getOne();
 
     if (!user) {
       await bcrypt.compare(dto.password, '$2b$10$dummyhashdummyhashdummyhashdummyha');
@@ -155,18 +176,114 @@ export class AuthService {
     return { message: 'Password changed successfully — all sessions revoked' };
   }
 
-  async resetPassword(dto: ResetPasswordDto): Promise<{ message: string }> {
-    const user = await this.userRepository.findOne({ where: { email: dto.email } });
+  async requestPasswordReset(email: string): Promise<{ message: string; resetToken?: string; resetUrl?: string }> {
+    const normalizedEmail = email.trim().toLowerCase();
+    const user = await this.findUserByEmail(normalizedEmail);
     if (!user) {
       return { message: 'If the email exists, a reset link has been sent' };
     }
 
+    for (const [token, value] of this.passwordResetTokens.entries()) {
+      if (value.email === normalizedEmail) {
+        this.passwordResetTokens.delete(token);
+      }
+    }
+
+    const resetToken = generateOpaqueToken();
+    const resetUrl = this.buildResetUrl(normalizedEmail, resetToken);
+
+    this.passwordResetTokens.set(resetToken, {
+      email: normalizedEmail,
+      expiresAt: Date.now() + PASSWORD_RESET_TTL_MS,
+    });
+
+    const mailResult = await this.sendPasswordResetEmail(normalizedEmail, resetUrl);
+
+    if (mailResult.sent) {
+      return {
+        message: 'If the email exists, a reset link has been sent',
+        resetToken,
+      };
+    }
+
+    return {
+      message: 'Password reset link generated for local testing. Check the API logs for the reset URL.',
+      resetToken,
+      resetUrl,
+    };
+  }
+
+  async resetPassword(dto: ResetPasswordDto): Promise<{ message: string }> {
+    const normalizedEmail = dto.email.trim().toLowerCase();
+    const resetToken = this.passwordResetTokens.get(dto.token);
+
+    if (!resetToken || resetToken.email !== normalizedEmail || Date.now() > resetToken.expiresAt) {
+      this.passwordResetTokens.delete(dto.token);
+      throw new BadRequestException('Invalid or expired reset token');
+    }
+
+    const user = await this.findUserByEmail(normalizedEmail);
+    if (!user) {
+      throw new BadRequestException('Invalid or expired reset token');
+    }
+
     user.password = await bcrypt.hash(dto.newPassword, 10);
     await this.userRepository.save(user);
+    this.passwordResetTokens.delete(dto.token);
 
     await this.revokeAllUserTokens(user.id);
 
     return { message: 'Password reset successfully — all sessions revoked' };
+  }
+
+  private async findUserByEmail(email: string): Promise<User | null> {
+    return this.userRepository
+      .createQueryBuilder('user')
+      .where('LOWER(user.email) = :email', { email: email.toLowerCase() })
+      .getOne();
+  }
+
+  private buildResetUrl(email: string, token: string): string {
+    const frontendUrl = this.configService.get<string>('FRONTEND_URL', 'http://localhost:3000');
+    const params = new URLSearchParams({ email, token });
+    return `${frontendUrl.replace(/\/$/, '')}/forgot-password?${params.toString()}`;
+  }
+
+  private async sendPasswordResetEmail(email: string, resetUrl: string): Promise<{ sent: boolean; resetUrl?: string }> {
+    const smtpHost = this.configService.get<string>('SMTP_HOST');
+    const smtpPort = this.configService.get<number>('SMTP_PORT');
+    const smtpUser = this.configService.get<string>('SMTP_USER');
+    const smtpPassword = this.configService.get<string>('SMTP_PASSWORD');
+    const smtpFrom = this.configService.get<string>('SMTP_FROM', 'noreply@localhost');
+
+    if (!smtpHost || !smtpPort || !smtpUser || !smtpPassword) {
+      console.warn(`[Password Reset] SMTP is not configured. Local reset URL: ${resetUrl}`);
+      return { sent: false, resetUrl };
+    }
+
+    const transporter = nodemailer.createTransport({
+      host: smtpHost,
+      port: Number(smtpPort),
+      secure: this.configService.get<boolean>('SMTP_SECURE', false),
+      auth: {
+        user: smtpUser,
+        pass: smtpPassword,
+      },
+    });
+
+    await transporter.sendMail({
+      from: smtpFrom,
+      to: email,
+      subject: 'Reset your Vemtap Clinic password',
+      html: `
+        <p>Hello,</p>
+        <p>You requested a password reset for your Vemtap Clinic account.</p>
+        <p><a href="${resetUrl}">Reset your password</a></p>
+        <p>If you did not request this, you can safely ignore this email.</p>
+      `,
+    });
+
+    return { sent: true, resetUrl };
   }
 
   private async generateTokens(
@@ -183,6 +300,7 @@ export class AuthService {
     const refreshTokenEntity = this.refreshTokenRepository.create({
       tokenHash: refreshTokenHash,
       userId: user.id,
+      clinicId: user.clinicId,
       expiresAt,
       userAgent: reqInfo?.userAgent ?? null,
       ip: reqInfo?.ip ?? null,
@@ -208,6 +326,7 @@ export class AuthService {
     const newTokenEntity = this.refreshTokenRepository.create({
       tokenHash: newRefreshTokenHash,
       userId: oldToken.userId,
+      clinicId: oldToken.clinicId ?? undefined,
       expiresAt,
       userAgent: reqInfo?.userAgent ?? null,
       ip: reqInfo?.ip ?? null,
@@ -234,7 +353,9 @@ export class AuthService {
 
   private generateAccessToken(user: User): string {
     const payload = {
+      sub: user.id,
       user_id: user.id,
+      userId: user.id,
       roles: [user.role],
     };
     return this.jwtService.sign(payload);
@@ -246,6 +367,8 @@ export class AuthService {
       email: user.email,
       roles: [user.role],
       clinicId: user.clinicId,
+      firstName: user.firstName,
+      lastName: user.lastName,
     };
   }
 

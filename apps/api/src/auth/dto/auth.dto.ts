@@ -1,4 +1,4 @@
-import { IsString, IsEmail, MinLength } from 'class-validator';
+import { IsString, IsEmail, MinLength, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class LoginDto {
@@ -30,9 +30,10 @@ export class RegisterDto {
   @MinLength(6)
   password: string;
 
-  @ApiProperty({ example: 'clinic-uuid' })
+  @ApiProperty({ example: 'clinic-uuid', required: false, nullable: true })
+  @IsOptional()
   @IsString()
-  clinicId: string;
+  clinicId?: string | null;
 }
 
 export class ChangePasswordDto {
@@ -47,19 +48,25 @@ export class ChangePasswordDto {
   newPassword: string;
 }
 
+export class RequestPasswordResetDto {
+  @ApiProperty({ example: 'john@vemtap.com' })
+  @IsEmail()
+  email: string;
+}
+
 export class ResetPasswordDto {
   @ApiProperty({ example: 'john@vemtap.com' })
   @IsEmail()
   email: string;
 
+  @ApiProperty({ example: 'reset-token-from-email' })
+  @IsString()
+  token: string;
+
   @ApiProperty()
   @IsString()
   @MinLength(6)
   newPassword: string;
-
-  @ApiProperty({ example: 'reset-token-from-email' })
-  @IsString()
-  token: string;
 }
 
 export class RefreshTokenDto {
@@ -77,8 +84,8 @@ export class AuthUserDto {
   @ApiProperty()
   roles: string[];
 
-  @ApiProperty()
-  clinicId: string;
+  @ApiProperty({ nullable: true })
+  clinicId: string | null;
 }
 
 export class AuthResponseDto {

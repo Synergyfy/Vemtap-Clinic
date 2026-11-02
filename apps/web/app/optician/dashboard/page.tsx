@@ -33,9 +33,9 @@ function statusBadge(status: string) {
   return <Badge variant="outline">{status}</Badge>;
 }
 
-function getPatientName(patient: { firstName: string; lastName: string } | undefined): string {
-  if (!patient) return "Unknown Patient";
-  return `${patient.firstName} ${patient.lastName}`;
+function getPatientName(patient?: { firstName?: string; lastName?: string }): string {
+  if (!patient || (!patient.firstName && !patient.lastName)) return "Unknown Patient";
+  return `${patient.firstName || ""} ${patient.lastName || ""}`.trim();
 }
 
 const LOW_STOCK_THRESHOLD = 5;
@@ -283,7 +283,7 @@ export default function OpticianDashboard() {
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="font-semibold text-slate-900">{getPatientName(s.patient)}</p>
-                    <p className="mt-0.5 text-xs text-slate-500">{new Date(s.createdAt).toLocaleDateString()} &bull; {s.paymentMethod}</p>
+                    <p className="mt-0.5 text-xs text-slate-500">{s.createdAt ? new Date(s.createdAt).toLocaleDateString() : "—"} &bull; {s.paymentMethod}</p>
                   </div>
                   <div className="text-right shrink-0">
                     <p className="font-bold text-slate-900">₦{s.totalPrice.toLocaleString()}</p>

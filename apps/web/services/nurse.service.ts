@@ -76,10 +76,24 @@ export interface Appointment {
 }
 
 // ── Queue ──
+const getAssignedPatientIds = async (staffId: string, clinicId: string): Promise<string[]> => {
+  const appointments = await nurseAppointmentsService.getByStaff(staffId, clinicId);
+  return [...new Set(appointments.map((appointment) => appointment.patientId))];
+};
+
 export const nurseQueueService = {
-  getEntries: async (clinicId: string): Promise<QueueEntry[]> => {
-    const res = await api.get(`/queue?clinicId=${clinicId}&limit=100`);
-    return res.data;
+  getEntries: async (staffId: string, clinicId: string): Promise<QueueEntry[]> => {
+    if (!staffId || !clinicId) return [];
+
+    const patientIds = await getAssignedPatientIds(staffId, clinicId);
+    if (patientIds.length === 0) return [];
+
+    const responses = await Promise.all(
+      patientIds.map((patientId) => api.get(`/queue?patientId=${encodeURIComponent(patientId)}&limit=100`)),
+    );
+
+    const queueEntries = responses.flatMap((res) => res.data?.data || res.data || []);
+    return queueEntries.filter((item, index, list) => list.findIndex((entry) => entry.id === item.id) === index);
   },
   complete: async (entryId: string): Promise<void> => {
     await api.put(`/queue/${entryId}/complete`);
@@ -111,8 +125,21 @@ export const nurseNotesService = {
     const res = await api.get(`/observation-notes?patientId=${patientId}`);
     return res.data;
   },
-  getByClinic: async (clinicId: string): Promise<ObservationNote[]> => {
-    const res = await api.get(`/observation-notes?clinicId=${clinicId}`);
+  getByClinic: async (clinicId: string, staffId?: string): Promise<ObservationNote[]> => {
+    if (!staffId) return [];
+
+    const patientIds = await getAssignedPatientIds(staffId, clinicId);
+    if (patientIds.length === 0) return [];
+
+    const responses = await Promise.all(
+      patientIds.map((patientId) => api.get(`/observation-notes?patientId=${encodeURIComponent(patientId)}&limit=50`)),
+    );
+
+    const notes = responses.flatMap((res) => res.data?.data || res.data || []);
+    return notes.filter((item, index, list) => list.findIndex((entry) => entry.id === item.id) === index);
+  },
+  getById: async (id: string): Promise<ObservationNote> => {
+    const res = await api.get(`/observation-notes/${id}`);
     return res.data;
   },
   create: async (data: {
@@ -123,6 +150,9 @@ export const nurseNotesService = {
   }): Promise<ObservationNote> => {
     const res = await api.post('/observation-notes', data);
     return res.data;
+  },
+  remove: async (id: string): Promise<void> => {
+    await api.delete(`/observation-notes/${id}`);
   },
 };
 
