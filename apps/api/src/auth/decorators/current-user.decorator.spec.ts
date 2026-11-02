@@ -37,4 +37,20 @@ describe('CurrentUser decorator', () => {
 
     expect(dto.clinicId).toBeUndefined();
   });
+
+  it('removes socket references from request user objects before JSON serialization', () => {
+    const socket: any = { parser: {} };
+    socket.parser.socket = socket;
+
+    const user: any = {
+      sub: 'user-123',
+      email: 'staff@example.com',
+      socket,
+    };
+
+    const result = sanitizeCurrentUser(user);
+
+    expect(result.socket).toBeUndefined();
+    expect(() => JSON.stringify(result)).not.toThrow();
+  });
 });
