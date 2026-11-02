@@ -9,6 +9,23 @@ export const appConfig = ConfigModule.forRoot({
     PORT: Joi.number().default(3001),
     CORS_ORIGIN: Joi.string().default('http://localhost:3000'),
     FRONTEND_URL: Joi.string().default('http://localhost:3000'),
+    FILE_STORAGE_PROVIDER: Joi.string().valid('local', 'cloudinary').default('local'),
+    CLOUDINARY_CLOUD_NAME: Joi.string().when('FILE_STORAGE_PROVIDER', {
+      is: 'cloudinary',
+      then: Joi.required(),
+      otherwise: Joi.optional(),
+    }),
+    CLOUDINARY_API_KEY: Joi.string().when('FILE_STORAGE_PROVIDER', {
+      is: 'cloudinary',
+      then: Joi.required(),
+      otherwise: Joi.optional(),
+    }),
+    CLOUDINARY_API_SECRET: Joi.string().when('FILE_STORAGE_PROVIDER', {
+      is: 'cloudinary',
+      then: Joi.required(),
+      otherwise: Joi.optional(),
+    }),
+    CLOUDINARY_UPLOAD_PRESET: Joi.string().optional(),
     DB_HOST: Joi.string().required(),
     DB_PORT: Joi.number().default(5432),
     DB_USERNAME: Joi.string().required(),

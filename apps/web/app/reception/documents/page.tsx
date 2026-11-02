@@ -72,6 +72,7 @@ export default function DocumentsPage() {
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [showAttachment, setShowAttachment] = useState<any | null>(null);
   const [activeTab, setActiveTab] = useState<"scan" | "attachments">("scan");
+  const fileInputRef = React.useRef<HTMLInputElement | null>(null);
 
   const filteredPatients = patients.filter((patient: any) =>
     [patient.firstName + " " + patient.lastName, patient.id, patient.phone].join(" ").toLowerCase().includes(query.toLowerCase())
@@ -418,15 +419,20 @@ export default function DocumentsPage() {
           </div>
           <div className="p-6 sm:p-8 rounded-xl sm:rounded-2xl border-2 border-dashed border-slate-100 bg-slate-50 text-center">
             <Upload size={24} className="mx-auto text-slate-400 mb-2" />
-            <label className="block cursor-pointer">
+            <div
+              className="block cursor-pointer"
+              onClick={() => fileInputRef.current?.click()}
+              aria-label="Upload a document"
+            >
               <input
+                ref={fileInputRef}
                 type="file"
                 accept="image/*,.pdf,.doc,.docx"
-                className="hidden"
+                className="sr-only"
                 onChange={(event) => setSelectedFile(event.target.files?.[0] || null)}
               />
               <span className="text-xs font-bold text-slate-600">{selectedFile ? selectedFile.name : "Drag & drop or click to browse"}</span>
-            </label>
+            </div>
             <p className="text-[9px] text-slate-400 mt-1">PDF, JPG, PNG — up to 10 MB</p>
           </div>
           <div className="flex flex-col gap-2">

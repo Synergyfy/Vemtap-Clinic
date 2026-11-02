@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { 
   QrCode, Search, ChevronRight, Eye, Glasses, ShoppingCart,
   PackageCheck, Clock, AlertCircle, ShieldCheck, CreditCard,
   CheckCircle2, Printer, ArrowLeft, Loader2, UserCheck
 } from "lucide-react";
+import QRCode from "react-qr-code";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCreateQueueEntry } from "@/hooks/useQueue";
@@ -16,7 +17,7 @@ type CheckInStep = "START" | "IDENTIFY" | "PURPOSE" | "PLAN" | "VERIFYING" | "CO
 
 export default function CheckInPage() {
   const { user } = useAuth();
-  const { data: patientsResponse } = usePatients();
+  const { data: patientsResponse } = usePatients({ clinicId: user?.clinicId });
   const patients = patientsResponse?.data ?? [];
   const createEntry = useCreateQueueEntry();
 
@@ -26,22 +27,50 @@ export default function CheckInPage() {
   const [selectedPurpose, setSelectedPurpose] = useState<string | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [lookupError, setLookupError] = useState("");
+
+  const qrValue = useMemo(() => {
+    const payload = {
+      type: "vemtap-checkin",
+      clinicId: user?.clinicId ?? "unknown-clinic",
+      branchId: user?.branchId ?? "unknown-branch",
+      patientId: selectedPatient?.id ?? (patientId.trim() || "guest-checkin"),
+      patientName: selectedPatient ? `${selectedPatient.firstName} ${selectedPatient.lastName}` : "Pending verification",
+      timestamp: Date.now(),
+    };
+
+    return JSON.stringify(payload);
+  }, [patientId, selectedPatient, user?.branchId, user?.clinicId]);
 
   const handleIdSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!patientId) return;
+    const normalizedId = patientId.trim();
+    if (!normalizedId) {
+      setLookupError("Enter a patient ID or scan a valid QR card.");
+      return;
+    }
+
     setIsLoading(true);
-    const patient = patients.find((p: any) => p.id === patientId);
+    setLookupError("");
+
+    const patient = patients.find((p: any) => {
+      const name = `${p.firstName} ${p.lastName}`.toLowerCase();
+      const id = String(p.id).toLowerCase();
+      const phone = String(p.phone ?? "").replace(/\D/g, "");
+      const query = normalizedId.toLowerCase();
+      return id === query || name.includes(query) || phone.includes(query.replace(/\D/g, ""));
+    });
+
     setTimeout(() => {
       setIsLoading(false);
       if (patient) {
         setSelectedPatient(patient);
         setStep("IDENTIFY");
       } else {
-        // Patient not found - could show error
-        setStep("IDENTIFY");
+        setLookupError("No live patient match found for that ID. Please verify the QR or patient record.");
+        setStep("START");
       }
-    }, 1500);
+    }, 500);
   };
 
   const purposes = [
@@ -59,27 +88,35 @@ export default function CheckInPage() {
     { id: "private", label: "Private Patient", icon: CreditCard, desc: "Cash/Card/Transfer" },
   ];
 
-  const handleFinalCheckIn = () => {
+  const handleFinalCheckIn = async () => {
     setStep("VERIFYING");
-    if (selectedPatient && selectedPurpose) {
-      if (!user?.branchId) {
-        setStep("IDENTIFY");
-        return;
-      }
-      createEntry.mutate({
+
+    if (!selectedPatient || !selectedPurpose) {
+      setTimeout(() => setStep("COMPLETE"), 800);
+      return;
+    }
+
+    if (!user?.branchId || !user?.clinicId) {
+      setLookupError("Clinic context is missing. Please sign in again.");
+      setStep("IDENTIFY");
+      return;
+    }
+
+    try {
+      await createEntry.mutateAsync({
         patientId: selectedPatient.id,
         patientName: `${selectedPatient.firstName} ${selectedPatient.lastName}`,
         serviceType: selectedPurpose,
         priority: "Normal",
         clinicId: user.clinicId,
         branchId: user.branchId,
-      }, {
-        onSuccess: (entry) => {
-          setTimeout(() => setStep("COMPLETE"), 1500);
-        },
       });
-    } else {
-      setTimeout(() => setStep("COMPLETE"), 1500);
+
+      setTimeout(() => setStep("COMPLETE"), 1200);
+    } catch (error) {
+      console.error("Check-in error:", error);
+      setLookupError("The check-in request could not be submitted. Please try again.");
+      setStep("IDENTIFY");
     }
   };
 
@@ -114,6 +151,12 @@ export default function CheckInPage() {
                   </button>
                 </form>
 
+                {lookupError && (
+                  <p className="text-xs sm:text-sm font-medium text-rose-600 bg-rose-50 rounded-xl border border-rose-100 px-3 py-2">
+                    {lookupError}
+                  </p>
+                )}
+
                 <div className="flex items-center gap-3 sm:gap-4 text-slate-300">
                    <div className="h-px flex-1 bg-current" />
                    <span className="text-[10px] sm:text-xs font-black uppercase tracking-widest">OR</span>
@@ -121,8 +164,8 @@ export default function CheckInPage() {
                 </div>
 
                 <div className="p-5 sm:p-8 rounded-xl sm:rounded-[2.5rem] border-2 sm:border-4 border-dashed border-slate-100 bg-slate-50/50 flex flex-col items-center gap-3 sm:gap-4 group cursor-pointer hover:border-sky-200 hover:bg-sky-50 transition-all">
-                  <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl bg-white shadow-sm flex items-center justify-center text-slate-400 group-hover:text-sky-500 transition-colors">
-                    <QrCode size={24} />
+                  <div className="bg-white rounded-2xl border border-slate-100 p-3 shadow-sm">
+                    <QRCode value={qrValue} size={132} bgColor="#ffffff" fgColor="#0f172a" />
                   </div>
                   <p className="text-xs sm:text-sm font-bold text-slate-500 group-hover:text-sky-600 transition-colors">Point Camera at QR Code</p>
                 </div>
@@ -167,7 +210,7 @@ export default function CheckInPage() {
                     <span className="text-sm sm:text-xl font-bold">Yes, proceed</span>
                     <ChevronRight className="group-hover:translate-x-1 sm:group-hover:translate-x-2 transition-transform" size={18} />
                   </button>
-                  <button onClick={() => setStep("START")}
+                  <button onClick={() => { setSelectedPatient(null); setPatientId(""); setStep("START"); }}
                     className="p-5 sm:p-8 rounded-xl sm:rounded-[2.5rem] border-2 border-slate-100 text-slate-400 flex items-center justify-between hover:border-rose-100 hover:text-rose-500 transition-all">
                     <span className="text-sm sm:text-xl font-bold">No, not me</span>
                   </button>
@@ -302,7 +345,9 @@ export default function CheckInPage() {
                       <span className="text-[10px] sm:text-xs font-black text-slate-900">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                     </div>
                   </div>
-                  <QrCode className="mx-auto text-slate-900 opacity-20" size={60} />
+                  <div className="mx-auto rounded-2xl bg-white p-3 shadow-sm border border-slate-100 w-fit">
+                    <QRCode value={qrValue} size={72} bgColor="#ffffff" fgColor="#0f172a" />
+                  </div>
                 </div>
               </div>
 
@@ -310,7 +355,7 @@ export default function CheckInPage() {
                 <button className="w-full sm:w-auto px-6 sm:px-10 py-4 sm:py-5 bg-slate-900 text-white rounded-xl sm:rounded-2xl font-black uppercase tracking-widest text-[10px] sm:text-xs flex items-center justify-center gap-2 sm:gap-3 hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/20">
                   <Printer size={16} /> Print Ticket
                 </button>
-                <button onClick={() => { setStep("START"); setPatientId(""); setSelectedPatient(null); setSelectedPurpose(null); setSelectedPlan(null); }}
+                <button onClick={() => { setStep("START"); setPatientId(""); setSelectedPatient(null); setSelectedPurpose(null); setSelectedPlan(null); setLookupError(""); }}
                   className="w-full sm:w-auto px-6 sm:px-10 py-4 sm:py-5 bg-white border border-slate-200 text-slate-600 rounded-xl sm:rounded-2xl font-black uppercase tracking-widest text-[10px] sm:text-xs hover:bg-slate-50 transition-all">
                   Done
                 </button>

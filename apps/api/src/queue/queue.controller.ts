@@ -39,6 +39,12 @@ export class QueueController {
     return this.queueService.getStats(clinicId);
   }
 
+  @Get('announcements')
+  @ApiOperation({ summary: 'List queue announcements' })
+  findAnnouncements(@Query('clinicId') clinicId: string) {
+    return this.queueService.findAnnouncements(clinicId);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get queue entry by ID' })
   findOne(@Param('id') id: string) {
@@ -64,12 +70,6 @@ export class QueueController {
   @ApiOperation({ summary: 'Create queue announcement' })
   createAnnouncement(@Body() dto: CreateAnnouncementDto) {
     return this.queueService.createAnnouncement(dto);
-  }
-
-  @Get('announcements')
-  @ApiOperation({ summary: 'List queue announcements' })
-  findAnnouncements(@Query('clinicId') clinicId: string) {
-    return this.queueService.findAnnouncements(clinicId);
   }
 
   @Post('reset')

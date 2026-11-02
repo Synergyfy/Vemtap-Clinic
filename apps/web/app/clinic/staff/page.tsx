@@ -74,7 +74,18 @@ export default function StaffPage() {
   const [permissionsMap, setPermissionsMap] = useState<Record<string, string[]>>({});
 
   useEffect(() => {
-    setSelectedRole((current) => current || staffRoleOptions[0] || "");
+    if (!staffRoleOptions.length) {
+      setSelectedRole("");
+      return;
+    }
+
+    setSelectedRole((current) => {
+      if (current && staffRoleOptions.includes(current)) {
+        return current;
+      }
+
+      return staffRoleOptions[0];
+    });
   }, [staffRoleOptions]);
 
   useEffect(() => {
@@ -87,6 +98,12 @@ export default function StaffPage() {
           next[role] = [];
           didChange = true;
         }
+      }
+
+      const rolesToRemove = Object.keys(next).filter((role) => !staffRoleOptions.includes(role));
+      for (const role of rolesToRemove) {
+        delete next[role];
+        didChange = true;
       }
 
       return didChange ? next : prev;
