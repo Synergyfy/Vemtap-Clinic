@@ -37,9 +37,27 @@ export class CreateFileUploadDto {
 
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(100) relatedEntityType?: string;
 
-  @ApiProperty({ example: 'clinic-uuid' })
+  // Ignored: the clinic is taken from the authenticated user
+  @ApiPropertyOptional({ example: 'clinic-uuid' })
+  @IsOptional()
   @IsUUID()
-  clinicId: string;
+  clinicId?: string;
+}
+
+export class UploadFileDto {
+  @ApiProperty({ type: 'string', format: 'binary', description: 'jpg, jpeg, png, pdf, doc, docx, xls, xlsx, txt or csv (max 10MB)' })
+  file: any;
+
+  @ApiPropertyOptional({ enum: FileCategory, default: FileCategory.GENERAL })
+  @IsOptional()
+  @IsEnum(FileCategory)
+  category?: FileCategory;
+
+  @ApiPropertyOptional() @IsOptional() @IsUUID() patientId?: string;
+
+  @ApiPropertyOptional() @IsOptional() @IsUUID() relatedEntityId?: string;
+
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(100) relatedEntityType?: string;
 }
 
 export class UpdateFileUploadDto {

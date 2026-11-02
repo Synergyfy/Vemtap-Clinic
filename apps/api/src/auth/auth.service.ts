@@ -9,6 +9,7 @@ import { User, UserRole } from '../entities/user.entity';
 import { RefreshToken } from '../entities/refresh-token.entity';
 import { LoginDto, RegisterDto, ChangePasswordDto, ResetPasswordDto } from './dto/auth.dto';
 import { generateOpaqueToken, sha256Hex } from './utils/crypto.util';
+import { EmailService } from '../common/services/email.service';
 
 const PASSWORD_RESET_TTL_MS = 15 * 60 * 1000;
 
@@ -37,6 +38,7 @@ export class AuthService {
     private refreshTokenRepository: Repository<RefreshToken>,
     private jwtService: JwtService,
     private configService: ConfigService,
+    private emailService: EmailService,
   ) {}
 
   async register(dto: RegisterDto, reqInfo?: { userAgent?: string; ip?: string }): Promise<{ tokens: TokenPair; user: AuthUser }> {
@@ -264,7 +266,7 @@ export class AuthService {
     const transporter = nodemailer.createTransport({
       host: smtpHost,
       port: Number(smtpPort),
-      secure: this.configService.get<boolean>('SMTP_SECURE', false),
+      secure: this.configService.get<string>('SMTP_SECURE', 'false') === 'true',
       auth: {
         user: smtpUser,
         pass: smtpPassword,

@@ -37,6 +37,7 @@ export default function AppealsPage() {
   const { user } = useAuth();
   const { data: appeals = [], isLoading: loadingAppeals } = useHmoAppeals();
   const { data: claims = [] } = useHmoClaims();
+  const { data: appealsData = [], isLoading: appealsLoading } = useHmoAppeals();
   const createAppealMut = useCreateAppeal();
   const updateAppealMut = useUpdateAppeal();
 
