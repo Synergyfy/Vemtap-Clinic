@@ -9,18 +9,13 @@ import { Calendar as CalendarUI } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { usePatientAppointmentsList, useBookAppointment, useRescheduleAppointment, useCancelAppointment, PatientAppointment } from "@/hooks/usePatientPortal";
+import { useBranches } from "@/hooks/useBranches";
 import { useAuth } from "@/lib/auth-context";
 
 const APPOINTMENT_TYPES = [
   { value: "consultation", label: "Comprehensive Eye Exam" },
   { value: "follow_up", label: "Follow-up Consultation" },
   { value: "eye_test", label: "Pediatric Eye Test" },
-];
-
-const BRANCHES = [
-  { id: "branch-1", name: "Main Branch (VI)" },
-  { id: "branch-2", name: "Ikeja GRA" },
-  { id: "branch-3", name: "Lekki Phase 1" },
 ];
 
 const TIME_SLOTS = ["09:00", "09:30", "10:00", "10:30", "11:00", "11:30", "13:00", "13:30", "14:00", "14:30", "15:00", "15:30", "16:00", "16:30"];
@@ -49,6 +44,7 @@ function getStatusBadge(status: string) {
 export default function AppointmentsPage() {
   const { user } = useAuth();
   const { data: appointments = [], isLoading } = usePatientAppointmentsList();
+  const { data: branches = [] } = useBranches();
   const bookAppointment = useBookAppointment();
   const rescheduleAppointment = useRescheduleAppointment();
   const cancelAppointment = useCancelAppointment();
@@ -59,9 +55,12 @@ export default function AppointmentsPage() {
   const [selectedApptId, setSelectedApptId] = useState<string | null>(null);
 
   const [bookType, setBookType] = useState("consultation");
-  const [bookBranch, setBookBranch] = useState(BRANCHES[0].id);
+  const [bookBranch, setBookBranch] = useState("");
+  const [bookReason, setBookReason] = useState("");
   const [bookDate, setBookDate] = useState<Date>();
   const [bookTime, setBookTime] = useState("09:00");
+
+  const effectiveBranchId = bookBranch || branches[0]?.id || user?.branchId || "";
 
   const [rescheduleDate, setRescheduleDate] = useState<Date>();
   const [rescheduleTime, setRescheduleTime] = useState("");
@@ -70,15 +69,21 @@ export default function AppointmentsPage() {
     appt.status === "scheduled" || appt.status === "confirmed";
 
   const handleBook = () => {
-    if (!bookDate) return;
+    if (!bookDate || !effectiveBranchId) return;
     bookAppointment.mutate(
       {
         appointmentDate: format(bookDate, "yyyy-MM-dd"),
         appointmentTime: bookTime,
         type: bookType,
-        branchId: bookBranch,
+        reason: bookReason || "Annual eye checkup",
+        branchId: effectiveBranchId,
       },
-      { onSuccess: () => setBookModalOpen(false) }
+      {
+        onSuccess: () => {
+          setBookModalOpen(false);
+          setBookReason("");
+        },
+      }
     );
   };
 
@@ -221,16 +226,27 @@ export default function AppointmentsPage() {
 
                   <div className="flex flex-col gap-1.5">
                     <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Clinic Branch</label>
-                    <Select value={bookBranch} onValueChange={(v) => v && setBookBranch(v)}>
+                    <Select value={effectiveBranchId} onValueChange={(v) => v && setBookBranch(v)}>
                       <SelectTrigger className="w-full h-14 rounded-2xl bg-gray-50 border-gray-200 focus:ring-teal-500 font-bold">
                         <SelectValue placeholder="Select branch" />
                       </SelectTrigger>
                       <SelectContent className="rounded-2xl border-gray-100 shadow-xl">
-                        {BRANCHES.map((b) => (
+                        {branches.map((b) => (
                           <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Reason for Visit</label>
+                    <input
+                      type="text"
+                      value={bookReason}
+                      onChange={(e) => setBookReason(e.target.value)}
+                      placeholder="e.g. Annual eye checkup, blurry vision"
+                      className="w-full h-14 rounded-2xl bg-gray-50 border border-gray-200 px-4 text-sm font-bold text-gray-900 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    />
                   </div>
                 </div>
 

@@ -9,78 +9,86 @@ import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Modal } from "@/components/ui/modal";
 
-type Ticket = {
-  id: string;
-  subject: string;
-  status: "open" | "in-progress" | "resolved";
-  priority: "low" | "medium" | "high";
-  date: string;
-  category: string;
-};
-
-const initialTickets: Ticket[] = [
-  { id: "SUP-2001", subject: "Cannot verify HMO policy", status: "open", priority: "high", date: "Today, 09:30 AM", category: "Technical" },
-  { id: "SUP-2002", subject: "Printer not responding", status: "in-progress", priority: "medium", date: "Today, 08:15 AM", category: "Hardware" },
-  { id: "SUP-2003", subject: "Patient record merge request", status: "open", priority: "low", date: "Yesterday, 04:20 PM", category: "Data" },
-  { id: "SUP-2004", subject: "Biometric scanner offline", status: "resolved", priority: "high", date: "Yesterday, 02:00 PM", category: "Hardware" },
-];
-
-const faqItems = [
-  { q: "How to reset a patient password?", a: "Go to Settings > Security > Reset Password. Enter the patient ID to generate a reset link." },
-  { q: "HMO claim not appearing?", a: "Verify the policy number is correct. If the issue persists, escalate to the HMO queue in Billing." },
-  { q: "System running slow?", a: "Try clearing your browser cache. If it continues, submit a ticket with your system specs." },
-];
+import { useAuth } from "@/lib/auth-context";
+import { 
+  useSupportTickets, 
+  useSupportTicketStats, 
+  useCreateSupportTicket, 
+  useResolveSupportTicket,
+  type SupportTicket 
+} from "@/hooks/useSupportTickets";
+import { Loader2 } from "lucide-react";
 
 const statusStyles: Record<string, string> = {
   open: "bg-rose-100 text-rose-700",
+  in_progress: "bg-amber-100 text-amber-700",
   "in-progress": "bg-amber-100 text-amber-700",
   resolved: "bg-emerald-100 text-emerald-700",
+  closed: "bg-slate-100 text-slate-700",
 };
 
 const priorityStyles: Record<string, string> = {
+  urgent: "bg-rose-100 text-rose-700",
   high: "bg-rose-100 text-rose-700",
   medium: "bg-amber-100 text-amber-700",
   low: "bg-sky-100 text-sky-700",
 };
 
+const faqItems: Array<{ q: string; a: string }> = [];
+
 export default function SupportPage() {
-  const [tickets, setTickets] = useState(initialTickets);
+  const { user } = useAuth();
+  const { data: tickets = [], isLoading } = useSupportTickets();
+  const { data: stats } = useSupportTicketStats();
+  const createTicketMut = useCreateSupportTicket();
+  const resolveTicketMut = useResolveSupportTicket();
+
   const [toast, setToast] = useState("");
   const [query, setQuery] = useState("");
   const [activeTab, setActiveTab] = useState<"tickets" | "faq">("tickets");
 
   const [showNewTicket, setShowNewTicket] = useState(false);
-  const [newTicket, setNewTicket] = useState({ subject: "", category: "Technical", priority: "medium" as Ticket["priority"] });
+  const [newTicket, setNewTicket] = useState({ 
+    subject: "", 
+    description: "", 
+    type: "support" as "support" | "complaint" | "incident" | "feature_request", 
+    priority: "medium" as "low" | "medium" | "high" | "critical" 
+  });
 
   const [showDetail, setShowDetail] = useState(false);
-  const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
+  const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null);
 
   const [showChat, setShowChat] = useState(false);
-  const [chatMessages, setChatMessages] = useState([
-    { from: "bot", text: "Hi! I'm the Vemtap support assistant. How can I help you today?" },
-  ]);
+  const [chatMessages, setChatMessages] = useState<{ from: "bot" | "user"; text: string }[]>([]);
   const [chatInput, setChatInput] = useState("");
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 3000); };
 
   const filteredTickets = tickets.filter((t) =>
-    !query.trim() || [t.subject, t.id, t.category, t.status].join(" ").toLowerCase().includes(query.trim().toLowerCase())
+    !query.trim() || [t.subject, t.id, t.type || "", t.status].join(" ").toLowerCase().includes(query.trim().toLowerCase())
   );
 
-  const createTicket = () => {
+  const createTicket = async () => {
     if (!newTicket.subject.trim()) return;
-    const ticket: Ticket = {
-      id: `SUP-${2001 + tickets.length}`,
-      subject: newTicket.subject,
-      status: "open",
-      priority: newTicket.priority as Ticket["priority"],
-      date: `Today, ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
-      category: newTicket.category,
-    };
-    setTickets((current) => [ticket, ...current]);
-    setNewTicket({ subject: "", category: "Technical", priority: "medium" });
-    setShowNewTicket(false);
-    showToast("Support ticket created");
+    try {
+      if (!user?.clinicId) {
+        showToast("No active clinic is attached to this session");
+        return;
+      }
+
+      await createTicketMut.mutateAsync({
+        subject: newTicket.subject,
+        description: newTicket.description || newTicket.subject,
+        type: newTicket.type,
+        priority: newTicket.priority,
+        clinicId: user.clinicId,
+      });
+      setNewTicket({ subject: "", description: "", type: "support", priority: "medium" });
+      setShowNewTicket(false);
+      showToast("Support ticket created in live system");
+    } catch (e: any) {
+      showToast(e?.message || "Failed to submit ticket");
+    }
   };
 
   const sendChatMessage = () => {
@@ -92,8 +100,8 @@ export default function SupportPage() {
     }, 1000);
   };
 
-  const openCount = tickets.filter((t) => t.status === "open").length;
-  const resolvedCount = tickets.filter((t) => t.status === "resolved").length;
+  const openCount = stats?.open ?? tickets.filter((t) => t.status === "open").length;
+  const resolvedCount = stats?.resolved ?? tickets.filter((t) => t.status === "resolved").length;
 
   return (
     <div className="space-y-5 sm:space-y-8 max-w-[1600px] mx-auto">
@@ -112,7 +120,7 @@ export default function SupportPage() {
           {[
             { label: "Open", value: String(openCount), icon: AlertTriangle, tab: "tickets" },
             { label: "Resolved", value: String(resolvedCount), icon: CheckCircle2, tab: "tickets" },
-            { label: "FAQ", value: "6", icon: BookOpen, tab: "faq" },
+            { label: "FAQ", value: "0", icon: BookOpen, tab: "faq" },
           ].map((stat) => (
             <button key={stat.label} onClick={() => setActiveTab(stat.tab as "tickets" | "faq")}
               className={cn("bg-white border rounded-xl sm:rounded-[1.5rem] px-3 sm:px-5 py-3 sm:py-4 shadow-sm text-left transition-all hover:shadow-md", activeTab === stat.tab ? "border-sky-200 bg-sky-50" : "border-slate-100")}>
@@ -144,7 +152,9 @@ export default function SupportPage() {
                     </div>
                     <div className="min-w-0">
                       <p className="text-sm font-black text-slate-900 truncate">{ticket.subject}</p>
-                      <p className="text-[9px] sm:text-[10px] text-slate-400 font-bold uppercase tracking-widest truncate">{ticket.id} &bull; {ticket.category} &bull; {ticket.date}</p>
+                      <p className="text-[9px] sm:text-[10px] text-slate-400 font-bold uppercase tracking-widest truncate">
+                        {ticket.id.slice(0, 8).toUpperCase()} &bull; {ticket.type || "Support"} &bull; {ticket.createdAt ? new Date(ticket.createdAt).toLocaleDateString() : "Today"}
+                      </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
@@ -207,7 +217,11 @@ export default function SupportPage() {
 
       {activeTab === "faq" && (
         <div className="max-w-3xl mx-auto space-y-3 sm:space-y-4">
-          {faqItems.map((faq, i) => (
+          {faqItems.length === 0 ? (
+            <div className="bg-white border border-slate-100 rounded-2xl sm:rounded-[2rem] p-8 text-center text-sm text-slate-500 shadow-sm">
+              No FAQ items are available yet. Use live support tickets for current guidance.
+            </div>
+          ) : faqItems.map((faq, i) => (
             <details key={i} className="group bg-white border border-slate-100 rounded-2xl sm:rounded-[2rem] shadow-sm overflow-hidden">
               <summary className="p-4 sm:p-6 cursor-pointer text-sm sm:text-base font-black text-slate-900 flex items-center justify-between gap-4">
                 {faq.q}
@@ -231,23 +245,23 @@ export default function SupportPage() {
           </div>
           <div className="grid grid-cols-2 gap-3 sm:gap-4">
             <div className="space-y-1">
-              <label className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest">Category</label>
-              <select value={newTicket.category} onChange={(e) => setNewTicket({ ...newTicket, category: e.target.value })}
+              <label className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest">Type</label>
+              <select value={newTicket.type} onChange={(e) => setNewTicket({ ...newTicket, type: e.target.value as any })}
                 className="w-full p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-slate-50 border border-slate-100 focus:outline-none font-bold text-slate-900 text-sm">
-                <option>Technical</option>
-                <option>Hardware</option>
-                <option>Data</option>
-                <option>Account</option>
-                <option>Other</option>
+                <option value="support">Support</option>
+                <option value="incident">Incident</option>
+                <option value="complaint">Complaint</option>
+                <option value="feature_request">Feature Request</option>
               </select>
             </div>
             <div className="space-y-1">
               <label className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest">Priority</label>
-              <select value={newTicket.priority} onChange={(e) => setNewTicket({ ...newTicket, priority: e.target.value as Ticket["priority"] })}
+              <select value={newTicket.priority} onChange={(e) => setNewTicket({ ...newTicket, priority: e.target.value as any })}
                 className="w-full p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-slate-50 border border-slate-100 focus:outline-none font-bold text-slate-900 text-sm">
                 <option value="low">Low</option>
                 <option value="medium">Medium</option>
                 <option value="high">High</option>
+                <option value="critical">Critical</option>
               </select>
             </div>
           </div>
@@ -270,13 +284,13 @@ export default function SupportPage() {
               <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-slate-100 flex items-center justify-center text-slate-700 shrink-0"><MessageSquare size={24} /></div>
               <div className="min-w-0 flex-1">
                 <h4 className="text-base sm:text-lg font-bold text-slate-900 truncate">{selectedTicket.subject}</h4>
-                <p className="text-xs sm:text-sm text-slate-500">{selectedTicket.id} &bull; {selectedTicket.date}</p>
+                <p className="text-xs sm:text-sm text-slate-500">{selectedTicket.id.slice(0, 8).toUpperCase()} &bull; {selectedTicket.createdAt ? new Date(selectedTicket.createdAt).toLocaleDateString() : "Today"}</p>
               </div>
             </div>
             <div className="space-y-2">
               <div className="flex justify-between p-3 sm:p-4 rounded-lg sm:rounded-2xl bg-slate-50">
-                <span className="text-[10px] sm:text-xs font-bold text-slate-400">Category</span>
-                <span className="text-xs sm:text-sm font-bold text-slate-900">{selectedTicket.category}</span>
+                <span className="text-[10px] sm:text-xs font-bold text-slate-400">Type</span>
+                <span className="text-xs sm:text-sm font-bold text-slate-900 capitalize">{selectedTicket.type || "Support"}</span>
               </div>
               <div className="flex justify-between p-3 sm:p-4 rounded-lg sm:rounded-2xl bg-slate-50">
                 <span className="text-[10px] sm:text-xs font-bold text-slate-400">Priority</span>
@@ -289,15 +303,19 @@ export default function SupportPage() {
             </div>
             <div className="space-y-2">
               {selectedTicket.status !== "resolved" && (
-                <button onClick={() => { setTickets((current) => current.map((t) => t.id === selectedTicket.id ? { ...t, status: "resolved" } : t)); setShowDetail(false); showToast("Ticket resolved"); }}
-                  className="w-full py-3 sm:py-4 rounded-xl sm:rounded-2xl bg-emerald-600 text-white text-[10px] sm:text-xs font-black uppercase tracking-widest hover:bg-emerald-700 flex items-center justify-center gap-2">
+                <button 
+                  onClick={async () => { 
+                    try {
+                      await resolveTicketMut.mutateAsync({ id: selectedTicket.id, notes: "Resolved via Frontdesk Support" });
+                      setShowDetail(false); 
+                      showToast("Ticket resolved in live system"); 
+                    } catch (e: any) {
+                      showToast(e?.message || "Failed to resolve ticket");
+                    }
+                  }}
+                  className="w-full py-3 sm:py-4 rounded-xl sm:rounded-2xl bg-emerald-600 text-white text-[10px] sm:text-xs font-black uppercase tracking-widest hover:bg-emerald-700 flex items-center justify-center gap-2"
+                >
                   <CheckCircle2 size={14} /> Mark Resolved
-                </button>
-              )}
-              {selectedTicket.status !== "in-progress" && selectedTicket.status !== "resolved" && (
-                <button onClick={() => { setTickets((current) => current.map((t) => t.id === selectedTicket.id ? { ...t, status: "in-progress" } : t)); setShowDetail(false); showToast("Ticket in progress"); }}
-                  className="w-full py-3 sm:py-4 rounded-xl sm:rounded-2xl bg-blue-600 text-white text-[10px] sm:text-xs font-black uppercase tracking-widest hover:bg-blue-700 flex items-center justify-center gap-2">
-                  <ChevronRight size={14} /> Start Working
                 </button>
               )}
             </div>

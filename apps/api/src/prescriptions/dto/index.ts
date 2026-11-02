@@ -31,6 +31,11 @@ export class CreatePrescriptionDto {
   @IsUUID()
   medicalRecordId: string;
 
+  @ApiPropertyOptional({ example: 'clinic-uuid' })
+  @IsOptional()
+  @IsUUID()
+  clinicId?: string;
+
   @ApiPropertyOptional({ example: 'staff-uuid' })
   @IsOptional()
   @IsUUID()

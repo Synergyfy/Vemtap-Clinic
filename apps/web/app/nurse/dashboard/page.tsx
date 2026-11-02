@@ -52,15 +52,24 @@ export default function NurseDashboard() {
   const clinicId = user?.clinicId || null;
 
   const { data: observationNotes = [], isLoading: notesLoading } = useNurseObservationNotes(staffId, clinicId);
-  const { data: queueEntries = [], isLoading: queueLoading } = useNurseQueue(clinicId);
+  const { data: queueEntries = [], isLoading: queueLoading } = useNurseQueue(staffId, clinicId);
   const { data: assignedAppointments = [], isLoading: appointmentsLoading } = useNurseAssignedAppointments(staffId, clinicId);
   const { data: followUps = [], isLoading: followUpsLoading } = useNurseFollowUps(staffId, clinicId);
 
   const [statModal, setStatModal] = useState<{ label: string; value: string; desc: string } | null>(null);
   const [obsModal, setObsModal] = useState<any>(null);
 
-  const waitingPatients = queueEntries.filter((q) => q.status === "waiting");
-  const inProgressPatients = queueEntries.filter((q) => q.status === "in_progress");
+  const assignedPatientIds = useMemo(
+    () => new Set(assignedAppointments.map((appointment) => appointment.patientId)),
+    [assignedAppointments],
+  );
+  const visibleQueueEntries = useMemo(
+    () => queueEntries.filter((q) => assignedPatientIds.has(q.patientId)),
+    [queueEntries, assignedPatientIds],
+  );
+
+  const waitingPatients = visibleQueueEntries.filter((q) => q.status === "waiting");
+  const inProgressPatients = visibleQueueEntries.filter((q) => q.status === "in_progress");
   const completedToday = assignedAppointments.filter((a) => a.status === "completed");
   const pendingFollowUps = followUps.filter((f) => f.status === "scheduled");
 
@@ -68,7 +77,7 @@ export default function NurseDashboard() {
     { label: "Assigned Today", value: String(assignedAppointments.length), icon: Users, color: "text-sky-600", bg: "bg-sky-50", desc: `${assignedAppointments.length} patients assigned today. ${waitingPatients.length} waiting, ${inProgressPatients.length} in progress.` },
     { label: "In Progress", value: String(inProgressPatients.length), icon: Heart, color: "text-amber-600", bg: "bg-amber-50", desc: `${inProgressPatients.length} patients currently being processed.` },
     { label: "Waiting for Vitals", value: String(waitingPatients.length), icon: Activity, color: "text-cyan-600", bg: "bg-cyan-50", desc: `${waitingPatients.length} patients waiting for vitals recording.` },
-    { label: "Queue Total", value: String(queueEntries.length), icon: AlertTriangle, color: "text-rose-600", bg: "bg-rose-50", desc: `${queueEntries.length} patients in the queue.` },
+    { label: "Queue Total", value: String(visibleQueueEntries.length), icon: AlertTriangle, color: "text-rose-600", bg: "bg-rose-50", desc: `${visibleQueueEntries.length} assigned patients in the queue.` },
     { label: "Follow-ups", value: String(pendingFollowUps.length), icon: Calendar, color: "text-violet-600", bg: "bg-violet-50", desc: `${pendingFollowUps.length} follow-ups due.` },
     { label: "Completed Today", value: String(completedToday.length), icon: CheckCircle2, color: "text-emerald-600", bg: "bg-emerald-50", desc: `${completedToday.length} patients completed today.` },
   ];
@@ -106,7 +115,7 @@ export default function NurseDashboard() {
           </CardHeader>
           <CardContent className="p-0">
             <div className="md:hidden divide-y divide-slate-100">
-              {queueEntries.slice(0, 5).map((q) => (
+              {visibleQueueEntries.slice(0, 5).map((q) => (
                 <div key={q.id} className="p-4">
                   <div className="flex items-center justify-between gap-3 mb-2">
                     <div className="min-w-0">
@@ -126,7 +135,7 @@ export default function NurseDashboard() {
                   </div>
                 </div>
               ))}
-              {queueEntries.length === 0 && !queueLoading && (
+              {visibleQueueEntries.length === 0 && !queueLoading && (
                 <p className="text-sm text-slate-500 text-center py-8">No patients in queue</p>
               )}
             </div>
@@ -142,7 +151,7 @@ export default function NurseDashboard() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {queueEntries.slice(0, 5).map((q) => (
+                  {visibleQueueEntries.slice(0, 5).map((q) => (
                     <TableRow key={q.id}>
                       <TableCell className="font-medium">{getPatientName(q.patient)}</TableCell>
                       <TableCell className="text-sm text-slate-600">{q.station || "Unassigned"}</TableCell>
@@ -157,7 +166,7 @@ export default function NurseDashboard() {
                       </TableCell>
                     </TableRow>
                   ))}
-                  {queueEntries.length === 0 && !queueLoading && (
+                  {visibleQueueEntries.length === 0 && !queueLoading && (
                     <TableRow>
                       <TableCell colSpan={5} className="text-center text-slate-500">No patients in queue</TableCell>
                     </TableRow>

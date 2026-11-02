@@ -21,11 +21,11 @@ export function useDoctorTodayAppointments(staffId: string | null, clinicId: str
   });
 }
 
-export function useDoctorConsultationQueue(clinicId: string | null) {
+export function useDoctorConsultationQueue(staffId: string | null, clinicId: string | null) {
   return useQuery({
-    queryKey: [DOCTOR_DASHBOARD_KEY, 'queue', clinicId],
-    queryFn: () => doctorDashboardService.getConsultationQueue(clinicId!),
-    enabled: !!clinicId,
+    queryKey: [DOCTOR_DASHBOARD_KEY, 'queue', staffId, clinicId],
+    queryFn: () => doctorDashboardService.getConsultationQueue(staffId!, clinicId!),
+    enabled: !!staffId && !!clinicId,
     staleTime: 15_000,
     gcTime: 5 * 60_000,
     refetchInterval: 30_000,

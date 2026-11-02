@@ -10,7 +10,7 @@ export const FinalCTA = () => {
   const { openModal } = useModals();
 
   return (
-    <section className="py-24 px-6">
+    <section className="py-24 px-4">
       <div className="max-w-7xl mx-auto">
         <div className="bg-brand-navy rounded-[4rem] p-12 md:p-24 text-center relative overflow-hidden shadow-2xl">
           {/* Decorative elements */}

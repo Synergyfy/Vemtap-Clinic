@@ -18,6 +18,7 @@ export function useStaff(params: StaffQueryParams = {}) {
   return useQuery({
     queryKey: [STAFF_QUERY_KEY, params],
     queryFn: () => staffService.getAll(params),
+    enabled: !!params.clinicId,
     staleTime: 30_000,
     gcTime: 5 * 60_000,
   });
@@ -48,8 +49,9 @@ export function useCreateStaff() {
   
   return useMutation({
     mutationFn: (data: CreateStaffData) => staffService.create(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [STAFF_QUERY_KEY] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: [STAFF_QUERY_KEY] });
+      await queryClient.refetchQueries({ queryKey: [STAFF_QUERY_KEY], exact: false });
     },
   });
 }
@@ -59,8 +61,9 @@ export function useUpdateStaff() {
   
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: UpdateStaffData }) => staffService.update(id, data),
-    onSuccess: (updatedStaff) => {
-      queryClient.invalidateQueries({ queryKey: [STAFF_QUERY_KEY] });
+    onSuccess: async (updatedStaff) => {
+      await queryClient.invalidateQueries({ queryKey: [STAFF_QUERY_KEY] });
+      await queryClient.refetchQueries({ queryKey: [STAFF_QUERY_KEY], exact: false });
       queryClient.setQueryData([STAFF_QUERY_KEY, updatedStaff.id], updatedStaff);
     },
   });
@@ -71,8 +74,9 @@ export function useDeleteStaff() {
   
   return useMutation({
     mutationFn: (id: string) => staffService.delete(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [STAFF_QUERY_KEY] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: [STAFF_QUERY_KEY] });
+      await queryClient.refetchQueries({ queryKey: [STAFF_QUERY_KEY], exact: false });
     },
   });
 }

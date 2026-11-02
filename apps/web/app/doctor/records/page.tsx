@@ -11,7 +11,10 @@ import { useAuth } from "@/lib/auth-context";
 
 export default function DoctorRecords() {
   const { user } = useAuth();
-  const { data: records = [], isLoading } = useRecords({ staffId: user?.userId });
+  const { data, isLoading } = useRecords({ staffId: user?.userId });
+  const records = (Array.isArray(data)
+    ? data
+    : (data as { data?: any[] } | undefined)?.data ?? []) as any[];
 
   if (isLoading) {
     return (

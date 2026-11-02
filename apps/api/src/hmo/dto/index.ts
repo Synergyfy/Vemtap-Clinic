@@ -133,6 +133,10 @@ export class HMOQueryDto {
 // --- HMO Plans ---
 
 export class CreateHMOPlanDto {
+  @ApiProperty({ example: 'clinic-uuid' })
+  @IsUUID()
+  clinicId: string;
+
   @ApiProperty({ example: 'Basic Plan' })
   @IsString()
   @MaxLength(200)

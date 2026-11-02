@@ -1,40 +1,48 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-  User, Building2, MapPin, CreditCard, 
-  CheckCircle2, ArrowRight, ArrowLeft, 
-  ShieldCheck, Globe, Zap, Users, QrCode,
-  Eye, EyeOff, Loader2, AlertCircle
+import {
+  User,
+  CheckCircle2,
+  ShieldCheck,
+  Zap,
+  Eye,
+  EyeOff,
+  Loader2,
+  AlertCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
+import { getDashboardRoute } from "@/lib/dashboard-routes";
 
-const steps = ["Account", "Clinic"];
+const steps = ["Account"];
 
 export default function RegisterPage() {
   const [currentStep, setCurrentStep] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [formData, setFormData] = useState({
-    // Account
     firstName: "",
     lastName: "",
     email: "",
     password: "",
     confirmPassword: "",
-    // Clinic
-    clinicId: "",
   });
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { register, isAuthenticated } = useAuth();
+  const { register, isAuthenticated, user } = useAuth();
   const router = useRouter();
+
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      router.replace(getDashboardRoute(user));
+    }
+  }, [isAuthenticated, user, router]);
 
   const nextStep = () => setCurrentStep((prev) => Math.min(prev + 1, steps.length - 1));
   const prevStep = () => setCurrentStep((prev) => Math.max(prev - 1, 0));
@@ -50,23 +58,17 @@ export default function RegisterPage() {
       setError("Passwords do not match");
       return;
     }
-    if (!formData.clinicId) {
-      setError("Please select a clinic");
-      return;
-    }
-
     setError(null);
     setIsSubmitting(true);
 
     try {
-      await register({
+      const registeredUser = await register({
         firstName: formData.firstName,
         lastName: formData.lastName,
         email: formData.email,
         password: formData.password,
-        clinicId: formData.clinicId,
       });
-      router.push("/clinic/dashboard");
+      router.push(getDashboardRoute(registeredUser ?? user));
     } catch (err: any) {
       setError(err?.response?.data?.message ?? "Registration failed. Please try again.");
     } finally {
@@ -179,75 +181,24 @@ export default function RegisterPage() {
                 </div>
               </div>
             </div>
-            <Button 
-              variant="default" 
-              className="w-full py-5 text-lg font-bold rounded-2xl mt-4" 
-              onClick={nextStep} 
+            <Button
+              variant="default"
+              className="w-full py-5 text-lg font-bold rounded-2xl mt-4"
+              onClick={handleSubmit}
               disabled={!formData.firstName || !formData.lastName || !formData.email || !formData.password || formData.password !== formData.confirmPassword || isSubmitting}
             >
-              Continue to Clinic Selection
+              {isSubmitting ? (
+                <span className="flex items-center justify-center gap-2">
+                  <Loader2 size={20} className="animate-spin" />
+                  Creating Account...
+                </span>
+              ) : (
+                "Create Admin Account"
+              )}
             </Button>
             <p className="text-center text-sm text-slate-500">
               Already have an account? <Link href="/login" className="text-brand-blue font-bold">Login</Link>
             </p>
-          </motion.div>
-        );
-      case 1:
-        return (
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            className="space-y-6"
-          >
-            <div className="text-center mb-10">
-              <h2 className="text-3xl font-bold text-brand-navy mb-2">Select Your Clinic</h2>
-              <p className="text-slate-500 text-sm">Choose the clinic you belong to.</p>
-            </div>
-            
-            {error && (
-              <div className="mb-6 flex items-center gap-3 p-4 bg-red-50 border border-red-100 rounded-2xl text-red-700 text-sm" role="alert">
-                <AlertCircle size={18} className="flex-shrink-0" />
-                <p>{error}</p>
-              </div>
-            )}
-
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-slate-700">Clinic</label>
-                <select
-                  value={formData.clinicId}
-                  onChange={(e) => updateForm("clinicId", e.target.value)}
-                  className="w-full px-6 py-4 rounded-2xl bg-slate-50 border border-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-blue/50"
-                  required
-                  disabled={isSubmitting}
-                >
-                  <option value="">Select a clinic...</option>
-                  <option value="clinic-1">Vemtap Eye Clinic - Lagos</option>
-                  <option value="clinic-2">Vision Care Center - Abuja</option>
-                  <option value="clinic-3">Eye Specialist Hospital - Port Harcourt</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="flex gap-4 pt-4">
-              <Button variant="outline" className="flex-1 py-4 rounded-2xl" onClick={prevStep} disabled={isSubmitting}>Back</Button>
-              <Button 
-                variant="default" 
-                className="flex-1 py-4 rounded-2xl font-bold" 
-                onClick={handleSubmit}
-                disabled={!formData.clinicId || isSubmitting}
-              >
-                {isSubmitting ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <Loader2 size={20} className="animate-spin" />
-                    Creating Account...
-                  </span>
-                ) : (
-                  "Complete Registration"
-                )}
-              </Button>
-            </div>
           </motion.div>
         );
       default:
@@ -255,8 +206,7 @@ export default function RegisterPage() {
     }
   };
 
-  if (isAuthenticated) {
-    router.push("/clinic/dashboard");
+  if (isAuthenticated && user) {
     return null;
   }
 

@@ -6,7 +6,7 @@ import { Scan, FileSearch, Check, Database, Zap, Sparkles } from "lucide-react";
 
 export const OCRAutomation = () => {
   return (
-    <section className="py-24 relative overflow-hidden">
+    <section className="py-6 relative overflow-hidden">
       <div className="max-w-7xl mx-auto px-6">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
           <div className="relative">

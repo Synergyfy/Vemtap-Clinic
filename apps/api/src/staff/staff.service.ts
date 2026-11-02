@@ -1,7 +1,9 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Like } from 'typeorm';
-import { Staff } from '../entities/staff.entity';
+import * as bcrypt from 'bcryptjs';
+import { Staff, StaffRole } from '../entities/staff.entity';
+import { User, UserRole } from '../entities/user.entity';
 import { CreateStaffDto, UpdateStaffDto, StaffQueryDto } from './dto';
 
 @Injectable()
@@ -9,6 +11,8 @@ export class StaffService {
   constructor(
     @InjectRepository(Staff)
     private staffRepository: Repository<Staff>,
+    @InjectRepository(User)
+    private userRepository: Repository<User>,
   ) {}
 
   async create(dto: CreateStaffDto): Promise<Staff> {
@@ -16,11 +20,59 @@ export class StaffService {
     if (existing) {
       throw new ConflictException('Email already exists');
     }
+
     const staff = this.staffRepository.create(dto);
-    return this.staffRepository.save(staff);
+    const savedStaff = await this.staffRepository.save(staff);
+
+    const existingAuthUser = await this.userRepository.findOne({ where: { email: dto.email } });
+    if (existingAuthUser) {
+      existingAuthUser.firstName = dto.firstName;
+      existingAuthUser.lastName = dto.lastName;
+      existingAuthUser.role = this.mapStaffRoleToUserRole(dto.role);
+      existingAuthUser.clinicId = dto.clinicId;
+      existingAuthUser.isActive = true;
+      existingAuthUser.password = await bcrypt.hash(dto.password ?? 'password123', 10);
+      await this.userRepository.save(existingAuthUser);
+      return savedStaff;
+    }
+
+    const user = this.userRepository.create({
+      firstName: dto.firstName,
+      lastName: dto.lastName,
+      email: dto.email,
+      password: await bcrypt.hash(dto.password ?? 'password123', 10),
+      role: this.mapStaffRoleToUserRole(dto.role),
+      clinicId: dto.clinicId,
+      isActive: true,
+    });
+
+    await this.userRepository.save(user);
+    return savedStaff;
   }
 
-  async findAll(query: StaffQueryDto): Promise<Staff[]> {
+  private mapStaffRoleToUserRole(role: StaffRole): UserRole {
+    switch (role) {
+      case StaffRole.ADMIN:
+        return UserRole.ADMIN;
+      case StaffRole.DOCTOR:
+        return UserRole.DOCTOR;
+      case StaffRole.NURSE:
+        return UserRole.NURSE;
+      case StaffRole.RECEPTIONIST:
+        return UserRole.RECEPTIONIST;
+      case StaffRole.PHARMACIST:
+        return UserRole.PHARMACIST;
+      case StaffRole.OPTOMETRIST:
+        return UserRole.OPTOMETRIST;
+      case StaffRole.CASHIER:
+        return UserRole.CASHIER;
+      case StaffRole.LAB_TECHNICIAN:
+      default:
+        return UserRole.RECEPTIONIST;
+    }
+  }
+
+  async findAll(query: StaffQueryDto): Promise<{ data: Staff[]; total: number; page: number; limit: number; totalPages: number }> {
     const where: any = {};
     if (query.clinicId) where.clinicId = query.clinicId;
     if (query.branchId) where.branchId = query.branchId;
@@ -31,7 +83,26 @@ export class StaffService {
       where.firstName = Like(`%${query.search}%`);
     }
 
-    return this.staffRepository.find({ where, relations: ['clinic', 'branch'], order: { createdAt: 'DESC' } });
+    const sortBy = query.sortBy || 'createdAt';
+    const sortOrder = query.sortOrder || 'DESC';
+    const page = Math.max(1, Number(query.page ?? 1));
+    const limit = Math.max(1, Number(query.limit ?? 10));
+
+    const [data, total] = await this.staffRepository.findAndCount({
+      where,
+      relations: ['clinic', 'branch'],
+      order: { [sortBy]: sortOrder },
+      skip: (page - 1) * limit,
+      take: limit,
+    });
+
+    return {
+      data,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
   async findOne(id: string): Promise<Staff> {

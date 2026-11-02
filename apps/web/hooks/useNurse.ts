@@ -10,10 +10,15 @@ import {
 // ── Queue ──
 export function useNurseQueue() {
   const { user } = useAuth();
+  const staffId = user?.userId || null;
+
   return useQuery({
-    queryKey: ['nurse-queue', user?.clinicId],
-    queryFn: () => nurseQueueService.getEntries(user!.clinicId!),
-    enabled: !!user?.clinicId,
+    queryKey: ['nurse-queue', user?.clinicId, staffId],
+    queryFn: async () => {
+      if (!user?.clinicId || !staffId) return [];
+      return nurseQueueService.getEntries(staffId, user.clinicId);
+    },
+    enabled: !!user?.clinicId && !!staffId,
     refetchInterval: 15000,
   });
 }
@@ -58,10 +63,23 @@ export function usePatientNotes(patientId: string | null) {
 
 export function useClinicNotes() {
   const { user } = useAuth();
+  const staffId = user?.userId || null;
+
   return useQuery({
-    queryKey: ['clinic-notes', user?.clinicId],
-    queryFn: () => nurseNotesService.getByClinic(user!.clinicId!),
-    enabled: !!user?.clinicId,
+    queryKey: ['clinic-notes', user?.clinicId, staffId],
+    queryFn: async () => {
+      if (!user?.clinicId || !staffId) return [];
+      return nurseNotesService.getByClinic(user.clinicId, staffId);
+    },
+    enabled: !!user?.clinicId && !!staffId,
+  });
+}
+
+export function useObservationNoteDetail(id: string | null) {
+  return useQuery({
+    queryKey: ['observation-note', id],
+    queryFn: () => nurseNotesService.getById(id!),
+    enabled: !!id,
   });
 }
 
@@ -72,6 +90,19 @@ export function useCreateNote() {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['clinic-notes'] });
       queryClient.invalidateQueries({ queryKey: ['patient-notes', variables.patientId] });
+      queryClient.invalidateQueries({ queryKey: ['observation-notes'] });
+    },
+  });
+}
+
+export function useDeleteNote() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => nurseNotesService.remove(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['clinic-notes'] });
+      queryClient.invalidateQueries({ queryKey: ['patient-notes'] });
+      queryClient.invalidateQueries({ queryKey: ['observation-notes'] });
     },
   });
 }

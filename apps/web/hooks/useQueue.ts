@@ -22,9 +22,13 @@ import {
 const QUEUE_QUERY_KEY = 'queue';
 
 export function useQueue(params: QueueQueryParams = {}) {
+  const hasClinic = !!params.clinicId;
+  const hasValidBranch = params.branchId === undefined || params.branchId.trim().length > 0;
+
   return useQuery({
     queryKey: [QUEUE_QUERY_KEY, params],
     queryFn: () => queueService.getAll(params),
+    enabled: hasClinic && hasValidBranch,
     staleTime: 10_000,
     gcTime: 5 * 60_000,
     refetchInterval: 15_000,

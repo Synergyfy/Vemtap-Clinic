@@ -9,22 +9,63 @@ import { PageHeader } from "@/app/clinic/_components/page-header";
 import { useAuth } from "@/lib/auth-context";
 import { useSettingsMap, useBulkSetSettings } from "@/hooks/useSettings";
 import { cn } from "@/lib/utils";
+import { Modal } from "@/components/ui/modal";
+import { toast } from "sonner";
 import {
   Settings2, Building2, Palette, Bell, ShieldCheck, CreditCard,
-  Globe, Save, Clock, ShieldAlert, Database, Eye, Key, Smartphone, Loader2
+  Globe, Save, Clock, ShieldAlert, Database, Eye, Key, Smartphone, Loader2,
+  Coins, ArrowRightLeft, Plus, Trash2, Edit3, DollarSign, Check
 } from "lucide-react";
+import {
+  useCurrencies,
+  useCurrencyStats,
+  useBaseCurrency,
+  useCreateCurrency,
+  useUpdateCurrency,
+  useDeleteCurrency,
+  useConvertAmount,
+  type CurrencyConfig,
+  type CurrencyCode,
+} from "@/hooks/useCurrency";
 
-type SettingsTab = "profile" | "branches" | "billing" | "branding" | "notifications" | "security";
+type SettingsTab = "profile" | "branches" | "billing" | "currencies" | "branding" | "notifications" | "security";
 
 export default function SettingsPage() {
   const { user } = useAuth();
   const { data: settings = {}, isLoading } = useSettingsMap();
   const bulkSetMut = useBulkSetSettings();
 
+  // Currency hooks & state
+  const { data: currencies = [], isLoading: currenciesLoading } = useCurrencies();
+  const { data: currencyStats } = useCurrencyStats();
+  const { data: baseCurrency } = useBaseCurrency();
+  const createCurrencyMut = useCreateCurrency();
+  const updateCurrencyMut = useUpdateCurrency();
+  const deleteCurrencyMut = useDeleteCurrency();
+  const convertAmountMut = useConvertAmount();
+
   const [activeTab, setActiveTab] = useState<SettingsTab>("profile");
   const [backupModal, setBackupModal] = useState(false);
   const [saved, setSaved] = useState(false);
   const [customizeModal, setCustomizeModal] = useState<string | null>(null);
+
+  // Currency Modals & Forms
+  const [addCurrencyOpen, setAddCurrencyOpen] = useState(false);
+  const [editingCurrency, setEditingCurrency] = useState<CurrencyConfig | null>(null);
+
+  const [currCode, setCurrCode] = useState<CurrencyCode>("USD");
+  const [currSymbol, setCurrSymbol] = useState("$");
+  const [currName, setCurrName] = useState("US Dollar");
+  const [currLocale, setCurrLocale] = useState("en-US");
+  const [currRate, setCurrRate] = useState<number>(0.00065);
+  const [currIsBase, setCurrIsBase] = useState(false);
+  const [currIsActive, setCurrIsActive] = useState(true);
+
+  // FX Converter State
+  const [convertAmountInput, setConvertAmountInput] = useState<number>(1000);
+  const [convertFromCode, setConvertFromCode] = useState<string>("USD");
+  const [convertToCode, setConvertToCode] = useState<string>("NGN");
+  const [convertedResult, setConvertedResult] = useState<number | null>(null);
 
   // Form state
   type FormState = {
@@ -84,6 +125,7 @@ export default function SettingsPage() {
     { id: "profile", label: "Clinic Profile", icon: Globe },
     { id: "branches", label: "Branch Settings", icon: Building2 },
     { id: "billing", label: "Billing & Taxes", icon: CreditCard },
+    { id: "currencies", label: "Currencies & FX", icon: Coins },
     { id: "branding", label: "Branding", icon: Palette },
     { id: "notifications", label: "Notifications", icon: Bell },
     { id: "security", label: "Security & Audit", icon: ShieldCheck },
@@ -383,6 +425,285 @@ export default function SettingsPage() {
           </div>
         )}
 
+        {/* ─── CURRENCIES & EXCHANGE RATES TAB ─── */}
+        {activeTab === "currencies" && (
+          <div className="space-y-6">
+            {/* KPI Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Card className="border-none shadow-sm rounded-3xl p-6 bg-white">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Base Currency</span>
+                  <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600">
+                    <DollarSign size={16} />
+                  </div>
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-2xl font-black text-slate-900">
+                    {currencyStats?.base || baseCurrency?.code || "NGN"}
+                  </span>
+                  <Badge className="bg-emerald-600 text-white font-bold text-[10px]">
+                    {baseCurrency?.symbol || "₦"} Primary
+                  </Badge>
+                </div>
+                <p className="text-xs text-slate-400 mt-1">Default ledger accounting currency</p>
+              </Card>
+
+              <Card className="border-none shadow-sm rounded-3xl p-6 bg-white">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Configured Currencies</span>
+                  <div className="p-2 rounded-xl bg-blue-50 text-blue-600">
+                    <Coins size={16} />
+                  </div>
+                </div>
+                <div className="text-2xl font-black text-slate-900">
+                  {currencyStats?.total ?? currencies.length}
+                </div>
+                <p className="text-xs text-slate-400 mt-1">Available across billing and POS</p>
+              </Card>
+
+              <Card className="border-none shadow-sm rounded-3xl p-6 bg-white">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Active FX Channels</span>
+                  <div className="p-2 rounded-xl bg-purple-50 text-purple-600">
+                    <ArrowRightLeft size={16} />
+                  </div>
+                </div>
+                <div className="text-2xl font-black text-purple-700">
+                  {currencyStats?.active ?? currencies.filter(c => c.isActive).length}
+                </div>
+                <p className="text-xs text-slate-400 mt-1">Enabled for multi-currency conversion</p>
+              </Card>
+            </div>
+
+            {/* Live FX Converter Widget */}
+            <Card className="border-none shadow-sm rounded-3xl p-6 bg-slate-900 text-white">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-4 mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-xl bg-sky-500/10 text-sky-400">
+                    <ArrowRightLeft size={18} />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-white">Live Multi-Currency FX Converter</h3>
+                    <p className="text-xs text-slate-400">Instant real-time currency conversion based on clinic exchange rates.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 items-end">
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Amount</label>
+                  <input
+                    type="number"
+                    value={convertAmountInput}
+                    onChange={(e) => setConvertAmountInput(Number(e.target.value))}
+                    min={0}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">From Currency</label>
+                  <select
+                    value={convertFromCode}
+                    onChange={(e) => setConvertFromCode(e.target.value)}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none"
+                  >
+                    {currencies.map((c) => (
+                      <option key={c.id} value={c.code}>
+                        {c.code} ({c.symbol} - {c.name})
+                      </option>
+                    ))}
+                    {!currencies.some(c => c.code === "USD") && <option value="USD">USD ($)</option>}
+                    {!currencies.some(c => c.code === "NGN") && <option value="NGN">NGN (₦)</option>}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">To Currency</label>
+                  <select
+                    value={convertToCode}
+                    onChange={(e) => setConvertToCode(e.target.value)}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none"
+                  >
+                    {currencies.map((c) => (
+                      <option key={c.id} value={c.code}>
+                        {c.code} ({c.symbol} - {c.name})
+                      </option>
+                    ))}
+                    {!currencies.some(c => c.code === "NGN") && <option value="NGN">NGN (₦)</option>}
+                    {!currencies.some(c => c.code === "GBP") && <option value="GBP">GBP (£)</option>}
+                  </select>
+                </div>
+
+                <div>
+                  <Button
+                    onClick={async () => {
+                      try {
+                        const res = await convertAmountMut.mutateAsync({
+                          amount: convertAmountInput,
+                          from: convertFromCode,
+                          to: convertToCode,
+                        });
+                        setConvertedResult(res);
+                        toast.success("Amount converted successfully");
+                      } catch (err: any) {
+                        toast.error(err?.response?.data?.message || err?.message || "Conversion failed");
+                      }
+                    }}
+                    disabled={convertAmountMut.isPending}
+                    className="w-full bg-sky-500 hover:bg-sky-600 text-white font-bold rounded-xl h-10 text-xs shadow-sm"
+                  >
+                    {convertAmountMut.isPending ? "Converting..." : "Convert Amount"}
+                  </Button>
+                </div>
+              </div>
+
+              {convertedResult !== null && (
+                <div className="mt-4 p-3 bg-slate-800/80 rounded-xl border border-slate-700 flex items-center justify-between">
+                  <span className="text-xs text-slate-400">Converted Value:</span>
+                  <span className="text-lg font-black text-emerald-400 font-mono">
+                    {convertedResult.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })} {convertToCode}
+                  </span>
+                </div>
+              )}
+            </Card>
+
+            {/* Currencies Directory Table */}
+            <Card className="border-none shadow-sm rounded-3xl p-6 bg-white overflow-hidden">
+              <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-4">
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">Clinic Currency Configurations</h3>
+                  <p className="text-xs text-slate-500">Configure base and secondary currencies with conversion rates to base.</p>
+                </div>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    setCurrCode("USD");
+                    setCurrSymbol("$");
+                    setCurrName("US Dollar");
+                    setCurrLocale("en-US");
+                    setCurrRate(0.00065);
+                    setCurrIsBase(false);
+                    setCurrIsActive(true);
+                    setAddCurrencyOpen(true);
+                  }}
+                  className="bg-brand-navy hover:bg-brand-navy/90 text-white rounded-xl text-xs"
+                >
+                  <Plus size={14} className="mr-1.5" />
+                  Add Currency
+                </Button>
+              </div>
+
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="border-slate-100">
+                      <TableHead>Code</TableHead>
+                      <TableHead>Currency Name</TableHead>
+                      <TableHead>Symbol</TableHead>
+                      <TableHead>Locale</TableHead>
+                      <TableHead>Rate to Base</TableHead>
+                      <TableHead>Base</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {currenciesLoading ? (
+                      <TableRow>
+                        <TableCell colSpan={8} className="text-center py-8 text-slate-400">Loading currencies...</TableCell>
+                      </TableRow>
+                    ) : currencies.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={8} className="text-center py-8 text-slate-400">
+                          No currency configurations configured. Click "Add Currency" to set up your primary ledger currency.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      currencies.map((curr) => (
+                        <TableRow key={curr.id} className="border-slate-50 hover:bg-slate-50/70">
+                          <TableCell className="font-mono font-bold text-slate-900">{curr.code}</TableCell>
+                          <TableCell className="font-medium text-slate-800">{curr.name}</TableCell>
+                          <TableCell className="font-bold text-slate-900 font-mono text-base">{curr.symbol}</TableCell>
+                          <TableCell className="text-slate-500 font-mono text-xs">{curr.locale}</TableCell>
+                          <TableCell className="font-mono text-xs font-semibold text-slate-700">
+                            {curr.isBase ? "1.000000 (Base)" : curr.exchangeRateToBase}
+                          </TableCell>
+                          <TableCell>
+                            {curr.isBase ? (
+                              <Badge className="bg-emerald-600 text-white text-[10px] font-bold">Base</Badge>
+                            ) : (
+                              <button
+                                onClick={async () => {
+                                  try {
+                                    await updateCurrencyMut.mutateAsync({
+                                      id: curr.id,
+                                      dto: { isBase: true },
+                                    });
+                                    toast.success(`${curr.code} set as base currency`);
+                                  } catch (err: any) {
+                                    toast.error(err?.response?.data?.message || "Failed to set base currency");
+                                  }
+                                }}
+                                className="text-[11px] text-slate-400 hover:text-brand-navy hover:underline font-medium"
+                              >
+                                Set as Base
+                              </button>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <span className={cn(
+                              "px-2 py-0.5 rounded text-[10px] font-bold uppercase",
+                              curr.isActive ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-500"
+                            )}>
+                              {curr.isActive ? "Active" : "Inactive"}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-right whitespace-nowrap">
+                            <button
+                              onClick={() => {
+                                setEditingCurrency(curr);
+                                setCurrSymbol(curr.symbol);
+                                setCurrName(curr.name);
+                                setCurrLocale(curr.locale);
+                                setCurrRate(curr.exchangeRateToBase);
+                                setCurrIsBase(curr.isBase);
+                                setCurrIsActive(curr.isActive);
+                              }}
+                              className="p-1.5 text-slate-400 hover:text-brand-navy hover:bg-slate-100 rounded-lg mr-1 transition-all"
+                              title="Edit Currency"
+                            >
+                              <Edit3 size={15} />
+                            </button>
+                            {!curr.isBase && (
+                              <button
+                                onClick={async () => {
+                                  if (confirm(`Delete currency configuration for ${curr.code}?`)) {
+                                    try {
+                                      await deleteCurrencyMut.mutateAsync(curr.id);
+                                      toast.success(`Currency ${curr.code} removed`);
+                                    } catch (err: any) {
+                                      toast.error(err?.response?.data?.message || "Failed to delete currency");
+                                    }
+                                  }
+                                }}
+                                className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all"
+                                title="Delete Currency"
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </Card>
+          </div>
+        )}
+
         {(activeTab === "branches" || activeTab === "notifications") && (
           <Card className="p-20 text-center border-dashed bg-slate-50/30">
             <div className="mx-auto w-16 h-16 bg-white rounded-full shadow-sm flex items-center justify-center mb-6">
@@ -397,6 +718,253 @@ export default function SettingsPage() {
           </Card>
         )}
       </div>
+
+      {/* ─── ADD CURRENCY MODAL ─── */}
+      <Modal isOpen={addCurrencyOpen} onClose={() => setAddCurrencyOpen(false)} title="Configure New Currency">
+        <form
+          onSubmit={async (e) => {
+            e.preventDefault();
+            try {
+              await createCurrencyMut.mutateAsync({
+                code: currCode,
+                symbol: currSymbol.trim(),
+                name: currName.trim(),
+                locale: currLocale.trim(),
+                exchangeRateToBase: Number(currRate),
+                isBase: currIsBase,
+                isActive: currIsActive,
+              });
+              toast.success(`Currency ${currCode} added successfully`);
+              setAddCurrencyOpen(false);
+            } catch (err: any) {
+              toast.error(err?.response?.data?.message || err?.message || "Failed to create currency");
+            }
+          }}
+          className="space-y-4 text-xs"
+        >
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="font-bold text-slate-700 block mb-1">Currency Code *</label>
+              <select
+                value={currCode}
+                onChange={(e) => {
+                  const code = e.target.value as CurrencyCode;
+                  setCurrCode(code);
+                  if (code === "NGN") {
+                    setCurrSymbol("₦");
+                    setCurrName("Nigerian Naira");
+                    setCurrLocale("en-NG");
+                    setCurrRate(1);
+                  } else if (code === "USD") {
+                    setCurrSymbol("$");
+                    setCurrName("US Dollar");
+                    setCurrLocale("en-US");
+                    setCurrRate(0.00065);
+                  } else if (code === "EUR") {
+                    setCurrSymbol("€");
+                    setCurrName("Euro");
+                    setCurrLocale("en-EU");
+                    setCurrRate(0.00060);
+                  } else if (code === "GBP") {
+                    setCurrSymbol("£");
+                    setCurrName("British Pound");
+                    setCurrLocale("en-GB");
+                    setCurrRate(0.00052);
+                  }
+                }}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-800 font-bold focus:outline-none"
+              >
+                <option value="NGN">NGN - Nigerian Naira</option>
+                <option value="USD">USD - US Dollar</option>
+                <option value="EUR">EUR - Euro</option>
+                <option value="GBP">GBP - British Pound</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="font-bold text-slate-700 block mb-1">Currency Symbol *</label>
+              <input
+                type="text"
+                value={currSymbol}
+                onChange={(e) => setCurrSymbol(e.target.value)}
+                required
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-800 font-bold focus:outline-none"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="font-bold text-slate-700 block mb-1">Currency Name *</label>
+              <input
+                type="text"
+                value={currName}
+                onChange={(e) => setCurrName(e.target.value)}
+                required
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-800 focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="font-bold text-slate-700 block mb-1">Locale String *</label>
+              <input
+                type="text"
+                placeholder="e.g. en-NG, en-US"
+                value={currLocale}
+                onChange={(e) => setCurrLocale(e.target.value)}
+                required
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-800 focus:outline-none"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="font-bold text-slate-700 block mb-1">Exchange Rate to Base *</label>
+            <input
+              type="number"
+              step="any"
+              value={currRate}
+              onChange={(e) => setCurrRate(Number(e.target.value))}
+              required
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-800 font-mono focus:outline-none"
+            />
+            <p className="text-[11px] text-slate-400 mt-1">Multiplied against base currency amount during conversion.</p>
+          </div>
+
+          <div className="flex items-center gap-6 pt-2">
+            <label className="flex items-center gap-2 cursor-pointer font-bold text-slate-700">
+              <input
+                type="checkbox"
+                checked={currIsBase}
+                onChange={(e) => setCurrIsBase(e.target.checked)}
+                className="rounded text-brand-navy"
+              />
+              Set as Base Currency
+            </label>
+
+            <label className="flex items-center gap-2 cursor-pointer font-bold text-slate-700">
+              <input
+                type="checkbox"
+                checked={currIsActive}
+                onChange={(e) => setCurrIsActive(e.target.checked)}
+                className="rounded text-brand-navy"
+              />
+              Active
+            </label>
+          </div>
+
+          <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+            <Button type="button" variant="outline" size="sm" onClick={() => setAddCurrencyOpen(false)} className="rounded-xl">
+              Cancel
+            </Button>
+            <Button type="submit" size="sm" disabled={createCurrencyMut.isPending} className="bg-brand-navy text-white rounded-xl">
+              {createCurrencyMut.isPending ? "Creating..." : "Create Currency"}
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* ─── EDIT CURRENCY MODAL ─── */}
+      <Modal isOpen={!!editingCurrency} onClose={() => setEditingCurrency(null)} title={`Edit ${editingCurrency?.code} Configuration`}>
+        {editingCurrency && (
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              try {
+                await updateCurrencyMut.mutateAsync({
+                  id: editingCurrency.id,
+                  dto: {
+                    symbol: currSymbol.trim(),
+                    name: currName.trim(),
+                    locale: currLocale.trim(),
+                    exchangeRateToBase: Number(currRate),
+                    isBase: currIsBase,
+                    isActive: currIsActive,
+                  },
+                });
+                toast.success(`Currency ${editingCurrency.code} updated`);
+                setEditingCurrency(null);
+              } catch (err: any) {
+                toast.error(err?.response?.data?.message || err?.message || "Failed to update currency");
+              }
+            }}
+            className="space-y-4 text-xs"
+          >
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Currency Symbol</label>
+                <input
+                  type="text"
+                  value={currSymbol}
+                  onChange={(e) => setCurrSymbol(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-800 font-bold focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Locale</label>
+                <input
+                  type="text"
+                  value={currLocale}
+                  onChange={(e) => setCurrLocale(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-800 focus:outline-none"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="font-bold text-slate-700 block mb-1">Currency Name</label>
+              <input
+                type="text"
+                value={currName}
+                onChange={(e) => setCurrName(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-800 focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="font-bold text-slate-700 block mb-1">Exchange Rate to Base</label>
+              <input
+                type="number"
+                step="any"
+                value={currRate}
+                onChange={(e) => setCurrRate(Number(e.target.value))}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-800 font-mono focus:outline-none"
+              />
+            </div>
+
+            <div className="flex items-center gap-6 pt-2">
+              <label className="flex items-center gap-2 cursor-pointer font-bold text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={currIsBase}
+                  onChange={(e) => setCurrIsBase(e.target.checked)}
+                  className="rounded text-brand-navy"
+                />
+                Set as Base Currency
+              </label>
+
+              <label className="flex items-center gap-2 cursor-pointer font-bold text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={currIsActive}
+                  onChange={(e) => setCurrIsActive(e.target.checked)}
+                  className="rounded text-brand-navy"
+                />
+                Active
+              </label>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+              <Button type="button" variant="outline" size="sm" onClick={() => setEditingCurrency(null)} className="rounded-xl">
+                Cancel
+              </Button>
+              <Button type="submit" size="sm" disabled={updateCurrencyMut.isPending} className="bg-brand-navy text-white rounded-xl">
+                {updateCurrencyMut.isPending ? "Saving..." : "Save Changes"}
+              </Button>
+            </div>
+          </form>
+        )}
+      </Modal>
     </div>
   );
 }

@@ -13,7 +13,15 @@ import { Badge } from "@/components/ui/badge";
 import { Modal } from "@/components/ui/modal";
 import { usePatient } from "@/hooks/usePatients";
 import { usePatientRecords } from "@/hooks/useRecords";
+import {
+  usePatientObservationNotes,
+  useCreateObservationNote,
+  useDeleteObservationNote,
+  type ObservationCategory,
+} from "@/hooks/useObservationNotes";
+import { useAuth } from "@/lib/auth-context";
 import { cn } from "@/lib/utils";
+import { Plus, Trash2, StickyNote } from "lucide-react";
 
 function calculateAge(dob: string): number {
   if (!dob) return 0;
@@ -28,15 +36,22 @@ function calculateAge(dob: string): number {
 export default function PatientRecordDetail() {
   const { id } = useParams();
   const router = useRouter();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("all");
 
   const { data: patient } = usePatient(id as string);
   const { data: records = [], isLoading } = usePatientRecords(id as string);
+  const { data: observationNotes = [] } = usePatientObservationNotes(id as string);
+  const createObservationNoteMut = useCreateObservationNote();
+  const deleteObservationNoteMut = useDeleteObservationNote();
 
   const [printOpen, setPrintOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [policyOpen, setPolicyOpen] = useState(false);
   const [encounterOpen, setEncounterOpen] = useState(false);
+  const [newNoteOpen, setNewNoteOpen] = useState(false);
+  const [newNoteText, setNewNoteText] = useState("");
+  const [newNoteCategory, setNewNoteCategory] = useState<ObservationCategory>("general");
   const [selectedRecord, setSelectedRecord] = useState<typeof records[0] | null>(null);
   const [toast, setToast] = useState("");
 
@@ -189,6 +204,7 @@ export default function PatientRecordDetail() {
               { id: "consult", label: "Consults" },
               { id: "test", label: "Tests" },
               { id: "pharm", label: "Pharmacy" },
+              { id: "notes", label: `Observation Notes (${observationNotes.length})` },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -205,56 +221,143 @@ export default function PatientRecordDetail() {
             ))}
           </div>
 
-          <div className="space-y-4">
-            {filteredEncounters.map((e) => (
-              <Card key={e.id} className="rounded-[2rem] border-slate-200 hover:border-emerald-200 transition-all cursor-pointer group shadow-lg shadow-slate-100/50 overflow-hidden" onClick={() => openEncounterDetail(e)}>
-                <div className="flex items-stretch">
-                  <div className={cn(
-                    "w-2 transition-all",
-                    e.status === "Open" ? "bg-emerald-500" : "bg-slate-200"
-                  )} />
-                  <CardContent className="p-0 flex-1">
-                    <div className="p-6 flex items-start justify-between">
-                      <div className="flex items-start gap-5">
-                        <div className="w-14 h-14 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-emerald-50 group-hover:text-emerald-600 transition-colors">
-                          <FileText size={24} />
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-3">
-                            <h3 className="text-lg font-black text-slate-900">{e.type}</h3>
-                            <Badge variant="outline" className="text-[10px] font-mono text-slate-400">{e.id}</Badge>
-                          </div>
-                          <p className="text-xs text-slate-500 font-bold mt-1 flex items-center gap-2">
-                            <Calendar size={12} className="text-slate-300" />
-                            {e.date} • {e.provider}
-                          </p>
-                        </div>
-                      </div>
-                      <button className="p-3 rounded-xl bg-slate-50 text-slate-400 group-hover:bg-emerald-600 group-hover:text-white transition-all shadow-sm">
-                        <ChevronRight size={20} />
-                      </button>
-                    </div>
-
-                    <div className="px-6 pb-6 pt-2 border-t border-slate-50">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <div className="space-y-1">
-                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Diagnosis / Findings</p>
-                          <p className="text-sm font-bold text-slate-800">{e.diagnosis}</p>
-                        </div>
-                        <div className="space-y-1">
-                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Management Plan</p>
-                          <p className="text-sm text-slate-500 leading-relaxed font-medium">{e.plan}</p>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
+          {activeTab === "notes" ? (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+                <div>
+                  <h4 className="text-sm font-bold text-slate-900">Clinical Observation Notes</h4>
+                  <p className="text-xs text-slate-500">Continuous patient observations, vitals alerts, and follow-up notes.</p>
                 </div>
-              </Card>
-            ))}
-            {filteredEncounters.length === 0 && (
-              <p className="text-center text-sm text-slate-500 py-6">No records found for this filter.</p>
-            )}
-          </div>
+                <button
+                  onClick={() => {
+                    setNewNoteText("");
+                    setNewNoteCategory("general");
+                    setNewNoteOpen(true);
+                  }}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-all shadow-sm"
+                >
+                  <Plus size={14} />
+                  Add Observation Note
+                </button>
+              </div>
+
+              {observationNotes.length === 0 ? (
+                <div className="text-center py-16 bg-white rounded-2xl border border-dashed border-slate-200">
+                  <StickyNote size={36} className="mx-auto text-slate-300 mb-2" />
+                  <p className="text-sm font-bold text-slate-700">No observation notes recorded</p>
+                  <p className="text-xs text-slate-400 mt-1">Add nursing, vital, or clinical observation notes for this patient.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {observationNotes.map((note) => {
+                    const catColors: Record<string, { bg: string; text: string }> = {
+                      vitals: { bg: "bg-emerald-50 border-emerald-200", text: "text-emerald-700" },
+                      treatment: { bg: "bg-sky-50 border-sky-200", text: "text-sky-700" },
+                      allergy: { bg: "bg-rose-50 border-rose-200", text: "text-rose-700" },
+                      adverse_reaction: { bg: "bg-amber-50 border-amber-200", text: "text-amber-700" },
+                      follow_up: { bg: "bg-purple-50 border-purple-200", text: "text-purple-700" },
+                      general: { bg: "bg-slate-50 border-slate-200", text: "text-slate-700" },
+                      other: { bg: "bg-slate-50 border-slate-200", text: "text-slate-700" },
+                    };
+                    const color = catColors[note.category] || catColors.general;
+
+                    return (
+                      <Card key={note.id} className="rounded-2xl border-slate-200 bg-white shadow-sm overflow-hidden p-5">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="space-y-1.5 flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className={cn("px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase border", color.bg, color.text)}>
+                                {note.category.replace(/_/g, " ")}
+                              </span>
+                              <span className="text-[11px] text-slate-400 font-mono">
+                                {new Date(note.createdAt).toLocaleString()}
+                              </span>
+                            </div>
+                            <p className="text-sm text-slate-800 leading-relaxed font-medium whitespace-pre-wrap">
+                              {note.note}
+                            </p>
+                            {note.staff && (
+                              <p className="text-[11px] text-slate-400">
+                                Recorded by: <span className="font-semibold text-slate-600">{note.staff.firstName} {note.staff.lastName}</span>
+                              </p>
+                            )}
+                          </div>
+
+                          <button
+                            onClick={async () => {
+                              if (confirm("Delete this observation note?")) {
+                                try {
+                                  await deleteObservationNoteMut.mutateAsync(note.id);
+                                  showToast("Observation note deleted successfully");
+                                } catch {
+                                  showToast("Failed to delete observation note");
+                                }
+                              }
+                            }}
+                            className="p-2 text-slate-300 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all"
+                            title="Delete note"
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
+                      </Card>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {filteredEncounters.map((e) => (
+                <Card key={e.id} className="rounded-[2rem] border-slate-200 hover:border-emerald-200 transition-all cursor-pointer group shadow-lg shadow-slate-100/50 overflow-hidden" onClick={() => openEncounterDetail(e)}>
+                  <div className="flex items-stretch">
+                    <div className={cn(
+                      "w-2 transition-all",
+                      e.status === "Open" ? "bg-emerald-500" : "bg-slate-200"
+                    )} />
+                    <CardContent className="p-0 flex-1">
+                      <div className="p-6 flex items-start justify-between">
+                        <div className="flex items-start gap-5">
+                          <div className="w-14 h-14 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-emerald-50 group-hover:text-emerald-600 transition-colors">
+                            <FileText size={24} />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-3">
+                              <h3 className="text-lg font-black text-slate-900">{e.type}</h3>
+                              <Badge variant="outline" className="text-[10px] font-mono text-slate-400">{e.id}</Badge>
+                            </div>
+                            <p className="text-xs text-slate-500 font-bold mt-1 flex items-center gap-2">
+                              <Calendar size={12} className="text-slate-300" />
+                              {e.date} • {e.provider}
+                            </p>
+                          </div>
+                        </div>
+                        <button className="p-3 rounded-xl bg-slate-50 text-slate-400 group-hover:bg-emerald-600 group-hover:text-white transition-all shadow-sm">
+                          <ChevronRight size={20} />
+                        </button>
+                      </div>
+
+                      <div className="px-6 pb-6 pt-2 border-t border-slate-50">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                          <div className="space-y-1">
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Diagnosis / Findings</p>
+                            <p className="text-sm font-bold text-slate-800">{e.diagnosis}</p>
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Management Plan</p>
+                            <p className="text-sm text-slate-500 leading-relaxed font-medium">{e.plan}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </div>
+                </Card>
+              ))}
+              {filteredEncounters.length === 0 && (
+                <p className="text-center text-sm text-slate-500 py-6">No records found for this filter.</p>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -379,6 +482,76 @@ export default function PatientRecordDetail() {
             </div>
           </div>
         )}
+      </Modal>
+
+      {/* New Observation Note Modal */}
+      <Modal isOpen={newNoteOpen} onClose={() => setNewNoteOpen(false)} title="Record Observation Note">
+        <form
+          onSubmit={async (e) => {
+            e.preventDefault();
+            if (!newNoteText.trim()) return;
+            try {
+              await createObservationNoteMut.mutateAsync({
+                patientId: id as string,
+                note: newNoteText.trim(),
+                category: newNoteCategory,
+                clinicId: user?.clinicId || "",
+              });
+              showToast("Observation note recorded successfully");
+              setNewNoteOpen(false);
+              setNewNoteText("");
+            } catch (err: any) {
+              showToast(err?.message || "Failed to record observation note");
+            }
+          }}
+          className="space-y-4"
+        >
+          <div>
+            <label className="text-xs font-bold text-slate-700 block mb-1">Observation Category *</label>
+            <select
+              value={newNoteCategory}
+              onChange={(e) => setNewNoteCategory(e.target.value as ObservationCategory)}
+              className="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-800 focus:outline-none"
+            >
+              <option value="general">General Observation</option>
+              <option value="vitals">Vitals & Monitoring</option>
+              <option value="treatment">Treatment / Procedure</option>
+              <option value="follow_up">Follow-Up Note</option>
+              <option value="allergy">Allergy Alert</option>
+              <option value="adverse_reaction">Adverse Reaction</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="text-xs font-bold text-slate-700 block mb-1">Clinical Observation *</label>
+            <textarea
+              rows={4}
+              placeholder="Record detailed patient symptoms, reaction, vitals, or procedural notes..."
+              value={newNoteText}
+              onChange={(e) => setNewNoteText(e.target.value)}
+              required
+              className="w-full p-3 text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+            />
+          </div>
+
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+            <button
+              type="button"
+              onClick={() => setNewNoteOpen(false)}
+              className="px-4 py-2 rounded-xl border border-slate-200 text-sm font-bold text-slate-700 hover:bg-slate-50 transition-all"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={createObservationNoteMut.isPending}
+              className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold shadow-sm transition-all"
+            >
+              {createObservationNoteMut.isPending ? "Saving..." : "Save Note"}
+            </button>
+          </div>
+        </form>
       </Modal>
     </div>
   );

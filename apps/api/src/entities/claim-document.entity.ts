@@ -1,5 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
 import { HMOClaim } from './hmo-claim.entity';
+import { Clinic } from './clinic.entity';
 
 @Entity('claim_documents')
 export class ClaimDocument {
@@ -27,6 +28,13 @@ export class ClaimDocument {
   @ManyToOne(() => HMOClaim)
   @JoinColumn({ name: 'claimId' })
   claim: HMOClaim;
+
+  @Column()
+  clinicId: string;
+
+  @ManyToOne(() => Clinic)
+  @JoinColumn({ name: 'clinicId' })
+  clinic: Clinic;
 
   @CreateDateColumn()
   createdAt: Date;

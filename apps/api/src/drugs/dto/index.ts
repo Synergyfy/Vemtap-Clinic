@@ -1,6 +1,5 @@
 import { IsString, IsOptional, IsNumber, IsUUID, IsDateString, IsBoolean, MaxLength } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';import { Transform } from 'class-transformer';
 export class CreateDrugDto {
   @ApiProperty({ example: 'Amoxicillin' })
   @IsString()
@@ -105,7 +104,16 @@ export class DrugQueryDto {
   @ApiPropertyOptional() @IsOptional() @IsUUID() clinicId?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() search?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() category?: string;
-  @ApiPropertyOptional() @IsOptional() @IsBoolean() lowStock?: boolean;
+  @ApiPropertyOptional() @IsOptional() @Transform(({ value }) => {
+    if (value === undefined || value === null || value === '') return undefined;
+    if (typeof value === 'boolean') return value;
+    return String(value).toLowerCase() === 'true';
+  }) @IsBoolean() lowStock?: boolean;
+  @ApiPropertyOptional({ example: 50 })
+  @IsOptional()
+  @Transform(({ value }) => Number(value))
+  @IsNumber()
+  limit?: number = 50;
 }
 
 export class AdjustStockDto {

@@ -8,6 +8,7 @@ export const appConfig = ConfigModule.forRoot({
     NODE_ENV: Joi.string().valid('development', 'production', 'test').default('development'),
     PORT: Joi.number().default(3001),
     CORS_ORIGIN: Joi.string().default('http://localhost:3000'),
+    FRONTEND_URL: Joi.string().default('http://localhost:3000'),
     // Either a full connection string (e.g. Supabase)...
     // Note: must not reference DB_HOST here — Joi rejects circular .when() dependencies.
     DATABASE_URL: Joi.string().uri({ scheme: /^postgres(ql)?$/ }).optional(),
@@ -43,5 +44,9 @@ export const appConfig = ConfigModule.forRoot({
       .when('FILE_STORAGE_PROVIDER', { is: 'cloudinary', then: Joi.required(), otherwise: Joi.optional() }),
     CLOUDINARY_API_SECRET: Joi.string()
       .when('FILE_STORAGE_PROVIDER', { is: 'cloudinary', then: Joi.required(), otherwise: Joi.optional() }),
+    CLOUDINARY_UPLOAD_PRESET: Joi.string().optional(),
+    // Legacy names used by the password-reset mailer in auth.service
+    SMTP_PASSWORD: Joi.string().optional(),
+    SMTP_FROM: Joi.string().default('noreply@localhost'),
   }),
 });

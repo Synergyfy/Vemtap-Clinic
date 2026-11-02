@@ -15,7 +15,7 @@ export class SuppliersController {
   constructor(private readonly suppliersService: SuppliersService) {}
 
   @Post()
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.PHARMACIST)
   @ApiOperation({ summary: 'Create supplier' })
   createSupplier(@Body() dto: CreateSupplierDto) {
     return this.suppliersService.createSupplier(dto);
@@ -34,7 +34,7 @@ export class SuppliersController {
   }
 
   @Put(':id')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.PHARMACIST)
   @ApiOperation({ summary: 'Update supplier' })
   updateSupplier(@Param('id') id: string, @Body() dto: UpdateSupplierDto) {
     return this.suppliersService.updateSupplier(id, dto);
@@ -48,7 +48,7 @@ export class SuppliersController {
   }
 
   @Post('orders')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.PHARMACIST)
   @ApiOperation({ summary: 'Create purchase order' })
   createOrder(@Body() dto: CreatePurchaseOrderDto) {
     return this.suppliersService.createOrder(dto);
@@ -61,14 +61,14 @@ export class SuppliersController {
   }
 
   @Put('orders/:id')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.PHARMACIST)
   @ApiOperation({ summary: 'Update purchase order' })
   updateOrder(@Param('id') id: string, @Body() dto: UpdatePurchaseOrderDto) {
     return this.suppliersService.updateOrder(id, dto);
   }
 
   @Post('orders/:id/deliver')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.PHARMACIST)
   @ApiOperation({ summary: 'Mark purchase order as delivered' })
   deliverOrder(@Param('id') id: string) {
     return this.suppliersService.deliverOrder(id);
