@@ -45,6 +45,17 @@ const dashboardLinks = [
   { name: "Patient Success Portal", href: "/patient/dashboard", icon: UserCircle, color: "text-emerald-600", desc: "Results, orders & bookings", roles: ["patient"] },
 ];
 
+const redirectMap: Record<string, string> = {
+  admin: "/admin/dashboard",
+  doctor: "/doctor/dashboard",
+  nurse: "/nurse/dashboard",
+  optometrist: "/optician/dashboard",
+  pharmacist: "/pharmacy/dashboard",
+  receptionist: "/reception/dashboard",
+  cashier: "/cashier",
+  patient: "/patient/dashboard",
+};
+
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isQuickAccessOpen, setIsQuickAccessOpen] = useState(false);

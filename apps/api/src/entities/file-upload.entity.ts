@@ -1,5 +1,5 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
-import { Staff } from './staff.entity';
+import { User } from './user.entity';
 import { Patient } from './patient.entity';
 import { Clinic } from './clinic.entity';
 
@@ -19,8 +19,19 @@ export class FileUpload {
   @Column({ length: 255 })
   originalName: string;
 
+  // Cloudinary public_id, or the path relative to the upload dir for local storage
   @Column({ length: 255 })
   storedName: string;
+
+  @Column({ length: 20, nullable: true })
+  storageProvider: string;
+
+  // Cloudinary resource type ('image' | 'raw')
+  @Column({ length: 20, nullable: true })
+  resourceType: string;
+
+  @Column({ length: 20, nullable: true })
+  format: string;
 
   @Column({ length: 100 })
   mimeType: string;
@@ -53,9 +64,9 @@ export class FileUpload {
   @Column()
   uploadedById: string;
 
-  @ManyToOne(() => Staff)
+  @ManyToOne(() => User)
   @JoinColumn({ name: 'uploadedById' })
-  uploadedBy: Staff;
+  uploadedBy: User;
 
   @Column()
   clinicId: string;
