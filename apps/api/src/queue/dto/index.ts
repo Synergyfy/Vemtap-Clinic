@@ -52,6 +52,7 @@ export class UpdateQueueEntryDto {
 
 export class QueueQueryDto {
   @ApiPropertyOptional() @IsOptional() @IsUUID() clinicId?: string;
+  @ApiPropertyOptional() @IsOptional() @IsUUID() patientId?: string;
   @ApiPropertyOptional() @IsOptional() @IsUUID() branchId?: string;
   @ApiPropertyOptional({ enum: QueueStatus }) @IsOptional() @IsEnum(QueueStatus) status?: QueueStatus;
   @ApiPropertyOptional() @IsOptional() @IsString() station?: string;

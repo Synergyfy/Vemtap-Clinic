@@ -21,11 +21,11 @@ export function useNurseObservationNotes(staffId: string | null, clinicId: strin
   });
 }
 
-export function useNurseQueue(clinicId: string | null) {
+export function useNurseQueue(staffId: string | null, clinicId: string | null) {
   return useQuery({
-    queryKey: [NURSE_DASHBOARD_KEY, 'queue', clinicId],
-    queryFn: () => nurseDashboardService.getQueueEntries(clinicId!),
-    enabled: !!clinicId,
+    queryKey: [NURSE_DASHBOARD_KEY, 'queue', staffId, clinicId],
+    queryFn: () => nurseDashboardService.getQueueEntries(staffId!, clinicId!),
+    enabled: !!staffId && !!clinicId,
     staleTime: 15_000,
     gcTime: 5 * 60_000,
     refetchInterval: 30_000,

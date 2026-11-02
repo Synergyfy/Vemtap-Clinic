@@ -1,5 +1,6 @@
 import { IsString, IsOptional, IsNumber, IsUUID, IsBoolean, MaxLength } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Transform } from 'class-transformer';
 
 export class CreateProductDto {
   @ApiProperty({ example: 'Eye Drops' })
@@ -55,5 +56,14 @@ export class ProductQueryDto {
   @ApiPropertyOptional() @IsOptional() @IsUUID() clinicId?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() search?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() category?: string;
-  @ApiPropertyOptional() @IsOptional() @IsBoolean() lowStock?: boolean;
+  @ApiPropertyOptional() @IsOptional() @Transform(({ value }) => {
+    if (value === undefined || value === null || value === '') return undefined;
+    if (typeof value === 'boolean') return value;
+    return String(value).toLowerCase() === 'true';
+  }) @IsBoolean() lowStock?: boolean;
+  @ApiPropertyOptional({ example: 50 })
+  @IsOptional()
+  @Transform(({ value }) => Number(value))
+  @IsNumber()
+  limit?: number = 50;
 }

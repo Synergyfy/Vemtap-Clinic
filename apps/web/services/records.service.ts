@@ -121,7 +121,8 @@ export const recordsService = {
     if (params?.patientId) searchParams.set('patientId', params.patientId);
     if (params?.limit) searchParams.set('limit', String(params.limit));
     const res = await api.get(`/records?${searchParams.toString()}`);
-    return res.data;
+    const payload = res.data;
+    return Array.isArray(payload) ? payload : payload?.data ?? [];
   },
   getById: async (id: string): Promise<MedicalRecord> => {
     const res = await api.get(`/records/${id}`);

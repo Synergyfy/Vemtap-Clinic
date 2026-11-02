@@ -28,6 +28,7 @@ export class QueueService {
   async findAll(query: QueueQueryDto): Promise<QueueEntry[]> {
     const where: any = {};
     if (query.clinicId) where.clinicId = query.clinicId;
+    if (query.patientId) where.patientId = query.patientId;
     if (query.branchId) where.branchId = query.branchId;
     if (query.status) where.status = query.status;
     if (query.station) where.station = query.station;

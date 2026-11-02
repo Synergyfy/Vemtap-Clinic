@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Modal } from "@/components/ui/modal";
 import { User, Bell, Shield, Save, LogOut, CheckCircle2, Eye, EyeOff, Layout, Users, Clock } from "lucide-react";
@@ -8,7 +9,8 @@ import { useAuth } from "@/lib/auth-context";
 
 export default function ReceptionSettings() {
   const [toast, setToast] = useState("");
-  const { user } = useAuth();
+  const router = useRouter();
+  const { user, logout: logoutUser } = useAuth();
   const liveDisplayName = user ? [user.firstName, user.lastName].filter(Boolean).join(" ").trim() || "User" : "User";
   const liveRoleLabel = user?.roles?.[0] ? user.roles[0].replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase()) : "";
 
@@ -233,7 +235,16 @@ export default function ReceptionSettings() {
             <p className="text-sm text-slate-500 mt-1">You will be signed out and redirected to the login screen.</p>
           </div>
           <div className="flex flex-col gap-2">
-            <button onClick={() => { setSignOutModal(false); showToast("Signed out successfully"); }}
+            <button onClick={async () => {
+              setSignOutModal(false);
+              try {
+                await logoutUser();
+                router.replace("/login");
+              } catch (error) {
+                console.error("Logout error", error);
+                router.replace("/login");
+              }
+            }}
               className="w-full p-4 rounded-2xl bg-red-600 text-white text-xs font-black uppercase tracking-widest hover:bg-red-700">Sign Out</button>
             <button onClick={() => setSignOutModal(false)}
               className="w-full p-4 rounded-2xl border border-slate-200 text-slate-600 text-xs font-black uppercase tracking-widest hover:bg-slate-50">Stay Signed In</button>

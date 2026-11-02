@@ -1,6 +1,6 @@
 import { IsString, IsOptional, IsEnum, IsArray, IsUUID, IsNumber, ValidateNested, Min, IsInt } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
+import { Type, Transform } from 'class-transformer';
 import { TransferType, TransferStatus } from '../../entities/transfer-request.entity';
 import { ItemType } from '../../entities/transfer-item.entity';
 
@@ -51,6 +51,11 @@ export class TransferRequestQueryDto {
   @ApiPropertyOptional() @IsOptional() @IsUUID() fromBranchId?: string;
   @ApiPropertyOptional() @IsOptional() @IsUUID() toBranchId?: string;
   @ApiPropertyOptional() @IsOptional() @IsUUID() clinicId?: string;
+  @ApiPropertyOptional({ example: 20 })
+  @IsOptional()
+  @Transform(({ value }) => Number(value))
+  @IsNumber()
+  limit?: number = 20;
 }
 
 export class ApproveTransferDto {

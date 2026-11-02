@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Modal } from "@/components/ui/modal";
@@ -10,7 +11,8 @@ import { useAuth } from "@/lib/auth-context";
 
 export default function PharmacySettings() {
   const [toast, setToast] = useState("");
-  const { user } = useAuth();
+  const router = useRouter();
+  const { user, logout: logoutUser } = useAuth();
   const liveDisplayName = user ? [user.firstName, user.lastName].filter(Boolean).join(" ").trim() || "User" : "User";
   const liveRoleLabel = user?.roles?.[0] ? user.roles[0].replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase()) : "";
 
@@ -259,7 +261,16 @@ export default function PharmacySettings() {
           <p className="text-sm text-slate-600">Are you sure you want to sign out of the Pharmacy Dashboard? You will need to log in again.</p>
           <div className="flex justify-end gap-2 pt-2">
             <button onClick={() => setSignOutModal(false)} className="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-700 hover:bg-slate-50">Cancel</button>
-            <button onClick={() => { setSignOutModal(false); showToast("Signed out successfully"); }} className="px-6 py-2.5 rounded-xl bg-rose-600 text-white text-sm font-bold hover:bg-rose-700 shadow-lg shadow-rose-200">Sign Out</button>
+            <button onClick={async () => {
+              setSignOutModal(false);
+              try {
+                await logoutUser();
+                router.replace("/login");
+              } catch (error) {
+                console.error("Logout error", error);
+                router.replace("/login");
+              }
+            }} className="px-6 py-2.5 rounded-xl bg-rose-600 text-white text-sm font-bold hover:bg-rose-700 shadow-lg shadow-rose-200">Sign Out</button>
           </div>
         </div>
       </Modal>

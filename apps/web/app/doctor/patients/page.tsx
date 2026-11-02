@@ -1,11 +1,12 @@
 "use client";
 
-import React from "react";
+import React, { useMemo } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/app/clinic/_components/page-header";
 import { usePatients } from "@/hooks/usePatients";
+import { useDoctorTodayAppointments } from "@/hooks/useDoctorDashboard";
 import { useAuth } from "@/lib/auth-context";
 import { Search, UserCircle, ExternalLink } from "lucide-react";
 import Link from "next/link";
@@ -22,8 +23,17 @@ function calculateAge(dob: string): number {
 
 export default function DoctorPatients() {
   const { user } = useAuth();
+  const staffId = user?.userId || null;
+  const clinicId = user?.clinicId || null;
   const { data: response, isLoading } = usePatients({ clinicId: user?.clinicId });
-  const patients = response?.data || [];
+  const { data: appointments = [] } = useDoctorTodayAppointments(staffId, clinicId);
+
+  const assignedPatientIds = useMemo(
+    () => new Set(appointments.map((appointment) => appointment.patientId).filter(Boolean)),
+    [appointments],
+  );
+
+  const patients = (response?.data || []).filter((patient) => assignedPatientIds.has(patient.id));
 
   if (isLoading) {
     return (

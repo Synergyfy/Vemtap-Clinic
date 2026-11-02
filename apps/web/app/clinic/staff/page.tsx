@@ -74,18 +74,22 @@ export default function StaffPage() {
   const [permissionsMap, setPermissionsMap] = useState<Record<string, string[]>>({});
 
   useEffect(() => {
-    if (!selectedRole && staffRoleOptions[0]) {
-      setSelectedRole(staffRoleOptions[0]);
-    }
-  }, [selectedRole, staffRoleOptions]);
+    setSelectedRole((current) => current || staffRoleOptions[0] || "");
+  }, [staffRoleOptions]);
 
   useEffect(() => {
     setPermissionsMap((prev) => {
       const next = { ...prev };
+      let didChange = false;
+
       for (const role of staffRoleOptions) {
-        if (!next[role]) next[role] = [];
+        if (!Object.prototype.hasOwnProperty.call(next, role)) {
+          next[role] = [];
+          didChange = true;
+        }
       }
-      return next;
+
+      return didChange ? next : prev;
     });
   }, [staffRoleOptions]);
 

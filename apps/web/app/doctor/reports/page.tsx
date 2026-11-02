@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { PageHeader } from "@/app/clinic/_components/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-context";
-import { useReportTemplates, useReportingStats } from "@/hooks/useClinicalReporting";
+import { useGenerateReport, useReportTemplates, useReportingStats } from "@/hooks/useClinicalReporting";
 import { usePatients } from "@/hooks/usePatients";
 
 export default function DoctorReports() {
@@ -42,6 +42,15 @@ export default function DoctorReports() {
   const { data: templates = [], isLoading: loadingTemplates } = useReportTemplates();
   const { data: reportingStats } = useReportingStats();
   const { data: patientsData } = usePatients();
+  const generateMut = useGenerateReport();
+  const [generateTemplateId, setGenerateTemplateId] = useState("");
+
+  useEffect(() => {
+    if (!generateTemplateId && templates[0]?.id) {
+      setGenerateTemplateId(templates[0].id);
+    }
+  }, [generateTemplateId, templates]);
+
   const totalPatients = patientsData?.total ?? 0;
   const patientList = patientsData?.data ?? [];
   const totalTemplateCount = templates.length;
@@ -318,6 +327,24 @@ export default function DoctorReports() {
       <Modal isOpen={generateOpen} onClose={() => setGenerateOpen(false)} title="Generate New Report">
         <div className="space-y-4">
           <div className="space-y-2">
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Report Template</label>
+            {templates.length === 0 ? (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-700">
+                No report templates are available for this clinic yet.
+              </div>
+            ) : (
+              <select
+                value={generateTemplateId}
+                onChange={(e) => setGenerateTemplateId(e.target.value)}
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-bold text-slate-700 outline-none focus:border-emerald-500"
+              >
+                {templates.map((template) => (
+                  <option key={template.id} value={template.id}>{template.name}</option>
+                ))}
+              </select>
+            )}
+          </div>
+          <div className="space-y-2">
             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Report Type</label>
             <div className="grid grid-cols-2 gap-2">
               {["Clinical", "Stats", "Surgical", "Administrative"].map(t => (
@@ -335,7 +362,42 @@ export default function DoctorReports() {
           </div>
           <div className="flex items-center justify-end gap-2 pt-2">
             <button onClick={() => setGenerateOpen(false)} className="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-700 hover:bg-slate-50 transition-all">Cancel</button>
-            <button onClick={() => { setGenerateOpen(false); showToast(`Generating ${reportType} report for the last ${reportPeriod}...`); }} className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-200 transition-all"><BarChart3 size={16} /> Generate Report</button>
+            <button
+              onClick={async () => {
+                if (!user?.clinicId) {
+                  showToast("Clinic context is missing. Please sign in again.");
+                  return;
+                }
+
+                const selectedTemplateId = generateTemplateId || templates[0]?.id;
+                if (!selectedTemplateId) {
+                  showToast("No report template is available to generate.");
+                  return;
+                }
+
+                try {
+                  await generateMut.mutateAsync({
+                    templateId: selectedTemplateId,
+                    format: "pdf",
+                    deliveryMethod: "download",
+                    parameters: {
+                      reportType,
+                      period: reportPeriod,
+                      generatedFrom: "doctor-reports",
+                    },
+                  });
+                  setGenerateOpen(false);
+                  showToast(`Report generated successfully.`);
+                } catch (error: any) {
+                  showToast(error?.response?.data?.message || error?.message || "Report generation failed.");
+                }
+              }}
+              disabled={generateMut.isPending}
+              className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-200 transition-all disabled:cursor-not-allowed disabled:opacity-70"
+            >
+              {generateMut.isPending ? <Loader2 size={16} className="animate-spin" /> : <BarChart3 size={16} />}
+              {generateMut.isPending ? "Generating..." : "Generate Report"}
+            </button>
           </div>
         </div>
       </Modal>

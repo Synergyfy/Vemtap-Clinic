@@ -48,19 +48,25 @@ export class ChangePasswordDto {
   newPassword: string;
 }
 
+export class RequestPasswordResetDto {
+  @ApiProperty({ example: 'john@vemtap.com' })
+  @IsEmail()
+  email: string;
+}
+
 export class ResetPasswordDto {
   @ApiProperty({ example: 'john@vemtap.com' })
   @IsEmail()
   email: string;
 
+  @ApiProperty({ example: 'reset-token-from-email' })
+  @IsString()
+  token: string;
+
   @ApiProperty()
   @IsString()
   @MinLength(6)
   newPassword: string;
-
-  @ApiProperty({ example: 'reset-token-from-email' })
-  @IsString()
-  token: string;
 }
 
 export class RefreshTokenDto {

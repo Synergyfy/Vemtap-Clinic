@@ -67,6 +67,8 @@ class ApiClient {
             url.includes('/auth/clinics') ||
             url.includes('/auth/login') ||
             url.includes('/auth/register') ||
+            url.includes('/auth/forgot-password') ||
+            url.includes('/auth/reset-password') ||
             url.includes('/auth/refresh');
 
           if (config.params) {
