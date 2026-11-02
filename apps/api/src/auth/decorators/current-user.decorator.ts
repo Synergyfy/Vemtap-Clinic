@@ -11,6 +11,9 @@ const SENSITIVE_KEYS = new Set([
   'session',
   'token',
   'refreshToken',
+  'socket',
+  'connection',
+  'parser',
 ]);
 
 export const sanitizeCurrentUser = (user: any): any => {
