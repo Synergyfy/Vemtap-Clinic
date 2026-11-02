@@ -1,50 +1,56 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import { ClinicsService } from './clinics.service';
-import { CreateClinicDto, UpdateClinicDto, ClinicQueryDto } from './dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { UserRole } from '../entities/user.entity';
+import { ClinicsService } from './clinics.service';
+import { CreateClinicDto, UpdateClinicDto, ClinicQueryDto } from './dto/clinic.dto';
 
 @ApiTags('Clinics')
-@Controller('clinics')
-@UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth()
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Controller('clinics')
 export class ClinicsController {
   constructor(private readonly clinicsService: ClinicsService) {}
 
-  @Post()
+  @Get('platform-overview')
   @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Create a clinic' })
-  create(@Body() dto: CreateClinicDto) {
-    return this.clinicsService.create(dto);
-  }
-
-  @Get()
-  @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'List clinics with filters' })
-  findAll(@Query() query: ClinicQueryDto) {
-    return this.clinicsService.findAll(query);
+  @ApiOperation({ summary: 'Get multi-clinic platform overview for Super Admin' })
+  getPlatformOverview(@CurrentUser() user: any) {
+    return this.clinicsService.getPlatformOverview(user);
   }
 
   @Get('stats')
   @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Get clinic statistics' })
-  getStats() {
-    return this.clinicsService.getStats();
+  @ApiOperation({ summary: 'Get total, active, and inactive clinic statistics' })
+  getStats(@CurrentUser() user: any) {
+    return this.clinicsService.getStats(user);
   }
 
   @Get(':id')
-  @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Get clinic by ID' })
+  @ApiOperation({ summary: 'Get clinic details by ID' })
   findOne(@Param('id') id: string) {
     return this.clinicsService.findOne(id);
   }
 
+  @Get()
+  @ApiOperation({ summary: 'List the current user\'s clinics with optional search and active status filters' })
+  findAll(@CurrentUser() user: any, @Query() query: ClinicQueryDto) {
+    return this.clinicsService.findAll(query, user);
+  }
+
+  @Post()
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Register/Onboard a new clinic' })
+  create(@CurrentUser() user: any, @Body() dto: CreateClinicDto) {
+    return this.clinicsService.create(dto, user?.userId ?? user?.sub ?? null);
+  }
+
   @Put(':id')
   @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Update clinic' })
+  @ApiOperation({ summary: 'Update clinic profile' })
   update(@Param('id') id: string, @Body() dto: UpdateClinicDto) {
     return this.clinicsService.update(id, dto);
   }

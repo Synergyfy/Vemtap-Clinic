@@ -43,7 +43,7 @@ export default function DoctorDashboard() {
   const clinicId = user?.clinicId || null;
 
   const { data: todayAppointments = [], isLoading: appointmentsLoading } = useDoctorTodayAppointments(staffId, clinicId);
-  const { data: queueEntries = [], isLoading: queueLoading } = useDoctorConsultationQueue(clinicId);
+  const { data: queueEntries = [], isLoading: queueLoading } = useDoctorConsultationQueue(staffId, clinicId);
   const { data: recentRecords = [], isLoading: recordsLoading } = useDoctorRecentRecords(staffId, clinicId);
   const { data: followUps = [], isLoading: followUpsLoading } = useDoctorFollowUps(staffId, clinicId);
 

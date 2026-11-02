@@ -1,77 +1,91 @@
-import { IsString, IsOptional, IsEnum, IsUUID, MaxLength, IsBoolean } from 'class-validator';
+import { IsEnum, IsOptional, IsString, Length } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { TicketStatus, TicketPriority, TicketType } from '../../entities/support-ticket.entity';
+
+export enum SupportTicketType {
+  SUPPORT = 'support',
+  COMPLAINT = 'complaint',
+  INCIDENT = 'incident',
+  FEATURE_REQUEST = 'feature_request',
+}
+
+export enum SupportTicketPriority {
+  LOW = 'low',
+  MEDIUM = 'medium',
+  HIGH = 'high',
+  CRITICAL = 'critical',
+}
+
+export enum SupportTicketStatus {
+  OPEN = 'open',
+  IN_PROGRESS = 'in_progress',
+  RESOLVED = 'resolved',
+  CLOSED = 'closed',
+}
 
 export class CreateSupportTicketDto {
-  @ApiProperty({ example: 'Unable to login to the system' })
+  @ApiProperty({ minLength: 3, maxLength: 200 })
   @IsString()
-  @MaxLength(200)
+  @Length(3, 200)
   subject: string;
 
-  @ApiProperty({ example: 'Getting 404 error when trying to access the patient portal' })
+  @ApiProperty({ minLength: 5 })
   @IsString()
+  @Length(5, 5000)
   description: string;
 
-  @ApiPropertyOptional({ enum: TicketType, default: TicketType.SUPPORT })
+  @ApiPropertyOptional({ enum: SupportTicketType, default: SupportTicketType.SUPPORT })
   @IsOptional()
-  @IsEnum(TicketType)
-  type?: TicketType;
+  @IsEnum(SupportTicketType)
+  type?: SupportTicketType;
 
-  @ApiPropertyOptional({ enum: TicketPriority, default: TicketPriority.MEDIUM })
+  @ApiPropertyOptional({ enum: SupportTicketPriority, default: SupportTicketPriority.MEDIUM })
   @IsOptional()
-  @IsEnum(TicketPriority)
-  priority?: TicketPriority;
+  @IsEnum(SupportTicketPriority)
+  priority?: SupportTicketPriority;
 
-  @ApiPropertyOptional({ example: 'staff-uuid' })
+  @ApiProperty()
+  @IsString()
+  clinicId: string;
+
+  @ApiPropertyOptional()
   @IsOptional()
-  @IsUUID()
+  @IsString()
   assigneeId?: string;
 
-  @ApiProperty({ example: 'clinic-uuid' })
-  @IsUUID()
-  clinicId: string;
-}
-
-export class UpdateSupportTicketDto {
-  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(200) subject?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() description?: string;
-  @ApiPropertyOptional() @IsOptional() @IsEnum(TicketType) type?: TicketType;
-  @ApiPropertyOptional() @IsOptional() @IsEnum(TicketStatus) status?: TicketStatus;
-  @ApiPropertyOptional() @IsOptional() @IsEnum(TicketPriority) priority?: TicketPriority;
-  @ApiPropertyOptional() @IsOptional() @IsUUID() assigneeId?: string;
-  @ApiPropertyOptional() @IsOptional() @IsBoolean() isResolved?: boolean;
-}
-
-export class CreateTicketMessageDto {
-  @ApiProperty({ example: 'Thank you for reporting this issue. We are investigating.' })
+  @ApiPropertyOptional()
+  @IsOptional()
   @IsString()
-  content: string;
+  reporterId?: string;
 
-  @ApiProperty({ example: 'ticket-uuid' })
-  @IsUUID()
-  ticketId: string;
-
-  @ApiProperty({ example: 'clinic-uuid' })
-  @IsUUID()
-  clinicId: string;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  reporterName?: string;
 }
 
 export class SupportTicketQueryDto {
-  @ApiPropertyOptional() @IsOptional() @IsUUID() clinicId?: string;
-  @ApiPropertyOptional() @IsOptional() @IsEnum(TicketStatus) status?: TicketStatus;
-  @ApiPropertyOptional() @IsOptional() @IsEnum(TicketPriority) priority?: TicketPriority;
-  @ApiPropertyOptional() @IsOptional() @IsEnum(TicketType) type?: TicketType;
-  @ApiPropertyOptional() @IsOptional() @IsUUID() reporterId?: string;
-  @ApiPropertyOptional() @IsOptional() @IsUUID() assigneeId?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() search?: string;
-}
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  clinicId?: string;
 
-export class AssignTicketDto {
-  @ApiProperty({ example: 'staff-uuid' })
-  @IsUUID()
-  assigneeId: string;
-}
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  status?: string;
 
-export class ResolveTicketDto {
-  @ApiPropertyOptional() @IsOptional() @IsString() resolutionNotes?: string;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  priority?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  type?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  search?: string;
 }

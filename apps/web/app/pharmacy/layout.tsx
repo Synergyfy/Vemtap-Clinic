@@ -11,6 +11,8 @@ import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { Modal } from "@/components/ui/modal";
 import { BottomNav } from "@/components/layout/bottom-nav";
+import { NotificationBell } from "@/components/layout/notification-bell";
+import { useAuth } from "@/lib/auth-context";
 
 const sidebarLinks = [
   { name: "Dashboard", href: "/pharmacy/dashboard", icon: LayoutDashboard },
@@ -27,16 +29,20 @@ export default function PharmacyLayout({ children }: { children: React.ReactNode
   const [isLogoutOpen, setIsLogoutOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
+  const { user, logout: logoutUser } = useAuth();
+  const displayName = user ? [user.firstName, user.lastName].filter(Boolean).join(" ").trim() || "User" : "User";
+  const roleLabel = user?.roles?.[0] ? user.roles[0].replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase()) : "";
+  const initials = displayName.split(" ").filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase() || "").join("");
 
   React.useEffect(() => { setIsSidebarOpen(false); }, [pathname]);
 
-  const logout = () => {
+  const logout = async () => {
     try {
-      ["vemtap:session", "vemtap:clinic", "vemtap:user", "vemtap_auth", "authToken", "token"].forEach((k) => localStorage.removeItem(k));
-      sessionStorage.clear();
-    } catch { /* ignore */ }
-    setIsLogoutOpen(false);
-    router.replace("/login");
+      await logoutUser();
+    } finally {
+      setIsLogoutOpen(false);
+      router.replace("/login");
+    }
   };
 
   return (
@@ -81,10 +87,10 @@ export default function PharmacyLayout({ children }: { children: React.ReactNode
 
           <div className="p-4 border-t border-white/10 shrink-0">
             <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5">
-              <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-emerald-400 font-bold">PH</div>
+              <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-emerald-400 font-bold">{initials || "•"}</div>
               <div>
-                <p className="text-sm font-bold">Pharm. P. Okafor</p>
-                <p className="text-[10px] text-white/50">Clinical Pharmacist</p>
+                <p className="text-sm font-bold">{displayName || "User"}</p>
+                <p className="text-[10px] text-white/50">{roleLabel || "Staff"}</p>
               </div>
             </div>
           </div>
@@ -95,10 +101,7 @@ export default function PharmacyLayout({ children }: { children: React.ReactNode
         <header className="h-20 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0 z-40">
           <button onClick={() => setIsSidebarOpen(true)} className="lg:hidden p-2 hover:bg-slate-100 rounded-xl"><Menu size={24} className="text-slate-700" /></button>
           <div className="flex-1" />
-          <button className="relative p-2 hover:bg-slate-100 rounded-xl" aria-label="Notifications">
-            <Bell size={20} className="text-slate-500" />
-            <span className="absolute top-2 right-2 w-2 h-2 bg-emerald-500 rounded-full border-2 border-white" />
-          </button>
+          <NotificationBell accentClass="bg-emerald-500" viewAllHref="/notifications" />
           <button onClick={() => setIsLogoutOpen(true)}
             className="ml-2 inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
             <LogOut size={16} className="text-slate-500" />
@@ -112,9 +115,14 @@ export default function PharmacyLayout({ children }: { children: React.ReactNode
       <BottomNav 
         items={[
           { label: "Home", href: "/pharmacy/dashboard", icon: LayoutDashboard },
-          { label: "Rx Queue", href: "/pharmacy/prescriptions", icon: ClipboardList },
+          { label: "Rx", href: "/pharmacy/prescriptions", icon: ClipboardList },
           { label: "Inventory", href: "/pharmacy/inventory", icon: PackageSearch },
+        ]}
+        moreItems={[
           { label: "Dispense", href: "/pharmacy/dispensing", icon: Pill },
+          { label: "Suppliers", href: "/pharmacy/suppliers", icon: Truck },
+          { label: "Support", href: "/pharmacy/support", icon: Headphones },
+          { label: "Settings", href: "/pharmacy/settings", icon: Settings2 },
         ]}
         activeColor="text-emerald-600"
       />

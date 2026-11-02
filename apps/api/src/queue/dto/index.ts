@@ -1,4 +1,5 @@
 import { IsString, IsOptional, IsEnum, IsUUID, IsInt } from 'class-validator';
+import { Transform } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { QueueStatus } from '../../entities/queue-entry.entity';
 import { AnnouncementType } from '../../entities/queue-announcement.entity';
@@ -51,9 +52,30 @@ export class UpdateQueueEntryDto {
 
 export class QueueQueryDto {
   @ApiPropertyOptional() @IsOptional() @IsUUID() clinicId?: string;
+  @ApiPropertyOptional() @IsOptional() @IsUUID() patientId?: string;
   @ApiPropertyOptional() @IsOptional() @IsUUID() branchId?: string;
   @ApiPropertyOptional({ enum: QueueStatus }) @IsOptional() @IsEnum(QueueStatus) status?: QueueStatus;
   @ApiPropertyOptional() @IsOptional() @IsString() station?: string;
+
+  @ApiPropertyOptional({ example: 1 })
+  @IsOptional()
+  @Transform(({ value }) => parseInt(value, 10))
+  page?: number = 1;
+
+  @ApiPropertyOptional({ example: 10 })
+  @IsOptional()
+  @Transform(({ value }) => parseInt(value, 10))
+  limit?: number = 10;
+
+  @ApiPropertyOptional({ example: 'ticketNumber' })
+  @IsOptional()
+  @IsString()
+  sortBy?: string = 'ticketNumber';
+
+  @ApiPropertyOptional({ enum: ['ASC', 'DESC'] })
+  @IsOptional()
+  @IsEnum(['ASC', 'DESC'])
+  sortOrder?: 'ASC' | 'DESC' = 'ASC';
 }
 
 export class CreateAnnouncementDto {

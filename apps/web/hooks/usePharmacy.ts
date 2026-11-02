@@ -8,6 +8,9 @@ import {
   PurchaseOrder,
   Prescription,
   DispenseDrugDto,
+  CreateDrugInput,
+  UpdateDrugInput,
+  CreateSupplierInput,
 } from '@/services/pharmacy.service';
 
 const PHARMACY_KEY = 'pharmacy';
@@ -19,6 +22,49 @@ export function useDrugs(clinicId: string | null) {
     queryFn: () => pharmacyService.getDrugs(clinicId!),
     enabled: !!clinicId,
     staleTime: 30_000,
+  });
+}
+
+export function useLowStockDrugs(clinicId: string | null) {
+  return useQuery({
+    queryKey: [PHARMACY_KEY, 'low-stock', clinicId],
+    queryFn: () => pharmacyService.getLowStockDrugs(clinicId!),
+    enabled: !!clinicId,
+    staleTime: 30_000,
+  });
+}
+
+export function useCreateDrug() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (dto: CreateDrugInput) => pharmacyService.createDrug(dto),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [PHARMACY_KEY, 'drugs'] });
+      qc.invalidateQueries({ queryKey: [PHARMACY_KEY, 'low-stock'] });
+    },
+  });
+}
+
+export function useUpdateDrug() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ drugId, dto }: { drugId: string; dto: UpdateDrugInput }) =>
+      pharmacyService.updateDrug(drugId, dto),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [PHARMACY_KEY, 'drugs'] });
+      qc.invalidateQueries({ queryKey: [PHARMACY_KEY, 'low-stock'] });
+    },
+  });
+}
+
+export function useDeleteDrug() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (drugId: string) => pharmacyService.deleteDrug(drugId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [PHARMACY_KEY, 'drugs'] });
+      qc.invalidateQueries({ queryKey: [PHARMACY_KEY, 'low-stock'] });
+    },
   });
 }
 
@@ -46,6 +92,14 @@ export function useSuppliers(clinicId: string | null) {
     queryFn: () => pharmacyService.getSuppliers(clinicId!),
     enabled: !!clinicId,
     staleTime: 60_000,
+  });
+}
+
+export function useCreateSupplier() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (dto: CreateSupplierInput) => pharmacyService.createSupplier(dto),
+    onSuccess: () => qc.invalidateQueries({ queryKey: [PHARMACY_KEY, 'suppliers'] }),
   });
 }
 
@@ -103,4 +157,4 @@ export function usePrescriptionsByPatient(patientId: string | null) {
   });
 }
 
-export type { Drug, Supplier, PurchaseOrder, Prescription, DispenseDrugDto };
+export type { Drug, Supplier, PurchaseOrder, Prescription, DispenseDrugDto, CreateSupplierInput };

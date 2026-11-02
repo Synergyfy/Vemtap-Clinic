@@ -1,7 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Prescription } from '../entities/prescription.entity';
+import { MedicalRecord } from '../entities/medical-record.entity';
 import { CreatePrescriptionDto, UpdatePrescriptionDto } from './dto';
 
 @Injectable()
@@ -12,13 +13,27 @@ export class PrescriptionsService {
   ) {}
 
   async create(dto: CreatePrescriptionDto): Promise<Prescription> {
-    const prescription = this.prescriptionRepository.create(dto);
+    const clinicId = dto.clinicId ?? (await this.resolveClinicId(dto.medicalRecordId));
+    if (!clinicId) {
+      throw new BadRequestException('Clinic ID is required to create a prescription');
+    }
+
+    const prescription = this.prescriptionRepository.create({ ...dto, clinicId });
     return this.prescriptionRepository.save(prescription);
   }
 
-  async findAll(medicalRecordId?: string): Promise<Prescription[]> {
+  private async resolveClinicId(medicalRecordId: string): Promise<string | null> {
+    const medicalRecord = await this.prescriptionRepository.manager
+      .getRepository(MedicalRecord)
+      .findOne({ where: { id: medicalRecordId }, select: ['clinicId'] });
+
+    return medicalRecord?.clinicId ?? null;
+  }
+
+  async findAll(medicalRecordId?: string, clinicId?: string): Promise<Prescription[]> {
     const where: any = {};
     if (medicalRecordId) where.medicalRecordId = medicalRecordId;
+    if (clinicId) where.clinicId = clinicId;
     return this.prescriptionRepository.find({ where, relations: ['medicalRecord', 'prescribedBy'], order: { createdAt: 'DESC' } });
   }
 

@@ -11,6 +11,8 @@ import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { Modal } from "@/components/ui/modal";
 import { BottomNav } from "@/components/layout/bottom-nav";
+import { NotificationBell } from "@/components/layout/notification-bell";
+import { useAuth } from "@/lib/auth-context";
 
 const sidebarLinks = [
   { name: "POS Terminal", href: "/cashier", icon: ShoppingCart },
@@ -24,24 +26,22 @@ export default function CashierLayout({ children }: { children: React.ReactNode 
   const [isLogoutOpen, setIsLogoutOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
+  const { user, logout: logoutUser } = useAuth();
+  const displayName = user ? [user.firstName, user.lastName].filter(Boolean).join(" ").trim() || "User" : "User";
+  const roleLabel = user?.roles?.[0] ? user.roles[0].replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase()) : "";
+  const initials = displayName.split(" ").filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase() || "").join("");
 
   React.useEffect(() => {
     setIsSidebarOpen(false);
   }, [pathname]);
 
-  const logout = () => {
+  const logout = async () => {
     try {
-      const keysToRemove = [
-        "vemtap:session", "vemtap:clinic", "vemtap:user",
-        "vemtap_auth", "authToken", "token",
-      ];
-      keysToRemove.forEach((k) => localStorage.removeItem(k));
-      sessionStorage.clear();
-    } catch {
-      // ignore
+      await logoutUser();
+    } finally {
+      setIsLogoutOpen(false);
+      router.replace("/login");
     }
-    setIsLogoutOpen(false);
-    router.replace("/login");
   };
 
   return (
@@ -102,11 +102,11 @@ export default function CashierLayout({ children }: { children: React.ReactNode 
           <div className="p-3 border-t border-white/10 shrink-0">
             <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5">
               <div className="w-9 h-9 rounded-full bg-emerald-800 flex items-center justify-center text-emerald-400 font-bold text-sm">
-                CS
+                {initials || "•"}
               </div>
               <div>
-                <p className="text-sm font-bold">Cashier Station</p>
-                <p className="text-[9px] text-white/50">Point of Sale</p>
+                <p className="text-sm font-bold">{displayName || "User"}</p>
+                <p className="text-[9px] text-white/50">{roleLabel || "Staff"}</p>
               </div>
             </div>
           </div>
@@ -119,9 +119,7 @@ export default function CashierLayout({ children }: { children: React.ReactNode 
             <Menu size={20} className="text-slate-700" />
           </button>
           <div className="flex-1" />
-          <button className="relative p-2 hover:bg-slate-100 rounded-xl" aria-label="Notifications">
-            <Bell size={18} className="text-slate-500" />
-          </button>
+          <NotificationBell accentClass="bg-emerald-500" viewAllHref="/notifications" />
           <button
             onClick={() => setIsLogoutOpen(true)}
             className="ml-2 inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
@@ -142,6 +140,9 @@ export default function CashierLayout({ children }: { children: React.ReactNode 
           { label: "POS", href: "/cashier", icon: ShoppingCart },
           { label: "History", href: "/cashier/history", icon: Receipt },
           { label: "Reports", href: "/cashier/reconciliation", icon: BarChart3 },
+        ]}
+        moreItems={[
+          { label: "Settings", href: "/cashier/settings", icon: Settings2 },
         ]}
         activeColor="text-emerald-600"
       />

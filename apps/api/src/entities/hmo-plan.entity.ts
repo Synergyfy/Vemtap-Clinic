@@ -1,5 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
 import { HMO } from './hmo.entity';
+import { Clinic } from './clinic.entity';
 
 @Entity('hmo_plans')
 export class HMOPlan {
@@ -69,6 +70,13 @@ export class HMOPlan {
   @ManyToOne(() => HMO)
   @JoinColumn({ name: 'hmoId' })
   hmo: HMO;
+
+  @Column()
+  clinicId: string;
+
+  @ManyToOne(() => Clinic)
+  @JoinColumn({ name: 'clinicId' })
+  clinic: Clinic;
 
   @CreateDateColumn()
   createdAt: Date;

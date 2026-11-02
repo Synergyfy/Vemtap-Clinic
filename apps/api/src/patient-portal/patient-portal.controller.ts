@@ -31,7 +31,7 @@ export class PatientPortalController {
   async register(@Body() dto: PatientRegisterDto, @Res({ passthrough: true }) res: Response) {
     const { tokens, patient } = await this.portalService.register(dto);
     this.setAccessCookie(res, tokens.accessToken);
-    return { patient };
+    return { patient, accessToken: tokens.accessToken };
   }
 
   @Post('login')
@@ -39,7 +39,7 @@ export class PatientPortalController {
   async login(@Body() dto: PatientLoginDto, @Res({ passthrough: true }) res: Response) {
     const { tokens, patient } = await this.portalService.login(dto);
     this.setAccessCookie(res, tokens.accessToken);
-    return { patient };
+    return { patient, accessToken: tokens.accessToken };
   }
 
   @Post('logout')

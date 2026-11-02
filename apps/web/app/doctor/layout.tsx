@@ -12,6 +12,8 @@ import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { Modal } from "@/components/ui/modal";
 import { BottomNav } from "@/components/layout/bottom-nav";
+import { NotificationBell } from "@/components/layout/notification-bell";
+import { useAuth } from "@/lib/auth-context";
 
 const sidebarLinks = [
   { name: "Dashboard", href: "/doctor/dashboard", icon: LayoutDashboard },
@@ -29,28 +31,22 @@ export default function DoctorLayout({ children }: { children: React.ReactNode }
   const [isLogoutOpen, setIsLogoutOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
+  const { user, logout: logoutUser } = useAuth();
+
+  const doctorDisplayName = user ? [user.firstName, user.lastName].filter(Boolean).join(" ").trim() || "Doctor" : "Doctor";
+  const doctorRoleLabel = user?.roles?.[0] ? user.roles[0].replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase()) : "Doctor";
 
   React.useEffect(() => {
     setIsSidebarOpen(false);
   }, [pathname]);
 
-  const logout = () => {
+  const logout = async () => {
     try {
-      const keysToRemove = [
-        "vemtap:session",
-        "vemtap:clinic",
-        "vemtap:user",
-        "vemtap_auth",
-        "authToken",
-        "token",
-      ];
-      keysToRemove.forEach((k) => localStorage.removeItem(k));
-      sessionStorage.clear();
-    } catch {
-      // ignore storage errors
+      await logoutUser();
+    } finally {
+      setIsLogoutOpen(false);
+      router.replace("/login");
     }
-    setIsLogoutOpen(false);
-    router.replace("/login");
   };
 
   return (
@@ -114,8 +110,8 @@ export default function DoctorLayout({ children }: { children: React.ReactNode }
                 DR
               </div>
               <div>
-                <p className="text-sm font-bold">Dr. A. Bello</p>
-                <p className="text-[10px] text-white/50">Consultant Ophthalmologist</p>
+                <p className="text-sm font-bold">{doctorDisplayName}</p>
+                <p className="text-[10px] text-white/50">{doctorRoleLabel}</p>
               </div>
             </div>
           </div>
@@ -128,10 +124,7 @@ export default function DoctorLayout({ children }: { children: React.ReactNode }
             <Menu size={24} className="text-slate-700" />
           </button>
           <div className="flex-1" />
-          <button className="relative p-2 hover:bg-slate-100 rounded-xl" aria-label="Notifications">
-            <Bell size={20} className="text-slate-500" />
-            <span className="absolute top-2 right-2 w-2 h-2 bg-emerald-500 rounded-full border-2 border-white"></span>
-          </button>
+          <NotificationBell accentClass="bg-emerald-500" viewAllHref="/notifications" />
           <button
             onClick={() => setIsLogoutOpen(true)}
             className="ml-2 inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
@@ -152,7 +145,12 @@ export default function DoctorLayout({ children }: { children: React.ReactNode }
           { label: "Home", href: "/doctor/dashboard", icon: LayoutDashboard },
           { label: "Queue", href: "/doctor/queue", icon: Clock },
           { label: "Patients", href: "/doctor/patients", icon: Users },
+        ]}
+        moreItems={[
           { label: "Appts", href: "/doctor/appointments", icon: Calendar },
+          { label: "Reports", href: "/doctor/reports", icon: BarChart3 },
+          { label: "Support", href: "/doctor/support", icon: Headphones },
+          { label: "Settings", href: "/doctor/settings", icon: Settings2 },
         ]}
         activeColor="text-emerald-600"
       />

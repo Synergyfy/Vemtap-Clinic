@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsNumber, IsUUID, IsEnum, IsDateString, MaxLength } from 'class-validator';
+import { IsString, IsOptional, IsNumber, IsBoolean, IsUUID, IsEnum, IsDateString, MaxLength } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { LensOrderStatus } from '../../entities/lens-order.entity';
 import { ProductionStage } from '../../entities/optical-production-item.entity';
@@ -44,6 +44,16 @@ export class CreateOpticalItemDto {
   @IsNumber()
   quantityInStock?: number;
 
+  @ApiPropertyOptional({ example: 5 })
+  @IsOptional()
+  @IsNumber()
+  reorderLevel?: number;
+
+  @ApiPropertyOptional({ example: true })
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
+
   @ApiProperty({ example: 'clinic-uuid' })
   @IsUUID()
   clinicId: string;
@@ -56,7 +66,8 @@ export class UpdateOpticalItemDto {
   @ApiPropertyOptional() @IsOptional() @IsString() type?: string;
   @ApiPropertyOptional() @IsOptional() @IsNumber() unitPrice?: number;
   @ApiPropertyOptional() @IsOptional() @IsNumber() quantityInStock?: number;
-  @ApiPropertyOptional() @IsOptional() isActive?: boolean;
+  @ApiPropertyOptional() @IsOptional() @IsNumber() reorderLevel?: number;
+  @ApiPropertyOptional() @IsOptional() @IsBoolean() isActive?: boolean;
 }
 
 export class CreateLensOrderDto {

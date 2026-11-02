@@ -88,20 +88,64 @@
   --sidebar-ring: oklch(0.708 0 0);
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   font-family: var(--font-sans);
   overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+@media (max-width: 767px) {
+  html {
+    font-size: 14px;
+  }
+
+  body {
+    font-size: 0.875rem;
+    line-height: 1.5;
+  }
+
+  p,
+  span,
+  label,
+  button,
+  input,
+  textarea,
+  select,
+  li,
+  a,
+  div {
+    font-size: inherit;
+  }
+}
+
+@media (max-width: 480px) {
+  html {
+    font-size: 13px;
+  }
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
+    -webkit-tap-highlight-color: transparent;
   }
   body {
     @apply bg-background text-foreground;
   }
   html {
     @apply font-sans;
+  }
+}
+
+@media (max-width: 767px) {
+  .glass,
+  .glass-dark {
+    backdrop-filter: blur(16px);
   }
 }
 

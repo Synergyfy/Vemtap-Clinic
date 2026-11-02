@@ -11,6 +11,8 @@ import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { Modal } from "@/components/ui/modal";
 import { BottomNav } from "@/components/layout/bottom-nav";
+import { NotificationBell } from "@/components/layout/notification-bell";
+import { useAuth } from "@/lib/auth-context";
 
 const sidebarLinks = [
   { name: "Dashboard", href: "/optician/dashboard", icon: LayoutDashboard },
@@ -27,22 +29,22 @@ export default function OpticianLayout({ children }: { children: React.ReactNode
   const [isLogoutOpen, setIsLogoutOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
+  const { user, logout: logoutUser } = useAuth();
+  const displayName = user ? [user.firstName, user.lastName].filter(Boolean).join(" ").trim() || "User" : "User";
+  const roleLabel = user?.roles?.[0] ? user.roles[0].replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase()) : "";
+  const initials = displayName.split(" ").filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase() || "").join("");
 
   React.useEffect(() => {
     setIsSidebarOpen(false);
   }, [pathname]);
 
-  const logout = () => {
+  const logout = async () => {
     try {
-      const keysToRemove = [
-        "vemtap:session", "vemtap:clinic", "vemtap:user",
-        "vemtap_auth", "authToken", "token",
-      ];
-      keysToRemove.forEach((k) => localStorage.removeItem(k));
-      sessionStorage.clear();
-    } catch { /* ignore */ }
-    setIsLogoutOpen(false);
-    router.replace("/login");
+      await logoutUser();
+    } finally {
+      setIsLogoutOpen(false);
+      router.replace("/login");
+    }
   };
 
   return (
@@ -103,11 +105,11 @@ export default function OpticianLayout({ children }: { children: React.ReactNode
           <div className="p-4 border-t border-white/10 shrink-0">
             <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5">
               <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-amber-400 font-bold">
-                OS
+                {initials || "•"}
               </div>
               <div>
-                <p className="text-sm font-bold">Opt. S. Danladi</p>
-                <p className="text-[10px] text-white/50">Chief Optometrist</p>
+                <p className="text-sm font-bold">{displayName || "User"}</p>
+                <p className="text-[10px] text-white/50">{roleLabel || "Staff"}</p>
               </div>
             </div>
           </div>
@@ -120,10 +122,7 @@ export default function OpticianLayout({ children }: { children: React.ReactNode
             <Menu size={24} className="text-slate-700" />
           </button>
           <div className="flex-1" />
-          <button className="relative p-2 hover:bg-slate-100 rounded-xl" aria-label="Notifications">
-            <Bell size={20} className="text-slate-500" />
-            <span className="absolute top-2 right-2 w-2 h-2 bg-amber-500 rounded-full border-2 border-white" />
-          </button>
+          <NotificationBell accentClass="bg-amber-500" viewAllHref="/notifications" />
           <button
             onClick={() => setIsLogoutOpen(true)}
             className="ml-2 inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
@@ -141,7 +140,12 @@ export default function OpticianLayout({ children }: { children: React.ReactNode
           { label: "Home", href: "/optician/dashboard", icon: LayoutDashboard },
           { label: "Orders", href: "/optician/orders", icon: ShoppingBag },
           { label: "Inventory", href: "/optician/inventory", icon: PackageSearch },
+        ]}
+        moreItems={[
           { label: "Production", href: "/optician/production", icon: Cog },
+          { label: "Sales", href: "/optician/sales", icon: BarChart3 },
+          { label: "Support", href: "/optician/support", icon: Headphones },
+          { label: "Settings", href: "/optician/settings", icon: Settings2 },
         ]}
         activeColor="text-amber-600"
       />

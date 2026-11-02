@@ -28,14 +28,14 @@ export class User {
   @Column({ select: false })
   password: string;
 
-  @Column({ type: 'enum', enum: UserRole, default: UserRole.RECEPTIONIST })
+  @Column({ type: 'enum', enum: UserRole, default: UserRole.ADMIN })
   role: UserRole;
 
   @Column({ default: true })
   isActive: boolean;
 
   @Column({ nullable: true })
-  clinicId: string;
+  clinicId: string | null;
 
   @ManyToOne(() => Clinic, { nullable: true })
   @JoinColumn({ name: 'clinicId' })
