@@ -41,11 +41,23 @@ export default function ForgotPasswordPage() {
   const handleRequestReset = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) return;
-    
+
     setError(null);
     setIsLoading(true);
     try {
-      await api.post("/auth/reset-password", { email, newPassword: "", token: "" });
+      const response = await api.post("/auth/forgot-password", { email });
+      const resetTokenFromApi = response?.data?.resetToken;
+
+      if (resetTokenFromApi) {
+        const nextUrl = new URL(window.location.href);
+        nextUrl.searchParams.set("email", email);
+        nextUrl.searchParams.set("token", resetTokenFromApi);
+        window.history.replaceState({}, "", nextUrl.toString());
+        setResetToken(resetTokenFromApi);
+        setStep("reset");
+        return;
+      }
+
       setStep("sent");
     } catch (err: any) {
       setError(err?.response?.data?.message ?? "Failed to send reset link");

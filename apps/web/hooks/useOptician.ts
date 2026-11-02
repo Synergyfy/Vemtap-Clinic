@@ -2,12 +2,43 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/auth-context';
 import { opticalInventoryService, lensOrderService, opticalSalesService } from '@/services/optician.service';
 
-export function useOpticalInventory() {
+export function useOpticalInventory(type?: string) {
   const { user } = useAuth();
   return useQuery({
-    queryKey: ['optical-items', user?.clinicId],
-    queryFn: () => opticalInventoryService.getItems(user!.clinicId!),
+    queryKey: ['optical-items', user?.clinicId, type || 'all'],
+    queryFn: () => opticalInventoryService.getItems(user!.clinicId!, type),
     enabled: !!user?.clinicId,
+  });
+}
+
+export function useCreateOpticalItem() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: Record<string, unknown>) => opticalInventoryService.createItem(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['optical-items'] });
+    },
+  });
+}
+
+export function useUpdateOpticalItem() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: Record<string, unknown> }) =>
+      opticalInventoryService.updateItem(id, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['optical-items'] });
+    },
+  });
+}
+
+export function useDeleteOpticalItem() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => opticalInventoryService.deleteItem(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['optical-items'] });
+    },
   });
 }
 
@@ -20,6 +51,16 @@ export function useLensOrders() {
   });
 }
 
+export function useCreateLensOrder() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: Record<string, unknown>) => lensOrderService.create(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['lens-orders'] });
+    },
+  });
+}
+
 export function useLensOrderProduction(orderId: string | null) {
   return useQuery({
     queryKey: ['lens-order-production', orderId],
@@ -28,11 +69,27 @@ export function useLensOrderProduction(orderId: string | null) {
   });
 }
 
+export function useCreateProductionItem() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: { lensOrderId: string; inventoryItemId?: string; clinicId: string }) =>
+      lensOrderService.createProductionItem(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['lens-order-production'] });
+      queryClient.invalidateQueries({ queryKey: ['lens-orders'] });
+    },
+  });
+}
+
 export function useUpdateLensOrderStatus() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ orderId, status, notes }: { orderId: string; status: string; notes?: string }) =>
-      lensOrderService.updateStatus(orderId, status, notes),
+    mutationFn: ({ orderId, status, notes, actualDeliveryDate }: {
+      orderId: string;
+      status?: string;
+      notes?: string;
+      actualDeliveryDate?: string;
+    }) => lensOrderService.updateStatus(orderId, { status, notes, actualDeliveryDate }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['lens-orders'] });
     },
@@ -60,6 +117,17 @@ export function useOpticalSales() {
   });
 }
 
+export function useCreateOpticalSale() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: Record<string, unknown>) => opticalSalesService.create(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['optical-sales'] });
+      queryClient.invalidateQueries({ queryKey: ['lens-orders'] });
+    },
+  });
+}
+
 export function useAllProductionItems() {
   const { user } = useAuth();
   const { data: orders = [] } = useLensOrders();
@@ -75,8 +143,8 @@ export function useAllProductionItems() {
             return items.map((item) => ({
               ...item,
               patientName: order.patient
-                ? `${order.patient.firstName} ${order.patient.lastName}`
-                : "Unknown Patient",
+                ? `${order.patient.firstName ?? ''} ${order.patient.lastName ?? ''}`.trim() || 'Unknown Patient'
+                : 'Unknown Patient',
               lensType: order.lensType,
               estimatedCompletion: order.expectedDeliveryDate,
               orderStatus: order.status,
@@ -91,3 +159,10 @@ export function useAllProductionItems() {
     enabled: !!user?.clinicId && orders.length > 0,
   });
 }
+
+export type {
+  OpticalInventoryItem,
+  LensOrder,
+  OpticalSale,
+  ProductionItem,
+} from '@/services/optician.service';

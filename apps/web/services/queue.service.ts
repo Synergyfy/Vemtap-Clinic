@@ -1,6 +1,6 @@
 import { api } from '@/lib/api';
 
-export type QueueStatus = 
+export type QueueStatus =
   | 'waiting'
   | 'called'
   | 'in_progress'
@@ -8,7 +8,7 @@ export type QueueStatus =
   | 'cancelled'
   | 'no_show';
 
-export type QueueType = 
+export type QueueType =
   | 'consultation'
   | 'eye_test'
   | 'optical'
@@ -16,12 +16,12 @@ export type QueueType =
   | 'pharmacy'
   | 'emergency';
 
-export type Priority = 
+export type Priority =
   | 'Normal'
   | 'High'
   | 'Emergency';
 
-export type PatientType = 
+export type PatientType =
   | 'Private'
   | 'HMO';
 
@@ -32,9 +32,10 @@ export interface QueueEntry {
   station?: string;
   priority: string;
   notes?: string;
-  calledAt?: string;
-  completedAt?: string;
+  calledAt?: string | null;
+  completedAt?: string | null;
   patientId: string;
+  patientName?: string;
   patient?: {
     id: string;
     firstName: string;
@@ -48,6 +49,10 @@ export interface QueueEntry {
   clinicId: string;
   createdAt: string;
   updatedAt: string;
+  stage?: string;
+  serviceType?: string;
+  waitMinutes?: number;
+  queueType?: string;
 }
 
 export interface PaginatedQueueResponse {
@@ -126,41 +131,124 @@ export interface ResetQueueData {
   clinicId: string;
 }
 
+const normalizeQueueStatus = (value?: string | null): QueueStatus => {
+  const normalized = (value ?? 'waiting').toLowerCase();
+
+  switch (normalized) {
+    case 'in-service':
+    case 'in service':
+    case 'in_progress':
+    case 'in progress':
+      return 'in_progress';
+    case 'called':
+      return 'called';
+    case 'completed':
+      return 'completed';
+    case 'cancelled':
+    case 'canceled':
+      return 'cancelled';
+    case 'no_show':
+    case 'no-show':
+      return 'no_show';
+    case 'waiting':
+    default:
+      return 'waiting';
+  }
+};
+
+const normalizeQueueEntry = (entry: Partial<QueueEntry> = {}): QueueEntry => {
+  const station = entry.station ?? entry.stage ?? 'reception';
+  const priority = entry.priority ?? 'Normal';
+  const status = normalizeQueueStatus(entry.status as string | undefined);
+  const derivedPatientName =
+    (entry.patientName ?? [entry.patient?.firstName, entry.patient?.lastName].filter(Boolean).join(' ')) ||
+    'Unknown patient';
+
+  return {
+    id: entry.id ?? '',
+    ticketNumber: entry.ticketNumber ?? 0,
+    status,
+    station,
+    priority,
+    notes: entry.notes ?? '',
+    calledAt: entry.calledAt ?? null,
+    completedAt: entry.completedAt ?? null,
+    patientId: entry.patientId ?? '',
+    patientName: derivedPatientName,
+    patient: entry.patient,
+    branchId: entry.branchId ?? '',
+    clinicId: entry.clinicId ?? '',
+    createdAt: entry.createdAt ?? new Date().toISOString(),
+    updatedAt: entry.updatedAt ?? entry.createdAt ?? new Date().toISOString(),
+    stage: entry.stage ?? station,
+    serviceType: entry.serviceType ?? station,
+    queueType: entry.queueType ?? entry.serviceType ?? station,
+    waitMinutes: entry.waitMinutes ?? 0,
+  };
+};
+
+const buildDocsQueuePayload = (data: Partial<CreateQueueEntryData> & { stage?: string; serviceType?: string }) => ({
+  patientId: data.patientId,
+  branchId: data.branchId,
+  clinicId: data.clinicId,
+  station: data.station ?? data.stage ?? 'reception',
+  priority: data.priority ?? 'Normal',
+  notes: data.notes ?? '',
+});
+
 export const queueService = {
   async getAll(params: QueueQueryParams = {}): Promise<PaginatedQueueResponse> {
     const searchParams = new URLSearchParams();
     Object.entries(params).forEach(([key, value]) => {
-      if (value !== undefined && value !== null) {
-        searchParams.append(key, String(value));
+      const normalizedValue = typeof value === 'string' ? value.trim() : value;
+      if (normalizedValue !== undefined && normalizedValue !== null && normalizedValue !== '') {
+        searchParams.append(key, String(normalizedValue));
       }
     });
+
     const response = await api.get(`/queue?${searchParams.toString()}`);
-    return response.data as PaginatedQueueResponse;
+    const rawData = response.data;
+    const entries = Array.isArray(rawData)
+      ? rawData
+      : Array.isArray(rawData?.data)
+        ? rawData.data
+        : [];
+
+    return {
+      ...(typeof rawData === 'object' && rawData !== null ? rawData : {}),
+      data: entries.map((entry: any) => normalizeQueueEntry(entry as Partial<QueueEntry>)),
+    } as PaginatedQueueResponse;
   },
 
   async getById(id: string): Promise<QueueEntry> {
     const response = await api.get(`/queue/${id}`);
-    return response.data as QueueEntry;
+    return normalizeQueueEntry(response.data as Partial<QueueEntry>);
   },
 
   async create(data: CreateQueueEntryData): Promise<QueueEntry> {
-    const response = await api.post('/queue', data);
-    return response.data as QueueEntry;
+    const response = await api.post('/queue', buildDocsQueuePayload(data));
+    return normalizeQueueEntry(response.data as Partial<QueueEntry>);
   },
 
   async update(id: string, data: UpdateQueueEntryData): Promise<QueueEntry> {
-    const response = await api.put(`/queue/${id}`, data);
-    return response.data as QueueEntry;
+    const payload = {
+      ...(data.status ? { status: normalizeQueueStatus(data.status as string) } : {}),
+      ...(data.station ? { station: data.station } : {}),
+      ...(data.notes !== undefined ? { notes: data.notes } : {}),
+    };
+
+    const response = await api.put(`/queue/${id}`, payload);
+    return normalizeQueueEntry(response.data as Partial<QueueEntry>);
   },
 
   async complete(id: string): Promise<QueueEntry> {
     const response = await api.put(`/queue/${id}/complete`);
-    return response.data as QueueEntry;
+    return normalizeQueueEntry(response.data as Partial<QueueEntry>);
   },
 
   async cancel(id: string): Promise<QueueEntry> {
     const response = await api.put(`/queue/${id}/cancel`);
-    return response.data as QueueEntry;
+    return normalizeQueueEntry(response.data as Partial<QueueEntry>);
   },
 
   async callNext(clinicId: string, branchId: string): Promise<CallNextResponse> {

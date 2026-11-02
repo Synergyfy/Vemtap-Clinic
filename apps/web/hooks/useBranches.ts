@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth-context";
-import { listBranches, getBranchStats, createBranch, updateBranch, deleteBranch, Branch } from "@/services/branches.service";
+import { listBranches, getBranchStats, createBranch, updateBranch, deleteBranch, Branch, CreateBranchInput } from "@/services/branches.service";
 
 const BRANCH_KEYS = {
   all: (clinicId: string) => ["branches", clinicId] as const,
@@ -29,7 +29,7 @@ export function useCreateBranch() {
   const qc = useQueryClient();
   const { user } = useAuth();
   return useMutation({
-    mutationFn: (dto: Omit<Branch, "id" | "createdAt" | "updatedAt">) =>
+    mutationFn: (dto: Omit<CreateBranchInput, "clinicId">) =>
       createBranch({ ...dto, clinicId: user!.clinicId }),
     onSuccess: () => { if (user?.clinicId) qc.invalidateQueries({ queryKey: BRANCH_KEYS.all(user.clinicId) }); },
   });

@@ -1,11 +1,11 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, Request } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import { SupportTicketsService } from './support-tickets.service';
-import { CreateSupportTicketDto, UpdateSupportTicketDto, SupportTicketQueryDto, CreateTicketMessageDto, AssignTicketDto, ResolveTicketDto } from './dto';
+import { Body, Controller, Get, Param, Post, Put, Query, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole } from '../entities/user.entity';
+import { CreateSupportTicketDto, SupportTicketQueryDto } from './dto';
+import { SupportTicketsService } from './support-tickets.service';
 
 @ApiTags('Support Tickets')
 @Controller('support-tickets')
@@ -14,87 +14,93 @@ import { UserRole } from '../entities/user.entity';
 export class SupportTicketsController {
   constructor(private readonly supportTicketsService: SupportTicketsService) {}
 
-  @Post()
-  @Roles(UserRole.ADMIN, UserRole.DOCTOR, UserRole.NURSE, UserRole.RECEPTIONIST, UserRole.PHARMACIST, UserRole.OPTOMETRIST, UserRole.CASHIER)
-  @ApiOperation({ summary: 'Create a support ticket' })
-  create(@Body() dto: CreateSupportTicketDto, @Request() req: any) {
-    return this.supportTicketsService.create(dto, req.user.sub);
-  }
-
   @Get()
-  @Roles(UserRole.ADMIN, UserRole.DOCTOR, UserRole.NURSE, UserRole.RECEPTIONIST, UserRole.PHARMACIST, UserRole.OPTOMETRIST, UserRole.CASHIER)
-  @ApiOperation({ summary: 'List support tickets with filters' })
+  @Roles(
+    UserRole.ADMIN,
+    UserRole.DOCTOR,
+    UserRole.NURSE,
+    UserRole.RECEPTIONIST,
+    UserRole.PHARMACIST,
+    UserRole.OPTOMETRIST,
+    UserRole.CASHIER,
+  )
+  @ApiOperation({ summary: 'List support tickets for a clinic' })
   findAll(@Query() query: SupportTicketQueryDto) {
-    return this.supportTicketsService.findAll(query);
+    return this.supportTicketsService.findAll(query.clinicId);
   }
 
   @Get('stats')
-  @Roles(UserRole.ADMIN, UserRole.DOCTOR, UserRole.NURSE, UserRole.RECEPTIONIST, UserRole.PHARMACIST, UserRole.OPTOMETRIST, UserRole.CASHIER)
-  @ApiOperation({ summary: 'Get ticket statistics' })
-  getStats(@Query('clinicId') clinicId: string) {
-    return this.supportTicketsService.getStats(clinicId);
-  }
-
-  @Get(':id')
-  @Roles(UserRole.ADMIN, UserRole.DOCTOR, UserRole.NURSE, UserRole.RECEPTIONIST, UserRole.PHARMACIST, UserRole.OPTOMETRIST, UserRole.CASHIER)
-  @ApiOperation({ summary: 'Get ticket by ID with messages' })
-  findOne(@Param('id') id: string) {
-    return this.supportTicketsService.findOne(id);
-  }
-
-  @Get(':id/messages')
-  @Roles(UserRole.ADMIN, UserRole.DOCTOR, UserRole.NURSE, UserRole.RECEPTIONIST, UserRole.PHARMACIST, UserRole.OPTOMETRIST, UserRole.CASHIER)
-  @ApiOperation({ summary: 'Get ticket messages' })
-  getMessages(@Param('id') id: string) {
-    return this.supportTicketsService.getMessages(id);
-  }
-
-  @Put(':id')
-  @Roles(UserRole.ADMIN, UserRole.DOCTOR, UserRole.NURSE, UserRole.RECEPTIONIST, UserRole.PHARMACIST, UserRole.OPTOMETRIST, UserRole.CASHIER)
-  @ApiOperation({ summary: 'Update ticket' })
-  update(@Param('id') id: string, @Body() dto: UpdateSupportTicketDto, @Request() req: any) {
-    return this.supportTicketsService.update(id, dto, req.user.sub);
-  }
-
-  @Put(':id/assign')
-  @Roles(UserRole.ADMIN, UserRole.RECEPTIONIST)
-  @ApiOperation({ summary: 'Assign ticket to staff' })
-  assign(@Param('id') id: string, @Body() dto: AssignTicketDto, @Request() req: any) {
-    return this.supportTicketsService.assign(id, dto, req.user.sub);
+  @Roles(
+    UserRole.ADMIN,
+    UserRole.DOCTOR,
+    UserRole.NURSE,
+    UserRole.RECEPTIONIST,
+    UserRole.PHARMACIST,
+    UserRole.OPTOMETRIST,
+    UserRole.CASHIER,
+  )
+  @ApiOperation({ summary: 'Get support ticket stats' })
+  getStats(@Query() query: SupportTicketQueryDto) {
+    return this.supportTicketsService.getStats(query.clinicId);
   }
 
   @Put(':id/resolve')
-  @Roles(UserRole.ADMIN, UserRole.DOCTOR, UserRole.NURSE, UserRole.RECEPTIONIST, UserRole.PHARMACIST, UserRole.OPTOMETRIST, UserRole.CASHIER)
-  @ApiOperation({ summary: 'Resolve ticket' })
-  resolve(@Param('id') id: string, @Body() dto: ResolveTicketDto, @Request() req: any) {
-    return this.supportTicketsService.resolve(id, dto, req.user.sub);
+  @Roles(
+    UserRole.ADMIN,
+    UserRole.DOCTOR,
+    UserRole.NURSE,
+    UserRole.RECEPTIONIST,
+    UserRole.PHARMACIST,
+    UserRole.OPTOMETRIST,
+    UserRole.CASHIER,
+  )
+  @ApiOperation({ summary: 'Resolve a support ticket' })
+  resolve(@Param('id') id: string, @Body('resolutionNotes') resolutionNotes?: string) {
+    return this.supportTicketsService.resolve(id, resolutionNotes);
   }
 
   @Put(':id/close')
-  @Roles(UserRole.ADMIN, UserRole.RECEPTIONIST)
-  @ApiOperation({ summary: 'Close ticket' })
-  close(@Param('id') id: string, @Request() req: any) {
-    return this.supportTicketsService.close(id, req.user.sub);
+  @Roles(
+    UserRole.ADMIN,
+    UserRole.DOCTOR,
+    UserRole.NURSE,
+    UserRole.RECEPTIONIST,
+    UserRole.PHARMACIST,
+    UserRole.OPTOMETRIST,
+    UserRole.CASHIER,
+  )
+  @ApiOperation({ summary: 'Close a support ticket' })
+  close(@Param('id') id: string) {
+    return this.supportTicketsService.close(id);
   }
 
-  @Put(':id/reopen')
-  @Roles(UserRole.ADMIN, UserRole.RECEPTIONIST)
-  @ApiOperation({ summary: 'Reopen ticket' })
-  reopen(@Param('id') id: string, @Request() req: any) {
-    return this.supportTicketsService.reopen(id, req.user.sub);
+  @Put(':id')
+  @Roles(
+    UserRole.ADMIN,
+    UserRole.DOCTOR,
+    UserRole.NURSE,
+    UserRole.RECEPTIONIST,
+    UserRole.PHARMACIST,
+    UserRole.OPTOMETRIST,
+    UserRole.CASHIER,
+  )
+  @ApiOperation({ summary: 'Alias update route for support ticket operations' })
+  update(@Param('id') id: string) {
+    return this.supportTicketsService.close(id);
   }
 
-  @Post(':id/messages')
-  @Roles(UserRole.ADMIN, UserRole.DOCTOR, UserRole.NURSE, UserRole.RECEPTIONIST, UserRole.PHARMACIST, UserRole.OPTOMETRIST, UserRole.CASHIER)
-  @ApiOperation({ summary: 'Add message to ticket' })
-  addMessage(@Param('id') id: string, @Body() dto: CreateTicketMessageDto, @Request() req: any) {
-    return this.supportTicketsService.addMessage(id, { ...dto, ticketId: id }, req.user.sub);
-  }
-
-  @Delete(':id')
-  @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Delete ticket' })
-  remove(@Param('id') id: string) {
-    return this.supportTicketsService.remove(id);
+  @Post()
+  @Roles(
+    UserRole.ADMIN,
+    UserRole.DOCTOR,
+    UserRole.NURSE,
+    UserRole.RECEPTIONIST,
+    UserRole.PHARMACIST,
+    UserRole.OPTOMETRIST,
+    UserRole.CASHIER,
+  )
+  @ApiOperation({ summary: 'Create a support ticket' })
+  create(@Body() dto: CreateSupportTicketDto) {
+    return this.supportTicketsService.create(dto);
   }
 }

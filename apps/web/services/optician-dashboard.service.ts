@@ -12,7 +12,7 @@ export interface OpticalInventoryItem {
   quantityInStock: number;
   isActive: boolean;
   clinicId: string;
-  createdAt: string;
+  createdAt?: string;
 }
 
 export interface LensOrder {
@@ -25,9 +25,9 @@ export interface LensOrder {
   actualDeliveryDate?: string;
   notes?: string;
   patientId: string;
-  patient?: { id: string; firstName: string; lastName: string };
+  patient?: { id?: string; firstName?: string; lastName?: string };
   clinicId: string;
-  createdAt: string;
+  createdAt?: string;
 }
 
 export interface OpticalSale {
@@ -38,44 +38,33 @@ export interface OpticalSale {
   status: string;
   paymentMethod: string;
   patientId?: string;
-  patient?: { id: string; firstName: string; lastName: string };
+  patient?: { id?: string; firstName?: string; lastName?: string };
   lensOrderId?: string;
   clinicId: string;
-  createdAt: string;
+  createdAt?: string;
 }
 
-export interface PaginatedResponse<T> {
-  data: T[];
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
-}
-
-function getPatientName(patient: { firstName: string; lastName: string } | undefined): string {
-  if (!patient) return "Unknown Patient";
-  return `${patient.firstName} ${patient.lastName}`;
+function normalizeList<T>(payload: unknown): T[] {
+  if (Array.isArray(payload)) return payload as T[];
+  if (payload && typeof payload === 'object' && Array.isArray((payload as { data?: unknown }).data)) {
+    return (payload as { data: T[] }).data;
+  }
+  return [];
 }
 
 export const opticianDashboardService = {
   async getLensOrders(clinicId: string): Promise<LensOrder[]> {
-    const params = new URLSearchParams({ clinicId, limit: '100' });
-    const response = await api.get(`/optical/lens-orders?${params.toString()}`);
-    const data = response.data as PaginatedResponse<LensOrder>;
-    return data.data || [];
+    const response = await api.get('/optical/lens-orders', { params: { clinicId } });
+    return normalizeList<LensOrder>(response.data);
   },
 
   async getInventory(clinicId: string): Promise<OpticalInventoryItem[]> {
-    const params = new URLSearchParams({ clinicId, limit: '200' });
-    const response = await api.get(`/optical/items?${params.toString()}`);
-    const data = response.data as PaginatedResponse<OpticalInventoryItem>;
-    return data.data || [];
+    const response = await api.get('/optical/items', { params: { clinicId } });
+    return normalizeList<OpticalInventoryItem>(response.data);
   },
 
   async getSales(clinicId: string): Promise<OpticalSale[]> {
-    const params = new URLSearchParams({ clinicId, limit: '20' });
-    const response = await api.get(`/optical/sales?${params.toString()}`);
-    const data = response.data as PaginatedResponse<OpticalSale>;
-    return data.data || [];
+    const response = await api.get('/optical/sales', { params: { clinicId } });
+    return normalizeList<OpticalSale>(response.data);
   },
 };

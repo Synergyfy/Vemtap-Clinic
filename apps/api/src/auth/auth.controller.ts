@@ -2,8 +2,11 @@ import { Controller, Post, Get, Put, Body, Res, Req, UseGuards, HttpCode, HttpSt
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
 import { Response, Request } from 'express';
 import { ConfigService } from '@nestjs/config';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Clinic } from '../entities/clinic.entity';
 import { AuthService } from './auth.service';
-import { LoginDto, RegisterDto, ChangePasswordDto, ResetPasswordDto, RefreshTokenDto, AuthUserDto, AuthResponseDto } from './dto/auth.dto';
+import { LoginDto, RegisterDto, ChangePasswordDto, ResetPasswordDto, RequestPasswordResetDto, RefreshTokenDto, AuthUserDto, AuthResponseDto } from './dto/auth.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { getRefreshCookieOptions, getClearedRefreshCookieOptions, REFRESH_COOKIE_NAME } from './utils/refresh-cookie.util';
@@ -14,7 +17,18 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly configService: ConfigService,
+    @InjectRepository(Clinic)
+    private readonly clinicRepo: Repository<Clinic>,
   ) {}
+
+  @Get('clinics')
+  @ApiOperation({ summary: 'Get clinics for registration without authentication' })
+  async getPublicClinics() {
+    return this.clinicRepo.find({
+      order: { name: 'ASC' },
+      select: ['id', 'name', 'city', 'state', 'address', 'phone', 'email', 'isActive', 'createdAt'],
+    });
+  }
 
   @Post('register')
   @ApiOperation({ summary: 'Register a new user' })
@@ -92,6 +106,13 @@ export class AuthController {
     return this.authService.changePassword(userId, dto);
   }
 
+  @Post('forgot-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Request a password reset link for an email address' })
+  async requestPasswordReset(@Body() dto: RequestPasswordResetDto) {
+    return this.authService.requestPasswordReset(dto.email);
+  }
+
   @Post('reset-password')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Reset password via email token — revokes all sessions' })
@@ -112,6 +133,6 @@ export class AuthController {
   }
 
   private clearRefreshCookie(res: Response) {
-    res.cookie(REFRESH_COOKIE_NAME, '', getClearedRefreshCookieOptions());
+    res.cookie(REFRESH_COOKIE_NAME, '', getClearedRefreshCookieOptions(this.configService));
   }
 }

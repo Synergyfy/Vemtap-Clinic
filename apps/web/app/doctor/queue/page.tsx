@@ -6,8 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PageHeader } from "@/app/clinic/_components/page-header";
-import { useQueue } from "@/hooks/useQueue";
 import { useAuth } from "@/lib/auth-context";
+import { useDoctorConsultationQueue } from "@/hooks/useDoctorDashboard";
 import { Clock, UserPlus, PlayCircle } from "lucide-react";
 
 function statusBadge(status: string) {
@@ -25,8 +25,9 @@ function priorityBadge(priority: string) {
 
 export default function DoctorQueue() {
   const { user } = useAuth();
-  const { data: response, isLoading } = useQueue({ clinicId: user?.clinicId, status: 'waiting' });
-  const queueEntries = response?.data || [];
+  const staffId = user?.userId || null;
+  const clinicId = user?.clinicId || null;
+  const { data: queueEntries = [], isLoading } = useDoctorConsultationQueue(staffId, clinicId);
 
   const nextPatient = queueEntries[0];
 

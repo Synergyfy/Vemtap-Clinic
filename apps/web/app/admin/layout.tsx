@@ -10,23 +10,34 @@ import {
   Database, ShieldAlert, Globe, Zap
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { BottomNav } from "@/components/layout/bottom-nav";
-
-const sidebarLinks = [
-  { name: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
-  { name: "Clinics", href: "/admin/clinics", icon: Building2 },
-  { name: "Healthcare Config", href: "/admin/config", icon: Database },
-  { name: "Financials", href: "/admin/finance", icon: Wallet },
-  { name: "Analytics", href: "/admin/analytics", icon: BarChart3 },
-  { name: "Support", href: "/admin/support", icon: Headphones },
-  { name: "Security & Audit", href: "/admin/security", icon: ShieldAlert },
-  { name: "System Control", href: "/admin/settings", icon: Settings2 },
-];
+import { NotificationBell } from "@/components/layout/notification-bell";
+import { useAuth } from "@/lib/auth-context";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Default closed on mobile
   const pathname = usePathname();
+  const router = useRouter();
+  const { user, logout: logoutUser } = useAuth();
+  const dashboardHref = "/admin/dashboard";
+  const sidebarLinks = [
+    { name: "Dashboard", href: dashboardHref, icon: LayoutDashboard },
+    { name: "Clinics", href: "/admin/clinics", icon: Building2 },
+    { name: "Healthcare Config", href: "/admin/config", icon: Database },
+    { name: "Financials", href: "/admin/finance", icon: Wallet },
+    { name: "Analytics", href: "/admin/analytics", icon: BarChart3 },
+    { name: "Support", href: "/admin/support", icon: Headphones },
+    { name: "Security & Audit", href: "/admin/security", icon: ShieldAlert },
+    { name: "System Control", href: "/admin/settings", icon: Settings2 },
+  ];
+  const displayName = user
+    ? [user.firstName, user.lastName].filter(Boolean).join(" ").trim() || user.email?.split("@")[0]?.replace(/[._-]+/g, " ") || "User"
+    : "User";
+  const displayEmail = user?.email || "";
+  const roleLabel = user?.roles?.[0] ? user.roles[0].replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase()) : "";
+  const initials = displayName.split(" ").filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase() || "").join("");
 
   // Close sidebar on mobile when navigating
   React.useEffect(() => {
@@ -60,7 +71,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <div className="h-full flex flex-col">
           {/* Logo */}
           <div className="p-6 flex items-center justify-between shrink-0 h-20">
-            <Link href="/admin/dashboard" className={cn("flex items-center gap-2 transition-all", !isSidebarOpen && "lg:opacity-0 lg:pointer-events-none")}>
+            <Link href={dashboardHref} className={cn("flex items-center gap-2 transition-all", !isSidebarOpen && "lg:opacity-0 lg:pointer-events-none")}>
               <div className="w-8 h-8 bg-brand-blue rounded-lg flex items-center justify-center shrink-0">
                 <div className="w-4 h-4 bg-white rounded-sm rotate-45" />
               </div>
@@ -107,16 +118,27 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
           {/* Footer */}
           <div className="p-4 border-t border-white/5 shrink-0 bg-brand-navy/50">
-            <Link href="/login" className={cn("flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 cursor-pointer transition-all group", !isSidebarOpen && "lg:justify-center")}>
+            <button
+              onClick={async () => {
+                try {
+                  await logoutUser();
+                  router.replace('/login');
+                } catch (e) {
+                  console.error('Logout error', e);
+                  router.replace('/login');
+                }
+              }}
+              className={cn('flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 cursor-pointer transition-all group', !isSidebarOpen && 'lg:justify-center')}
+            >
               <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center border border-white/10 shrink-0">
-                <User size={20} className="text-brand-blue" />
+                {initials ? <span className="text-brand-blue font-bold">{initials}</span> : <User size={20} className="text-brand-blue" />}
               </div>
-              <div className={cn("flex-1 min-w-0 transition-all", !isSidebarOpen && "lg:hidden")}>
-                <p className="text-sm font-bold truncate">Super Admin</p>
-                <p className="text-[10px] text-white/40 truncate">admin@vemtap.com</p>
+              <div className={cn('flex-1 min-w-0 transition-all', !isSidebarOpen && 'lg:hidden')}>
+                <p className="text-sm font-bold truncate">{displayName || 'User'}</p>
+                <p className="text-[10px] text-white/40 truncate">{displayEmail || 'No email available'}</p>
               </div>
-              <LogOut size={18} className={cn("text-white/40 group-hover:text-red-400 transition-colors shrink-0", !isSidebarOpen && "lg:hidden")} />
-            </Link>
+              <LogOut size={18} className={cn('text-white/40 group-hover:text-red-400 transition-colors shrink-0', !isSidebarOpen && 'lg:hidden')} />
+            </button>
           </div>
         </div>
       </aside>
@@ -156,20 +178,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </div>
 
           <div className="flex items-center gap-2 lg:gap-4 shrink-0">
-            <button className="relative p-2 hover:bg-slate-50 rounded-xl transition-colors group">
-              <Bell size={20} className="text-slate-500 group-hover:text-brand-blue transition-colors" />
-              <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
-            </button>
+            <NotificationBell accentClass="bg-red-500" viewAllHref="/notifications" />
             
             <div className="w-px h-8 bg-slate-200 mx-1 lg:mx-2 hidden xs:block"></div>
             
             <div className="flex items-center gap-3">
               <div className="text-right hidden md:block">
-                <p className="text-sm font-bold text-brand-navy">Vemtap Super</p>
-                <p className="text-[10px] font-bold text-brand-blue uppercase tracking-wider">System Owner</p>
+                <p className="text-sm font-bold text-brand-navy">{displayName}</p>
+                <p className="text-[10px] font-bold text-brand-blue uppercase tracking-wider">{roleLabel}</p>
               </div>
               <div className="w-9 h-9 lg:w-10 lg:h-10 rounded-xl bg-brand-soft-blue flex items-center justify-center text-brand-blue font-black text-xs lg:text-sm border border-brand-blue/10">
-                VS
+                {initials || "•"}
               </div>
             </div>
           </div>
@@ -185,10 +204,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
       <BottomNav 
         items={[
-          { label: "Home", href: "/admin/dashboard", icon: LayoutDashboard },
+          { label: "Home", href: dashboardHref, icon: LayoutDashboard },
           { label: "Clinics", href: "/admin/clinics", icon: Building2 },
           { label: "Finance", href: "/admin/finance", icon: Wallet },
+        ]}
+        moreItems={[
           { label: "Analytics", href: "/admin/analytics", icon: BarChart3 },
+          { label: "Security", href: "/admin/security", icon: ShieldAlert },
+          { label: "Settings", href: "/admin/settings", icon: Settings2 },
+          { label: "Support", href: "/admin/support", icon: Headphones },
         ]}
         activeColor="text-brand-blue"
       />

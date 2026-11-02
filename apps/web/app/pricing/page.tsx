@@ -9,19 +9,26 @@ import { Button } from "@/components/ui/button";
 import { useModals } from "@/lib/modal-context";
 import Link from "next/link";
 
-const comparisonData = [
-  { feature: "Branch Locations", starter: "1", growth: "Up to 3", enterprise: "Unlimited", multi: "5+" },
-  { feature: "Staff Accounts", starter: "5", growth: "Unlimited", enterprise: "Unlimited", multi: "Unlimited" },
-  { feature: "QR Self Check-in", starter: true, growth: true, enterprise: true, multi: true },
-  { feature: "HMO Management", starter: "Basic", growth: "Advanced", enterprise: "Custom", multi: "Centralized" },
-  { feature: "Optical Workflow", starter: false, growth: true, enterprise: true, multi: true },
-  { feature: "OCR Form Scanning", starter: false, growth: "50/mo", enterprise: "Unlimited", multi: "Unlimited" },
-  { feature: "WhatsApp Notifications", starter: false, growth: true, enterprise: true, multi: true },
-  { feature: "Patient Portal", starter: true, growth: true, enterprise: true, multi: true },
-  { feature: "Surgery Management", starter: false, growth: false, enterprise: true, multi: true },
-  { feature: "Advanced Analytics", starter: false, growth: true, enterprise: true, multi: true },
-  { feature: "API Access", starter: false, growth: false, enterprise: true, multi: true },
-  { feature: "Dedicated Manager", starter: false, growth: false, enterprise: true, multi: true },
+const comparisonData: Array<{
+  feature: string;
+  free?: string | boolean;
+  starter: string | boolean;
+  growth: string | boolean;
+  enterprise: string | boolean;
+  multi: string | boolean;
+}> = [
+  { feature: "Branch Locations", free: "1", starter: "1", growth: "Up to 3", enterprise: "Unlimited", multi: "5+" },
+  { feature: "Staff Accounts", free: "1", starter: "5", growth: "Unlimited", enterprise: "Unlimited", multi: "Unlimited" },
+  { feature: "QR Self Check-in", free: true, starter: true, growth: true, enterprise: true, multi: true },
+  { feature: "HMO Management", free: "Basic", starter: "Basic", growth: "Advanced", enterprise: "Custom", multi: "Centralized" },
+  { feature: "Optical Workflow", free: false, starter: false, growth: true, enterprise: true, multi: true },
+  { feature: "OCR Form Scanning", free: false, starter: false, growth: "50/mo", enterprise: "Unlimited", multi: "Unlimited" },
+  { feature: "WhatsApp Notifications", free: false, starter: false, growth: true, enterprise: true, multi: true },
+  { feature: "Patient Portal", free: true, starter: true, growth: true, enterprise: true, multi: true },
+  { feature: "Surgery Management", free: false, starter: false, growth: false, enterprise: true, multi: true },
+  { feature: "Advanced Analytics", free: false, starter: false, growth: true, enterprise: true, multi: true },
+  { feature: "API Access", free: false, starter: false, growth: false, enterprise: true, multi: true },
+  { feature: "Dedicated Manager", free: false, starter: false, growth: false, enterprise: true, multi: true },
 ];
 
 export default function PricingPage() {
@@ -29,6 +36,14 @@ export default function PricingPage() {
   const { openModal } = useModals();
 
   const plans = [
+    {
+      name: "Free",
+      icon: Zap,
+      price: "0",
+      desc: "A no-cost way to launch a clinic and explore the basics.",
+      features: ["1 Clinic", "Basic Patient Records", "Queue Management", "Email Support"],
+      color: "emerald"
+    },
     {
       name: "Starter",
       icon: Zap,
@@ -105,7 +120,7 @@ export default function PricingPage() {
       {/* Plans */}
       <section className="py-20">
         <div className="max-w-7xl mx-auto px-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
             {plans.map((plan, idx) => (
               <motion.div
                 key={idx}
@@ -129,9 +144,9 @@ export default function PricingPage() {
                 </div>
 
                 <div className="mb-8">
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-4xl font-black text-brand-navy">{plan.price !== "Custom" ? "$" : ""}{plan.price}</span>
-                    {plan.price !== "Custom" && <span className="text-sm font-medium text-slate-400">{isYearly ? "/yr" : "/mo"}</span>}
+                  <div className="flex items-end gap-1.5 min-h-[52px]">
+                    <span className="text-4xl leading-none font-black text-brand-navy">{plan.price !== "Custom" ? "$" : ""}{plan.price}</span>
+                    {plan.price !== "Custom" && <span className="pb-1 text-sm font-medium text-slate-400 whitespace-nowrap">{isYearly ? "/yr" : "/mo"}</span>}
                   </div>
                 </div>
 
@@ -170,6 +185,7 @@ export default function PricingPage() {
               <thead>
                 <tr>
                   <th className="py-6 px-4 border-b border-slate-100 text-sm font-bold text-brand-navy uppercase tracking-wider">Features</th>
+                  <th className="py-6 px-4 border-b border-slate-100 text-sm font-bold text-brand-navy uppercase tracking-wider text-center">Free</th>
                   <th className="py-6 px-4 border-b border-slate-100 text-sm font-bold text-brand-navy uppercase tracking-wider text-center">Starter</th>
                   <th className="py-6 px-4 border-b border-slate-100 text-sm font-bold text-brand-navy uppercase tracking-wider text-center bg-slate-50/50">Growth</th>
                   <th className="py-6 px-4 border-b border-slate-100 text-sm font-bold text-brand-navy uppercase tracking-wider text-center">Multi-Branch</th>
@@ -180,6 +196,9 @@ export default function PricingPage() {
                 {comparisonData.map((row, idx) => (
                   <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
                     <td className="py-5 px-4 border-b border-slate-50 text-sm font-medium text-slate-700">{row.feature}</td>
+                    <td className="py-5 px-4 border-b border-slate-50 text-sm text-center">
+                      <span className="text-slate-500">{row.free ?? "—"}</span>
+                    </td>
                     <td className="py-5 px-4 border-b border-slate-50 text-sm text-center">
                       {typeof row.starter === "boolean" ? (row.starter ? <Check className="mx-auto text-emerald-500" size={18} /> : <X className="mx-auto text-slate-300" size={18} />) : <span className="text-slate-500">{row.starter}</span>}
                     </td>

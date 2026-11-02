@@ -5,16 +5,15 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { User, Shield, MapPin, Bell, LogOut, ChevronRight, CheckCircle2, Building2 } from "lucide-react";
 import { Modal } from "@/components/ui/modal";
-import { usePatientProfile, useUpdateProfile } from "@/hooks/usePatientPortal";
+import { usePatientProfile, useUpdateProfile, usePatientLogout } from "@/hooks/usePatientPortal";
 import { useAuth } from "@/lib/auth-context";
-
-const branches = ["Main Branch", "Downtown Clinic", "Ikeja Mall", "Victoria Island", "Lekki Phase 1"];
 
 export default function ProfilePage() {
   const router = useRouter();
   const { user } = useAuth();
   const { data: profile, isLoading } = usePatientProfile();
   const updateProfile = useUpdateProfile();
+  const logout = usePatientLogout();
 
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [smsEnabled, setSmsEnabled] = useState(true);
@@ -23,26 +22,41 @@ export default function ProfilePage() {
   const [showPersonalInfo, setShowPersonalInfo] = useState(false);
   const [showHmoDetails, setShowHmoDetails] = useState(false);
   const [showBranch, setShowBranch] = useState(false);
-  const [preferredBranch, setPreferredBranch] = useState("Main Branch");
+  const [preferredBranch, setPreferredBranch] = useState("");
   const [toast, setToast] = useState("");
 
   const [editPhone, setEditPhone] = useState("");
   const [editAddress, setEditAddress] = useState("");
+  const [editCity, setEditCity] = useState("");
+  const [editState, setEditState] = useState("");
+  const [editEmergencyContact, setEditEmergencyContact] = useState("");
+  const [editEmergencyPhone, setEditEmergencyPhone] = useState("");
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 3000); };
 
   const handleLogout = () => {
-    try {
-      localStorage.removeItem("patient-portal-storage");
-      sessionStorage.clear();
-    } catch { /* ignore */ }
-    setShowLogoutModal(false);
-    router.replace("/login");
+    logout.mutate(undefined, {
+      onSettled: () => {
+        try {
+          localStorage.removeItem("patient-portal-storage");
+          sessionStorage.clear();
+        } catch { /* ignore */ }
+        setShowLogoutModal(false);
+        router.replace("/login");
+      },
+    });
   };
 
   const handleSaveProfile = () => {
     updateProfile.mutate(
-      { phone: editPhone, address: editAddress },
+      {
+        phone: editPhone,
+        address: editAddress,
+        city: editCity,
+        state: editState,
+        emergencyContact: editEmergencyContact,
+        emergencyPhone: editEmergencyPhone,
+      },
       {
         onSuccess: () => {
           setShowPersonalInfo(false);
@@ -55,8 +69,16 @@ export default function ProfilePage() {
   const openPersonalInfo = () => {
     setEditPhone(profile?.phone || "");
     setEditAddress(profile?.address || "");
+    setEditCity((profile as any)?.city || "");
+    setEditState((profile as any)?.state || "");
+    setEditEmergencyContact((profile as any)?.emergencyContact || "");
+    setEditEmergencyPhone((profile as any)?.emergencyPhone || "");
     setShowPersonalInfo(true);
   };
+
+  React.useEffect(() => {
+    setPreferredBranch((profile as any)?.preferredBranch || "");
+  }, [profile]);
 
   const displayName = profile ? `${profile.firstName} ${profile.lastName}` : "Patient";
   const initials = profile ? `${profile.firstName.charAt(0)}${profile.lastName.charAt(0)}` : "P";
@@ -209,6 +231,34 @@ export default function ProfilePage() {
               placeholder="Enter your address"
               className="w-full p-3 rounded-xl bg-slate-50 border border-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500/10 font-bold text-slate-900 text-sm" />
           </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">City</label>
+              <input value={editCity} onChange={(e) => setEditCity(e.target.value)}
+                placeholder="e.g. Lagos"
+                className="w-full p-3 rounded-xl bg-slate-50 border border-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500/10 font-bold text-slate-900 text-sm" />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">State</label>
+              <input value={editState} onChange={(e) => setEditState(e.target.value)}
+                placeholder="e.g. Lagos"
+                className="w-full p-3 rounded-xl bg-slate-50 border border-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500/10 font-bold text-slate-900 text-sm" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Emergency Contact</label>
+              <input value={editEmergencyContact} onChange={(e) => setEditEmergencyContact(e.target.value)}
+                placeholder="Contact Name"
+                className="w-full p-3 rounded-xl bg-slate-50 border border-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500/10 font-bold text-slate-900 text-sm" />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Emergency Phone</label>
+              <input value={editEmergencyPhone} onChange={(e) => setEditEmergencyPhone(e.target.value)}
+                placeholder="+234..."
+                className="w-full p-3 rounded-xl bg-slate-50 border border-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500/10 font-bold text-slate-900 text-sm" />
+            </div>
+          </div>
           <div className="flex flex-col gap-2 pt-2">
             <button onClick={handleSaveProfile} disabled={updateProfile.isPending}
               className="w-full py-3.5 rounded-xl bg-teal-600 text-white text-sm font-bold hover:bg-teal-700 transition-colors disabled:opacity-50">
@@ -226,26 +276,26 @@ export default function ProfilePage() {
           <div className="p-5 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center gap-4">
             <div className="w-14 h-14 rounded-2xl bg-emerald-100 flex items-center justify-center text-emerald-700 shrink-0"><Shield size={28} /></div>
             <div>
-              <h4 className="text-lg font-bold text-slate-900">Reliance Health</h4>
+              <h4 className="text-lg font-bold text-slate-900">{(profile as any)?.hmoProvider || "No active HMO record"}</h4>
               <p className="text-sm text-slate-500">HMO Provider</p>
             </div>
           </div>
           <div className="space-y-2">
             <div className="flex justify-between p-4 rounded-xl bg-slate-50 border border-slate-100">
               <span className="text-xs font-bold text-slate-400">Policy Number</span>
-              <span className="text-sm font-bold text-slate-900">REL-0092-4418</span>
+              <span className="text-sm font-bold text-slate-900">{(profile as any)?.policyNumber || "Not available"}</span>
             </div>
             <div className="flex justify-between p-4 rounded-xl bg-slate-50 border border-slate-100">
               <span className="text-xs font-bold text-slate-400">Coverage Type</span>
-              <span className="text-sm font-bold text-slate-900">Comprehensive</span>
+              <span className="text-sm font-bold text-slate-900">{(profile as any)?.coverageType || "Not available"}</span>
             </div>
             <div className="flex justify-between p-4 rounded-xl bg-slate-50 border border-slate-100">
               <span className="text-xs font-bold text-slate-400">Status</span>
-              <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-black uppercase tracking-widest">Active</span>
+              <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-black uppercase tracking-widest">{(profile as any)?.hmoStatus || "Unverified"}</span>
             </div>
             <div className="flex justify-between p-4 rounded-xl bg-slate-50 border border-slate-100">
               <span className="text-xs font-bold text-slate-400">Valid Until</span>
-              <span className="text-sm font-bold text-slate-900">Dec 31, 2026</span>
+              <span className="text-sm font-bold text-slate-900">{(profile as any)?.hmoExpiry || "Not available"}</span>
             </div>
           </div>
           <button onClick={() => setShowHmoDetails(false)}
@@ -256,16 +306,18 @@ export default function ProfilePage() {
       {/* Preferred Branch Modal */}
       <Modal isOpen={showBranch} onClose={() => setShowBranch(false)} title="Preferred Branch">
         <div className="space-y-3">
-          {branches.map((branch) => (
-            <button key={branch} onClick={() => { setPreferredBranch(branch); setShowBranch(false); showToast(`Preferred branch changed to ${branch}`); }}
-              className={`w-full flex items-center justify-between p-4 rounded-2xl border transition-all text-left ${preferredBranch === branch ? 'bg-teal-50 border-teal-200' : 'bg-slate-50 border-slate-100 hover:border-teal-200'}`}>
+          {preferredBranch ? (
+            <button onClick={() => { setPreferredBranch(""); setShowBranch(false); showToast("Preferred branch cleared"); }}
+              className="w-full flex items-center justify-between p-4 rounded-2xl border bg-teal-50 border-teal-200 text-left">
               <div className="flex items-center gap-3">
-                <Building2 size={18} className={preferredBranch === branch ? 'text-teal-600' : 'text-slate-400'} />
-                <span className={`text-sm font-bold ${preferredBranch === branch ? 'text-teal-900' : 'text-slate-700'}`}>{branch}</span>
+                <Building2 size={18} className="text-teal-600" />
+                <span className="text-sm font-bold text-teal-900">{preferredBranch}</span>
               </div>
-              {preferredBranch === branch && <CheckCircle2 size={18} className="text-teal-600" />}
+              <CheckCircle2 size={18} className="text-teal-600" />
             </button>
-          ))}
+          ) : (
+            <div className="p-5 rounded-2xl bg-slate-50 border border-slate-100 text-sm text-slate-500 text-center">No branch preference has been saved yet.</div>
+          )}
         </div>
         <button onClick={() => setShowBranch(false)}
           className="w-full mt-4 py-3.5 rounded-xl border border-slate-200 text-slate-600 text-sm font-bold hover:bg-slate-50 transition-colors">Close</button>

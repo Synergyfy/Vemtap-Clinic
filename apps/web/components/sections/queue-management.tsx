@@ -6,71 +6,71 @@ import { Calendar, Clock, UserCheck, Monitor, ArrowRight, Video } from "lucide-r
 
 export const QueueManagement = () => {
   return (
-    <section className="py-24 bg-slate-50">
-      <div className="max-w-7xl mx-auto px-6">
-        <div className="text-center max-w-3xl mx-auto mb-20">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-blue/10 text-brand-blue text-sm font-semibold mb-6">
+    <section className="bg-slate-50 py-6">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6">
+        <div className="mx-auto mb-12 max-w-3xl text-center sm:mb-20">
+          <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-brand-blue/10 px-3 py-1 text-sm font-semibold text-brand-blue">
             Smart Queue & Appointments
           </div>
-          <h2 className="text-4xl md:text-5xl font-bold text-brand-navy mb-6">
+          <h2 className="mb-6 text-4xl font-bold text-brand-navy md:text-5xl">
             Intelligent <span className="text-brand-blue">Queue</span> Control
           </h2>
-          <p className="text-xl text-slate-600 leading-relaxed">
+          <p className="text-base leading-relaxed text-slate-600 sm:text-xl">
             Manage appointments and walk-ins seamlessly. Show live waiting room displays to keep patients informed and reduce perceived wait times.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:gap-8">
           {/* Left: Queue Dashboard */}
-          <div className="lg:col-span-2 bg-white rounded-[2.5rem] p-8 shadow-xl border border-slate-100">
-            <div className="flex items-center justify-between mb-8">
+          <div className="rounded-[2rem] border border-slate-100 bg-white p-4 shadow-xl sm:p-6 lg:col-span-2 lg:rounded-[2.5rem] lg:p-8">
+            <div className="mb-6 flex flex-col gap-3 sm:mb-8 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-brand-soft-blue rounded-xl flex items-center justify-center">
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-soft-blue sm:h-12 sm:w-12">
                   <Monitor className="text-brand-blue" size={20} />
                 </div>
-                <h4 className="font-bold text-brand-navy">Waiting Room Display</h4>
+                <h4 className="text-base font-bold text-brand-navy sm:text-lg">Waiting Room Display</h4>
               </div>
-              <div className="flex items-center gap-2 text-[10px] font-bold text-emerald-600 uppercase">
-                <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+              <div className="flex items-center gap-2 self-start text-[9px] font-bold uppercase text-emerald-600 sm:self-auto sm:text-[10px]">
+                <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
                 Live View
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="space-y-6">
-                <div className="p-6 bg-brand-navy text-white rounded-3xl text-center">
-                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Currently Serving</div>
-                  <div className="text-4xl font-bold mb-1">T-042</div>
-                  <div className="text-xs text-brand-blue font-bold">Consultation Room 1</div>
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2 md:gap-8">
+              <div className="space-y-4 sm:space-y-6">
+                <div className="rounded-3xl bg-brand-navy p-4 text-center text-white sm:p-6">
+                  <div className="mb-2 text-[9px] font-bold uppercase tracking-widest text-slate-400 sm:text-[10px]">Currently Serving</div>
+                  <div className="mb-1 text-3xl font-bold sm:text-4xl">T-042</div>
+                  <div className="text-[10px] font-bold text-brand-blue sm:text-xs">Consultation Room 1</div>
                 </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="p-4 bg-slate-50 rounded-2xl text-center">
-                    <div className="text-[9px] text-slate-400 font-bold uppercase mb-1">Average Wait</div>
-                    <div className="text-xl font-bold text-brand-navy">12 min</div>
+
+                <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                  <div className="rounded-2xl bg-slate-50 p-3 text-center sm:p-4">
+                    <div className="mb-1 text-[8px] font-bold uppercase tracking-wider text-slate-400 sm:text-[9px]">Average Wait</div>
+                    <div className="text-lg font-bold text-brand-navy sm:text-xl">12 min</div>
                   </div>
-                  <div className="p-4 bg-slate-50 rounded-2xl text-center">
-                    <div className="text-[9px] text-slate-400 font-bold uppercase mb-1">Next Up</div>
-                    <div className="text-xl font-bold text-brand-navy">T-045</div>
+                  <div className="rounded-2xl bg-slate-50 p-3 text-center sm:p-4">
+                    <div className="mb-1 text-[8px] font-bold uppercase tracking-wider text-slate-400 sm:text-[9px]">Next Up</div>
+                    <div className="text-lg font-bold text-brand-navy sm:text-xl">T-045</div>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-slate-50 rounded-3xl p-6">
-                <div className="text-xs font-bold text-brand-navy mb-4 uppercase tracking-wider">Queue Timeline</div>
-                <div className="space-y-4">
+              <div className="rounded-3xl bg-slate-50 p-4 sm:p-6">
+                <div className="mb-4 text-[10px] font-bold uppercase tracking-wider text-brand-navy sm:text-xs">Queue Timeline</div>
+                <div className="space-y-3 sm:space-y-4">
                   {[
                     { ticket: "T-045", status: "Next", time: "2 min" },
                     { ticket: "T-046", status: "Waiting", time: "8 min" },
                     { ticket: "T-047", status: "Waiting", time: "15 min" },
                     { ticket: "T-048", status: "Checking-in", time: "20 min" },
                   ].map((item, idx) => (
-                    <div key={idx} className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-white shadow-sm flex items-center justify-center text-[10px] font-black text-brand-navy">{item.ticket}</div>
-                        <span className="text-xs font-medium text-slate-600">{item.status}</span>
+                    <div key={idx} className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2.5 sm:gap-3">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white text-[9px] font-black text-brand-navy shadow-sm sm:h-8 sm:w-8 sm:text-[10px]">{item.ticket}</div>
+                        <span className="text-[11px] font-medium text-slate-600 sm:text-xs">{item.status}</span>
                       </div>
-                      <span className="text-[10px] font-bold text-slate-400">{item.time}</span>
+                      <span className="text-[9px] font-bold text-slate-400 sm:text-[10px]">{item.time}</span>
                     </div>
                   ))}
                 </div>

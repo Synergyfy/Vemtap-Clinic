@@ -1,5 +1,6 @@
-import { IsString, IsOptional, IsEnum, IsUUID, MaxLength } from 'class-validator';
+import { IsString, IsOptional, IsEnum, IsUUID, MaxLength, IsNumber } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Transform } from 'class-transformer';
 import { ObservationCategory } from '../../entities/observation-note.entity';
 
 export class CreateObservationNoteDto {
@@ -37,4 +38,15 @@ export class ObservationNoteQueryDto {
   @IsOptional()
   @IsUUID()
   clinicId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  staffId?: string;
+
+  @ApiPropertyOptional({ example: 50 })
+  @IsOptional()
+  @Transform(({ value }) => Number(value))
+  @IsNumber()
+  limit?: number = 50;
 }
