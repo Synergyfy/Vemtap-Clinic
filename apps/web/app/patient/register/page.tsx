@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, Suspense } from "react";
 import { motion } from "framer-motion";
 import { 
   User, Mail, Lock, Phone, Calendar, 
@@ -12,7 +12,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { usePatientRegister } from "@/hooks/usePatientPortal";
 import { useAuth } from "@/lib/auth-context";
 
-export default function PatientRegisterPage() {
+function PatientRegisterContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user } = useAuth();
@@ -327,5 +327,19 @@ export default function PatientRegisterPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+export default function PatientRegisterPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
+          <div className="text-sm font-medium text-slate-500">Loading patient registration...</div>
+        </div>
+      }
+    >
+      <PatientRegisterContent />
+    </Suspense>
   );
 }
