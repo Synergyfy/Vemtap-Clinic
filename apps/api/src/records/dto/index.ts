@@ -1,6 +1,6 @@
-import { IsString, IsOptional, IsUUID, IsArray, ValidateNested } from 'class-validator';
+import { IsString, IsOptional, IsUUID, IsArray, ValidateNested, IsNumber } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
+import { Type, Transform } from 'class-transformer';
 
 export class VitalsDto {
   @ApiPropertyOptional() @IsOptional() temperature?: number;
@@ -55,4 +55,16 @@ export class MedicalRecordQueryDto {
   @ApiPropertyOptional() @IsOptional() @IsUUID() patientId?: string;
   @ApiPropertyOptional() @IsOptional() @IsUUID() staffId?: string;
   @ApiPropertyOptional() @IsOptional() @IsUUID() branchId?: string;
+
+  @ApiPropertyOptional({ example: 1 })
+  @IsOptional()
+  @Transform(({ value }) => Number(value))
+  @IsNumber()
+  page?: number = 1;
+
+  @ApiPropertyOptional({ example: 10 })
+  @IsOptional()
+  @Transform(({ value }) => Number(value))
+  @IsNumber()
+  limit?: number = 10;
 }

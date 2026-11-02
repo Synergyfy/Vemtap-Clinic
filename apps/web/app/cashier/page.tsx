@@ -77,8 +77,9 @@ export default function PosPage() {
   const [showCloseShift, setShowCloseShift] = useState(false);
   const [showReceipt, setShowReceipt] = useState<any>(null);
   const [closingCash, setClosingCash] = useState(0);
-  const [shiftCashier, setShiftCashier] = useState("");
   const [openingBalance, setOpeningBalance] = useState(0);
+  const [shiftNotes, setShiftNotes] = useState("");
+  const [closingNotes, setClosingNotes] = useState("");
   const [focusedIndex, setFocusedIndex] = useState(-1);
 
   const [cashAmount, setCashAmount] = useState(0);
@@ -170,18 +171,38 @@ export default function PosPage() {
   };
 
   const handleOpenShift = () => {
-    if (!shiftCashier.trim() || !user) return;
+    if (!user) return;
     openShiftMut.mutate(
-      { openingBalance, staffId: user.userId, clinicId: user.clinicId },
-      { onSuccess: () => setShowOpenShift(false) }
+      {
+        openingBalance,
+        staffId: user.userId,
+        clinicId: user.clinicId,
+        notes: shiftNotes.trim() || undefined,
+      },
+      {
+        onSuccess: () => {
+          setShowOpenShift(false);
+          setShiftNotes("");
+        },
+      }
     );
   };
 
   const handleCloseShift = () => {
     if (!activeShift) return;
     closeShiftMut.mutate(
-      { id: activeShift.id, closingBalance: closingCash },
-      { onSuccess: () => { setShowCloseShift(false); setClosingCash(0); } }
+      {
+        id: activeShift.id,
+        closingBalance: closingCash,
+        notes: closingNotes.trim() || undefined,
+      },
+      {
+        onSuccess: () => {
+          setShowCloseShift(false);
+          setClosingCash(0);
+          setClosingNotes("");
+        },
+      }
     );
   };
 
@@ -225,6 +246,13 @@ export default function PosPage() {
               <div>
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Opening Balance</label>
                 <input type="number" value={openingBalance || ""} onChange={(e) => setOpeningBalance(Number(e.target.value))}
+                  placeholder="0"
+                  className="w-full px-4 py-3.5 rounded-2xl bg-slate-50 border-2 border-slate-100 focus:border-emerald-500 text-sm font-bold text-slate-900 focus:outline-none transition-all" />
+              </div>
+              <div>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Notes (Optional)</label>
+                <input type="text" value={shiftNotes} onChange={(e) => setShiftNotes(e.target.value)}
+                  placeholder="e.g. Morning shift, float verified"
                   className="w-full px-4 py-3.5 rounded-2xl bg-slate-50 border-2 border-slate-100 focus:border-emerald-500 text-sm font-bold text-slate-900 focus:outline-none transition-all" />
               </div>
               <button onClick={handleOpenShift} disabled={openShiftMut.isPending}
@@ -561,6 +589,13 @@ export default function PosPage() {
           <div>
             <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Actual Cash in Drawer</label>
             <input type="number" value={closingCash || ""} onChange={(e) => setClosingCash(Number(e.target.value))}
+              placeholder="0"
+              className="w-full px-4 py-3.5 rounded-2xl bg-slate-50 border-2 border-slate-100 focus:border-emerald-500 text-sm font-bold text-slate-900 focus:outline-none transition-all" />
+          </div>
+          <div>
+            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Shift Notes (Optional)</label>
+            <input type="text" value={closingNotes} onChange={(e) => setClosingNotes(e.target.value)}
+              placeholder="e.g. Drawer balanced, handed over to evening cashier"
               className="w-full px-4 py-3.5 rounded-2xl bg-slate-50 border-2 border-slate-100 focus:border-emerald-500 text-sm font-bold text-slate-900 focus:outline-none transition-all" />
           </div>
           <div className="flex gap-3">

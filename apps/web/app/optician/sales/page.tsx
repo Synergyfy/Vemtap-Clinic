@@ -23,7 +23,7 @@ export default function SalesPage() {
   const stats = useMemo(() => {
     const totalRevenue = sales.filter((s) => s.status === "completed").reduce((sum, s) => sum + s.totalPrice, 0);
     const todaySales = sales.filter((s) => {
-      const saleDate = new Date(s.createdAt).toDateString();
+      const saleDate = s.createdAt ? new Date(s.createdAt).toDateString() : "";
       return saleDate === new Date().toDateString();
     }).length;
     const pending = sales.filter((s) => s.status === "pending").length;
@@ -91,7 +91,7 @@ export default function SalesPage() {
               <div className="text-xs text-slate-500 mb-2">{sale.inventoryItem?.name || sale.lensOrderId ? "Lens Order" : "—"}</div>
               <div className="flex items-center justify-between">
                 <span className="text-xs font-medium text-slate-600">₦{sale.totalPrice.toLocaleString()}</span>
-                <span className="text-[10px] text-slate-400">{new Date(sale.createdAt).toLocaleDateString()}</span>
+                <span className="text-[10px] text-slate-400">{sale.createdAt ? new Date(sale.createdAt).toLocaleDateString() : "—"}</span>
               </div>
             </CardContent>
           </Card>
@@ -125,7 +125,7 @@ export default function SalesPage() {
                 <TableCell className="text-sm text-slate-600 whitespace-nowrap">{sale.quantity}</TableCell>
                 <TableCell className="text-sm text-slate-600 whitespace-nowrap font-medium">₦{sale.totalPrice.toLocaleString()}</TableCell>
                 <TableCell className="text-sm text-slate-600 whitespace-nowrap capitalize">{sale.paymentMethod}</TableCell>
-                <TableCell className="text-sm text-slate-500 whitespace-nowrap">{new Date(sale.createdAt).toLocaleDateString()}</TableCell>
+                <TableCell className="text-sm text-slate-500 whitespace-nowrap">{sale.createdAt ? new Date(sale.createdAt).toLocaleDateString() : "—"}</TableCell>
                 <TableCell><Badge className={statusColors[sale.status]}>{sale.status}</Badge></TableCell>
               </TableRow>
             ))}
@@ -171,7 +171,7 @@ export default function SalesPage() {
               </div>
               <div className="rounded-xl bg-slate-50 p-3">
                 <p className="text-[10px] font-bold text-slate-400 uppercase">Date</p>
-                <p className="mt-0.5 text-sm font-bold text-slate-900">{new Date(selectedSale.createdAt).toLocaleString()}</p>
+                <p className="mt-0.5 text-sm font-bold text-slate-900">{selectedSale.createdAt ? new Date(selectedSale.createdAt).toLocaleString() : "—"}</p>
               </div>
               <div className="rounded-xl bg-slate-50 p-3">
                 <p className="text-[10px] font-bold text-slate-400 uppercase">Sale ID</p>

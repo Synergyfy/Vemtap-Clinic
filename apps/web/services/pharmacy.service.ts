@@ -90,12 +90,71 @@ export interface PaginatedResponse<T> {
   totalPages: number;
 }
 
+export interface CreateDrugInput {
+  name: string;
+  genericName?: string;
+  category: string;
+  dosageForm: string;
+  strength: string;
+  unitPrice: number;
+  quantityInStock?: number;
+  reorderLevel?: number;
+  expiryDate?: string;
+  manufacturer?: string;
+  supplier?: string;
+  clinicId: string;
+}
+
+export interface CreateSupplierInput {
+  name: string;
+  contactPerson?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  products?: string;
+  clinicId: string;
+}
+
+export type UpdateDrugInput = Partial<CreateDrugInput> & {
+  isActive?: boolean;
+};
+
 export const pharmacyService = {
   // ── Drugs ──
   async getDrugs(clinicId: string): Promise<Drug[]> {
     const params = new URLSearchParams({ clinicId, limit: '200' });
     const res = await api.get(`/drugs?${params.toString()}`);
-    return (res.data as PaginatedResponse<Drug>).data || [];
+    const data = res.data as PaginatedResponse<Drug> | Drug[];
+    if (Array.isArray(data)) return data;
+    return data.data || [];
+  },
+
+  async getDrug(drugId: string): Promise<Drug> {
+    const res = await api.get(`/drugs/${drugId}`);
+    return res.data as Drug;
+  },
+
+  async getLowStockDrugs(clinicId: string): Promise<Drug[]> {
+    const res = await api.get(`/drugs/low-stock?clinicId=${encodeURIComponent(clinicId)}`);
+    const data = res.data as PaginatedResponse<Drug> | Drug[];
+    if (Array.isArray(data)) return data;
+    return data.data || [];
+  },
+
+  async createDrug(dto: CreateDrugInput): Promise<Drug> {
+    const res = await api.post('/drugs', dto);
+    return res.data as Drug;
+  },
+
+  async updateDrug(drugId: string, dto: UpdateDrugInput): Promise<Drug> {
+    const res = await api.put(`/drugs/${drugId}`, dto);
+    return res.data as Drug;
+  },
+
+  async deleteDrug(drugId: string): Promise<void> {
+    await api.delete(`/drugs/${drugId}`);
   },
 
   async restockDrug(drugId: string, quantity: number): Promise<void> {
@@ -110,7 +169,14 @@ export const pharmacyService = {
   async getSuppliers(clinicId: string): Promise<Supplier[]> {
     const params = new URLSearchParams({ clinicId });
     const res = await api.get(`/suppliers?${params.toString()}`);
-    return (res.data as PaginatedResponse<Supplier>).data || [];
+    const data = res.data as PaginatedResponse<Supplier> | Supplier[];
+    if (Array.isArray(data)) return data;
+    return data.data || [];
+  },
+
+  async createSupplier(dto: CreateSupplierInput): Promise<Supplier> {
+    const res = await api.post('/suppliers', dto);
+    return res.data as Supplier;
   },
 
   // ── Purchase Orders ──

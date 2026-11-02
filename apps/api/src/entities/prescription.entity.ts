@@ -1,6 +1,7 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
 import { MedicalRecord } from './medical-record.entity';
 import { Staff } from './staff.entity';
+import { Clinic } from './clinic.entity';
 
 @Entity('prescriptions')
 export class Prescription {
@@ -31,6 +32,13 @@ export class Prescription {
   @ManyToOne(() => MedicalRecord)
   @JoinColumn({ name: 'medicalRecordId' })
   medicalRecord: MedicalRecord;
+
+  @Column()
+  clinicId: string;
+
+  @ManyToOne(() => Clinic)
+  @JoinColumn({ name: 'clinicId' })
+  clinic: Clinic;
 
   @Column({ nullable: true })
   prescribedById: string;

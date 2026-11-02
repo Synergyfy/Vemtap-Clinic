@@ -56,6 +56,15 @@ export interface FollowUp {
   status: string;
 }
 
+const dedupeById = <T extends { id: string }>(items: T[]): T[] => {
+  const seen = new Set<string>();
+  return items.filter((item) => {
+    if (seen.has(item.id)) return false;
+    seen.add(item.id);
+    return true;
+  });
+};
+
 export const doctorDashboardService = {
   async getTodayAppointments(staffId: string, clinicId: string): Promise<Appointment[]> {
     const today = new Intl.DateTimeFormat('en-CA').format(new Date());
@@ -71,15 +80,22 @@ export const doctorDashboardService = {
     return data.data || [];
   },
 
-  async getConsultationQueue(clinicId: string): Promise<any[]> {
-    const params = new URLSearchParams({
-      clinicId,
-      status: 'waiting',
-      limit: '20',
+  async getConsultationQueue(staffId: string, clinicId: string): Promise<any[]> {
+    const assignedAppointments = await this.getTodayAppointments(staffId, clinicId);
+    const patientIds = [...new Set(assignedAppointments.map((appointment) => appointment.patientId).filter(Boolean))];
+
+    if (patientIds.length === 0) return [];
+
+    const responses = await Promise.all(
+      patientIds.map((patientId) => api.get(`/queue?patientId=${encodeURIComponent(patientId)}&status=waiting&limit=20`)),
+    );
+
+    const queueEntries = responses.flatMap((response) => {
+      const data = response.data as { data?: any[] };
+      return data?.data || [];
     });
-    const response = await api.get(`/queue?${params.toString()}`);
-    const data = response.data as { data: any[] };
-    return data.data || [];
+
+    return dedupeById(queueEntries);
   },
 
   async getRecentRecords(staffId: string, clinicId: string, limit = 5): Promise<MedicalRecord[]> {

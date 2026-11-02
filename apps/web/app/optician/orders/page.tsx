@@ -191,12 +191,12 @@ export default function OrdersPage() {
             <div className="space-y-2">
               <h4 className="text-sm font-bold text-slate-900">Update Status</h4>
               <div className="flex gap-2">
-                {selectedOrder.status !== "delivered" && (
+                {selectedOrder.status in { pending: 1, processing: 1, ready: 1 } && (
                   <button
                     onClick={() => { handleAdvance(selectedOrder.id, selectedOrder.status); setDetailOrder(null); }}
                     className="flex-1 inline-flex items-center justify-center rounded-xl bg-amber-600 px-6 py-3 text-sm font-bold text-white hover:bg-amber-700 transition-colors"
                   >
-                    Advance to {statusLabels[{ pending: "processing", processing: "ready", ready: "delivered" }[selectedOrder.status]]}
+                    Advance to {statusLabels[({ pending: "processing", processing: "ready", ready: "delivered" } as Record<string, "pending" | "processing" | "ready" | "delivered" | "cancelled">)[selectedOrder.status] || "processing"]}
                   </button>
                 )}
                 {selectedOrder.status === "delivered" && (

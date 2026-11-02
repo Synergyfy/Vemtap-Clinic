@@ -1,9 +1,11 @@
 "use client";
 
 import React from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Building2, Trash2, ShieldAlert, Settings, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useDeleteClinic, useUpdateClinic } from "@/hooks/useClinics";
 
 interface ClinicActionModalProps {
   isOpen: boolean;
@@ -13,7 +15,32 @@ interface ClinicActionModalProps {
 }
 
 export function ClinicActionModal({ isOpen, onClose, clinicId, clinicName }: ClinicActionModalProps) {
+  const router = useRouter();
+  const updateClinicMutation = useUpdateClinic();
+  const deleteClinicMutation = useDeleteClinic();
+
   if (!isOpen) return null;
+
+  const handleSuspendClinic = () => {
+    updateClinicMutation.mutate({
+      id: clinicId,
+      dto: { isActive: false },
+    });
+    onClose();
+  };
+
+  const handleDeleteClinic = () => {
+    if (!window.confirm(`Delete ${clinicName}? This action cannot be undone.`)) {
+      return;
+    }
+
+    deleteClinicMutation.mutate(clinicId, {
+      onSuccess: () => {
+        router.push("/admin/clinics");
+      },
+    });
+    onClose();
+  };
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -48,17 +75,17 @@ export function ClinicActionModal({ isOpen, onClose, clinicId, clinicName }: Cli
           </div>
 
           <div className="space-y-2">
-            <Button variant="ghost" className="w-full justify-start gap-3 rounded-xl hover:bg-slate-50">
+            <Button variant="ghost" className="w-full justify-start gap-3 rounded-xl hover:bg-slate-50" onClick={() => { router.push(`/admin/clinics/${clinicId}`); onClose(); }}>
               <ExternalLink size={16} /> View Details
             </Button>
-            <Button variant="ghost" className="w-full justify-start gap-3 rounded-xl hover:bg-slate-50">
+            <Button variant="ghost" className="w-full justify-start gap-3 rounded-xl hover:bg-slate-50" onClick={() => { router.push(`/admin/analytics?clinicId=${clinicId}`); onClose(); }}>
               <Settings size={16} /> Edit Settings
             </Button>
             <div className="my-2 border-t border-slate-100"></div>
-            <Button variant="ghost" className="w-full justify-start gap-3 rounded-xl text-amber-600 hover:text-amber-700 hover:bg-amber-50">
+            <Button variant="ghost" className="w-full justify-start gap-3 rounded-xl text-amber-600 hover:text-amber-700 hover:bg-amber-50" onClick={handleSuspendClinic} disabled={updateClinicMutation.isPending}>
               <ShieldAlert size={16} /> Suspend Clinic
             </Button>
-            <Button variant="ghost" className="w-full justify-start gap-3 rounded-xl text-red-600 hover:text-red-700 hover:bg-red-50">
+            <Button variant="ghost" className="w-full justify-start gap-3 rounded-xl text-red-600 hover:text-red-700 hover:bg-red-50" onClick={handleDeleteClinic} disabled={deleteClinicMutation.isPending}>
               <Trash2 size={16} /> Delete Clinic
             </Button>
           </div>

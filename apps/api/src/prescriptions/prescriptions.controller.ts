@@ -23,8 +23,8 @@ export class PrescriptionsController {
 
   @Get()
   @ApiOperation({ summary: 'List prescriptions' })
-  findAll(@Query('medicalRecordId') medicalRecordId: string) {
-    return this.prescriptionsService.findAll(medicalRecordId);
+  findAll(@Query('medicalRecordId') medicalRecordId: string, @Query('clinicId') clinicId: string) {
+    return this.prescriptionsService.findAll(medicalRecordId, clinicId);
   }
 
   @Get('patient/:patientId')

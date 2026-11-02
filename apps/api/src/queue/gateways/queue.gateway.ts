@@ -22,7 +22,7 @@ export class QueueGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
 
-  private connectedClients = new Map<string, { socket: Socket; clinicId: string; userId: string }>();
+  private connectedClients = new Map<string, { clinicId: string; userId: string }>();
 
   constructor(private readonly jwtService: JwtService) {}
 
@@ -37,7 +37,7 @@ export class QueueGateway implements OnGatewayConnection, OnGatewayDisconnect {
       const payload = this.jwtService.verify(token);
       const { sub: userId, clinicId } = payload;
 
-      this.connectedClients.set(client.id, { socket: client, clinicId, userId });
+      this.connectedClients.set(client.id, { clinicId, userId });
       client.join(`clinic-${clinicId}`);
       
       client.emit('connected', { message: 'Connected to queue realtime' });

@@ -12,6 +12,7 @@ import { CalendarDays, Users, ShieldCheck, TrendingUp, Clock, Plus, Trash2, Chec
 import { Modal } from "@/components/ui/modal";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useStaff, useCreateStaff, useUpdateStaff, useDeleteStaff, Staff, StaffQueryParams, StaffRole } from "@/hooks/useStaff";
+import { useBranches } from "@/hooks/useBranches";
 import { useAuth } from "@/lib/auth-context";
 import { toast } from "sonner";
 
@@ -23,25 +24,11 @@ type ClinicShift = {
   shift: "Morning" | "Afternoon" | "Night";
 };
 
-type RolePermission = {
-  role: string;
-  permissions: string[];
-};
-
-const initialShifts: ClinicShift[] = [
-  { id: "SH-001", staffName: "Dr. A. Bello", role: "Doctor", day: "Monday", shift: "Morning" },
-  { id: "SH-002", staffName: "Nurse R. Okeke", role: "Nurse", day: "Monday", shift: "Morning" },
-];
-
-const initialPermissions: RolePermission[] = [
-  { role: "Doctor", permissions: ["view_patients", "create_consultation", "prescribe_drugs"] },
-  { role: "Receptionist", permissions: ["view_patients", "register_patient", "manage_queue"] },
-];
-
 type TabType = "team" | "shifts" | "permissions";
 
 export default function StaffPage() {
   const { user } = useAuth();
+  const { data: branches = [] } = useBranches();
   const { openModal } = useModals();
   const [activeTab, setActiveTab] = useState<TabType>("team");
   
@@ -64,10 +51,12 @@ export default function StaffPage() {
   const updateStaffMutation = useUpdateStaff();
   const deleteStaffMutation = useDeleteStaff();
 
-  const staff = staffResponse?.data || [];
+  const staff = Array.isArray(staffResponse)
+    ? staffResponse
+    : (staffResponse?.data ?? []);
 
-// Interactive State for Shifts
-  const [roster, setRoster] = useState<ClinicShift[]>(initialShifts);
+  const [roster, setRoster] = useState<ClinicShift[]>([]);
+
   const [isShiftModalOpen, setIsShiftModalOpen] = useState(false);
   const [newShift, setNewShift] = useState({
     staffName: "",
@@ -76,11 +65,50 @@ export default function StaffPage() {
     shift: "Morning" as const
   });
 
-  // Interactive State for Permissions
-  const [selectedRole, setSelectedRole] = useState(initialPermissions[0].role);
-  const [permissionsMap, setPermissionsMap] = useState<Record<string, string[]>>(
-    Object.fromEntries(initialPermissions.map(p => [p.role, p.permissions]))
+  const staffRoleOptions = useMemo(
+    () => Array.from(new Set(staff.map((member) => member.role).filter(Boolean))) as string[],
+    [staff]
   );
+
+  const [selectedRole, setSelectedRole] = useState("");
+  const [permissionsMap, setPermissionsMap] = useState<Record<string, string[]>>({});
+
+  useEffect(() => {
+    if (!staffRoleOptions.length) {
+      setSelectedRole("");
+      return;
+    }
+
+    setSelectedRole((current) => {
+      if (current && staffRoleOptions.includes(current)) {
+        return current;
+      }
+
+      return staffRoleOptions[0];
+    });
+  }, [staffRoleOptions]);
+
+  useEffect(() => {
+    setPermissionsMap((prev) => {
+      const next = { ...prev };
+      let didChange = false;
+
+      for (const role of staffRoleOptions) {
+        if (!Object.prototype.hasOwnProperty.call(next, role)) {
+          next[role] = [];
+          didChange = true;
+        }
+      }
+
+      const rolesToRemove = Object.keys(next).filter((role) => !staffRoleOptions.includes(role));
+      for (const role of rolesToRemove) {
+        delete next[role];
+        didChange = true;
+      }
+
+      return didChange ? next : prev;
+    });
+  }, [staffRoleOptions]);
 
   const handleAddShift = (e: React.FormEvent) => {
     e.preventDefault();
@@ -113,6 +141,27 @@ export default function StaffPage() {
     email: "", 
     isActive: true 
   });
+  const [isCreateStaffModalOpen, setIsCreateStaffModalOpen] = useState(false);
+  const [createForm, setCreateForm] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    role: "doctor" as StaffRole,
+    department: "Clinic",
+    specialization: "",
+    licenseNumber: "",
+    password: "",
+    branchId: user?.branchId ?? "",
+  });
+
+  useEffect(() => {
+    const fallbackBranchId = user?.branchId?.trim() || branches[0]?.id || "";
+    setCreateForm((prev) => ({
+      ...prev,
+      branchId: prev.branchId || fallbackBranchId,
+    }));
+  }, [user?.branchId, branches]);
 
   // Assign Shift Modal State
   const [assignModal, setAssignModal] = useState<{ day: string; timeSlot: string } | null>(null);
@@ -134,6 +183,11 @@ export default function StaffPage() {
       return matchesRole && matchesDepartment && matchesStatus;
     });
   }, [staff, filterRole, filterDepartment, filterStatus]);
+
+  const activeTeamCount = staff.filter((member) => member.isActive).length;
+  const productivityRate = staff.length > 0 ? Math.round((activeTeamCount / staff.length) * 100) : 0;
+  const backupStaff = staff.find((member) => member.isActive) ?? staff[0];
+  const performanceRate = staff.length > 0 ? Math.max(0, Math.min(100, productivityRate)) : 0;
 
   const togglePermission = (role: string, perm: string) => {
     setPermissionsMap(prev => {
@@ -183,6 +237,64 @@ export default function StaffPage() {
     }
   };
 
+  const handleCreateStaff = async () => {
+    if (!user?.clinicId) {
+      toast.error("Clinic context is missing. Please sign in again.");
+      return;
+    }
+
+    if (!createForm.firstName || !createForm.lastName || !createForm.email || !createForm.phone) {
+      toast.error("Please complete all required staff details.");
+      return;
+    }
+
+    if (!createForm.branchId) {
+      toast.error("Please select a branch before creating this staff member.");
+      return;
+    }
+
+    const password = (createForm.password || "Password@123").trim();
+    if (password.length < 6) {
+      toast.error("Password must be at least 6 characters long.");
+      return;
+    }
+
+    try {
+      await createStaffMutation.mutateAsync({
+        firstName: createForm.firstName,
+        lastName: createForm.lastName,
+        email: createForm.email,
+        phone: createForm.phone,
+        role: createForm.role,
+        department: createForm.department,
+        specialization: createForm.specialization,
+        licenseNumber: createForm.licenseNumber,
+        clinicId: user.clinicId,
+        branchId: createForm.branchId,
+        password,
+      });
+      await refetchStaff();
+      toast.success("Staff member created successfully");
+      setIsCreateStaffModalOpen(false);
+      setCreateForm({
+        firstName: "",
+        lastName: "",
+        email: "",
+        phone: "",
+        role: "doctor",
+        department: "Clinic",
+        specialization: "",
+        licenseNumber: "",
+        password: "",
+        branchId: user.branchId ?? "",
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to create staff member";
+      toast.error(message);
+      console.error("Create staff error:", error);
+    }
+  };
+
   const handleDeleteStaff = async (staffMember: Staff) => {
     try {
       await deleteStaffMutation.mutateAsync(staffMember.id);
@@ -200,18 +312,17 @@ export default function StaffPage() {
         title="Staff Management"
         description="Oversee your clinical team, coordinate shift schedules, and manage role-based access control."
         actions={[
-          { label: "Add Staff Member", onClick: () => setEditStaff({} as Staff), variant: "default" },
+          { label: "Add Staff Member", onClick: () => setIsCreateStaffModalOpen(true), variant: "default" },
           { label: "Schedule Shift", onClick: () => setIsShiftModalOpen(true), variant: "outline" },
         ]}
       />
 
       {/* Analytics Overview */}
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-3">
         {[
           { label: "Total Team", value: staff.length, sub: "Active members", icon: Users, color: "text-blue-600" },
-          { label: "Productivity", value: "88%", sub: "+4% from last week", icon: TrendingUp, color: "text-emerald-600" },
-          { label: "On Duty Now", value: staff.filter(s => s.isActive).length, sub: "Across all branches", icon: Clock, color: "text-amber-600" },
-          { label: "Open Shifts", value: 2, sub: "For upcoming week", icon: CalendarDays, color: "text-rose-600" },
+          { label: "Productivity", value: `${productivityRate}%`, sub: "Based on active staff", icon: TrendingUp, color: "text-emerald-600" },
+          { label: "On Duty Now", value: activeTeamCount, sub: "Across all branches", icon: Clock, color: "text-amber-600" },
         ].map((stat, i) => (
           <Card key={i} className="border-none shadow-sm bg-white overflow-hidden">
             <CardContent className="p-3 sm:p-6 flex items-center justify-between gap-2">
@@ -356,9 +467,9 @@ export default function StaffPage() {
                       <TableCell className="py-4">
                         <div className="flex items-center gap-2">
                            <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden max-w-[80px]">
-                                <div className="h-full bg-sky-500 w-[85%]" />
+                                <div className="h-full bg-sky-500" style={{ width: `${performanceRate}%` }} />
                            </div>
-                           <span className="text-[10px] font-bold text-slate-400">85%</span>
+                           <span className="text-[10px] font-bold text-slate-400">{performanceRate}%</span>
                         </div>
                       </TableCell>
                       <TableCell className="py-4">
@@ -445,16 +556,19 @@ export default function StaffPage() {
                 <CardContent className="space-y-6">
                     <div>
                         <p className="text-[10px] font-black text-white/40 uppercase tracking-widest mb-3">On Call Support</p>
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-sky-400"><Users size={20}/></div>
-                            <div>
-                                <p className="text-sm font-bold">Dr. E. Nwachukwu</p>
-                                <p className="text-[10px] text-white/60">Primary Surgeon</p>
-                            </div>
-                        </div>
+                        {backupStaff ? (
+                          <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-sky-400"><Users size={20}/></div>
+                              <div>
+                                  <p className="text-sm font-bold">{backupStaff.firstName} {backupStaff.lastName}</p>
+                                  <p className="text-[10px] text-white/60">{backupStaff.role}</p>
+                              </div>
+                          </div>
+                        ) : (
+                          <p className="text-sm text-white/75">No staff available yet.</p>
+                        )}
                     </div>
                     <div className="pt-6 border-t border-white/10">
-                         <p className="text-xs text-white/60 leading-relaxed mb-4 italic">"Please ensure all optical desk shifts are covered by at least two staff members during peak morning hours."</p>
                          <Button className="w-full bg-sky-500 hover:bg-sky-400 text-white rounded-xl font-bold" onClick={() => setIsShiftModalOpen(true)}>Generate Roster</Button>
                     </div>
                 </CardContent>
@@ -466,7 +580,7 @@ export default function StaffPage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="space-y-4">
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Access Levels</p>
-                {Object.keys(permissionsMap).map(role => (
+                {staffRoleOptions.length > 0 ? staffRoleOptions.map((role) => (
                     <Card 
                         key={role} 
                         onClick={() => setSelectedRole(role)}
@@ -491,70 +605,107 @@ export default function StaffPage() {
                             {selectedRole === role && <CheckCircle2 size={16} className="text-sky-600" />}
                         </CardContent>
                     </Card>
-                ))}
-                <Button variant="outline" className="w-full rounded-2xl border-dashed border-2 py-8 text-slate-400 font-bold hover:text-sky-600 hover:border-sky-200" onClick={() => { setNewRoleName(""); setNewRolePerms([]); setCreateRoleModal(true); }}>
-                    <Plus size={20} className="mr-2" /> Create Custom Role
-                </Button>
+                )) : (
+                  <Card className="border-none shadow-sm rounded-2xl">
+                    <CardContent className="p-6 text-sm text-slate-500">
+                      No role permissions are configured yet.
+                    </CardContent>
+                  </Card>
+                )}
             </div>
 
             <Card className="lg:col-span-2 border-none shadow-sm rounded-3xl overflow-hidden">
                 <CardHeader className="border-b border-slate-50 px-8 py-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-slate-50/30">
                     <div>
-                        <CardTitle className="text-base sm:text-lg">{selectedRole} Permissions</CardTitle>
-                        <p className="text-[10px] sm:text-xs text-slate-500 mt-1">Configure individual access modules for this role.</p>
+                        <CardTitle className="text-base sm:text-lg">{selectedRole || "Role"} Permissions</CardTitle>
+                        <p className="text-[10px] sm:text-xs text-slate-500 mt-1">Permissions are loaded from the live staff roles and updated as the backend exposes access rules.</p>
                     </div>
-                    <Button className="self-start bg-brand-blue text-white rounded-xl font-bold shadow-lg shadow-brand-blue/20" onClick={() => { setPermissionsSaved(true); setTimeout(() => setPermissionsSaved(false), 3000); }}>
-                      {permissionsSaved ? "✓ Saved!" : "Save Configuration"}
-                    </Button>
                 </CardHeader>
                 <CardContent className="p-8">
-                    <div className="space-y-8">
-                        {[
-                            { group: "Patient Management", perms: ["view_patients", "register_patient", "edit_medical_records", "delete_profile"] },
-                            { group: "Financial Records", perms: ["view_revenue", "manage_invoices", "process_refunds", "hmo_claims"] },
-                            { group: "Clinical Workflow", perms: ["create_consultation", "order_lab_tests", "prescribe_drugs", "surgery_booking"] }
-                        ].map((group, idx) => (
-                            <div key={idx} className="space-y-4">
-                                <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">{group.group}</h4>
-                                <div className="grid grid-cols-2 gap-3">
-                                    {group.perms.map((perm, pidx) => {
-                                        const isActive = permissionsMap[selectedRole]?.includes(perm);
-                                        return (
-                                          <button 
-                                            key={pidx} 
-                                            onClick={() => togglePermission(selectedRole, perm)}
-                                            className={cn(
-                                              "flex items-center justify-between p-3 rounded-2xl border transition-all text-left group",
-                                              isActive 
-                                                ? "bg-sky-50 border-sky-100 ring-1 ring-sky-50" 
-                                                : "bg-slate-50 border-slate-100 hover:bg-white hover:border-slate-200"
-                                            )}
-                                          >
-                                              <span className={cn(
-                                                "text-xs font-bold capitalize",
-                                                isActive ? "text-sky-700" : "text-slate-600"
-                                              )}>{perm.replace(/_/g, ' ')}</span>
-                                              <div className={cn(
-                                                "w-8 h-4 rounded-full relative transition-colors",
-                                                isActive ? "bg-sky-500" : "bg-slate-200"
-                                              )}>
-                                                  <div className={cn(
-                                                    "absolute top-0.5 w-3 h-3 bg-white rounded-full shadow-sm transition-transform",
-                                                    isActive ? "right-0.5" : "left-0.5"
-                                                  )} />
-                                              </div>
-                                          </button>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
+                    {selectedRole ? (
+                      <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 text-sm text-slate-500">
+                        No permission rules have been set for this role yet. Once the backend exposes role permissions, they will appear here.
+                      </div>
+                    ) : (
+                      <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 text-sm text-slate-500">
+                        There are no staff roles to configure.
+                      </div>
+                    )}
                 </CardContent>
             </Card>
           </div>
         )}
       </div>
+
+      <Modal isOpen={isCreateStaffModalOpen} onClose={() => setIsCreateStaffModalOpen(false)} title="Add Staff Member">
+        <div className="space-y-4 py-2">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">First Name</label>
+              <input value={createForm.firstName} onChange={(e) => setCreateForm({ ...createForm, firstName: e.target.value })} className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 outline-none" placeholder="First name" />
+            </div>
+            <div>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Last Name</label>
+              <input value={createForm.lastName} onChange={(e) => setCreateForm({ ...createForm, lastName: e.target.value })} className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 outline-none" placeholder="Last name" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Role</label>
+              <select value={createForm.role} onChange={(e) => setCreateForm({ ...createForm, role: e.target.value as StaffRole })} className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 outline-none">
+                <option value="doctor">Doctor</option>
+                <option value="nurse">Nurse</option>
+                <option value="receptionist">Receptionist</option>
+                <option value="pharmacist">Pharmacist</option>
+                <option value="optometrist">Optometrist</option>
+                <option value="cashier">Cashier</option>
+                <option value="lab_technician">Lab Technician</option>
+                <option value="admin">Admin</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Department</label>
+              <select value={createForm.department} onChange={(e) => setCreateForm({ ...createForm, department: e.target.value })} className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 outline-none">
+                <option value="Clinic">Clinic</option>
+                <option value="Front desk">Front desk</option>
+                <option value="Pharmacy">Pharmacy</option>
+                <option value="Optical">Optical</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Phone</label>
+            <input value={createForm.phone} onChange={(e) => setCreateForm({ ...createForm, phone: e.target.value })} className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 outline-none" placeholder="+234 800 000 0000" />
+          </div>
+          <div>
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Email</label>
+            <input type="email" value={createForm.email} onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })} className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 outline-none" placeholder="staff@clinic.com" />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Password</label>
+              <input type="password" value={createForm.password} onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })} className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 outline-none" placeholder="Set password" />
+            </div>
+            <div>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Branch</label>
+              <select
+                value={createForm.branchId}
+                onChange={(e) => setCreateForm({ ...createForm, branchId: e.target.value })}
+                className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 outline-none"
+              >
+                <option value="">Select branch</option>
+                {branches.map((branch) => (
+                  <option key={branch.id} value={branch.id}>{branch.name}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 pt-4 border-t border-slate-50">
+            <button onClick={() => setIsCreateStaffModalOpen(false)} className="rounded-full border px-4 py-2 text-sm font-bold text-slate-600 hover:bg-slate-50">Cancel</button>
+            <button onClick={handleCreateStaff} className="rounded-full bg-sky-600 px-4 py-2 text-sm font-bold text-white hover:bg-sky-700">Create Staff</button>
+          </div>
+        </div>
+      </Modal>
 
       {/* New Shift Modal */}
       <Modal isOpen={isShiftModalOpen} onClose={() => setIsShiftModalOpen(false)} title="Schedule New Shift">
