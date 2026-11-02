@@ -9,6 +9,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Modal } from "@/components/ui/modal";
 import { useAuth } from "@/lib/auth-context";
+import { useBranches } from "@/hooks/useBranches";
 import { usePatients } from "@/hooks/usePatients";
 import { useProducts } from "@/hooks/useProducts";
 import { useCreateInvoice, useMakePayment } from "@/hooks/useBilling";
@@ -18,7 +19,17 @@ const formatCurrency = (value: number) => `NGN ${value.toLocaleString("en-NG")}`
 
 export default function BillingPage() {
   const { user } = useAuth();
+  const { data: branches = [] } = useBranches();
+  const [selectedBranchId, setSelectedBranchId] = React.useState("");
   const { data: patientsResponse, isLoading: patientsLoading } = usePatients();
+
+  React.useEffect(() => {
+    if (branches.length > 0 && !selectedBranchId) {
+      setSelectedBranchId(branches[0].id);
+    }
+  }, [branches, selectedBranchId]);
+
+  const effectiveBranchId = user?.branchId?.trim() || selectedBranchId || undefined;
   const patientsData = patientsResponse?.data ?? [];
   const { data: productsData = [], isLoading: productsLoading } = useProducts();
   const createInvoiceMut = useCreateInvoice();
@@ -43,7 +54,7 @@ export default function BillingPage() {
 
   const [selectedPatient, setSelectedPatient] = useState(patients[0] || null);
   const [selectedServices, setSelectedServices] = useState<typeof serviceCatalog>([]);
-  const [paymentMethod, setPaymentMethod] = useState("Transfer");
+  const [paymentMethod, setPaymentMethod] = useState<"Cash" | "Card" | "Transfer" | "HMO">("Transfer");
   const [invoiceStatus, setInvoiceStatus] = useState<"Draft" | "Generated" | "Paid">("Draft");
   const [query, setQuery] = useState("");
   const [receiptNumber, setReceiptNumber] = useState("");
@@ -92,6 +103,11 @@ export default function BillingPage() {
 
   const handleGenerateInvoice = () => {
     if (!selectedPatient || !user) return;
+    const safeBranchId = effectiveBranchId;
+    if (!safeBranchId) {
+      showToast("No branch is available for this clinic. Create a branch first.");
+      return;
+    }
     const invoiceNum = `INV-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 9999)).padStart(4, "0")}`;
     const items = JSON.stringify(selectedServices.map((s) => ({ item: s.name, amount: s.amount })));
 
@@ -100,7 +116,7 @@ export default function BillingPage() {
       totalAmount: invoiceTotal,
       items,
       patientId: selectedPatient.id,
-      branchId: user.clinicId, // Using clinicId as branch fallback
+      branchId: safeBranchId,
     }, {
       onSuccess: (invoice) => {
         setReceiptNumber(invoice.invoiceNumber);
@@ -114,33 +130,70 @@ export default function BillingPage() {
   };
 
   const handleCollectPayment = () => {
-    if (!createdInvoiceId && invoiceStatus === "Draft") {
-      // Generate first, then pay
-      handleGenerateInvoice();
+    if (!selectedPatient || selectedServices.length === 0) {
+      showToast("Select a patient and add at least one service first");
       return;
     }
-    if (!createdInvoiceId) return;
 
-    const methodMap: Record<string, string> = {
-      Cash: "cash", Card: "card", Transfer: "bank_transfer", "HMO cover": "hmo",
+    const methodMap: Record<string, "cash" | "card" | "transfer" | "hmo"> = {
+      Cash: "cash",
+      Card: "card",
+      Transfer: "transfer",
+      HMO: "hmo",
     };
 
-    makePaymentMut.mutate({
-      amount: invoiceTotal,
-      paymentMethod: methodMap[paymentMethod] || "cash",
-      invoiceId: createdInvoiceId,
-    }, {
-      onSuccess: () => {
-        setInvoiceStatus("Paid");
-        setShowCollect(false);
-        showToast(`Payment collected via ${paymentMethod}`);
-      },
-      onError: () => showToast("Failed to record payment"),
-    });
+    const recordPayment = (invoiceId: string) => {
+      makePaymentMut.mutate({
+        amount: invoiceTotal,
+        paymentMethod: methodMap[paymentMethod] || "cash",
+        invoiceId,
+      }, {
+        onSuccess: () => {
+          setInvoiceStatus("Paid");
+          setShowCollect(false);
+          showToast(`Payment collected via ${paymentMethod}`);
+        },
+        onError: () => showToast("Failed to record payment"),
+      });
+    };
+
+    if (!createdInvoiceId || invoiceStatus === "Draft") {
+      const invoiceNum = `INV-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 9999)).padStart(4, "0")}`;
+      const items = JSON.stringify(selectedServices.map((s) => ({ item: s.name, amount: s.amount })));
+
+      const fallbackBranchId = effectiveBranchId;
+      if (!fallbackBranchId) {
+        showToast("No branch is available for this clinic. Create a branch first.");
+        return;
+      }
+
+      createInvoiceMut.mutate({
+        invoiceNumber: invoiceNum,
+        totalAmount: invoiceTotal,
+        items,
+        patientId: selectedPatient.id,
+        branchId: fallbackBranchId,
+      }, {
+        onSuccess: (invoice) => {
+          setReceiptNumber(invoice.invoiceNumber);
+          setCreatedInvoiceId(invoice.id);
+          setInvoiceStatus("Generated");
+          setShowCollect(false);
+          recordPayment(invoice.id);
+        },
+        onError: () => showToast("Failed to generate invoice"),
+      });
+      return;
+    }
+
+    recordPayment(createdInvoiceId);
   };
 
   const paymentIcons: Record<string, typeof Banknote> = {
-    Cash: Banknote, Card: CreditCard, Transfer: BadgeCheck, "HMO cover": ShieldCheck,
+    Cash: Banknote,
+    Card: CreditCard,
+    Transfer: BadgeCheck,
+    HMO: ShieldCheck,
   };
   const PaymentIcon = paymentIcons[paymentMethod] || Banknote;
 
@@ -285,7 +338,7 @@ export default function BillingPage() {
               <p className="text-[9px] sm:text-[10px] text-white/40 font-black uppercase tracking-widest">Invoice Total</p>
               <p className="text-2xl sm:text-4xl font-black mt-1">{formatCurrency(invoiceTotal)}</p>
               <div className="mt-5 sm:mt-8 space-y-2 sm:space-y-3">
-                {["Cash", "Card", "Transfer", "HMO cover"].map((method) => (
+                {(["Cash", "Card", "Transfer", "HMO"] as const).map((method) => (
                   <button key={method} onClick={() => { setPaymentMethod(method); showToast(`Payment method: ${method}`); }}
                     className={cn("w-full p-3 sm:p-4 rounded-lg sm:rounded-2xl border text-left text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all", paymentMethod === method ? "bg-white text-slate-900 border-white" : "bg-white/10 text-white/70 border-white/10 hover:bg-white/20")}>
                     {method}

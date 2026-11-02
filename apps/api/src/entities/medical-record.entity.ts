@@ -3,6 +3,9 @@ import { Patient } from './patient.entity';
 import { Staff } from './staff.entity';
 import { Branch } from './branch.entity';
 import { Clinic } from './clinic.entity';
+import { Vitals } from './vitals.entity';
+import { EyeTest } from './eye-test.entity';
+import { Prescription } from './prescription.entity';
 
 @Entity('medical_records')
 export class MedicalRecord {
@@ -54,6 +57,15 @@ export class MedicalRecord {
   @ManyToOne(() => Clinic)
   @JoinColumn({ name: 'clinicId' })
   clinic: Clinic;
+
+  @OneToMany(() => Vitals, (vitals) => vitals.medicalRecord)
+  vitals: Vitals[];
+
+  @OneToMany(() => EyeTest, (eyeTest) => eyeTest.medicalRecord)
+  eyeTests: EyeTest[];
+
+  @OneToMany(() => Prescription, (prescription) => prescription.medicalRecord)
+  prescriptions: Prescription[];
 
   @CreateDateColumn()
   createdAt: Date;

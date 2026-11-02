@@ -20,16 +20,16 @@ export function PageHeader(props: {
 
   return (
     <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-      <div>
-        <h1 className="text-3xl font-bold text-slate-900">{title}</h1>
-        {description ? <p className="mt-1 text-slate-500">{description}</p> : null}
+      <div className="min-w-0">
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">{title}</h1>
+        {description ? <p className="mt-1 text-sm text-slate-500 sm:text-base">{description}</p> : null}
       </div>
       {actions.length ? (
-        <div className="flex flex-wrap gap-2">
+        <div className="flex w-full flex-wrap gap-2 md:w-auto md:justify-end">
           {actions.map((action) => {
             const variant = action.variant ?? "outline";
             const className = cn(
-              "inline-flex items-center justify-center rounded-full px-5 py-2.5 text-sm font-medium transition-colors",
+              "inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-medium transition-colors sm:px-5 sm:py-2.5",
               variant === "default"
                 ? "bg-sky-600 text-white hover:bg-sky-700 shadow-sm"
                 : "border border-slate-200 bg-white hover:bg-slate-50 text-slate-900",

@@ -59,6 +59,7 @@ export interface CreateStaffData {
   licenseNumber?: string;
   clinicId: string;
   branchId: string;
+  password?: string;
 }
 
 export interface UpdateStaffData {
@@ -91,7 +92,25 @@ export const staffService = {
       }
     });
     const response = await api.get(`/staff?${searchParams.toString()}`);
-    return response.data as PaginatedStaffResponse;
+    const payload = response.data;
+
+    if (Array.isArray(payload)) {
+      return {
+        data: payload,
+        total: payload.length,
+        page: 1,
+        limit: payload.length || 1,
+        totalPages: 1,
+      };
+    }
+
+    return {
+      data: Array.isArray(payload?.data) ? payload.data : [],
+      total: Number(payload?.total ?? payload?.data?.length ?? 0),
+      page: Number(payload?.page ?? 1),
+      limit: Number(payload?.limit ?? payload?.data?.length ?? 0),
+      totalPages: Number(payload?.totalPages ?? 1),
+    };
   },
 
   async getById(id: string): Promise<Staff> {

@@ -22,7 +22,7 @@ export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisco
   @WebSocketServer()
   server: Server;
 
-  private connectedClients = new Map<string, { socket: Socket; clinicId: string; userId: string }>();
+  private connectedClients = new Map<string, { clinicId: string; userId: string }>();
 
   constructor(private readonly jwtService: JwtService) {}
 
@@ -37,7 +37,7 @@ export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisco
       const payload = this.jwtService.verify(token);
       const { sub: userId, clinicId } = payload;
 
-      this.connectedClients.set(client.id, { socket: client, clinicId, userId });
+      this.connectedClients.set(client.id, { clinicId, userId });
       client.join(`clinic-${clinicId}`);
       client.join(`user-${payload.sub}`);
       
@@ -63,7 +63,14 @@ export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisco
   }
 
   emitNotification(clinicId: string, notification: any) {
-    this.server.to(`clinic-${clinicId}`).emit('notification:new', notification);
+    if (notification?.userId) {
+      this.emitNotificationToUser(notification.userId, notification);
+      return;
+    }
+
+    if (clinicId) {
+      this.server.to(`clinic-${clinicId}`).emit('notification:new', notification);
+    }
   }
 
   emitNotificationToUser(userId: string, notification: any) {

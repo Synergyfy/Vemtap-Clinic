@@ -1,14 +1,21 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '@/lib/auth-context';
 import { patientsService, Patient, PatientQueryParams, CreatePatientData, UpdatePatientData, PaginatedPatientsResponse, PatientStats, HMOEligibilityResponse } from '@/services/patients.service';
 
 const PATIENTS_QUERY_KEY = 'patients';
 
 export function usePatients(params: PatientQueryParams = {}) {
+  const { user } = useAuth();
+  const effectiveParams = {
+    ...params,
+    ...(params.clinicId ? {} : user?.clinicId ? { clinicId: user.clinicId } : {}),
+  };
+
   return useQuery({
-    queryKey: [PATIENTS_QUERY_KEY, params],
-    queryFn: () => patientsService.getAll(params),
+    queryKey: [PATIENTS_QUERY_KEY, effectiveParams],
+    queryFn: () => patientsService.getAll(effectiveParams),
     staleTime: 30_000,
     gcTime: 5 * 60_000,
   });
@@ -36,10 +43,18 @@ export function usePatientStats(clinicId: string | null) {
 
 export function useCreatePatient() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: (data: CreatePatientData) => patientsService.create(data),
-    onSuccess: () => {
+    onSuccess: (createdPatient) => {
+      queryClient.setQueryData<PaginatedPatientsResponse | undefined>([PATIENTS_QUERY_KEY], (previous) => {
+        if (!previous) return previous;
+
+        return {
+          ...previous,
+          data: [createdPatient, ...previous.data.filter((patient) => patient.id !== createdPatient.id)],
+        };
+      });
       queryClient.invalidateQueries({ queryKey: [PATIENTS_QUERY_KEY] });
     },
   });

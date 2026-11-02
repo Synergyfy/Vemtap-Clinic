@@ -9,9 +9,11 @@ import { Modal } from "@/components/ui/modal";
 import { Activity, Thermometer, Eye, Heart, CheckCircle2, User } from "lucide-react";
 import { PageHeader } from "@/app/clinic/_components/page-header";
 import { useNurseQueue, usePatientHistory, useCreateRecord } from "@/hooks/useNurse";
+import { useAuth } from "@/lib/auth-context";
 
 export default function VitalsContent() {
   const searchParams = useSearchParams();
+  const { user } = useAuth();
   const preselectedPatientId = searchParams.get("patient");
 
   const { data: queueEntries = [] } = useNurseQueue();
@@ -49,11 +51,17 @@ export default function VitalsContent() {
   const handleRecord = () => {
     if (!selectedPatientId) return;
     const entry = queueEntries.find((e) => e.patientId === selectedPatientId);
+    const branchId = entry?.branchId || user?.branchId || "";
+    if (!branchId) {
+      setSuccessMsg("No branch is available for this clinic. Create a branch before recording vitals.");
+      return;
+    }
     createRecord.mutate(
       {
         patientId: selectedPatientId,
-        branchId: entry?.branchId || "",
-        clinicId: entry?.clinicId || "",
+        staffId: user?.userId,
+        branchId,
+        clinicId: entry?.clinicId || user?.clinicId || "",
         chiefComplaint: "Vitals recording",
         vitals: {
           temperature: parseFloat(temp),

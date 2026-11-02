@@ -4,6 +4,7 @@ import { User } from './user.entity';
 @Entity('refresh_tokens')
 @Index(['tokenHash'], { unique: true })
 @Index(['userId'])
+@Index(['clinicId'])
 @Index(['expiresAt'])
 export class RefreshToken {
   @PrimaryGeneratedColumn('uuid')
@@ -14,6 +15,9 @@ export class RefreshToken {
 
   @Column({ name: 'user_id', type: 'uuid' })
   userId: string;
+
+  @Column({ name: 'clinic_id', type: 'uuid', nullable: true })
+  clinicId: string | null;
 
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })

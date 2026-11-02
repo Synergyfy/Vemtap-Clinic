@@ -5,65 +5,78 @@ import { motion } from "framer-motion";
 import { 
   Database, ShieldCheck, Pill, Eye, 
   Frame, ClipboardList, Zap, Settings2,
-  Plus, Search, Filter, MoreVertical,
-  CheckCircle2, Globe, ArrowRight
+  ArrowRight
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
-
-const configModules = [
-  { 
-    title: "HMO Database", 
-    desc: "Manage global insurance providers, tariff plans, and coverage rules.",
-    icon: ShieldCheck,
-    count: "124 Providers",
-    color: "blue",
-    href: "/admin/config/hmo"
-  },
-  { 
-    title: "Drug Database", 
-    desc: "Global pharmacy catalog with drug names, categories, and inventory defaults.",
-    icon: Pill,
-    count: "4,250 Items",
-    color: "emerald",
-    href: "/admin/config/drugs"
-  },
-  { 
-    title: "Lens Catalog", 
-    desc: "Standardize lens types, coatings, and global pricing benchmarks.",
-    icon: Eye,
-    count: "840 Types",
-    color: "brand-blue",
-    href: "/admin/config/lenses"
-  },
-  { 
-    title: "Frames Catalog", 
-    desc: "Global frame directory with brand, material, and style tracking.",
-    icon: Frame,
-    count: "15,400 Styles",
-    color: "purple",
-    href: "/admin/config/frames"
-  },
-  { 
-    title: "Consultation Templates", 
-    desc: "Standardized exam forms for general eye checkups, glaucoma, etc.",
-    icon: ClipboardList,
-    count: "12 Templates",
-    color: "amber",
-    href: "/admin/config/templates"
-  },
-  { 
-    title: "Workflow Blueprints", 
-    desc: "Configure default clinical and operational paths for different clinic types.",
-    icon: Zap,
-    count: "5 Workflows",
-    color: "rose",
-    href: "/admin/config/workflows"
-  },
-];
+import { useAuth } from "@/lib/auth-context";
+import { useWorkflowBlueprints } from "@/hooks/useWorkflows";
+import { useHmoList } from "@/hooks/useHmo";
+import { useDrugs } from "@/hooks/usePharmacy";
+import { useOpticalInventory } from "@/hooks/useOptician";
 
 export default function ConfigHubPage() {
+  const { user } = useAuth();
+  const clinicId = user?.clinicId || "";
+
+  const { data: hmos = [] } = useHmoList();
+  const { data: drugs = [] } = useDrugs(clinicId || null);
+  const { data: frames = [] } = useOpticalInventory("frame");
+  const { data: lenses = [] } = useOpticalInventory("lens");
+
+  const { data: workflows = [] } = useWorkflowBlueprints();
+  const configModules = [
+    { 
+      title: "HMO Database", 
+      desc: "Manage global insurance providers, tariff plans, and coverage rules.",
+      icon: ShieldCheck,
+      count: `${hmos.length} Provider${hmos.length === 1 ? "" : "s"}`,
+      color: "blue",
+      href: "/admin/config/hmo"
+    },
+    { 
+      title: "Drug Database", 
+      desc: "Global pharmacy catalog with drug names, categories, and inventory defaults.",
+      icon: Pill,
+      count: `${drugs.length} Item${drugs.length === 1 ? "" : "s"}`,
+      color: "emerald",
+      href: "/admin/config/drugs"
+    },
+    { 
+      title: "Lens Catalog", 
+      desc: "Standardize lens types, coatings, and global pricing benchmarks.",
+      icon: Eye,
+      count: `${lenses.length} Type${lenses.length === 1 ? "" : "s"}`,
+      color: "brand-blue",
+      href: "/admin/config/lenses"
+    },
+    { 
+      title: "Frames Catalog", 
+      desc: "Global frame directory with brand, material, and style tracking.",
+      icon: Frame,
+      count: `${frames.length} Style${frames.length === 1 ? "" : "s"}`,
+      color: "purple",
+      href: "/admin/config/frames"
+    },
+    { 
+      title: "Consultation Templates", 
+      desc: "Standardized exam forms for general eye checkups, glaucoma, etc.",
+      icon: ClipboardList,
+      count: "12 Templates",
+      color: "amber",
+      href: "/admin/config/templates"
+    },
+    { 
+      title: "Workflow Blueprints", 
+      desc: "Configure default clinical and operational paths for different clinic types.",
+      icon: Zap,
+      count: `${workflows.length} Workflow${workflows.length === 1 ? '' : 's'}`,
+      color: "rose",
+      href: "/admin/config/workflows"
+    },
+  ];
+
   return (
     <div className="space-y-6 lg:space-y-10 pb-10">
       {/* Header - Mobile Responsive */}
@@ -72,14 +85,6 @@ export default function ConfigHubPage() {
           <h1 className="text-2xl lg:text-3xl font-bold text-brand-navy font-black tracking-tight">Healthcare Configuration</h1>
           <p className="text-sm lg:text-base text-slate-500 mt-1">Global system settings and standardized healthcare databases.</p>
         </div>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          className="w-full md:w-auto gap-2 h-11 px-6 rounded-xl font-bold border-slate-200" 
-          onClick={() => console.log("Global Settings clicked")}
-        >
-          <Settings2 size={16} /> <span className="md:inline">Global Settings</span>
-        </Button>
       </div>
 
       {/* Grid - Responsive Columns */}
@@ -122,7 +127,7 @@ export default function ConfigHubPage() {
         ))}
       </div>
 
-      {/* Info Box - Mobile Responsive */}
+      {/* Info Box */}
       <div className="p-6 lg:p-10 rounded-[2rem] lg:rounded-[3rem] bg-brand-navy text-white relative overflow-hidden group">
         <div className="absolute top-0 right-0 w-64 h-64 bg-brand-blue/10 blur-[80px] rounded-full group-hover:scale-150 transition-transform duration-700"></div>
         <div className="flex flex-col md:flex-row items-center gap-6 lg:gap-10 relative z-10 text-center md:text-left">
@@ -132,15 +137,9 @@ export default function ConfigHubPage() {
           <div className="flex-1">
             <h3 className="text-lg lg:text-xl font-bold mb-2">Centralized Healthcare Standards</h3>
             <p className="text-slate-400 text-xs lg:text-sm max-w-2xl leading-relaxed">
-              Changes made here affect all clinics across the platform. Use these tools to ensure data integrity and standardize clinical workflows for eye care providers.
+              Standardized healthcare databases ensure data integrity and consistent clinical workflows for all eye care providers on the platform.
             </p>
           </div>
-          <Button 
-            className="w-full md:w-auto bg-white text-brand-navy hover:bg-slate-100 font-bold shrink-0 h-12 px-8 rounded-xl shadow-lg"
-            onClick={() => console.log("Backup Database clicked")}
-          >
-            Backup Database
-          </Button>
         </div>
       </div>
     </div>

@@ -9,6 +9,7 @@ import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Modal } from "@/components/ui/modal";
 import { useAppointments, useCreateAppointment, useUpdateAppointment, useTodayAppointments, Appointment, AppointmentQueryParams, AppointmentStatus, TodayAppointmentsResponse } from "@/hooks/useAppointments";
+import { useBranches } from "@/hooks/useBranches";
 import { useAuth } from "@/lib/auth-context";
 import { toast } from "sonner";
 
@@ -92,10 +93,20 @@ function formatDateTime(dateStr: string): string {
 
 export default function AppointmentsPage() {
   const { user } = useAuth();
+  const { data: branches = [] } = useBranches();
+  const [selectedBranchId, setSelectedBranchId] = useState("");
   const [query, setQuery] = useState("");
   const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState("All");
   const [currentPage, setCurrentPage] = useState(1);
+
+  useEffect(() => {
+    if (branches.length > 0 && !selectedBranchId) {
+      setSelectedBranchId(branches[0].id);
+    }
+  }, [branches, selectedBranchId]);
+
+  const effectiveBranchId = user?.branchId?.trim() || selectedBranchId || undefined;
 
   const [newBooking, setNewBooking] = useState({ 
     patientId: "", 
@@ -195,6 +206,11 @@ export default function AppointmentsPage() {
 
   const handleCreateBooking = async () => {
     if (!newBooking.patientId || !user) return;
+    const safeBranchId = effectiveBranchId;
+    if (!safeBranchId) {
+      toast.error("No branch is available for this clinic. Create a branch first, then try again.");
+      return;
+    }
     
     try {
       await createAppointmentMutation.mutateAsync({
@@ -203,7 +219,7 @@ export default function AppointmentsPage() {
         type: newBooking.type as any,
         reason: newBooking.purpose,
         patientId: newBooking.patientId,
-        branchId: user.clinicId, // using clinicId as fallback for branchId
+        branchId: safeBranchId,
         clinicId: user.clinicId,
       });
       toast.success("Appointment created successfully");

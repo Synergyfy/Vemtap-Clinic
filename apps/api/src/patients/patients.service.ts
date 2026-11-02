@@ -14,17 +14,25 @@ export class PatientsService {
     private hmoPlanRepository: Repository<HMOPlan>,
   ) {}
 
-  async create(dto: CreatePatientDto): Promise<Patient> {
-    const patient = this.patientRepository.create(dto);
+  async create(dto: CreatePatientDto, currentUser?: { clinicId?: string | null }): Promise<Patient> {
+    const safeDto = {
+      ...dto,
+      clinicId: currentUser?.clinicId ?? dto.clinicId,
+    };
+    const patient = this.patientRepository.create(safeDto);
     return this.patientRepository.save(patient);
   }
 
-  async findAll(query: PatientQueryDto): Promise<{ data: Patient[]; total: number; page: number; limit: number; totalPages: number }> {
-    const page = query.page || 1;
-    const limit = query.limit || 10;
+  async findAll(
+    query: PatientQueryDto,
+    currentUser?: { clinicId?: string | null },
+  ): Promise<{ data: Patient[]; total: number; page: number; limit: number; totalPages: number }> {
+    const page = Number(query.page || 1);
+    const limit = Number(query.limit || 10);
+    const effectiveClinicId = currentUser?.clinicId ?? query.clinicId;
     const where: any = {};
 
-    if (query.clinicId) where.clinicId = query.clinicId;
+    if (effectiveClinicId) where.clinicId = effectiveClinicId;
     if (query.branchId) where.branchId = query.branchId;
     if (query.patientType) where.patientType = query.patientType;
     if (query.status) where.status = query.status;
@@ -43,28 +51,36 @@ export class PatientsService {
     return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 
-  async findOne(id: string): Promise<Patient> {
-    const patient = await this.patientRepository.findOne({ where: { id }, relations: ['clinic', 'branch'] });
+  async findOne(id: string, currentUser?: { clinicId?: string | null }): Promise<Patient> {
+    const where: any = { id };
+    if (currentUser?.clinicId) {
+      where.clinicId = currentUser.clinicId;
+    }
+
+    const patient = await this.patientRepository.findOne({ where, relations: ['clinic', 'branch'] });
     if (!patient) throw new NotFoundException('Patient not found');
     return patient;
   }
 
-  async update(id: string, dto: UpdatePatientDto): Promise<Patient> {
-    const patient = await this.findOne(id);
-    Object.assign(patient, dto);
+  async update(id: string, dto: UpdatePatientDto, currentUser?: { clinicId?: string | null }): Promise<Patient> {
+    const patient = await this.findOne(id, currentUser);
+    const safeDto = { ...dto } as any;
+    safeDto.clinicId = currentUser?.clinicId ?? patient.clinicId ?? (dto as any).clinicId;
+    Object.assign(patient, safeDto);
     return this.patientRepository.save(patient);
   }
 
-  async remove(id: string): Promise<void> {
-    const patient = await this.findOne(id);
+  async remove(id: string, currentUser?: { clinicId?: string | null }): Promise<void> {
+    const patient = await this.findOne(id, currentUser);
     await this.patientRepository.remove(patient);
   }
 
   async getStats(clinicId: string) {
-    const total = await this.patientRepository.count({ where: { clinicId } });
-    const active = await this.patientRepository.count({ where: { clinicId, status: 'active' } });
-    const hmo = await this.patientRepository.count({ where: { clinicId, patientType: 'hmo' } });
-    const privatePatients = await this.patientRepository.count({ where: { clinicId, patientType: 'private' } });
+    const effectiveClinicId = clinicId;
+    const total = await this.patientRepository.count({ where: { clinicId: effectiveClinicId } });
+    const active = await this.patientRepository.count({ where: { clinicId: effectiveClinicId, status: 'active' } });
+    const hmo = await this.patientRepository.count({ where: { clinicId: effectiveClinicId, patientType: 'hmo' } });
+    const privatePatients = await this.patientRepository.count({ where: { clinicId: effectiveClinicId, patientType: 'private' } });
     return { total, active, hmo, private: privatePatients };
   }
 
@@ -75,9 +91,14 @@ export class PatientsService {
     });
   }
 
-  async checkHMOEligibility(patientId: string, serviceType: string, serviceAmount: number): Promise<any> {
+  async checkHMOEligibility(
+    patientId: string,
+    serviceType: string,
+    serviceAmount: number,
+    currentUser?: { clinicId?: string | null },
+  ): Promise<any> {
     const patient = await this.patientRepository.findOne({
-      where: { id: patientId },
+      where: { id: patientId, ...(currentUser?.clinicId ? { clinicId: currentUser.clinicId } : {}) },
       relations: ['hmo'],
     });
     if (!patient) throw new NotFoundException('Patient not found');

@@ -10,17 +10,19 @@ export function getRefreshCookieOptions(configService: ConfigService): CookieOpt
     httpOnly: true,
     secure: isProduction,
     sameSite: 'lax' as const,
-    path: '/api',
+    path: '/',
     maxAge: parseDuration(configService.get<string>('JWT_REFRESH_EXPIRES_IN', '7d')),
   };
 }
 
-export function getClearedRefreshCookieOptions(): CookieOptions {
+export function getClearedRefreshCookieOptions(configService?: ConfigService): CookieOptions {
+  const isProduction = configService?.get<string>('NODE_ENV') === 'production';
+
   return {
     httpOnly: true,
-    secure: true,
+    secure: isProduction ?? false,
     sameSite: 'lax' as const,
-    path: '/api',
+    path: '/',
     maxAge: 0,
   };
 }

@@ -8,8 +8,11 @@ import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/app/clinic/_components/page-header";
 import { Modal } from "@/components/ui/modal";
 import { useAuth } from "@/lib/auth-context";
-import { useQueue, useCreateQueueEntry, useUpdateQueueEntry } from "@/hooks/useQueue";
+import { useQueue, useCreateQueueEntry, useUpdateQueueEntry, useQueueStats } from "@/hooks/useQueue";
+import { usePatients } from "@/hooks/usePatients";
+import { useBranches } from "@/hooks/useBranches";
 import { PageSkeleton } from "@/components/ui/skeleton";
+import { toast } from "sonner";
 
 function stageBadge(stage: string) {
   if (stage === "Reception") return <Badge variant="secondary">Reception</Badge>;
@@ -83,6 +86,11 @@ function renderClinicalPath(currentStage: string, stageOrder: string[]) {
   );
 }
 
+function getQueuePatientName(entry?: { patientName?: string; patient?: { firstName?: string; lastName?: string } }) {
+  const derived = entry?.patientName || [entry?.patient?.firstName, entry?.patient?.lastName].filter(Boolean).join(" ").trim();
+  return derived || "Unknown patient";
+}
+
 type QueueTab = "Live board" | "Waiting patients" | "Doctor queue" | "Emergency queue" | "Analytics";
 
 function tabButtonClass(active: boolean) {
@@ -106,7 +114,20 @@ function shortISODateTime(iso: string) {
 
 export default function QueuePage() {
   const { user } = useAuth();
-  const { data: apiQueueResponse, isLoading } = useQueue();
+  const clinicId = user?.clinicId?.trim() || "";
+  const { data: branches = [] } = useBranches();
+  const [selectedBranchId, setSelectedBranchId] = React.useState("");
+
+  React.useEffect(() => {
+    if (branches.length > 0 && !selectedBranchId) {
+      setSelectedBranchId(branches[0].id);
+    }
+  }, [branches, selectedBranchId]);
+
+  const effectiveBranchId = user?.branchId?.trim() || selectedBranchId || undefined;
+
+  const { data: apiQueueResponse, isLoading } = useQueue({ clinicId: clinicId || undefined, branchId: effectiveBranchId });
+  const { data: queueStatsResponse } = useQueueStats(clinicId);
   const apiQueue = apiQueueResponse?.data ?? [];
   const createEntry = useCreateQueueEntry();
   const updateEntry = useUpdateQueueEntry();
@@ -116,24 +137,43 @@ export default function QueuePage() {
   const [selectedStage, setSelectedStage] = React.useState<string>("Reception");
   const [queue, setQueue] = React.useState<any[]>([]);
   const [isAddOpen, setIsAddOpen] = React.useState(false);
+  const { data: patientsResponse, isLoading: patientsLoading } = usePatients({ clinicId: user?.clinicId || "", limit: 100 });
+  const prevQueueKeyRef = React.useRef<string | null>(null);
   const [addForm, setAddForm] = React.useState({
     patientName: "",
+    patientId: "",
     stage: "Reception" as string,
     priority: "Normal" as string,
   });
 
   React.useEffect(() => {
-    if (apiQueue.length > 0) setQueue(apiQueue);
-  }, [apiQueue]);
+    if (!clinicId) return;
+    const nextQueueKey = JSON.stringify(apiQueue);
+    if (prevQueueKeyRef.current !== nextQueueKey) {
+      prevQueueKeyRef.current = nextQueueKey;
+      setQueue(apiQueue);
+    }
+  }, [apiQueue, clinicId]);
 
   const stageOrder = ["Reception", "Vitals", "Consultation", "Refraction", "Optical", "Billing"];
 
   const activeQueue = queue.filter((q) => q.status !== "Done");
-  const waiting = activeQueue.filter((q) => q.status === "Waiting").length;
-  const inService = activeQueue.filter((q) => q.status === "In-service").length;
-  const urgentCount = activeQueue.filter((q) => q.priority === "Urgent").length;
-  const avgWait = Math.round(activeQueue.reduce((acc, q) => acc + q.waitMinutes, 0) / Math.max(1, activeQueue.length));
-  const longestWait = Math.max(0, ...activeQueue.map((q) => q.waitMinutes));
+  const waitingCount = activeQueue.filter((q) => q.status === "Waiting").length;
+  const liveStats = queueStatsResponse ?? {
+    total: activeQueue.length,
+    waiting: waitingCount,
+    inProgress: activeQueue.filter((q) => q.status === "In-service").length,
+    completed: 0,
+    cancelled: 0,
+    avgWaitTime: 0,
+    byStation: {},
+    byPriority: {},
+  };
+  const waiting = liveStats.waiting ?? waitingCount;
+  const inService = liveStats.inProgress ?? activeQueue.filter((q) => q.status === "In-service").length;
+  const urgentCount = liveStats.byPriority?.Urgent ?? activeQueue.filter((q) => q.priority === "Urgent").length;
+  const avgWait = Math.round(activeQueue.reduce((acc, q) => acc + (q.waitMinutes ?? 0), 0) / Math.max(1, activeQueue.length));
+  const longestWait = Math.max(0, ...activeQueue.map((q) => q.waitMinutes ?? 0));
 
   const stageCounts = stageOrder.map((stage) => ({
     stage,
@@ -171,19 +211,24 @@ export default function QueuePage() {
 
   const submitAdd = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!addForm.patientName.trim()) return;
+    if (!addForm.patientId) return;
+    const safeBranchId = effectiveBranchId || selectedBranchId;
+    if (!safeBranchId) {
+      toast.error("No branch is available for this clinic. Create a branch before adding a patient to the queue.");
+      return;
+    }
     createEntry.mutate({
       patientName: addForm.patientName.trim(),
       serviceType: addForm.stage,
       priority: addForm.priority,
-      patientId: "", // TODO: Select patient
-      branchId: user?.clinicId || "",
-      clinicId: user?.clinicId || "",
+      patientId: addForm.patientId,
+      branchId: safeBranchId,
+      clinicId,
     }, {
       onSuccess: (newItem) => {
         setQueue((prev) => [newItem, ...prev]);
         setIsAddOpen(false);
-        setAddForm({ patientName: "", stage: "Reception", priority: "Normal" });
+        setAddForm({ patientName: "", patientId: "", stage: "Reception", priority: "Normal" });
       },
     });
   };
@@ -318,7 +363,7 @@ export default function QueuePage() {
                             ].join(" ")}>
                               <TableCell className="font-mono font-bold text-slate-600">{q.id}</TableCell>
                               <TableCell>
-                                <div className="font-bold text-slate-900 text-sm">{q.patientName}</div>
+                                <div className="font-bold text-slate-900 text-sm">{getQueuePatientName(q)}</div>
                                 <div className="text-xs text-slate-400 font-medium">Patient ID: {q.patientId}</div>
                               </TableCell>
                               <TableCell>{stageBadge(q.stage)}</TableCell>
@@ -400,7 +445,7 @@ export default function QueuePage() {
                         ].join(" ")}>
                           <div className="flex items-start justify-between gap-2">
                             <div>
-                              <div className="font-bold text-slate-900 text-sm">{q.patientName}</div>
+                              <div className="font-bold text-slate-900 text-sm">{getQueuePatientName(q)}</div>
                               <div className="text-xs text-slate-400 font-mono font-medium mt-0.5">#{q.id} • ID: {q.patientId}</div>
                             </div>
                             <div className="flex flex-col items-end gap-1 shrink-0">
@@ -559,7 +604,7 @@ export default function QueuePage() {
                                   </div>
                                   <div className="space-y-1">
                                     <div className="flex items-center gap-2">
-                                      <h4 className="font-bold text-slate-900 text-base">{q.patientName}</h4>
+                                      <h4 className="font-bold text-slate-900 text-base">{getQueuePatientName(q)}</h4>
                                       {priorityBadge(q.priority)}
                                       {statusBadge(q.status)}
                                     </div>
@@ -671,7 +716,7 @@ export default function QueuePage() {
                               <div className="flex flex-col gap-3">
                                 <div className="flex items-start justify-between gap-2">
                                   <div className="min-w-0">
-                                    <p className="font-bold text-slate-900 text-sm leading-tight">{q.patientName}</p>
+                                    <p className="font-bold text-slate-900 text-sm leading-tight">{getQueuePatientName(q)}</p>
                                     <p className="text-xs text-slate-400 font-mono mt-0.5">#{q.id}</p>
                                   </div>
                                   <div className="flex flex-col items-end gap-1 shrink-0">
@@ -773,7 +818,7 @@ export default function QueuePage() {
                   )
                   .map((q) => (
                     <TableRow key={q.id}>
-                      <TableCell className="font-medium">{q.patientName}</TableCell>
+                      <TableCell className="font-medium">{getQueuePatientName(q)}</TableCell>
                       <TableCell>{stageBadge(q.stage)}</TableCell>
                       <TableCell>{priorityBadge(q.priority)}</TableCell>
                       <TableCell className="tabular-nums">{q.waitMinutes}m</TableCell>
@@ -812,7 +857,7 @@ export default function QueuePage() {
                   )
                   .map((q) => (
                     <TableRow key={q.id}>
-                      <TableCell className="font-medium">{q.patientName}</TableCell>
+                      <TableCell className="font-medium">{getQueuePatientName(q)}</TableCell>
                       <TableCell>{stageBadge(q.stage)}</TableCell>
                       <TableCell>{priorityBadge(q.priority)}</TableCell>
                       <TableCell className="tabular-nums">{q.waitMinutes}m</TableCell>
@@ -847,7 +892,7 @@ export default function QueuePage() {
                   .sort((a, b) => b.waitMinutes - a.waitMinutes)
                   .map((q) => (
                     <TableRow key={q.id}>
-                      <TableCell className="font-medium">{q.patientName}</TableCell>
+                      <TableCell className="font-medium">{getQueuePatientName(q)}</TableCell>
                       <TableCell>{stageBadge(q.stage)}</TableCell>
                       <TableCell className="tabular-nums">{q.waitMinutes}m</TableCell>
                       <TableCell>{statusBadge(q.status)}</TableCell>
@@ -934,14 +979,20 @@ export default function QueuePage() {
       <Modal isOpen={isAddOpen} onClose={() => setIsAddOpen(false)} title="Add patient to queue">
         <form onSubmit={submitAdd} className="space-y-4">
           <div>
-            <label className="text-sm font-medium text-slate-700">Patient name</label>
-            <input
-              value={addForm.patientName}
-              onChange={(e) => setAddForm((p) => ({ ...p, patientName: e.target.value }))}
+            <label className="text-sm font-medium text-slate-700">Patient</label>
+            <select
+              value={addForm.patientId}
+              onChange={(e) => setAddForm((p) => ({ ...p, patientId: e.target.value }))}
               className="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none focus:border-sky-300 focus:ring-2 focus:ring-sky-100"
-              placeholder="e.g., Fatima Yusuf"
               required
-            />
+            >
+              <option value="">Select patient...</option>
+              {(patientsResponse?.data ?? []).map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.firstName} {p.lastName}
+                </option>
+              ))}
+            </select>
           </div>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div>

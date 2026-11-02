@@ -26,22 +26,22 @@ export const HMOManagement = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 mb-6">
-                <div className="bg-white/5 p-4 rounded-2xl border border-white/10">
-                  <div className="flex items-center gap-2 mb-2">
+              <div className="mb-6 grid grid-cols-2 gap-3 sm:gap-4">
+                <div className="min-w-0 rounded-2xl border border-white/10 bg-white/5 p-3 sm:p-4">
+                  <div className="mb-2 flex items-center gap-2">
                     <TrendingUp size={14} className="text-emerald-400" />
-                    <span className="text-[10px] text-slate-400 uppercase tracking-wider">Approved Claims</span>
+                    <span className="text-[9px] uppercase tracking-wider text-slate-400 sm:text-[10px]">Approved Claims</span>
                   </div>
-                  <div className="text-2xl font-bold">$42,850.00</div>
-                  <div className="text-[9px] text-emerald-400 mt-1">+12.5% from last month</div>
+                  <div className="text-lg font-bold leading-tight tracking-tight sm:text-2xl">$42,850.00</div>
+                  <div className="mt-1 text-[8px] text-emerald-400 sm:text-[9px]">+12.5% from last month</div>
                 </div>
-                <div className="bg-white/5 p-4 rounded-2xl border border-white/10">
-                  <div className="flex items-center gap-2 mb-2">
+                <div className="min-w-0 rounded-2xl border border-white/10 bg-white/5 p-3 sm:p-4">
+                  <div className="mb-2 flex items-center gap-2">
                     <PieChart size={14} className="text-amber-400" />
-                    <span className="text-[10px] text-slate-400 uppercase tracking-wider">Pending HMOs</span>
+                    <span className="text-[9px] uppercase tracking-wider text-slate-400 sm:text-[10px]">Pending HMOs</span>
                   </div>
-                  <div className="text-2xl font-bold">$18,200.00</div>
-                  <div className="text-[9px] text-amber-400 mt-1">8 Claims awaiting review</div>
+                  <div className="text-lg font-bold leading-tight tracking-tight sm:text-2xl">$18,200.00</div>
+                  <div className="mt-1 text-[8px] text-amber-400 sm:text-[9px]">8 Claims awaiting review</div>
                 </div>
               </div>
 

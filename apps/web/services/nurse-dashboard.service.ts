@@ -79,19 +79,50 @@ function getPatientName(patient: { firstName: string; lastName: string } | undef
   return `${patient.firstName} ${patient.lastName}`;
 }
 
+const dedupeById = <T extends { id: string }>(items: T[]): T[] => {
+  const seen = new Set<string>();
+  return items.filter((item) => {
+    if (seen.has(item.id)) return false;
+    seen.add(item.id);
+    return true;
+  });
+};
+
 export const nurseDashboardService = {
   async getObservationNotes(staffId: string, clinicId: string): Promise<ObservationNote[]> {
-    const params = new URLSearchParams({ staffId, clinicId, limit: '50' });
-    const response = await api.get(`/observation-notes?${params.toString()}`);
-    const data = response.data as PaginatedNotesResponse;
-    return data.data || [];
+    const assignedAppointments = await this.getAssignedAppointments(staffId, clinicId);
+    const patientIds = [...new Set(assignedAppointments.map((appointment) => appointment.patientId))];
+
+    if (patientIds.length === 0) return [];
+
+    const responses = await Promise.all(
+      patientIds.map((patientId) => api.get(`/observation-notes?patientId=${encodeURIComponent(patientId)}&limit=50`)),
+    );
+
+    const notes = responses.flatMap((response) => {
+      const data = response.data as PaginatedNotesResponse;
+      return data.data || [];
+    });
+
+    return dedupeById(notes).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   },
 
-  async getQueueEntries(clinicId: string): Promise<QueueEntry[]> {
-    const params = new URLSearchParams({ clinicId, limit: '50' });
-    const response = await api.get(`/queue?${params.toString()}`);
-    const data = response.data as PaginatedQueueResponse;
-    return data.data || [];
+  async getQueueEntries(staffId: string, clinicId: string): Promise<QueueEntry[]> {
+    const assignedAppointments = await this.getAssignedAppointments(staffId, clinicId);
+    const patientIds = [...new Set(assignedAppointments.map((appointment) => appointment.patientId))];
+
+    if (patientIds.length === 0) return [];
+
+    const responses = await Promise.all(
+      patientIds.map((patientId) => api.get(`/queue?patientId=${encodeURIComponent(patientId)}&limit=50`)),
+    );
+
+    const queueEntries = responses.flatMap((response) => {
+      const data = response.data as PaginatedQueueResponse;
+      return data.data || [];
+    });
+
+    return dedupeById(queueEntries).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   },
 
   async getAssignedAppointments(staffId: string, clinicId: string): Promise<Appointment[]> {

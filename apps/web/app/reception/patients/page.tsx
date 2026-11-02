@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useMemo } from "react";
 import { 
   Users, Search, UserPlus, Filter, MoreHorizontal, ChevronRight,
   ShieldCheck, User, History, Phone, Mail, MapPin, Calendar,
@@ -8,10 +8,13 @@ import {
   ShoppingCart, PackageCheck, Clock, AlertCircle, FileText,
   Heart, Loader2, X, Stethoscope, Wallet, Printer, QrCode, Scan, Camera
 } from "lucide-react";
+import QRCode from "react-qr-code";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { Modal } from "@/components/ui/modal";
 import { usePatients, useCreatePatient, Patient, PatientQueryParams } from "@/hooks/usePatients";
+import { useCreateQueueEntry } from "@/hooks/useQueue";
+import { useBranches } from "@/hooks/useBranches";
 import { useAuth } from "@/lib/auth-context";
 import { toast } from "sonner";
 
@@ -68,7 +71,11 @@ export default function PatientsPage() {
     refetch: refetchPatients 
   } = usePatients(queryParams);
 
+  const { data: branches = [] } = useBranches();
+  const [selectedBranchId, setSelectedBranchId] = useState("");
+
   const createPatientMutation = useCreatePatient();
+  const createQueueEntryMutation = useCreateQueueEntry();
 
   const [isCheckInModalOpen, setIsCheckInModalOpen] = useState(false);
   const [checkInStep, setCheckInStep] = useState<CheckInStep>("SCAN");
@@ -76,6 +83,7 @@ export default function PatientsPage() {
   const [selectedPurpose, setSelectedPurpose] = useState<string | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const [isCheckInLoading, setIsCheckInLoading] = useState(false);
+  const [checkInError, setCheckInError] = useState("");
 
   const [isRegModalOpen, setIsRegModalOpen] = useState(false);
   const [regStep, setRegStep] = useState<RegistrationStep>("PERSONAL");
@@ -96,6 +104,12 @@ export default function PatientsPage() {
   const [selectedPatient, setSelectedPatient] = useState<ReturnType<typeof mapApiPatientToUI> | null>(null);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [activeProfileTab, setActiveProfileTab] = useState("overview");
+
+  React.useEffect(() => {
+    if (branches.length > 0 && !selectedBranchId) {
+      setSelectedBranchId(branches[0].id);
+    }
+  }, [branches, selectedBranchId]);
 
   const patients = patientsResponse?.data.map(mapApiPatientToUI) || [];
 
@@ -123,32 +137,94 @@ export default function PatientsPage() {
     setCheckInStep("PURPOSE");
   };
 
+  const qrValue = useMemo(() => {
+    const patient = patients.find((item) => item.id === checkInId) ?? null;
+
+    return JSON.stringify({
+      type: "vemtap-checkin",
+      clinicId: user?.clinicId ?? "unknown-clinic",
+      branchId: selectedBranchId || user?.branchId || "unknown-branch",
+      patientId: patient?.id ?? (checkInId || "guest-checkin"),
+      patientName: patient?.name ?? "Pending verification",
+      timestamp: Date.now(),
+    });
+  }, [checkInId, patients, selectedBranchId, user?.branchId, user?.clinicId]);
+
   const handleIdSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!checkInId) return;
+    const normalizedId = checkInId.trim();
+    if (!normalizedId) {
+      setCheckInError("Enter a patient ID or scan a valid QR card.");
+      return;
+    }
+
     setIsCheckInLoading(true);
+    setCheckInError("");
+
+    const matchedPatient = patients.find((patient) => {
+      const idMatch = patient.id.toLowerCase() === normalizedId.toLowerCase();
+      const nameMatch = patient.name.toLowerCase().includes(normalizedId.toLowerCase());
+      const phoneMatch = patient.phone.replace(/\D/g, "").includes(normalizedId.replace(/\D/g, ""));
+      return idMatch || nameMatch || phoneMatch;
+    });
+
     setTimeout(() => {
       setIsCheckInLoading(false);
+      if (!matchedPatient) {
+        setCheckInError("No live patient record matched this QR or ID. Please verify and try again.");
+        setIsCheckInModalOpen(true);
+        setCheckInStep("SCAN");
+        return;
+      }
+
+      setSelectedPatient(matchedPatient);
+      setCheckInId(matchedPatient.id);
       setIsCheckInModalOpen(true);
       setCheckInStep("IDENTIFY");
-    }, 1000);
+    }, 500);
   };
 
-  const finalizeCheckIn = () => {
+  const finalizeCheckIn = async () => {
+    if (!selectedPatient || !user?.clinicId) {
+      setCheckInError("A valid patient and clinic context are required to continue.");
+      return;
+    }
+
     setCheckInStep("VERIFYING");
-    setTimeout(() => {
-      setCheckInStep("COMPLETE");
-    }, 2500);
+
+    try {
+      await createQueueEntryMutation.mutateAsync({
+        patientId: selectedPatient.id,
+        patientName: selectedPatient.name,
+        serviceType: selectedPurpose ?? "consultation",
+        priority: "Normal",
+        clinicId: user.clinicId,
+        branchId: selectedBranchId || user.branchId || "",
+      });
+
+      setTimeout(() => {
+        setCheckInStep("COMPLETE");
+      }, 1200);
+    } catch (error) {
+      console.error("Queue create failed:", error);
+      setCheckInError("The queue entry could not be created. Please try again.");
+      setCheckInStep("SCAN");
+    }
   };
 
   const handleRegistration = async () => {
-    if (!user) return;
-    
+    if (!user?.clinicId) {
+      toast.error("Clinic context is missing. Please sign in again.");
+      return;
+    }
+
+    if (!selectedBranchId) {
+      toast.error("No branch is available for this clinic. Create a branch first.");
+      return;
+    }
+
     setIsCheckInLoading(true);
     try {
-      const dob = new Date(regData.dob);
-      const age = dob ? Math.floor((new Date().getTime() - dob.getTime()) / (365.25 * 86400000)) : 0;
-      
       const patientData = {
         firstName: regData.firstName,
         lastName: regData.lastName,
@@ -171,7 +247,7 @@ export default function PatientsPage() {
         genotype: undefined,
         allergies: regData.allergies || undefined,
         clinicId: user.clinicId,
-        branchId: user.clinicId, // Will need branchId from context
+        branchId: selectedBranchId,
       };
 
       await createPatientMutation.mutateAsync(patientData);
@@ -197,36 +273,49 @@ export default function PatientsPage() {
   ];
 
   const renderPatientCard = (patient: typeof patients[0]) => (
-    <button key={patient.id} onClick={() => { setSelectedPatient(patient); setIsProfileModalOpen(true); }}
-      className="w-full p-4 rounded-2xl bg-white border border-slate-100 shadow-sm hover:shadow-md hover:border-sky-200 transition-all text-left">
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-3 min-w-0 flex-1">
-          <div className="w-10 h-10 rounded-xl bg-sky-50 flex items-center justify-center text-sky-600 font-black text-[10px] shrink-0">
-            {patient.name.split(' ').map(n => n[0]).join('')}
+    <div key={patient.id} className="w-full p-4 rounded-2xl bg-white border border-slate-100 shadow-sm hover:shadow-md hover:border-sky-200 transition-all text-left">
+      <div
+        onClick={() => { setSelectedPatient(patient); setIsProfileModalOpen(true); }}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            setSelectedPatient(patient);
+            setIsProfileModalOpen(true);
+          }
+        }}
+        role="button"
+        tabIndex={0}
+        className="cursor-pointer focus:outline-none focus:ring-2 focus:ring-sky-500/20 rounded-xl"
+      >
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-3 min-w-0 flex-1">
+            <div className="w-10 h-10 rounded-xl bg-sky-50 flex items-center justify-center text-sky-600 font-black text-[10px] shrink-0">
+              {patient.name.split(' ').map(n => n[0]).join('')}
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-bold text-slate-900 truncate">{patient.name}</p>
+              <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tight">{patient.id}</p>
+            </div>
           </div>
-          <div className="min-w-0">
-            <p className="text-sm font-bold text-slate-900 truncate">{patient.name}</p>
-            <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tight">{patient.id}</p>
+          <span className={cn("px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest shrink-0", patient.status === "Active" ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500")}>
+            {patient.status}
+          </span>
+        </div>
+        <div className="flex items-center justify-between text-[10px] text-slate-500 font-medium">
+          <div className="flex items-center gap-1.5">
+            <ShieldCheck size={11} className={patient.type === "HMO" ? "text-amber-500" : "text-emerald-500"} />
+            <span>{patient.type} &bull; {patient.provider}</span>
           </div>
+          <span>{patient.lastVisit}</span>
         </div>
-        <span className={cn("px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest shrink-0", patient.status === "Active" ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500")}>
-          {patient.status}
-        </span>
-      </div>
-      <div className="flex items-center justify-between text-[10px] text-slate-500 font-medium">
-        <div className="flex items-center gap-1.5">
-          <ShieldCheck size={11} className={patient.type === "HMO" ? "text-amber-500" : "text-emerald-500"} />
-          <span>{patient.type} &bull; {patient.provider}</span>
-        </div>
-        <span>{patient.lastVisit}</span>
       </div>
       <div className="flex items-center gap-2 mt-2 pt-2 border-t border-slate-50">
-        <button onClick={() => { setSelectedPatient(patient); setIsProfileModalOpen(true); }}
+        <button type="button" onClick={() => { setSelectedPatient(patient); setIsProfileModalOpen(true); }}
           className="flex-1 py-2.5 rounded-xl bg-sky-50 text-sky-600 text-[9px] font-black uppercase tracking-widest hover:bg-sky-100 transition-colors">View</button>
-        <button onClick={() => { setCheckInId(patient.id); setIsCheckInModalOpen(true); setCheckInStep("PURPOSE"); }}
+        <button type="button" onClick={() => { setCheckInId(patient.id); setIsCheckInModalOpen(true); setCheckInStep("PURPOSE"); }}
           className="flex-1 py-2.5 rounded-xl bg-emerald-50 text-emerald-600 text-[9px] font-black uppercase tracking-widest hover:bg-emerald-100 transition-colors">Check-In</button>
       </div>
-    </button>
+    </div>
   );
 
   return (
@@ -478,9 +567,8 @@ export default function PatientsPage() {
           <AnimatePresence mode="wait">
             {checkInStep === "SCAN" && (
               <motion.div key="scan" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col items-center justify-center space-y-5 sm:space-y-8 py-8 sm:py-12">
-                 <div className="w-24 h-24 sm:w-32 sm:h-32 bg-slate-50 rounded-2xl sm:rounded-[2.5rem] border-4 border-dashed border-slate-200 flex items-center justify-center text-slate-400 relative overflow-hidden group cursor-pointer hover:border-sky-500 transition-all">
-                    <Scan size={36} className="group-hover:scale-110 transition-transform" />
-                    <div className="absolute inset-0 bg-sky-500/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"><Camera size={24} className="text-sky-600" /></div>
+                 <div className="rounded-2xl sm:rounded-[2.5rem] border border-slate-100 bg-slate-50 p-3 sm:p-5 shadow-sm">
+                    <QRCode value={qrValue} size={170} bgColor="#f8fafc" fgColor="#0f172a" />
                  </div>
                  <div className="text-center space-y-1 sm:space-y-2">
                     <h3 className="text-lg sm:text-xl font-black text-slate-900">QR Scan Check-In</h3>
@@ -493,6 +581,11 @@ export default function PatientsPage() {
                          placeholder="Or enter ID manually..."
                          className="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-3 sm:py-4 rounded-xl sm:rounded-2xl bg-slate-50 border border-slate-100 focus:outline-none font-bold text-slate-900 text-sm" />
                     </div>
+                    {checkInError && (
+                      <p className="text-[9px] sm:text-[10px] text-rose-600 font-black uppercase tracking-widest bg-rose-50 border border-rose-100 rounded-xl px-2 py-2 text-center">
+                        {checkInError}
+                      </p>
+                    )}
                     <button onClick={handleIdSubmit} className="w-full py-3 sm:py-4 rounded-xl sm:rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg">Start Entry</button>
                  </div>
               </motion.div>
@@ -501,9 +594,11 @@ export default function PatientsPage() {
             {checkInStep === "IDENTIFY" && (
               <motion.div key="id" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-5 sm:space-y-8 py-4 sm:py-6">
                 <div className="flex items-center gap-4 sm:gap-6 p-4 sm:p-6 rounded-xl sm:rounded-2xl bg-slate-50 border border-slate-100">
-                  <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-lg sm:rounded-xl bg-white shadow-sm flex items-center justify-center text-sky-600 font-black text-base sm:text-xl shrink-0">CO</div>
+                  <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-lg sm:rounded-xl bg-white shadow-sm flex items-center justify-center text-sky-600 font-black text-base sm:text-xl shrink-0">
+                    {selectedPatient ? selectedPatient.name.slice(0,2).toUpperCase() : "PT"}
+                  </div>
                   <div className="min-w-0">
-                    <h4 className="text-base sm:text-lg font-black text-slate-900 truncate">Chidimma Okoro</h4>
+                    <h4 className="text-base sm:text-lg font-black text-slate-900 truncate">{selectedPatient ? selectedPatient.name : "Patient record"}</h4>
                     <p className="text-[9px] sm:text-[10px] text-slate-400 font-bold uppercase tracking-widest">Verified ID: {checkInId || "PT-2024-001"}</p>
                   </div>
                 </div>

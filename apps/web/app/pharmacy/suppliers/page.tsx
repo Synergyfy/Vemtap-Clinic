@@ -12,10 +12,11 @@ import {
   useSuppliers,
   usePurchaseOrders,
   useDrugs,
+  useCreateSupplier,
   useCreatePurchaseOrder,
   useDeliverPurchaseOrder,
 } from "@/hooks/usePharmacy";
-import type { Supplier, PurchaseOrder } from "@/hooks/usePharmacy";
+import type { Supplier, PurchaseOrder, CreateSupplierInput } from "@/hooks/usePharmacy";
 
 function statusBadge(status: string) {
   const s = status?.toLowerCase();
@@ -33,9 +34,22 @@ export default function PharmacySuppliers() {
   const { data: suppliers = [] } = useSuppliers(clinicId);
   const { data: purchaseOrders = [] } = usePurchaseOrders(clinicId);
   const { data: drugs = [] } = useDrugs(clinicId);
+  const createSupplierMutation = useCreateSupplier();
   const createOrderMutation = useCreatePurchaseOrder();
   const deliverMutation = useDeliverPurchaseOrder();
 
+  const [newSupplierModal, setNewSupplierModal] = useState(false);
+  const [newSupplierForm, setNewSupplierForm] = useState<CreateSupplierInput>({
+    name: "",
+    contactPerson: "",
+    phone: "",
+    email: "",
+    address: "",
+    city: "",
+    state: "",
+    products: "",
+    clinicId: clinicId || "",
+  });
   const [newOrderModal, setNewOrderModal] = useState(false);
   const [newOrderSupplier, setNewOrderSupplier] = useState("");
   const [newOrderDrugId, setNewOrderDrugId] = useState("");
@@ -47,6 +61,40 @@ export default function PharmacySuppliers() {
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 3000); };
 
   const pendingOrders = purchaseOrders.filter((po) => po.status === "pending");
+
+  const handleCreateSupplier = async () => {
+    if (!clinicId || !newSupplierForm.name.trim()) return;
+
+    try {
+      await createSupplierMutation.mutateAsync({
+        ...newSupplierForm,
+        clinicId,
+        name: newSupplierForm.name.trim(),
+        contactPerson: newSupplierForm.contactPerson?.trim() || undefined,
+        phone: newSupplierForm.phone?.trim() || undefined,
+        email: newSupplierForm.email?.trim() || undefined,
+        address: newSupplierForm.address?.trim() || undefined,
+        city: newSupplierForm.city?.trim() || undefined,
+        state: newSupplierForm.state?.trim() || undefined,
+        products: newSupplierForm.products?.trim() || undefined,
+      });
+      showToast("Supplier created");
+      setNewSupplierModal(false);
+      setNewSupplierForm({
+        name: "",
+        contactPerson: "",
+        phone: "",
+        email: "",
+        address: "",
+        city: "",
+        state: "",
+        products: "",
+        clinicId,
+      });
+    } catch {
+      showToast("Failed to create supplier");
+    }
+  };
 
   const handleCreateOrder = async () => {
     if (!newOrderSupplier || !newOrderDrugId || newOrderQty <= 0 || newOrderUnitPrice <= 0 || !clinicId) return;
@@ -97,7 +145,10 @@ export default function PharmacySuppliers() {
       )}
 
       <PageHeader title="Supplier Management" description="Manage drug suppliers, purchase orders, and restocking."
-        actions={[{ label: "New Purchase Order", variant: "default", onClick: () => setNewOrderModal(true) }]} />
+        actions={[
+          { label: "Add Supplier", variant: "outline", onClick: () => setNewSupplierModal(true) },
+          { label: "New Purchase Order", variant: "default", onClick: () => setNewOrderModal(true) },
+        ]} />
 
       <div className="grid grid-cols-1 gap-4 md:gap-8 lg:grid-cols-2">
         <Card>
@@ -175,6 +226,108 @@ export default function PharmacySuppliers() {
           </CardContent>
         </Card>
       </div>
+
+      <Modal isOpen={newSupplierModal} onClose={() => {
+        setNewSupplierModal(false);
+        setNewSupplierForm({
+          name: "",
+          contactPerson: "",
+          phone: "",
+          email: "",
+          address: "",
+          city: "",
+          state: "",
+          products: "",
+          clinicId: clinicId || "",
+        });
+      }} title="Add Supplier">
+        <div className="space-y-4">
+          <div>
+            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Supplier Name</label>
+            <input
+              value={newSupplierForm.name}
+              onChange={(e) => setNewSupplierForm((prev) => ({ ...prev, name: e.target.value }))}
+              className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none focus:border-emerald-500"
+              placeholder="Pharma Distributors Ltd"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Contact Person</label>
+              <input
+                value={newSupplierForm.contactPerson}
+                onChange={(e) => setNewSupplierForm((prev) => ({ ...prev, contactPerson: e.target.value }))}
+                className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none focus:border-emerald-500"
+                placeholder="John Smith"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Phone</label>
+              <input
+                value={newSupplierForm.phone}
+                onChange={(e) => setNewSupplierForm((prev) => ({ ...prev, phone: e.target.value }))}
+                className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none focus:border-emerald-500"
+                placeholder="+1234567890"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Email</label>
+            <input
+              type="email"
+              value={newSupplierForm.email}
+              onChange={(e) => setNewSupplierForm((prev) => ({ ...prev, email: e.target.value }))}
+              className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none focus:border-emerald-500"
+              placeholder="contact@pharma.com"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Address</label>
+            <input
+              value={newSupplierForm.address}
+              onChange={(e) => setNewSupplierForm((prev) => ({ ...prev, address: e.target.value }))}
+              className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none focus:border-emerald-500"
+              placeholder="456 Industrial Ave"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">City</label>
+              <input
+                value={newSupplierForm.city}
+                onChange={(e) => setNewSupplierForm((prev) => ({ ...prev, city: e.target.value }))}
+                className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none focus:border-emerald-500"
+                placeholder="Lagos"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">State</label>
+              <input
+                value={newSupplierForm.state}
+                onChange={(e) => setNewSupplierForm((prev) => ({ ...prev, state: e.target.value }))}
+                className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none focus:border-emerald-500"
+                placeholder="Lagos State"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Products</label>
+            <input
+              value={newSupplierForm.products}
+              onChange={(e) => setNewSupplierForm((prev) => ({ ...prev, products: e.target.value }))}
+              className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none focus:border-emerald-500"
+              placeholder="Antibiotics, Painkillers"
+            />
+          </div>
+          <div className="flex items-center justify-end gap-2 pt-2">
+            <button onClick={() => setNewSupplierModal(false)} className="rounded-full border border-slate-200 bg-white px-5 py-2.5 text-sm font-medium text-slate-900 hover:bg-slate-50">Cancel</button>
+            <button onClick={handleCreateSupplier} disabled={!newSupplierForm.name.trim() || !clinicId || createSupplierMutation.isPending}
+              className="rounded-full bg-emerald-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed">
+              {createSupplierMutation.isPending ? "Saving..." : "Save Supplier"}
+            </button>
+          </div>
+        </div>
+      </Modal>
 
       <Modal isOpen={!!detailSupplier} onClose={() => setDetailSupplier(null)} title="Supplier Details">
         {detailSupplier && (

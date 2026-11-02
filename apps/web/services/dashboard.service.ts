@@ -51,22 +51,23 @@ export interface HMOAnalytics {
 
 export const dashboardService = {
   async getOverview(clinicId: string): Promise<DashboardOverview> {
-    const response = await api.get(`/dashboard?clinicId=${clinicId}`);
+    const response = await api.get('/dashboard', { params: { clinicId } });
     return response.data as DashboardOverview;
   },
 
   async getRevenue(clinicId: string, startDate: string, endDate: string): Promise<RevenueReportEntry[]> {
-    const response = await api.get(`/dashboard/revenue?clinicId=${clinicId}&startDate=${startDate}&endDate=${endDate}`);
+    const response = await api.get('/dashboard/revenue', { params: { clinicId, startDate, endDate } });
     return response.data as RevenueReportEntry[];
   },
 
   async getAppointmentAnalytics(clinicId: string, startDate: string, endDate: string): Promise<AppointmentAnalytics> {
-    const response = await api.get(`/dashboard/appointments?clinicId=${clinicId}&startDate=${startDate}&endDate=${endDate}`);
+    const response = await api.get('/dashboard/appointments', { params: { clinicId, startDate, endDate } });
     return response.data as AppointmentAnalytics;
   },
 
   async getHMOAnalytics(clinicId: string): Promise<HMOAnalytics> {
-    const response = await api.get(`/dashboard/hmo?clinicId=${clinicId}`);
+    const response = await api.get('/dashboard/hmo', { params: { clinicId } });
     return response.data as HMOAnalytics;
   },
 };
+

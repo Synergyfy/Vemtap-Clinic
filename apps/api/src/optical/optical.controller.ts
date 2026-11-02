@@ -15,7 +15,7 @@ export class OpticalController {
   constructor(private readonly opticalService: OpticalService) {}
 
   @Post('items')
-  @Roles(UserRole.ADMIN, UserRole.OPTOMETRIST)
+  @Roles(UserRole.ADMIN, UserRole.DOCTOR, UserRole.OPTOMETRIST)
   @ApiOperation({ summary: 'Add optical inventory item' })
   createItem(@Body() dto: CreateOpticalItemDto) {
     return this.opticalService.createItem(dto);
@@ -34,7 +34,7 @@ export class OpticalController {
   }
 
   @Put('items/:id')
-  @Roles(UserRole.ADMIN, UserRole.OPTOMETRIST)
+  @Roles(UserRole.ADMIN, UserRole.DOCTOR, UserRole.OPTOMETRIST)
   @ApiOperation({ summary: 'Update optical item' })
   updateItem(@Param('id') id: string, @Body() dto: UpdateOpticalItemDto) {
     return this.opticalService.updateItem(id, dto);
@@ -48,7 +48,7 @@ export class OpticalController {
   }
 
   @Post('lens-orders')
-  @Roles(UserRole.DOCTOR, UserRole.OPTOMETRIST)
+  @Roles(UserRole.ADMIN, UserRole.DOCTOR, UserRole.OPTOMETRIST)
   @ApiOperation({ summary: 'Create lens order' })
   createLensOrder(@Body() dto: CreateLensOrderDto) {
     return this.opticalService.createLensOrder(dto);
@@ -61,21 +61,21 @@ export class OpticalController {
   }
 
   @Put('lens-orders/:id')
-  @Roles(UserRole.ADMIN, UserRole.OPTOMETRIST)
+  @Roles(UserRole.ADMIN, UserRole.DOCTOR, UserRole.OPTOMETRIST)
   @ApiOperation({ summary: 'Update lens order status' })
   updateLensOrder(@Param('id') id: string, @Body() dto: UpdateLensOrderDto) {
     return this.opticalService.updateLensOrder(id, dto);
   }
 
   @Put('lens-orders/:id/production')
-  @Roles(UserRole.ADMIN, UserRole.OPTOMETRIST)
+  @Roles(UserRole.ADMIN, UserRole.DOCTOR, UserRole.OPTOMETRIST)
   @ApiOperation({ summary: 'Update lens order production stage' })
   updateProductionStage(@Param('id') id: string, @Body() dto: UpdateProductionStageDto) {
     return this.opticalService.updateProductionStage(id, dto.stage);
   }
 
   @Post('production')
-  @Roles(UserRole.ADMIN, UserRole.OPTOMETRIST)
+  @Roles(UserRole.ADMIN, UserRole.DOCTOR, UserRole.OPTOMETRIST)
   @ApiOperation({ summary: 'Create production item for lens order' })
   createProductionItem(@Body() dto: CreateProductionItemDto) {
     return this.opticalService.createProductionItem(dto);

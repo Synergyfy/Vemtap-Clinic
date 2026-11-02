@@ -1,4 +1,5 @@
 import { IsString, IsEmail, IsEnum, IsOptional, IsBoolean, IsUUID, MinLength, MaxLength } from 'class-validator';
+import { Transform } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { StaffRole } from '../../entities/staff.entity';
 
@@ -50,6 +51,12 @@ export class CreateStaffDto {
   @ApiProperty({ example: 'clinic-uuid' })
   @IsUUID()
   clinicId: string;
+
+  @ApiPropertyOptional({ example: 'password123', description: 'Optional login password for the staff account. Defaults to password123 in local dev.' })
+  @IsOptional()
+  @IsString()
+  @MinLength(6)
+  password?: string;
 
   @ApiProperty({ example: 'branch-uuid' })
   @IsUUID()
@@ -138,6 +145,26 @@ export class StaffQueryDto {
   @IsOptional()
   @IsUUID()
   branchId?: string;
+
+  @ApiPropertyOptional({ example: 1 })
+  @IsOptional()
+  @Transform(({ value }) => parseInt(value, 10))
+  page?: number = 1;
+
+  @ApiPropertyOptional({ example: 10 })
+  @IsOptional()
+  @Transform(({ value }) => parseInt(value, 10))
+  limit?: number = 10;
+
+  @ApiPropertyOptional({ example: 'createdAt' })
+  @IsOptional()
+  @IsString()
+  sortBy?: string = 'createdAt';
+
+  @ApiPropertyOptional({ enum: ['ASC', 'DESC'] })
+  @IsOptional()
+  @IsEnum(['ASC', 'DESC'])
+  sortOrder?: 'ASC' | 'DESC' = 'DESC';
 }
 
 export class StaffResponseDto {

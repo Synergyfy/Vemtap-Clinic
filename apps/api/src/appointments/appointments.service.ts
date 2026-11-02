@@ -26,23 +26,41 @@ export class AppointmentsService {
     return this.appointmentRepository.save(appointment);
   }
 
-  async findAll(query: AppointmentQueryDto): Promise<Appointment[]> {
+  async findAll(query: AppointmentQueryDto): Promise<{ data: Appointment[]; total: number; page: number; limit: number; totalPages: number }> {
     const where: any = {};
     if (query.clinicId) where.clinicId = query.clinicId;
     if (query.branchId) where.branchId = query.branchId;
     if (query.patientId) where.patientId = query.patientId;
     if (query.staffId) where.staffId = query.staffId;
     if (query.status) where.status = query.status;
+    if (query.type) where.type = query.type;
 
     if (query.startDate && query.endDate) {
       where.appointmentDate = Between(new Date(query.startDate), new Date(query.endDate));
     }
 
-    return this.appointmentRepository.find({
+    const page = Number(query.page ?? 1);
+    const limit = Number(query.limit ?? 100);
+    const sortBy = ['appointmentDate', 'appointmentTime', 'createdAt', 'status'].includes(query.sortBy ?? '')
+      ? (query.sortBy as keyof Appointment)
+      : 'appointmentDate';
+    const sortOrder = query.sortOrder === 'DESC' ? 'DESC' : 'ASC';
+
+    const [data, total] = await this.appointmentRepository.findAndCount({
       where,
       relations: ['patient', 'staff', 'branch'],
-      order: { appointmentDate: 'ASC' },
+      order: { [sortBy]: sortOrder },
+      skip: (page - 1) * limit,
+      take: limit,
     });
+
+    return {
+      data,
+      total,
+      page,
+      limit,
+      totalPages: Math.max(1, Math.ceil(total / limit)),
+    };
   }
 
   async findOne(id: string): Promise<Appointment> {

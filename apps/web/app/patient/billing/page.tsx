@@ -33,6 +33,8 @@ export default function BillingPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [invoiceToPay, setInvoiceToPay] = useState<Invoice | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<string>("card");
+  const [paymentRef, setPaymentRef] = useState<string>("");
 
   const unpaidInvoices = invoices.filter((inv) => inv.status === "pending" || inv.status === "overdue");
   const outstandingBalance = unpaidInvoices.reduce((sum, inv) => sum + inv.balance, 0);
@@ -40,6 +42,7 @@ export default function BillingPage() {
 
   const handlePayClick = (inv?: Invoice) => {
     setInvoiceToPay(inv || firstUnpaid);
+    setPaymentRef(`REF-${Date.now().toString().slice(-6)}`);
     setPaymentOpen(true);
   };
 
@@ -47,7 +50,12 @@ export default function BillingPage() {
     if (!invoiceToPay) return;
     setIsProcessing(true);
     makePayment.mutate(
-      { invoiceId: invoiceToPay.id, amount: invoiceToPay.balance, paymentMethod: "card" },
+      {
+        invoiceId: invoiceToPay.id,
+        amount: invoiceToPay.balance,
+        paymentMethod,
+        reference: paymentRef || `PAT-${Date.now()}`,
+      },
       {
         onSuccess: () => {
           setIsProcessing(false);
@@ -248,18 +256,58 @@ export default function BillingPage() {
 
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Card Number</label>
-                      <input type="text" placeholder="0000 0000 0000 0000" className="w-full border border-gray-300 rounded-xl p-3 bg-white text-gray-900 outline-none focus:ring-2 focus:ring-teal-500" />
+                      <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Payment Method</label>
+                      <div className="grid grid-cols-4 gap-2">
+                        {[
+                          { id: "card", label: "Card" },
+                          { id: "transfer", label: "Transfer" },
+                          { id: "cash", label: "Cash" },
+                          { id: "hmo", label: "HMO" },
+                        ].map((m) => (
+                          <button
+                            key={m.id}
+                            type="button"
+                            onClick={() => setPaymentMethod(m.id)}
+                            className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all ${
+                              paymentMethod === m.id
+                                ? "bg-teal-600 text-white border-teal-600 shadow-md shadow-teal-600/20"
+                                : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100"
+                            }`}
+                          >
+                            {m.label}
+                          </button>
+                        ))}
+                      </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Expiry Date</label>
-                        <input type="text" placeholder="MM/YY" className="w-full border border-gray-300 rounded-xl p-3 bg-white text-gray-900 outline-none focus:ring-2 focus:ring-teal-500" />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">CVC</label>
-                        <input type="text" placeholder="123" className="w-full border border-gray-300 rounded-xl p-3 bg-white text-gray-900 outline-none focus:ring-2 focus:ring-teal-500" />
-                      </div>
+
+                    {paymentMethod === "card" && (
+                      <>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Card Number</label>
+                          <input type="text" placeholder="0000 0000 0000 0000" className="w-full border border-gray-300 rounded-xl p-3 bg-white text-gray-900 outline-none focus:ring-2 focus:ring-teal-500" />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Expiry Date</label>
+                            <input type="text" placeholder="MM/YY" className="w-full border border-gray-300 rounded-xl p-3 bg-white text-gray-900 outline-none focus:ring-2 focus:ring-teal-500" />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">CVC</label>
+                            <input type="text" placeholder="123" className="w-full border border-gray-300 rounded-xl p-3 bg-white text-gray-900 outline-none focus:ring-2 focus:ring-teal-500" />
+                          </div>
+                        </div>
+                      </>
+                    )}
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Reference / Note</label>
+                      <input
+                        type="text"
+                        value={paymentRef}
+                        onChange={(e) => setPaymentRef(e.target.value)}
+                        placeholder="Optional payment reference or note"
+                        className="w-full border border-gray-300 rounded-xl p-3 bg-white text-gray-900 outline-none focus:ring-2 focus:ring-teal-500"
+                      />
                     </div>
 
                     <button onClick={handlePayment} disabled={isProcessing}

@@ -1,5 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
 import { MedicalRecord } from './medical-record.entity';
+import { Clinic } from './clinic.entity';
 
 @Entity('vitals')
 export class Vitals {
@@ -39,6 +40,13 @@ export class Vitals {
   @ManyToOne(() => MedicalRecord)
   @JoinColumn({ name: 'medicalRecordId' })
   medicalRecord: MedicalRecord;
+
+  @Column()
+  clinicId: string;
+
+  @ManyToOne(() => Clinic)
+  @JoinColumn({ name: 'clinicId' })
+  clinic: Clinic;
 
   @CreateDateColumn()
   createdAt: Date;

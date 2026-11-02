@@ -19,14 +19,18 @@ export class ObservationNotesController {
   @Roles(UserRole.DOCTOR, UserRole.NURSE)
   @ApiOperation({ summary: 'Create observation note' })
   create(@Body() dto: CreateObservationNoteDto, @CurrentUser() user: any) {
-    return this.observationNotesService.create({ ...dto, staffId: user.sub });
+    return this.observationNotesService.create({
+      ...dto,
+      staffId: dto.staffId,
+      staffEmail: user?.email,
+    });
   }
 
   @Get()
   @ApiOperation({ summary: 'List observation notes' })
   findAll(@Query() query: ObservationNoteQueryDto) {
-    if (query.patientId) return this.observationNotesService.findByPatient(query.patientId);
-    if (query.clinicId) return this.observationNotesService.findByClinic(query.clinicId);
+    if (query.patientId) return this.observationNotesService.findByPatient(query.patientId, query.limit);
+    if (query.clinicId) return this.observationNotesService.findByClinic(query.clinicId, query.staffId, query.limit);
     return [];
   }
 
