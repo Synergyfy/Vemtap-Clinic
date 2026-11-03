@@ -9,7 +9,7 @@ export function getRefreshCookieOptions(configService: ConfigService): CookieOpt
   return {
     httpOnly: true,
     secure: isProduction,
-    sameSite: 'lax' as const,
+    sameSite: isProduction ? 'none' : 'lax',
     path: '/',
     maxAge: parseDuration(configService.get<string>('JWT_REFRESH_EXPIRES_IN', '7d')),
   };
@@ -21,7 +21,7 @@ export function getClearedRefreshCookieOptions(configService?: ConfigService): C
   return {
     httpOnly: true,
     secure: isProduction ?? false,
-    sameSite: 'lax' as const,
+    sameSite: isProduction ? 'none' : 'lax',
     path: '/',
     maxAge: 0,
   };
