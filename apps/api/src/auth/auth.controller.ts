@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Put, Body, Res, Req, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Post, Get, Put, Body, Res, Req, UseGuards, HttpCode, HttpStatus, UnauthorizedException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
 import { Response, Request } from 'express';
 import { ConfigService } from '@nestjs/config';
@@ -66,10 +66,10 @@ export class AuthController {
   async refresh(
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
-  ): Promise<AuthResponseDto | Response> {
+  ): Promise<AuthResponseDto> {
     const refreshToken = req.cookies?.[REFRESH_COOKIE_NAME];
     if (!refreshToken) {
-      return res.status(HttpStatus.UNAUTHORIZED).json({ message: 'Refresh token not found' });
+      throw new UnauthorizedException('Refresh token not found');
     }
 
     const { tokens, user } = await this.authService.refreshTokens(refreshToken, {
