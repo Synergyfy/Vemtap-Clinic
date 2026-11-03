@@ -1,9 +1,16 @@
 import { AuthService } from './auth.service';
 import { UserRole } from '../entities/user.entity';
 
+const makeQueryBuilder = (result: any) => ({
+  where: jest.fn().mockReturnThis(),
+  select: jest.fn().mockReturnThis(),
+  getOne: jest.fn().mockResolvedValue(result),
+});
+
 describe('AuthService.register', () => {
   it('creates an admin account by default and leaves clinic unset until the admin creates one', async () => {
     const userRepository = {
+      createQueryBuilder: jest.fn(() => makeQueryBuilder(null)),
       findOne: jest.fn().mockResolvedValue(null),
       create: jest.fn((entity) => ({ ...entity, id: 'user-123' })),
       save: jest.fn(async (entity) => ({ ...entity, id: 'user-123' })),
@@ -22,11 +29,14 @@ describe('AuthService.register', () => {
       get: jest.fn().mockReturnValue('7d'),
     };
 
+    const emailService = {} as any;
+
     const service = new AuthService(
       userRepository as any,
       refreshTokenRepository as any,
       jwtService as any,
       configService as any,
+      emailService,
     );
 
     await service.register({
@@ -46,6 +56,7 @@ describe('AuthService.register', () => {
 
   it('returns the user name fields in the auth payload so the UI can display the account owner', async () => {
     const userRepository = {
+      createQueryBuilder: jest.fn(() => makeQueryBuilder(null)),
       findOne: jest.fn().mockResolvedValue(null),
       create: jest.fn((entity) => ({ ...entity, id: 'user-456' })),
       save: jest.fn(async (entity) => ({ ...entity, id: 'user-456' })),
@@ -64,11 +75,14 @@ describe('AuthService.register', () => {
       get: jest.fn().mockReturnValue('7d'),
     };
 
+    const emailService = {} as any;
+
     const service = new AuthService(
       userRepository as any,
       refreshTokenRepository as any,
       jwtService as any,
       configService as any,
+      emailService,
     );
 
     const result = await service.register({
@@ -88,7 +102,19 @@ describe('AuthService.register', () => {
 
   it('logs users in even when the email is entered with different casing', async () => {
     const normalizedEmail = 'jane@vemtap.com';
+    const queryBuilder = makeQueryBuilder({
+      id: 'user-789',
+      firstName: 'Jane',
+      lastName: 'Admin',
+      email: normalizedEmail,
+      password: '$2a$10$abcdefghijklmnopqrstuv',
+      role: UserRole.ADMIN,
+      clinicId: null,
+      isActive: true,
+    });
+
     const userRepository = {
+      createQueryBuilder: jest.fn(() => queryBuilder),
       findOne: jest.fn(async ({ where }) => ({
         id: 'user-789',
         firstName: 'Jane',
@@ -115,6 +141,7 @@ describe('AuthService.register', () => {
       get: jest.fn().mockReturnValue('7d'),
     };
 
+    const emailService = {} as any;
     const bcryptCompare = jest.spyOn(require('bcryptjs'), 'compare').mockResolvedValue(true);
 
     const service = new AuthService(
@@ -122,15 +149,15 @@ describe('AuthService.register', () => {
       refreshTokenRepository as any,
       jwtService as any,
       configService as any,
+      emailService,
     );
 
     const result = await service.login({ email: 'JANE@VEMTAP.COM', password: 'secure123' } as any);
 
-    expect(userRepository.findOne).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: { email: normalizedEmail },
-      }),
-    );
+    expect(userRepository.createQueryBuilder).toHaveBeenCalledWith('user');
+    expect(queryBuilder.where).toHaveBeenCalledWith('LOWER(user.email) = :email', {
+      email: normalizedEmail,
+    });
     expect(result.user.email).toBe(normalizedEmail);
 
     bcryptCompare.mockRestore();
