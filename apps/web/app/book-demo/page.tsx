@@ -272,43 +272,39 @@ export default function BookDemoPage() {
       <section className="pt-32 pb-20">
         <div className="max-w-4xl mx-auto px-6">
           <div className="bg-white rounded-[3rem] shadow-2xl shadow-slate-200/50 overflow-hidden">
-            <div className="grid grid-cols-1 lg:grid-cols-3">
+            <div className="grid grid-cols-1 lg:grid-cols-[220px_minmax(0,1fr)]">
               {/* Sidebar */}
-              <div className="bg-brand-navy p-10 text-white lg:col-span-1">
-                <div className="mb-12">
-                  <h3 className="text-xl font-bold mb-2">Book a Demo</h3>
-                  <p className="text-sm text-slate-400">See the future of eye clinic management.</p>
+              <div className="bg-slate-50 border-b border-slate-200 p-6 lg:border-b-0 lg:border-r lg:p-7 text-slate-700">
+                <div className="mb-8">
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-brand-blue mb-2">Request Demo</p>
+                  <h3 className="text-xl font-bold text-brand-navy">Book a Demo</h3>
                 </div>
-                <div className="space-y-8 relative">
-                  <div className="absolute left-[15px] top-2 bottom-2 w-0.5 bg-white/10"></div>
+                <div className="space-y-5 relative pl-1">
+                  <div className="absolute left-[11px] top-2 bottom-2 w-px bg-slate-200"></div>
                   {steps.map((step, i) => (
-                    <div key={i} className="flex items-center gap-4 relative z-10">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all ${currentStep >= i ? "bg-brand-blue border-brand-blue text-white" : "bg-brand-navy border-white/20 text-white/40"}`}>
-                        {currentStep > i ? <CheckCircle2 size={16} /> : i + 1}
+                    <div key={i} className="flex items-center gap-3 relative z-10">
+                      <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black border transition-all ${currentStep >= i ? "bg-brand-blue border-brand-blue text-white shadow-sm shadow-brand-blue/30" : "bg-white border-slate-200 text-slate-400"}`}>
+                        {currentStep > i ? <CheckCircle2 size={12} /> : i + 1}
                       </div>
-                      <div className={`text-sm font-bold ${currentStep >= i ? "text-white" : "text-white/40"}`}>{step}</div>
+                      <div className={`text-[11px] font-bold uppercase tracking-wide ${currentStep >= i ? "text-brand-navy" : "text-slate-400"}`}>{step}</div>
                     </div>
                   ))}
                 </div>
 
-                <div className="mt-20 pt-10 border-t border-white/10">
-                  <div className="flex items-center gap-4 mb-6">
-                    <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center">
-                      <ShieldCheck size={20} className="text-brand-blue" />
-                    </div>
-                    <div className="text-xs text-slate-400">Trusted by 500+ clinics worldwide</div>
+                <div className="mt-8 pt-6 border-t border-slate-200 space-y-3">
+                  <div className="flex items-center gap-3 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">
+                    <ShieldCheck size={14} className="text-brand-blue" />
+                    500+ Clinics
                   </div>
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center">
-                      <Users size={20} className="text-brand-blue" />
-                    </div>
-                    <div className="text-xs text-slate-400">24/7 Expert Support</div>
+                  <div className="flex items-center gap-3 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">
+                    <Users size={14} className="text-brand-blue" />
+                    24/7 Support
                   </div>
                 </div>
               </div>
 
               {/* Main Content */}
-              <div className="p-10 md:p-16 lg:col-span-2">
+              <div className="p-6 md:p-10 lg:p-12">
                 <AnimatePresence mode="wait">
                   {renderStep()}
                 </AnimatePresence>

@@ -4,9 +4,11 @@ import React from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ChevronRight, Sparkles } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useModals } from "@/lib/modal-context";
 
 export const FinalCTA = () => {
+  const router = useRouter();
   const { openModal } = useModals();
 
   return (
@@ -38,7 +40,7 @@ export const FinalCTA = () => {
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-              <Button variant="default" size="lg" className="px-12 py-5 text-lg font-bold rounded-2xl group" onClick={() => openModal("demo")}>
+              <Button variant="default" size="lg" className="px-12 py-5 text-lg font-bold rounded-2xl group" onClick={() => router.push("/book-demo")}>
                 Start Free Trial <ChevronRight className="ml-2 group-hover:translate-x-1 transition-transform" />
               </Button>
               <Button variant="ghost" size="lg" className="px-12 py-5 text-lg font-bold rounded-2xl border border-white/10 hover:bg-white/5" onClick={() => openModal("sales")}>
