@@ -4,8 +4,8 @@
   "private": true,
   "packageManager": "pnpm@10.34.7",
   "scripts": {
-    "dev": "turbo dev",
-    "build": "turbo build",
+    "dev": "node init && turbo dev",
+    "build": "node init && turbo build",
     "lint": "turbo lint",
     "format": "prettier --write \"**/*.{ts,tsx,json,md}\"",
     "clean": "turbo clean",

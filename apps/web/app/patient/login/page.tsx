@@ -1,8 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { motion } from "framer-motion";
-import { Mail, Lock, Eye, EyeOff, ArrowRight, ShieldCheck, AlertCircle, Loader2 } from "lucide-react";
+import { Mail, Lock, Eye, EyeOff, ArrowRight, AlertCircle, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { usePatientLogin } from "@/hooks/usePatientPortal";
@@ -36,74 +35,82 @@ export default function PatientLoginPage() {
   };
 
   return (
-    <main className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4 sm:p-6 lg:p-8">
-      <div className="w-full max-w-md">
-        <div className="relative overflow-hidden rounded-[2.5rem] border border-slate-100 bg-white p-8 sm:p-10 shadow-2xl shadow-slate-200/60">
-          {/* Subtle Ambient Background Gradients */}
-          <div className="absolute top-0 right-0 w-36 h-36 bg-teal-50 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none" />
-          <div className="absolute bottom-0 left-0 w-36 h-36 bg-emerald-50 rounded-full blur-3xl -ml-16 -mb-16 pointer-events-none" />
+    <main className="min-h-screen bg-[#faf8ff] flex flex-col items-center justify-center p-4 font-[Inter,sans-serif]">
+      <div className="w-full max-w-[420px]">
+        {/* Brand Header */}
+        <div className="flex items-center justify-center gap-2 mb-6">
+          <div className="w-10 h-10 rounded-xl bg-[#0055c4] flex items-center justify-center shadow-sm text-white">
+            <span className="material-symbols-outlined text-[24px]">visibility</span>
+          </div>
+          <div className="flex flex-col">
+            <span className="text-[13px] font-extrabold tracking-tight text-[#131b2e] leading-tight">
+              VEMTAP
+            </span>
+            <span className="text-[9px] font-bold tracking-[0.16em] text-[#0055c4] uppercase leading-tight">
+              EYE CLINIC
+            </span>
+          </div>
+        </div>
 
-          <div className="relative z-10">
-            {/* Header */}
-            <div className="text-center mb-8">
-              <div className="w-14 h-14 bg-teal-50 border border-teal-100 text-teal-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-sm">
-                <ShieldCheck size={28} />
-              </div>
-              <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-                Patient Portal
+        <div className="relative overflow-hidden rounded-2xl border border-[#c2c6d7]/40 bg-white p-7 shadow-sm">
+          <div>
+            <div className="text-center mb-6">
+              <h1 className="text-xl font-bold text-[#131b2e] tracking-tight">
+                Welcome Back
               </h1>
-              <p className="text-sm text-slate-500 mt-1 font-medium">
-                Sign in to view your records, appointments & invoices
+              <p className="text-[13px] text-[#424655] mt-1">
+                Sign in to view your records, appointments &amp; prescriptions
               </p>
             </div>
 
             {error && (
-              <motion.div
-                initial={{ opacity: 0, y: -8 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="mb-6 p-4 rounded-2xl bg-red-50 border border-red-100 text-red-600 text-xs font-semibold flex items-center gap-2.5"
-              >
+              <div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200 text-red-600 text-xs font-semibold flex items-center gap-2">
                 <AlertCircle size={16} className="shrink-0" />
                 <span>{error}</span>
-              </motion.div>
+              </div>
             )}
 
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">
-                  Email Address
+              <div className="space-y-1">
+                <label className="text-[12px] font-semibold text-[#131b2e]">
+                  Email or Phone Number
                 </label>
                 <div className="relative">
-                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#727786]" size={18} />
                   <input
-                    type="email"
+                    type="text"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     required
                     placeholder="name@example.com"
-                    className="w-full pl-11 pr-4 py-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-slate-900 text-sm font-semibold outline-none focus:ring-2 focus:ring-teal-500 transition-all placeholder:text-slate-400"
+                    className="w-full pl-10 pr-4 py-3 rounded-xl bg-[#f2f3ff] border border-transparent text-[#131b2e] text-[14px] font-medium outline-none focus:border-[#0055c4] focus:bg-white transition-all placeholder:text-[#727786]"
                   />
                 </div>
               </div>
 
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">
-                  Password
-                </label>
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <label className="text-[12px] font-semibold text-[#131b2e]">
+                    Password
+                  </label>
+                  <Link href="/patient/welcome" className="text-[11px] font-semibold text-[#0055c4] hover:underline">
+                    Forgot?
+                  </Link>
+                </div>
                 <div className="relative">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#727786]" size={18} />
                   <input
                     type={showPassword ? "text" : "password"}
                     value={formData.password}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                     required
                     placeholder="Enter your password"
-                    className="w-full pl-11 pr-11 py-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-slate-900 text-sm font-semibold outline-none focus:ring-2 focus:ring-teal-500 transition-all placeholder:text-slate-400"
+                    className="w-full pl-10 pr-11 py-3 rounded-xl bg-[#f2f3ff] border border-transparent text-[#131b2e] text-[14px] font-medium outline-none focus:border-[#0055c4] focus:bg-white transition-all placeholder:text-[#727786]"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#727786] hover:text-[#131b2e] transition-colors"
                   >
                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
@@ -113,7 +120,7 @@ export default function PatientLoginPage() {
               <button
                 type="submit"
                 disabled={loginMutation.isPending}
-                className="w-full mt-6 py-4 rounded-2xl bg-teal-600 hover:bg-teal-700 active:scale-[0.99] text-white font-black text-sm shadow-xl shadow-teal-600/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                className="w-full mt-5 py-3 rounded-xl bg-[#0055c4] hover:bg-[#1759c4] active:scale-[0.99] text-white font-bold text-[14px] shadow-sm transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
               >
                 {loginMutation.isPending ? (
                   <>
@@ -129,23 +136,23 @@ export default function PatientLoginPage() {
               </button>
             </form>
 
-            <div className="mt-8 pt-6 border-t border-slate-100 space-y-3 text-center">
-              <p className="text-xs text-slate-500 font-medium">
+            <div className="mt-6 pt-5 border-t border-[#e2e7ff] space-y-2 text-center">
+              <p className="text-[13px] text-[#424655]">
                 New patient?{" "}
                 <Link
                   href="/patient/register"
-                  className="font-bold text-teal-600 hover:text-teal-700 underline underline-offset-4"
+                  className="font-bold text-[#0055c4] hover:underline"
                 >
-                  Self-register for portal access
+                  Create an account
                 </Link>
               </p>
-              <p className="text-xs text-slate-400">
+              <p className="text-[12px] text-[#727786]">
                 Clinic staff?{" "}
                 <Link
                   href="/login"
-                  className="font-medium text-slate-600 hover:text-slate-800"
+                  className="font-semibold text-[#131b2e] hover:text-[#0055c4]"
                 >
-                  Staff Login &rarr;
+                  Staff Portal &rarr;
                 </Link>
               </p>
             </div>

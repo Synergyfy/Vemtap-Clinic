@@ -1,487 +1,422 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
-import { motion } from "framer-motion";
-import {
-  CalendarDays,
-  Clock,
-  Glasses,
-  ChevronRight,
-  FileText,
-  CreditCard,
-  Plus,
-  ArrowRight,
-  ShieldCheck,
-  CheckCircle2,
-  Star
-} from "lucide-react";
+import React, { useState } from "react";
 import Link from "next/link";
-import { cn } from "@/lib/utils";
-import { Modal } from "@/components/ui/modal";
-import { useAuth } from "@/lib/auth-context";
-import {
-  usePatientAppointments,
-  usePatientLensOrders,
-} from "@/hooks/usePatientDashboard";
-import { useSubmitFeedback } from "@/hooks/useFeedback";
-
-function getStaffName(staff: { firstName: string; lastName: string } | undefined): string {
-  if (!staff) return "Doctor TBD";
-  return `Dr. ${staff.firstName} ${staff.lastName}`;
-}
-
-function getAppointmentType(status: string): string {
-  const s = status?.toLowerCase();
-  if (s === "scheduled" || s === "confirmed") return "Upcoming";
-  if (s === "in_progress") return "In Progress";
-  if (s === "completed") return "Completed";
-  if (s === "cancelled") return "Cancelled";
-  return status;
-}
-
-function getOpticalProgress(status: string): number {
-  const s = status?.toLowerCase();
-  if (s === "pending") return 25;
-  if (s === "processing") return 65;
-  if (s === "ready") return 100;
-  if (s === "delivered") return 100;
-  return 10;
-}
+import { useRouter } from "next/navigation";
 
 export default function PatientDashboard() {
-  const { user } = useAuth();
-  const patientId = user?.userId || null;
-  const clinicId = user?.clinicId || null;
-
-  const { data: appointments = [], isLoading: apptsLoading } = usePatientAppointments(patientId, clinicId);
-  const { data: lensOrders = [], isLoading: ordersLoading } = usePatientLensOrders(patientId, clinicId);
+  const router = useRouter();
 
   const [checkedIn, setCheckedIn] = useState(false);
-  const [toast, setToast] = useState("");
+  const [medicationTaken, setMedicationTaken] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
 
-  // Feedback State
-  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
-  const [feedbackRating, setFeedbackRating] = useState(5);
-  const [feedbackCategory, setFeedbackCategory] = useState("General Care");
-  const [feedbackComment, setFeedbackComment] = useState("");
-  const submitFeedbackMut = useSubmitFeedback();
-
-  const upcomingAppt = useMemo(() =>
-    appointments.find((a) => a.status === "scheduled" || a.status === "confirmed"),
-    [appointments]
-  );
-
-  const activeOrder = useMemo(() =>
-    lensOrders.find((o) => o.status !== "delivered") || lensOrders[0],
-    [lensOrders]
-  );
-
-  const recentAppts = useMemo(() => appointments.slice(0, 3), [appointments]);
-
-  const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 3000); };
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(""), 3500);
+  };
 
   const handleCheckIn = () => {
     setCheckedIn(true);
-    showToast("Checked in successfully");
+    showToast("Checked in successfully for Dr. Amara Okafor's clinic queue.");
   };
 
-  const handleSubmitFeedback = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!patientId || !clinicId) {
-      showToast("Session missing required patient details");
-      return;
-    }
-
-    submitFeedbackMut.mutate(
-      {
-        rating: feedbackRating,
-        category: feedbackCategory,
-        comment: feedbackComment.trim() || undefined,
-        patientId,
-        clinicId,
-      },
-      {
-        onSuccess: () => {
-          setShowFeedbackModal(false);
-          setFeedbackRating(5);
-          setFeedbackComment("");
-          showToast("Thank you for your feedback!");
-        },
-        onError: (err: any) => {
-          showToast(err?.response?.data?.message || err?.message || "Failed to submit feedback");
-        },
-      }
-    );
+  const handleMedication = () => {
+    setMedicationTaken(true);
+    showToast("Recorded: Travatan Eye Drop taken for today.");
   };
-
-  const quickActions = [
-    { label: "Book Appointment", icon: Plus, href: "/patient/appointments", color: "bg-teal-50 text-teal-600" },
-    { label: "Medical Records", icon: FileText, href: "/patient/records", color: "bg-blue-50 text-blue-600" },
-    { label: "Pay Bills", icon: CreditCard, href: "/patient/billing", color: "bg-orange-50 text-orange-600" },
-    { label: "Optical Orders", icon: Glasses, href: "/patient/optical", color: "bg-purple-50 text-purple-600" },
-  ];
 
   return (
-    <div className="space-y-8 pb-10">
-      {toast && (
-        <div className="fixed top-6 right-6 z-50 px-5 py-3 rounded-2xl bg-slate-900 text-white text-xs font-black shadow-2xl flex items-center gap-3 animate-in slide-in-from-top-2 z-[100]">
-          <CheckCircle2 size={16} className="text-emerald-400" /> {toast}
+    <div className="w-full text-[#0F2942] antialiased selection:bg-blue-100 font-['Plus_Jakarta_Sans',sans-serif]">
+      {/* ── Toast Notification ── */}
+      {toastMessage && (
+        <div className="fixed top-20 left-4 right-4 z-50 max-w-md mx-auto">
+          <div className="bg-[#0F2942] text-white px-4 py-3 rounded-2xl shadow-xl flex items-center gap-2.5 text-[13px] font-semibold">
+            <span className="material-symbols-outlined text-emerald-400 text-[18px]">check_circle</span>
+            <span>{toastMessage}</span>
+          </div>
         </div>
       )}
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="min-w-0">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
-            Welcome back
+
+      {/* ── PATIENT GREETING & PATIENT ID HEADER BAR ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6 bg-white p-4 sm:p-5 rounded-2xl border border-[#E9F1F7]/70 shadow-[0_8px_30px_-4px_rgba(12,38,70,0.05)]">
+        <div>
+          <p className="text-[11px] font-bold tracking-wider text-[#73889B] uppercase">Welcome Back</p>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[#0F2942] leading-tight mt-0.5">
+            Good morning, Olumide
           </h1>
-          <p className="text-sm sm:text-base text-gray-500 mt-1 font-medium leading-relaxed">
-            {upcomingAppt
-              ? `You have an appointment ${upcomingAppt.appointmentTime ? `at ${upcomingAppt.appointmentTime}` : `on ${upcomingAppt.appointmentDate}`}.`
-              : "No upcoming appointments."}
-          </p>
         </div>
-        <Link href="/patient/profile" className="self-end sm:self-auto">
-          <div className="w-12 h-12 rounded-full bg-teal-100 border-2 border-white shadow-sm flex items-center justify-center text-teal-700 font-bold hover:scale-105 transition-transform cursor-pointer">
-            {user?.email?.[0]?.toUpperCase() }
+        <div className="flex items-center gap-2.5 self-start sm:self-auto">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#F4F9FD] rounded-full border border-[#E2EBF2] shadow-sm shrink-0">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
+            <span className="text-xs font-bold text-[#0F2942] font-mono tracking-tight">#VEM-88219-LG</span>
+            <span className="text-[11px] text-[#73889B] font-medium">• VI Center</span>
           </div>
-        </Link>
-      </header>
+          <Link
+            href="/patient/select-profile"
+            className="inline-flex items-center gap-1 px-3 py-1.5 bg-[#EBF4FE] hover:bg-[#D9E2FF] text-[#0055C4] rounded-full text-xs font-bold transition-colors"
+          >
+            <span className="material-symbols-outlined text-[15px]">switch_account</span>
+            <span>Switch Profile</span>
+          </Link>
+        </div>
+      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          {upcomingAppt ? (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.98 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.4 }}
-              className="bg-teal-600 rounded-[2rem] p-4 sm:rounded-[2.5rem] sm:p-8 text-white shadow-xl shadow-teal-900/10 relative overflow-hidden h-full flex flex-col justify-between"
-            >
-              <div className="absolute -right-10 -top-10 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
-              <div className="absolute -left-20 -bottom-20 w-80 h-80 bg-teal-500/30 rounded-full blur-3xl"></div>
+      {/* ── RESPONSIVE GRID LAYOUT ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-6">
+        {/* ── LEFT / MAIN COLUMN (lg:col-span-8) ── */}
+        <div className="lg:col-span-8 space-y-5 lg:space-y-6">
+          {/* SECTION: UPCOMING APPOINTMENTS */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between px-1">
+              <h2 className="text-[16px] sm:text-[18px] font-bold tracking-tight text-[#0F2942]">
+                Upcoming Appointments
+              </h2>
+              <span className="text-[11px] font-bold text-[#0055C4] bg-[#E6F4FE] px-2.5 py-0.5 rounded-full">
+                {checkedIn ? "Checked In • Queue #4" : "Confirmed"}
+              </span>
+            </div>
 
-              <div className="relative z-10">
-                <div className="flex justify-between items-center mb-4 sm:mb-8">
-                  <div className="flex items-center gap-2 bg-white/20 rounded-full px-3 py-1.5 text-[10px] sm:text-xs font-bold uppercase tracking-widest backdrop-blur-md border border-white/20">
-                    <div className="w-2 h-2 rounded-full bg-white animate-pulse"></div>
-                    <span>{getAppointmentType(upcomingAppt.status)}</span>
+            <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-[0_8px_30px_-4px_rgba(12,38,70,0.05)] border border-[#E9F1F7]/70 transition-all hover:shadow-lg">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="w-12 h-12 rounded-full bg-[#EDF5FF] overflow-hidden shrink-0 ring-2 ring-[#F2F7FC] flex items-center justify-center">
+                    <img
+                      alt="Dr. Amara Okafor"
+                      className="w-full h-full object-cover"
+                      src="https://lh3.googleusercontent.com/aida-public/AB6AXuDrK6DGWwAfn32_QM8kIrMOQMTBol-UdD-8nJ1Ij6zGD0XCPrRKIJTMc-1NeOOxRO7_5L8HG4v7SRpc2rBZrycjjRkd8E5h00M5j6js1UAtkaUGohmglGnxKKMghL4umFOXeSN5ljqYEU0tp67633fLne582UWIF8iF_wfQ2BD4B1h99TeOyb6aD9WXar4ix9E6AKdWGLNFdEgkM_vsxmkrtdzEK6mqOUk03bVkby3_"
+                    />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="text-[16px] font-bold text-[#0F2942] truncate leading-snug">
+                      Dr. Amara Okafor
+                    </h3>
+                    <p className="text-[12px] font-bold text-[#0055C4] truncate">
+                      Consultant Retinal Specialist
+                    </p>
+                    <p className="text-[12px] font-medium text-[#73889B] truncate mt-0.5">
+                      Dilated Examination &amp; Retinal OCT Scan
+                    </p>
                   </div>
                 </div>
 
-                <h2 className="text-2xl sm:text-3xl font-extrabold mb-2 leading-tight">{upcomingAppt.type}</h2>
-                <p className="text-teal-50 text-sm sm:text-lg mb-5 sm:mb-8 opacity-90">{getStaffName(upcomingAppt.staff)}</p>
-
-                <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                  <div className="bg-white/10 p-3 sm:p-5 rounded-2xl sm:rounded-3xl backdrop-blur-md border border-white/10">
-                    <p className="text-[10px] sm:text-xs text-teal-100 uppercase tracking-widest font-bold mb-1 opacity-80">Date</p>
-                    <p className="text-base sm:text-xl font-black">{upcomingAppt.appointmentDate}</p>
+                <div className="flex sm:flex-col sm:items-end justify-between border-t sm:border-t-0 pt-2 sm:pt-0 border-gray-100 text-xs text-[#73889B]">
+                  <div className="flex items-center gap-1 font-semibold text-[#0F2942]">
+                    <span className="material-symbols-outlined text-[16px] text-[#0055C4]">calendar_today</span>
+                    <span>Next Mon, Nov 18</span>
                   </div>
-                  <div className="bg-white/10 p-3 sm:p-5 rounded-2xl sm:rounded-3xl backdrop-blur-md border border-white/10">
-                    <p className="text-[10px] sm:text-xs text-teal-100 uppercase tracking-widest font-bold mb-1 opacity-80">Time</p>
-                    <p className="text-base sm:text-xl font-black">{upcomingAppt.appointmentTime || "—"}</p>
+                  <div className="flex items-center gap-1 font-medium mt-1">
+                    <span className="material-symbols-outlined text-[16px]">schedule</span>
+                    <span>10:30 AM WAT</span>
                   </div>
                 </div>
               </div>
 
-              <div className="relative z-10 mt-8 pt-6 border-t border-white/10 flex justify-end">
-                <button onClick={handleCheckIn} disabled={checkedIn}
-                  className={`px-6 py-2.5 rounded-2xl font-bold text-sm shadow-lg transition-all ${checkedIn ? 'bg-emerald-100 text-emerald-700' : 'bg-white text-teal-700 hover:bg-teal-50'}`}>
-                  {checkedIn ? 'Checked In' : 'Check In'}
+              <div className="mt-4 pt-3.5 border-t border-[#F1F5F9] flex flex-col sm:flex-row items-center gap-2.5">
+                <Link
+                  className="w-full sm:w-auto sm:px-6 py-2 rounded-xl bg-[#F0F6FD] hover:bg-[#E2EFFC] text-[#0055C4] text-[12px] font-bold text-center transition-colors"
+                  href="/patient/appointments"
+                >
+                  View Details
+                </Link>
+                <button
+                  className={`w-full sm:flex-1 py-2 rounded-xl text-white text-[12px] font-bold text-center transition-colors shadow-sm cursor-pointer ${
+                    checkedIn ? "bg-emerald-600 hover:bg-emerald-700" : "bg-[#0055C4] hover:bg-[#0047A6]"
+                  }`}
+                  onClick={handleCheckIn}
+                  type="button"
+                >
+                  {checkedIn ? "✓ You are in line (Desk 3)" : "Directions & Check In"}
                 </button>
               </div>
-            </motion.div>
-          ) : (
-            <div className="bg-white rounded-[2.5rem] p-10 text-center shadow-sm border border-gray-100 h-full flex flex-col justify-center items-center">
-              <div className="bg-gray-50 p-6 rounded-full mb-6">
-                <CalendarDays className="w-12 h-12 text-gray-300" />
+            </div>
+          </div>
+
+          {/* SOFT PASTEL QUICK ACCESS CARDS */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Link
+              className="bg-[#FFF1F3] rounded-2xl p-4 sm:p-5 flex flex-col justify-between shadow-sm hover:opacity-95 transition-all"
+              href="/patient/records"
+            >
+              <div>
+                <div className="flex items-center justify-between gap-1">
+                  <h3 className="text-[14px] font-bold text-[#E11D48] whitespace-nowrap truncate">
+                    Medical analysis
+                  </h3>
+                  <span className="material-symbols-outlined text-[18px] text-[#E11D48] shrink-0">folder_shared</span>
+                </div>
+                <p className="text-[12px] text-[#E11D48]/85 font-semibold mt-1">Retinal &amp; IOP Scans</p>
+                <p className="text-[11px] text-[#E11D48]/70 mt-0.5">2 new test results available</p>
               </div>
-              <h2 className="text-xl font-bold text-gray-900 mb-2">No Appointments Today</h2>
-              <p className="text-gray-500 mb-8 max-w-xs mx-auto">Routine checkups keep your vision sharp. Book your next visit in seconds.</p>
-              <Link href="/patient/appointments" className="bg-teal-600 hover:bg-teal-700 text-white px-8 py-3.5 rounded-2xl font-bold shadow-lg shadow-teal-600/20 transition-all flex items-center gap-2">
-                Book Visit <ArrowRight className="w-4 h-4" />
+              <div className="space-y-1.5 mt-4">
+                <div className="h-1.5 w-full bg-[#FDA4AF] rounded-full opacity-80"></div>
+                <div className="h-1.5 w-3/5 bg-[#FDA4AF] rounded-full opacity-60"></div>
+              </div>
+            </Link>
+
+            <Link
+              className="bg-[#E6F4FE] rounded-2xl p-4 sm:p-5 flex flex-col justify-between shadow-sm hover:opacity-95 transition-all"
+              href="/patient/optical"
+            >
+              <div>
+                <div className="flex items-center justify-between gap-1">
+                  <h3 className="text-[14px] font-bold text-[#0284C7] whitespace-nowrap truncate">
+                    My prescriptions
+                  </h3>
+                  <span className="material-symbols-outlined text-[18px] text-[#0284C7] shrink-0">medication</span>
+                </div>
+                <p className="text-[12px] text-[#0284C7]/85 font-semibold mt-1">Blue-Cut • Travatan</p>
+                <p className="text-[11px] text-[#0284C7]/70 mt-0.5">Rx active until Dec 2024</p>
+              </div>
+              <div className="space-y-1.5 mt-4">
+                <div className="h-1.5 w-full bg-[#7DD3FC] rounded-full opacity-80"></div>
+                <div className="h-1.5 w-3/5 bg-[#7DD3FC] rounded-full opacity-60"></div>
+              </div>
+            </Link>
+          </div>
+
+          {/* OPTICAL LAB ORDER TRACKER */}
+          <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-[0_8px_30px_-4px_rgba(12,38,70,0.05)] border border-[#E9F1F7]/70 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-10 h-10 rounded-xl bg-[#F0F6FD] text-[#0055C4] flex items-center justify-center shrink-0">
+                  <span className="material-symbols-outlined text-[22px]">eyeglasses</span>
+                </div>
+                <div className="min-w-0">
+                  <h3 className="text-[14px] sm:text-[15px] font-bold text-[#0F2942] truncate">
+                    Titanium Flex Matte Black
+                  </h3>
+                  <p className="text-[12px] text-[#73889B] truncate">
+                    Blue-Cut Precision Progressive • Lens Crafting
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 self-start sm:self-auto">
+                <span className="text-xs font-mono font-semibold text-[#73889B]">#ORD-2024-8841</span>
+                <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[11px] font-bold shrink-0">
+                  Step 3 of 4: Quality QC
+                </span>
+              </div>
+            </div>
+
+            {/* Stepper Bar */}
+            <div className="pt-2 pb-1">
+              <div className="relative flex items-center justify-between">
+                <div className="absolute left-4 right-4 top-3 -translate-y-1/2 h-1 bg-[#E2EBF2] z-0"></div>
+                <div className="absolute left-4 w-2/3 top-3 -translate-y-1/2 h-1 bg-[#0055C4] z-0"></div>
+                
+                <div className="relative z-10 flex flex-col items-center">
+                  <div className="w-6 h-6 rounded-full bg-[#0055C4] text-white flex items-center justify-center ring-2 ring-white shadow-sm">
+                    <span className="material-symbols-outlined text-[13px] font-bold">check</span>
+                  </div>
+                  <span className="text-[10px] font-bold text-[#0F2942] mt-1.5">Placed</span>
+                </div>
+                <div className="relative z-10 flex flex-col items-center">
+                  <div className="w-6 h-6 rounded-full bg-[#0055C4] text-white flex items-center justify-center ring-2 ring-white shadow-sm">
+                    <span className="material-symbols-outlined text-[13px] font-bold">check</span>
+                  </div>
+                  <span className="text-[10px] font-bold text-[#0F2942] mt-1.5">In Lab</span>
+                </div>
+                <div className="relative z-10 flex flex-col items-center">
+                  <div className="w-6 h-6 rounded-full bg-[#0055C4] text-white flex items-center justify-center ring-4 ring-[#E0EDFD] shadow-sm animate-pulse">
+                    <span className="w-2 h-2 rounded-full bg-white"></span>
+                  </div>
+                  <span className="text-[10px] font-bold text-[#0055C4] mt-1.5">Quality QC</span>
+                </div>
+                <div className="relative z-10 flex flex-col items-center">
+                  <div className="w-6 h-6 rounded-full bg-[#E2EBF2] text-[#8DA0B3] flex items-center justify-center ring-2 ring-white">
+                    <span className="w-2 h-2 rounded-full bg-slate-400"></span>
+                  </div>
+                  <span className="text-[10px] font-medium text-[#73889B] mt-1.5">Pickup</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-3 border-t border-[#F1F5F9] flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[12px]">
+              <div className="flex items-center gap-1.5 text-[#0F2942] font-semibold truncate">
+                <span className="material-symbols-outlined text-[16px] text-[#0055C4] shrink-0">storefront</span>
+                <span>Ready for Victoria Island pickup • Est. Nov 20</span>
+              </div>
+              <Link className="text-[#0055C4] font-bold hover:underline shrink-0" href="/patient/optical">
+                View Lab Details &amp; Invoice →
               </Link>
             </div>
-          )}
-        </div>
-
-        <div className="space-y-6">
-          <div className="bg-white rounded-[1.5rem] p-4 sm:rounded-[2rem] sm:p-6 shadow-sm border border-gray-100">
-            <h3 className="font-bold text-gray-900 mb-4 px-2 text-sm uppercase tracking-widest">Quick Actions</h3>
-            <div className="grid grid-cols-2 gap-3 sm:gap-4">
-              {quickActions.map((action, idx) => (
-                <Link key={idx} href={action.href}>
-                  <div className={`${action.color} rounded-2xl p-3 sm:p-4 flex flex-col items-center justify-center text-center group cursor-pointer hover:scale-[1.02] transition-transform border border-transparent hover:border-current/10 min-h-[96px]`}>
-                    <action.icon className="w-5 h-5 sm:w-6 sm:h-6 mb-2" />
-                    <span className="text-[10px] sm:text-[11px] font-bold leading-tight">{action.label}</span>
-                  </div>
-                </Link>
-              ))}
-            </div>
           </div>
 
-          <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-gray-100 flex-1">
-            <div className="flex items-center justify-between mb-4 px-2">
-              <h3 className="font-bold text-gray-900 text-sm uppercase tracking-widest">Recent Appointments</h3>
-              <Link href="/patient/appointments" className="text-teal-600 text-xs font-bold hover:underline">View All</Link>
+          {/* RECENT CLINICAL HISTORY */}
+          <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-[0_8px_30px_-4px_rgba(12,38,70,0.05)] border border-[#E9F1F7]/70 space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-[15px] sm:text-[16px] font-bold tracking-tight text-[#0F2942]">
+                Recent Clinical History
+              </h3>
+              <Link className="text-[12px] font-bold text-[#0055C4] hover:underline" href="/patient/records">
+                View All Records
+              </Link>
             </div>
-            <div className="space-y-4">
-              {recentAppts.map((a) => (
-                <div key={a.id} className="flex gap-4 p-2 rounded-xl hover:bg-gray-50 transition-colors">
-                  <div className={`mt-1 w-2 h-2 rounded-full flex-shrink-0 ${
-                    a.status === "completed" ? "bg-emerald-500" : a.status === "scheduled" ? "bg-orange-500" : "bg-gray-300"
-                  }`} />
-                  <div>
-                    <p className="text-sm font-bold text-gray-900 leading-none mb-1">{a.type}</p>
-                    <p className="text-xs text-gray-500">{a.appointmentDate} &bull; {getStaffName(a.staff)}</p>
+            <div className="divide-y divide-[#F1F5F9]">
+              <div className="flex items-center justify-between py-3 first:pt-1 last:pb-1">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-9 h-9 rounded-xl bg-[#E8F1FC] text-[#0055C4] flex items-center justify-center shrink-0">
+                    <span className="material-symbols-outlined text-[19px]">medical_services</span>
+                  </div>
+                  <div className="min-w-0">
+                    <h4 className="text-[13px] font-bold text-[#0F2942] truncate">Comprehensive Refraction</h4>
+                    <p className="text-[11px] text-[#73889B] truncate">Dr. Babatunde Jinadu • Oct 14, 2024</p>
                   </div>
                 </div>
-              ))}
-              {recentAppts.length === 0 && !apptsLoading && (
-                <p className="text-xs text-gray-400 text-center py-4">No appointments yet</p>
-              )}
+                <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full shrink-0">
+                  Completed
+                </span>
+              </div>
+              <div className="flex items-center justify-between py-3 first:pt-1 last:pb-1">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-9 h-9 rounded-xl bg-[#F0EEFD] text-indigo-600 flex items-center justify-center shrink-0">
+                    <span className="material-symbols-outlined text-[19px]">receipt_long</span>
+                  </div>
+                  <div className="min-w-0">
+                    <h4 className="text-[13px] font-bold text-[#0F2942] truncate">Prescription Updated</h4>
+                    <p className="text-[11px] text-[#73889B] truncate">OD: -1.75 / OS: -2.00 • Sep 22, 2024</p>
+                  </div>
+                </div>
+                <span className="text-[11px] font-bold text-[#0F2942] bg-[#F1F5F9] px-2.5 py-0.5 rounded-full shrink-0">
+                  Archived
+                </span>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.1 }}
-          className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-gray-100 relative overflow-hidden"
-        >
-          <div className="flex items-center justify-between mb-8">
-            <div className="flex items-center gap-4">
-              <div className="bg-blue-100 p-3 rounded-2xl">
-                <Glasses className="w-6 h-6 text-blue-600" />
+        {/* ── RIGHT / SIDE COLUMN (lg:col-span-4) ── */}
+        <div className="lg:col-span-4 space-y-5 lg:space-y-6">
+          {/* SECONDARY QUICK ACTIONS */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-3.5">
+            <div className="bg-white rounded-2xl p-4 shadow-[0_8px_30px_-4px_rgba(12,38,70,0.05)] border border-[#E9F1F7]/70 flex flex-col justify-between">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-9 h-9 rounded-xl bg-[#EBF4FE] flex items-center justify-center text-[#0055C4] shrink-0">
+                  <span className="material-symbols-outlined text-[20px]">calendar_month</span>
+                </div>
+                <div className="min-w-0">
+                  <h4 className="text-[14px] font-bold text-[#0F2942] truncate">Book Visit</h4>
+                  <p className="text-[11px] text-[#73889B] truncate">Optical or Retina Specialist</p>
+                </div>
               </div>
-              <div>
-                <h3 className="font-black text-xl text-gray-900 tracking-tight">Lens Order</h3>
-                <p className="text-xs text-gray-500 font-medium">Tracking Status</p>
-              </div>
+              <Link
+                className="w-full py-2 rounded-xl bg-[#0055C4] text-white text-[12px] font-bold text-center hover:bg-[#0047A6] transition-colors block"
+                href="/patient/appointments"
+              >
+                Book Consultation Now
+              </Link>
             </div>
-            <Link href="/patient/optical" className="bg-gray-50 p-2 rounded-full text-gray-400 hover:text-teal-600 transition-colors">
-              <ChevronRight className="w-6 h-6" />
-            </Link>
+
+            <div className="bg-white rounded-2xl p-4 shadow-[0_8px_30px_-4px_rgba(12,38,70,0.05)] border border-[#E9F1F7]/70 flex flex-col justify-between">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0">
+                  <span className="material-symbols-outlined text-[20px]">verified_user</span>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-1">
+                    <h4 className="text-[14px] font-bold text-[#0F2942] truncate">HMO &amp; Billing</h4>
+                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full shrink-0">Active</span>
+                  </div>
+                  <p className="text-[11px] text-[#73889B] truncate">AXA Mansard • #AX-8910</p>
+                </div>
+              </div>
+              <Link
+                className="w-full py-2 rounded-xl bg-[#F0F6FD] text-[#0055C4] text-[12px] font-bold text-center hover:bg-[#E2EFFC] transition-colors block"
+                href="/patient/billing"
+              >
+                View Invoices &amp; Claims
+              </Link>
+            </div>
           </div>
 
-          {activeOrder ? (
-            <div className="space-y-6">
-              <div className="flex justify-between items-end">
-                <div>
-                  <p className="text-sm font-black text-gray-900 mb-1">{activeOrder.id.slice(0, 8)}</p>
-                  <p className="text-xs text-gray-500 line-clamp-1">{activeOrder.lensType}</p>
-                </div>
-                <div className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter ${
-                  activeOrder.status === "ready" ? "bg-green-100 text-green-700" :
-                  activeOrder.status === "processing" ? "bg-amber-100 text-amber-700" : "bg-blue-100 text-blue-700"
-                }`}>
-                  {activeOrder.status}
-                </div>
-              </div>
-
-              <div className="relative pt-1">
-                <div className="overflow-hidden h-3 mb-4 text-xs flex rounded-full bg-gray-100">
-                  <div
-                    style={{ width: `${getOpticalProgress(activeOrder.status)}%` }}
-                    className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-blue-500 transition-all duration-1000"
-                  ></div>
-                </div>
-                <div className="flex justify-between text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                  <span>Ordered</span>
-                  <span>Lab</span>
-                  <span>Ready</span>
-                </div>
-              </div>
-
-              <div className="bg-gray-50 rounded-2xl p-4 flex items-center gap-3">
-                <Clock className="w-4 h-4 text-gray-400" />
-                <p className="text-xs font-medium text-gray-600">
-                  Estimated pickup: <span className="text-gray-900 font-bold">{activeOrder.expectedDeliveryDate || "TBD"}</span>
-                </p>
-              </div>
+          {/* MEDICATION REFILL / REMINDER ALERT */}
+          <div className="bg-amber-50/80 rounded-2xl p-4 sm:p-5 border border-amber-200/60 shadow-sm flex items-start gap-3.5">
+            <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+              <span className="material-symbols-outlined text-[20px]">notifications_active</span>
             </div>
-          ) : (
-            <div className="py-10 text-center">
-              <p className="text-gray-400 font-medium italic">No active optical orders</p>
-            </div>
-          )}
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.2 }}
-          className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-gray-100"
-        >
-          <div className="flex items-center justify-between mb-8">
-            <div className="flex items-center gap-4">
-              <div className="bg-orange-100 p-3 rounded-2xl">
-                <CreditCard className="w-6 h-6 text-orange-600" />
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-1">
+                <h4 className="text-[14px] font-bold text-amber-950 truncate">Travatan Eye Drops</h4>
+                <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-amber-200/70 text-amber-900 shrink-0">
+                  {medicationTaken ? "Taken" : "4 Days Left"}
+                </span>
               </div>
-              <div>
-                <h3 className="font-black text-xl text-gray-900 tracking-tight">Billing</h3>
-                <p className="text-xs text-gray-500 font-medium">Financial Overview</p>
-              </div>
-            </div>
-            <Link href="/patient/billing" className="bg-gray-50 p-2 rounded-full text-gray-400 hover:text-teal-600 transition-colors">
-              <ChevronRight className="w-6 h-6" />
-            </Link>
-          </div>
-
-          <div className="space-y-6">
-            <div className="bg-orange-50 rounded-[2rem] p-6 border border-orange-100 flex justify-between items-center">
-              <div>
-                <p className="text-xs text-orange-700 uppercase tracking-widest font-bold mb-1">Outstanding Balance</p>
-                <p className="text-3xl font-black text-orange-900">₦0</p>
-              </div>
-              <button className="bg-orange-600 text-white p-3 rounded-2xl shadow-lg shadow-orange-600/20 hover:bg-orange-700 transition-colors">
-                <ArrowRight className="w-6 h-6" />
-              </button>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-gray-50 rounded-2xl p-4 flex items-center gap-3">
-                <div className="w-8 h-8 rounded-xl bg-green-100 flex items-center justify-center">
-                  <ShieldCheck className="w-4 h-4 text-green-600" />
-                </div>
-                <div>
-                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">HMO Status</p>
-                  <p className="text-xs font-bold text-gray-900">Active</p>
-                </div>
-              </div>
-              <div className="bg-gray-50 rounded-2xl p-4 flex items-center gap-3">
-                <div className="w-8 h-8 rounded-xl bg-blue-100 flex items-center justify-center">
-                  <FileText className="w-4 h-4 text-blue-600" />
-                </div>
-                <div>
-                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">Appointments</p>
-                  <p className="text-xs font-bold text-gray-900">{appointments.length} total</p>
-                </div>
-              </div>
-            </div>
-
-            <p className="text-[10px] text-center text-gray-400 font-medium italic">
-              Payments are processed securely via Paystack
-            </p>
-          </div>
-        </motion.div>
-      </div>
-
-      {/* Patient Feedback Prompt Card */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 0.25 }}
-        className="bg-gradient-to-br from-amber-500/10 via-amber-50 to-orange-50 rounded-[2.5rem] p-6 sm:p-8 border border-amber-200/60 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
-      >
-        <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-lg shadow-amber-500/20">
-            <Star size={28} className="fill-white" />
-          </div>
-          <div>
-            <h3 className="text-lg font-black text-slate-900 tracking-tight">How was your clinic visit?</h3>
-            <p className="text-xs text-slate-500 font-medium mt-0.5">
-              Your rating and reviews help us improve care quality and service.
-            </p>
-          </div>
-        </div>
-        <button
-          onClick={() => setShowFeedbackModal(true)}
-          className="px-5 py-3 rounded-2xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-black uppercase tracking-wider shadow-lg shadow-amber-500/20 transition-all shrink-0"
-        >
-          Rate Experience
-        </button>
-      </motion.div>
-
-      {/* Feedback Submission Modal */}
-      <Modal
-        isOpen={showFeedbackModal}
-        onClose={() => setShowFeedbackModal(false)}
-        title="Share Your Feedback"
-      >
-        <form onSubmit={handleSubmitFeedback} className="space-y-4">
-          <div>
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2 text-center">
-              Overall Rating
-            </label>
-            <div className="flex items-center justify-center gap-2 text-amber-400">
-              {[1, 2, 3, 4, 5].map((star) => (
+              <p className="text-[12px] text-amber-900/90 mt-1 leading-snug">
+                1 drop nightly in right eye. Refill approval ready at VI Clinic pharmacy.
+              </p>
+              <div className="mt-3 flex items-center gap-3">
                 <button
-                  key={star}
+                  className="text-[12px] font-bold text-amber-900 underline hover:text-amber-950"
+                  onClick={() => showToast("Clinic refill request submitted")}
                   type="button"
-                  onClick={() => setFeedbackRating(star)}
-                  className="p-1 hover:scale-110 transition-transform"
                 >
-                  <Star
-                    size={32}
-                    className={cn(
-                      star <= feedbackRating
-                        ? "fill-amber-400 text-amber-400"
-                        : "text-slate-200"
-                    )}
-                  />
+                  Request Refill
                 </button>
-              ))}
+                <span className="text-amber-300">•</span>
+                <button
+                  className="text-[12px] font-semibold text-amber-800 hover:text-amber-900"
+                  onClick={handleMedication}
+                  type="button"
+                >
+                  {medicationTaken ? "✓ Marked as Taken" : "Mark as Taken"}
+                </button>
+              </div>
             </div>
-            <p className="text-center text-xs font-bold text-slate-600 mt-1">
-              {feedbackRating === 5 && "Excellent (5/5)"}
-              {feedbackRating === 4 && "Very Good (4/5)"}
-              {feedbackRating === 3 && "Average (3/5)"}
-              {feedbackRating === 2 && "Poor (2/5)"}
-              {feedbackRating === 1 && "Very Poor (1/5)"}
+          </div>
+
+          {/* DAILY OCULAR WELLNESS TIP */}
+          <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-[0_8px_30px_-4px_rgba(12,38,70,0.05)] border border-[#E9F1F7]/70">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-[#0055C4] text-[18px]">visibility</span>
+                <h3 className="text-[12px] font-bold uppercase tracking-wider text-[#0F2942]">
+                  Daily Ocular Wellness
+                </h3>
+              </div>
+              <span className="text-[10px] font-bold text-[#0055C4] bg-[#EBF4FE] px-2 py-0.5 rounded-full">
+                Eye Strain Tip
+              </span>
+            </div>
+            <h4 className="text-[14px] font-bold text-[#0F2942] leading-snug">
+              The 20-20-20 Rule for Digital Strain
+            </h4>
+            <p className="text-[12px] font-medium text-[#73889B] mt-1.5 leading-relaxed">
+              Every 20 minutes spent looking at your screen, look at an object 20 feet away for at least 20 seconds to relax your ciliary eye muscles.
             </p>
           </div>
 
-          <div>
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">
-              Feedback Category
-            </label>
-            <select
-              value={feedbackCategory}
-              onChange={(e) => setFeedbackCategory(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-800 focus:outline-none"
-            >
-              <option value="General Care">General Care & Facility</option>
-              <option value="Doctor Consultation">Doctor Consultation</option>
-              <option value="Wait Time">Wait Time & Queuing</option>
-              <option value="Staff Courtesy">Staff Courtesy</option>
-              <option value="Optical & Glasses">Optical & Glasses Dispensing</option>
-              <option value="Billing & Payment">Billing & Checkout</option>
-              <option value="Other">Other</option>
-            </select>
+          {/* FAMILY PROFILE QUICK ACCESS */}
+          <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-[0_8px_30px_-4px_rgba(12,38,70,0.05)] border border-[#E9F1F7]/70">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-[#0055C4] text-[20px]">family_restroom</span>
+                <h4 className="text-[14px] font-bold text-[#0F2942]">Family Profiles</h4>
+              </div>
+              <span className="text-[11px] font-bold text-[#0055C4] bg-[#EBF4FE] px-2 py-0.5 rounded-full">
+                2 Dependents
+              </span>
+            </div>
+            <p className="text-[12px] text-[#73889B] mb-3">
+              Manage pediatric visits, eye checks, and prescriptions for Tiwa and Funke.
+            </p>
+            <div className="flex items-center gap-2">
+              <Link
+                href="/patient/select-profile"
+                className="flex-1 py-2 rounded-xl bg-[#F0F6FD] hover:bg-[#E2EFFC] text-[#0055C4] text-xs font-bold text-center transition-colors"
+              >
+                Switch Profile
+              </Link>
+              <Link
+                href="/patient/family/add"
+                className="flex-1 py-2 rounded-xl bg-[#0055C4] hover:bg-[#0047A6] text-white text-xs font-bold text-center transition-colors"
+              >
+                + Add Member
+              </Link>
+            </div>
           </div>
-
-          <div>
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">
-              Your Comments & Experience (Optional)
-            </label>
-            <textarea
-              rows={3}
-              value={feedbackComment}
-              onChange={(e) => setFeedbackComment(e.target.value)}
-              placeholder="Tell us what you liked or what we could improve..."
-              className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-800 focus:outline-none resize-none"
-            />
-          </div>
-
-          <div className="flex gap-3 pt-2">
-            <button
-              type="button"
-              onClick={() => setShowFeedbackModal(false)}
-              className="flex-1 py-3 rounded-xl border border-slate-200 text-slate-600 text-xs font-black uppercase tracking-wider hover:bg-slate-50"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={submitFeedbackMut.isPending}
-              className="flex-1 py-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-black uppercase tracking-wider shadow-lg shadow-amber-500/20 transition-all disabled:opacity-50"
-            >
-              {submitFeedbackMut.isPending ? "Submitting..." : "Submit Review"}
-            </button>
-          </div>
-        </form>
-      </Modal>
+        </div>
+      </div>
     </div>
   );
 }
