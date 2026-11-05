@@ -3,10 +3,17 @@
 import React, { useState } from "react";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
-import { Mail, Lock, Eye, EyeOff, ShieldCheck, Smartphone, AlertCircle, Loader2 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Mail, Lock, Eye, EyeOff, ArrowRight,
+  ShieldCheck, Smartphone, ChevronDown, LayoutDashboard,
+  Building2, UserCircle, Clock, Stethoscope, Heart, Pill, Wallet,
+  AlertCircle, Loader2
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-context";
 import { getDashboardRoute } from "@/lib/dashboard-routes";
 
@@ -22,13 +29,29 @@ const LockIcon = Lock as React.ComponentType<IconProps>;
 const EyeIcon = Eye as React.ComponentType<IconProps>;
 const EyeOffIcon = EyeOff as React.ComponentType<IconProps>;
 const LoaderIcon = Loader2 as React.ComponentType<IconProps>;
+const ArrowRightIcon = ArrowRight as React.ComponentType<IconProps>;
+const ChevronDownIcon = ChevronDown as React.ComponentType<IconProps>;
 const SmartphoneIcon = Smartphone as React.ComponentType<IconProps>;
+
+const dashboardLinks = [
+  { name: "Super Admin Dashboard", href: "/admin/dashboard", icon: LayoutDashboard, color: "text-slate-900", desc: "Global network oversight", roles: ["admin"] },
+  { name: "Clinic Admin Dashboard", href: "/clinic/dashboard", icon: Building2, color: "text-sky-600", desc: "Branch & clinical operations", roles: ["admin"] },
+  { name: "Doctor Clinical Hub", href: "/doctor/dashboard", icon: Stethoscope, color: "text-emerald-600", desc: "Patient care & consultations", roles: ["doctor"] },
+  { name: "Nurse Station", href: "/nurse/dashboard", icon: Heart, color: "text-cyan-600", desc: "Vitals, monitoring & patient care", roles: ["nurse"] },
+  { name: "Optical Hub", href: "/optician/dashboard", icon: Eye, color: "text-amber-600", desc: "Lens orders, production & inventory", roles: ["optometrist"] },
+  { name: "Pharmacy Station", href: "/pharmacy/dashboard", icon: Pill, color: "text-emerald-600", desc: "Prescriptions, inventory & dispensing", roles: ["pharmacist"] },
+  { name: "Receptionist Frontdesk", href: "/reception/dashboard", icon: Clock, color: "text-amber-600", desc: "Registration & queue flow", roles: ["receptionist"] },
+  { name: "Cashier Counter", href: "/cashier", icon: Wallet, color: "text-teal-600", desc: "Payments, billing & reconciliation", roles: ["cashier"] },
+  { name: "Patient Success Portal", href: "/patient/dashboard", icon: UserCircle, color: "text-emerald-600", desc: "Results, orders & bookings", roles: ["patient"] },
+];
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
+  const [isQuickAccessOpen, setIsQuickAccessOpen] = useState(false);
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [pendingEnvironment, setPendingEnvironment] = useState<string | null>(null);
   const { login, isAuthenticated, user } = useAuth();
   const router = useRouter();
 
@@ -50,6 +73,15 @@ export default function LoginPage() {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleQuickAccess = (href: string, label: string) => {
+    if (pendingEnvironment) return;
+
+    setPendingEnvironment(label);
+    setIsQuickAccessOpen(false);
+    setError(null);
+    router.push(href);
   };
 
   if (isAuthenticated && user) {
@@ -159,6 +191,76 @@ export default function LoginPage() {
                     Patient Portal Login &rarr;
                   </Link>
                 </p>
+
+                {/* Unified Quick Access — demo logins for every dashboard */}
+                <div className="relative pt-4 border-t border-slate-50 z-[80]">
+                  <button
+                    type="button"
+                    onClick={() => setIsQuickAccessOpen(!isQuickAccessOpen)}
+                    className="w-full py-4 px-6 rounded-2xl bg-slate-900 text-white flex items-center justify-between group hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/10 disabled:opacity-70 disabled:cursor-not-allowed relative z-10"
+                    disabled={isSubmitting || !!pendingEnvironment}
+                    aria-expanded={isQuickAccessOpen}
+                    aria-controls="quick-access-menu"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-6 h-6 rounded-lg bg-white/10 flex items-center justify-center">
+                        {pendingEnvironment ? (
+                          <LoaderIcon size={14} className="animate-spin text-sky-400" />
+                        ) : (
+                          <ArrowRightIcon size={14} className="text-sky-400 group-hover:translate-x-0.5 transition-transform" />
+                        )}
+                      </div>
+                      <span className="text-xs font-black uppercase tracking-widest">
+                        {pendingEnvironment ? `Opening ${pendingEnvironment}...` : "Quick Dashboard Access"}
+                      </span>
+                    </div>
+                    {!pendingEnvironment && <ChevronDownIcon size={16} className={cn("transition-transform text-white/40", isQuickAccessOpen && "rotate-180")} />}
+                  </button>
+
+                  <AnimatePresence>
+                    {isQuickAccessOpen && (
+                      <motion.div
+                        id="quick-access-menu"
+                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                        onMouseDown={(e) => e.preventDefault()}
+                        onPointerDown={(e) => e.preventDefault()}
+                        className="absolute bottom-full left-0 w-full mb-3 bg-white border border-slate-100 rounded-3xl shadow-2xl p-3 z-[70] overflow-y-auto max-h-[28rem] pointer-events-auto"
+                      >
+                        <div className="p-3 mb-2">
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Select Environment</p>
+                        </div>
+                        {dashboardLinks.map((link) => (
+                          <button
+                            key={link.name}
+                            type="button"
+                            onMouseDown={(e) => e.preventDefault()}
+                            onPointerDown={(e) => e.preventDefault()}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              handleQuickAccess(link.href, link.name);
+                            }}
+                            disabled={!!pendingEnvironment}
+                            className="flex items-center gap-4 p-4 hover:bg-slate-50 rounded-2xl transition-all group w-full text-left disabled:cursor-not-allowed disabled:opacity-70"
+                          >
+                            <div className={cn("w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center transition-colors group-hover:bg-white group-hover:shadow-sm", link.color)}>
+                              {(() => {
+                                const Icon = link.icon as React.ComponentType<IconProps>;
+                                return <Icon size={20} />;
+                              })()}
+                            </div>
+                            <div>
+                              <p className="text-sm font-bold text-slate-900">{link.name}</p>
+                              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">{link.desc}</p>
+                            </div>
+                          </button>
+                        ))}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
               </form>
             </div>
           </div>

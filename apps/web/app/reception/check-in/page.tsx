@@ -1,369 +1,764 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
-import { 
-  QrCode, Search, ChevronRight, Eye, Glasses, ShoppingCart,
-  PackageCheck, Clock, AlertCircle, ShieldCheck, CreditCard,
-  CheckCircle2, Printer, ArrowLeft, Loader2, UserCheck
-} from "lucide-react";
+import React, { useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import QRCode from "react-qr-code";
-import { cn } from "@/lib/utils";
-import { motion, AnimatePresence } from "framer-motion";
-import { useCreateQueueEntry } from "@/hooks/useQueue";
-import { usePatients } from "@/hooks/usePatients";
 import { useAuth } from "@/lib/auth-context";
 
-type CheckInStep = "START" | "IDENTIFY" | "PURPOSE" | "PLAN" | "VERIFYING" | "COMPLETE";
+type VisitPurpose =
+  | "consultation"
+  | "refraction"
+  | "lens_purchase"
+  | "frame_selection"
+  | "pickup"
+  | "follow_up";
 
-export default function CheckInPage() {
+type PriorityLevel = "standard" | "senior" | "urgent";
+
+export default function ReceptionCheckInPage() {
+  const router = useRouter();
   const { user } = useAuth();
-  const { data: patientsResponse } = usePatients({ clinicId: user?.clinicId });
-  const patients = patientsResponse?.data ?? [];
-  const createEntry = useCreateQueueEntry();
 
-  const [step, setStep] = useState<CheckInStep>("START");
-  const [patientId, setPatientId] = useState("");
-  const [selectedPatient, setSelectedPatient] = useState<any>(null);
-  const [selectedPurpose, setSelectedPurpose] = useState<string | null>(null);
-  const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [lookupError, setLookupError] = useState("");
+  const [searchQuery, setSearchQuery] = useState("Olumide Adeleke");
+  const [selectedPurpose, setSelectedPurpose] = useState<VisitPurpose>("consultation");
+  const [priority, setPriority] = useState<PriorityLevel>("standard");
+  const [billingMode, setBillingMode] = useState<"hmo" | "cash">("hmo");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCheckedIn, setIsCheckedIn] = useState(false);
+  const [showSlipModal, setShowSlipModal] = useState(false);
+  const [emergencyAlertActive, setEmergencyAlertActive] = useState(false);
 
-  const qrValue = useMemo(() => {
-    const payload = {
-      type: "vemtap-checkin",
-      clinicId: user?.clinicId ?? "unknown-clinic",
-      branchId: user?.branchId ?? "unknown-branch",
-      patientId: selectedPatient?.id ?? (patientId.trim() || "guest-checkin"),
-      patientName: selectedPatient ? `${selectedPatient.firstName} ${selectedPatient.lastName}` : "Pending verification",
-      timestamp: Date.now(),
-    };
-
-    return JSON.stringify(payload);
-  }, [patientId, selectedPatient, user?.branchId, user?.clinicId]);
-
-  const handleIdSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const normalizedId = patientId.trim();
-    if (!normalizedId) {
-      setLookupError("Enter a patient ID or scan a valid QR card.");
-      return;
-    }
-
-    setIsLoading(true);
-    setLookupError("");
-
-    const patient = patients.find((p: any) => {
-      const name = `${p.firstName} ${p.lastName}`.toLowerCase();
-      const id = String(p.id).toLowerCase();
-      const phone = String(p.phone ?? "").replace(/\D/g, "");
-      const query = normalizedId.toLowerCase();
-      return id === query || name.includes(query) || phone.includes(query.replace(/\D/g, ""));
-    });
-
+  const handleCheckIn = () => {
+    setIsSubmitting(true);
     setTimeout(() => {
-      setIsLoading(false);
-      if (patient) {
-        setSelectedPatient(patient);
-        setStep("IDENTIFY");
-      } else {
-        setLookupError("No live patient match found for that ID. Please verify the QR or patient record.");
-        setStep("START");
-      }
-    }, 500);
+      setIsSubmitting(false);
+      setIsCheckedIn(true);
+      setShowSlipModal(true);
+    }, 900);
   };
 
-  const purposes = [
-    { id: "consult", label: "Eye Consultation", icon: Eye, desc: "Doctor's examination" },
-    { id: "test", label: "Eye Test / Refraction", icon: Glasses, desc: "Check your vision" },
-    { id: "lens_purchase", label: "Lens Purchase", icon: ShoppingCart, desc: "Buy prescription lenses" },
-    { id: "frame_selection", label: "Frame Selection", icon: Glasses, desc: "Choose eyewear frames" },
-    { id: "pickup", label: "Lens Pickup", icon: PackageCheck, desc: "Collect ready lenses" },
-    { id: "followup", label: "Follow-up Visit", icon: Clock, desc: "Review progress" },
-    { id: "emergency", label: "Emergency Care", icon: AlertCircle, desc: "Urgent attention", color: "text-rose-600" },
-  ];
-
-  const plans = [
-    { id: "hmo", label: "HMO Patient", icon: ShieldCheck, desc: "Reliance, Axa, etc." },
-    { id: "private", label: "Private Patient", icon: CreditCard, desc: "Cash/Card/Transfer" },
-  ];
-
-  const handleFinalCheckIn = async () => {
-    setStep("VERIFYING");
-
-    if (!selectedPatient || !selectedPurpose) {
-      setTimeout(() => setStep("COMPLETE"), 800);
-      return;
-    }
-
-    if (!user?.branchId || !user?.clinicId) {
-      setLookupError("Clinic context is missing. Please sign in again.");
-      setStep("IDENTIFY");
-      return;
-    }
-
-    try {
-      await createEntry.mutateAsync({
-        patientId: selectedPatient.id,
-        patientName: `${selectedPatient.firstName} ${selectedPatient.lastName}`,
-        serviceType: selectedPurpose,
-        priority: "Normal",
-        clinicId: user.clinicId,
-        branchId: user.branchId,
-      });
-
-      setTimeout(() => setStep("COMPLETE"), 1200);
-    } catch (error) {
-      console.error("Check-in error:", error);
-      setLookupError("The check-in request could not be submitted. Please try again.");
-      setStep("IDENTIFY");
-    }
+  const handleEmergencyBypass = () => {
+    setEmergencyAlertActive(true);
+    setTimeout(() => {
+      setEmergencyAlertActive(false);
+      alert("🚨 PRIORITY CODE RED: Immediate bypass routed to Exam Room 1 (Dr. Amara Okafor). Patient priority set to STAT URGENT.");
+      setPriority("urgent");
+    }, 400);
   };
 
   return (
-    <div className="min-h-[80vh] flex items-center justify-center p-3 sm:p-4">
-      <div className="w-full max-w-4xl">
-        <AnimatePresence mode="wait">
-          {step === "START" && (
-            <motion.div key="start"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="bg-white rounded-2xl sm:rounded-[3.5rem] p-6 sm:p-12 border border-slate-100 shadow-2xl shadow-slate-200/50 text-center space-y-6 sm:space-y-12"
-            >
-              <div className="space-y-3 sm:space-y-4">
-                <div className="w-16 h-16 sm:w-24 sm:h-24 bg-sky-50 rounded-xl sm:rounded-[2rem] flex items-center justify-center mx-auto text-sky-600">
-                  <QrCode size={28} />
-                </div>
-                <h1 className="text-2xl sm:text-4xl font-black text-slate-900 tracking-tight">Patient Check-In</h1>
-                <p className="text-sm sm:text-lg text-slate-500 font-medium">Scan your QR code or enter your Patient ID.</p>
+    <div className="min-h-full bg-surface text-on-surface flex flex-col font-sans pb-12">
+      {/* Main Content Area */}
+      <main className="flex-1 w-full max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 py-2 sm:py-3.5">
+        <div className="flex flex-col gap-3 sm:gap-4">
+          {/* Top Sub-Header & Live Clinic Pulse Banner */}
+          <div className="bg-surface-container-low rounded-xl p-2.5 sm:p-3 shadow-xs border border-surface-container flex flex-col md:flex-row md:items-center justify-between gap-2.5">
+            <div className="flex flex-col gap-0.5">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="w-2 h-2 rounded-full bg-tertiary-container animate-pulse"></span>
+                <span className="text-[10px] text-tertiary font-bold uppercase tracking-wider">
+                  Desk 02 · Front Office VI
+                </span>
+                <span className="px-2 py-0.2 rounded-full bg-surface-container-highest text-on-surface-variant text-[10px] font-semibold">
+                  Shift: Morning (08:00 - 14:00)
+                </span>
               </div>
-
-              <div className="max-w-md mx-auto space-y-4 sm:space-y-6">
-                <form onSubmit={handleIdSubmit} className="relative">
-                  <Search className="absolute left-4 sm:left-6 top-1/2 -translate-y-1/2 text-slate-400 transition-colors" size={16} />
-                  <input type="text" placeholder="Enter Patient ID (e.g. PT-2024-001)"
-                    value={patientId} onChange={(e) => setPatientId(e.target.value)}
-                    className="w-full pl-11 sm:pl-16 pr-24 sm:pr-28 py-4 sm:py-6 rounded-xl sm:rounded-3xl bg-slate-50 border-2 border-transparent focus:border-sky-500/20 focus:bg-white focus:outline-none transition-all text-base sm:text-xl font-bold text-slate-900 placeholder:text-slate-300" />
-                  <button disabled={isLoading}
-                    className="absolute right-2 sm:right-3 top-2 sm:top-3 bottom-2 sm:bottom-3 px-4 sm:px-6 rounded-lg sm:rounded-2xl bg-slate-900 text-white font-black text-[10px] sm:text-sm uppercase tracking-widest hover:bg-slate-800 transition-all disabled:opacity-50">
-                    {isLoading ? <Loader2 className="animate-spin" size={16} /> : "Start"}
-                  </button>
-                </form>
-
-                {lookupError && (
-                  <p className="text-xs sm:text-sm font-medium text-rose-600 bg-rose-50 rounded-xl border border-rose-100 px-3 py-2">
-                    {lookupError}
-                  </p>
-                )}
-
-                <div className="flex items-center gap-3 sm:gap-4 text-slate-300">
-                   <div className="h-px flex-1 bg-current" />
-                   <span className="text-[10px] sm:text-xs font-black uppercase tracking-widest">OR</span>
-                   <div className="h-px flex-1 bg-current" />
-                </div>
-
-                <div className="p-5 sm:p-8 rounded-xl sm:rounded-[2.5rem] border-2 sm:border-4 border-dashed border-slate-100 bg-slate-50/50 flex flex-col items-center gap-3 sm:gap-4 group cursor-pointer hover:border-sky-200 hover:bg-sky-50 transition-all">
-                  <div className="bg-white rounded-2xl border border-slate-100 p-3 shadow-sm">
-                    <QRCode value={qrValue} size={132} bgColor="#ffffff" fgColor="#0f172a" />
-                  </div>
-                  <p className="text-xs sm:text-sm font-bold text-slate-500 group-hover:text-sky-600 transition-colors">Point Camera at QR Code</p>
-                </div>
+              <div className="flex items-baseline gap-2 pt-0.5">
+                <h2 className="text-xs sm:text-sm font-bold text-on-surface">Reception Intake & Routing</h2>
+                <span className="text-[11px] text-on-surface-variant hidden sm:inline">Live triage & queue sync</span>
               </div>
-            </motion.div>
-          )}
+            </div>
 
-          {step === "IDENTIFY" && (
-            <motion.div key="identify"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              className="bg-white rounded-2xl sm:rounded-[3.5rem] p-5 sm:p-12 border border-slate-100 shadow-2xl shadow-slate-200/50"
-            >
-              <button onClick={() => setStep("START")}
-                className="flex items-center gap-2 text-slate-400 hover:text-slate-900 transition-colors mb-5 sm:mb-8 text-xs sm:text-sm font-bold uppercase tracking-widest">
-                <ArrowLeft size={14} /> Back
-              </button>
-              
-              <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-8 p-5 sm:p-8 rounded-xl sm:rounded-[2.5rem] bg-sky-50 border border-sky-100 mb-6 sm:mb-12">
-                <div className="w-16 h-16 sm:w-24 sm:h-24 rounded-xl sm:rounded-[2rem] bg-white shadow-sm flex items-center justify-center text-sky-600 text-xl sm:text-3xl font-black shrink-0 mx-auto sm:mx-0">
-                  {selectedPatient?.firstName?.[0]}{selectedPatient?.lastName?.[0]}
+            <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+              <div className="bg-surface-container-lowest px-2.5 py-1.5 rounded-lg shadow-xs border border-surface-container flex items-center gap-2">
+                <div className="w-6 h-6 rounded-md bg-primary-fixed flex items-center justify-center text-primary">
+                  <span className="material-symbols-outlined text-[15px]">how_to_reg</span>
                 </div>
-                <div className="text-center sm:text-left">
-                  <h2 className="text-xl sm:text-3xl font-black text-slate-900">
-                    {selectedPatient ? `${selectedPatient.firstName} ${selectedPatient.lastName}` : "Patient Not Found"}
-                  </h2>
-                  <p className="text-slate-500 font-bold uppercase tracking-widest text-[9px] sm:text-xs flex items-center gap-1 sm:gap-2 mt-1 justify-center sm:justify-start">
-                    <UserCheck size={12} className="text-sky-500" /> Patient ID: {selectedPatient?.id || patientId}
-                  </p>
-                </div>
-                <div className="mt-1 sm:mt-0 sm:ml-auto px-3 sm:px-6 py-2 sm:py-3 bg-white rounded-lg sm:rounded-2xl border border-sky-100 shadow-sm text-sky-600 font-black text-[9px] sm:text-sm uppercase tracking-widest text-center">
-                  {selectedPatient ? "Returning Patient" : "New Patient"}
+                <div>
+                  <div className="text-xs sm:text-sm text-primary font-bold">42 / 58</div>
+                  <div className="text-[9px] text-on-surface-variant">Intake Today</div>
                 </div>
               </div>
 
-              <div className="space-y-4 sm:space-y-6">
-                <h3 className="text-base sm:text-xl font-black text-slate-900 px-1 sm:px-2">Is this you?</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
-                  <button onClick={() => setStep("PURPOSE")}
-                    className="p-5 sm:p-8 rounded-xl sm:rounded-[2.5rem] bg-slate-900 text-white flex items-center justify-between group hover:bg-slate-800 transition-all">
-                    <span className="text-sm sm:text-xl font-bold">Yes, proceed</span>
-                    <ChevronRight className="group-hover:translate-x-1 sm:group-hover:translate-x-2 transition-transform" size={18} />
-                  </button>
-                  <button onClick={() => { setSelectedPatient(null); setPatientId(""); setStep("START"); }}
-                    className="p-5 sm:p-8 rounded-xl sm:rounded-[2.5rem] border-2 border-slate-100 text-slate-400 flex items-center justify-between hover:border-rose-100 hover:text-rose-500 transition-all">
-                    <span className="text-sm sm:text-xl font-bold">No, not me</span>
-                  </button>
+              <div className="bg-surface-container-lowest px-2.5 py-1.5 rounded-lg shadow-xs border border-surface-container flex items-center gap-2">
+                <div className="w-6 h-6 rounded-md bg-tertiary-fixed flex items-center justify-center text-on-tertiary-fixed">
+                  <span className="material-symbols-outlined text-[15px]">timer</span>
+                </div>
+                <div>
+                  <div className="text-xs sm:text-sm text-tertiary font-bold">11 min</div>
+                  <div className="text-[9px] text-outline">Avg Wait</div>
                 </div>
               </div>
-            </motion.div>
-          )}
+            </div>
+          </div>
 
-          {step === "PURPOSE" && (
-            <motion.div key="purpose"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              className="bg-white rounded-2xl sm:rounded-[3.5rem] p-5 sm:p-12 border border-slate-100 shadow-2xl shadow-slate-200/50"
-            >
-              <button onClick={() => setStep("IDENTIFY")}
-                className="flex items-center gap-2 text-slate-400 hover:text-slate-900 transition-colors mb-5 sm:mb-8 text-xs sm:text-sm font-bold uppercase tracking-widest">
-                <ArrowLeft size={14} /> Back
-              </button>
-
-              <div className="mb-6 sm:mb-12">
-                <h2 className="text-xl sm:text-3xl font-black text-slate-900 tracking-tight">Purpose of Visit</h2>
-                <p className="text-sm sm:text-base text-slate-500 font-medium">Select the reason for your visit today.</p>
-              </div>
-
-              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-                {purposes.map((p) => (
-                  <button key={p.id} onClick={() => { setSelectedPurpose(p.label); setStep("PLAN"); }}
-                    className="p-3 sm:p-6 rounded-xl sm:rounded-[2rem] border border-slate-100 hover:border-sky-500/20 hover:bg-sky-50 transition-all group text-left">
-                    <div className={cn("w-8 h-8 sm:w-12 sm:h-12 rounded-lg sm:rounded-2xl bg-slate-50 flex items-center justify-center mb-2 sm:mb-4 text-slate-400 group-hover:bg-white group-hover:text-sky-600 transition-all", p.color)}>
-                      <p.icon size={16} />
-                    </div>
-                    <h3 className="text-[10px] sm:text-base font-black text-slate-900 mb-0.5 sm:mb-1 truncate">{p.label}</h3>
-                    <p className="text-[8px] sm:text-[11px] text-slate-400 font-bold uppercase tracking-tight">{p.desc}</p>
-                  </button>
-                ))}
-              </div>
-            </motion.div>
-          )}
-
-          {step === "PLAN" && (
-            <motion.div key="plan"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              className="bg-white rounded-2xl sm:rounded-[3.5rem] p-5 sm:p-12 border border-slate-100 shadow-2xl shadow-slate-200/50"
-            >
-              <button onClick={() => setStep("PURPOSE")}
-                className="flex items-center gap-2 text-slate-400 hover:text-slate-900 transition-colors mb-5 sm:mb-8 text-xs sm:text-sm font-bold uppercase tracking-widest">
-                <ArrowLeft size={14} /> Back
-              </button>
-
-              <div className="mb-6 sm:mb-12">
-                <h2 className="text-xl sm:text-3xl font-black text-slate-900 tracking-tight">Payment Method</h2>
-                <p className="text-sm sm:text-base text-slate-500 font-medium">How are you paying for your visit?</p>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-                {plans.map((p) => (
-                  <button key={p.id} onClick={() => { setSelectedPlan(p.label); handleFinalCheckIn(); }}
-                    className="p-6 sm:p-10 rounded-xl sm:rounded-[2.5rem] border border-slate-100 hover:border-sky-500/20 hover:bg-sky-50 transition-all group flex flex-col items-center text-center gap-4 sm:gap-6">
-                    <div className="w-14 h-14 sm:w-20 sm:h-20 rounded-xl sm:rounded-[1.5rem] bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-white group-hover:text-sky-600 transition-all">
-                      <p.icon size={28} />
-                    </div>
-                    <div>
-                      <h3 className="text-base sm:text-xl font-black text-slate-900 mb-1 sm:mb-2">{p.label}</h3>
-                      <p className="text-[10px] sm:text-sm text-slate-400 font-bold uppercase tracking-widest">{p.desc}</p>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </motion.div>
-          )}
-
-          {step === "VERIFYING" && (
-            <motion.div key="verifying"
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="bg-white rounded-2xl sm:rounded-[3.5rem] p-10 sm:p-20 border border-slate-100 shadow-2xl shadow-slate-200/50 text-center space-y-5 sm:space-y-8"
-            >
-              <div className="relative w-20 h-20 sm:w-32 sm:h-32 mx-auto">
-                <motion.div animate={{ rotate: 360 }}
-                  transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                  className="absolute inset-0 rounded-full border-4 border-slate-100 border-t-sky-600" />
-                <div className="absolute inset-0 flex items-center justify-center text-sky-600">
-                  <ShieldCheck size={28} />
-                </div>
-              </div>
-              <div className="space-y-1 sm:space-y-2">
-                <h2 className="text-xl sm:text-3xl font-black text-slate-900">Finalizing Check-In</h2>
-                <p className="text-xs sm:text-base text-slate-500 font-medium italic">Verifying and assigning queue ticket...</p>
-              </div>
-            </motion.div>
-          )}
-
-          {step === "COMPLETE" && (
-            <motion.div key="complete"
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="bg-white rounded-2xl sm:rounded-[3.5rem] p-6 sm:p-12 border border-slate-100 shadow-2xl shadow-slate-200/50 text-center"
-            >
-              <div className="mb-6 sm:mb-12">
-                <div className="w-16 h-16 sm:w-24 sm:h-24 bg-emerald-50 rounded-full flex items-center justify-center mx-auto text-emerald-600 mb-4 sm:mb-6">
-                  <CheckCircle2 size={28} />
-                </div>
-                <h2 className="text-2xl sm:text-4xl font-black text-slate-900 tracking-tight">Check-In Successful!</h2>
-                <p className="text-sm sm:text-base text-slate-500 font-medium">Your ticket has been generated. Please take your seat.</p>
-              </div>
-
-              <div className="mx-auto p-5 sm:p-8 rounded-xl sm:rounded-[2.5rem] bg-slate-50 border-2 border-dashed border-slate-200 mb-6 sm:mb-12 relative overflow-hidden">
-                <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/50 rounded-full blur-3xl" />
-                <div className="relative z-10 space-y-4 sm:space-y-6">
-                  <div className="text-center">
-                    <p className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Queue Ticket</p>
-                    <p className="text-4xl sm:text-6xl font-black text-slate-900">{createEntry.data?.ticketNumber || "V-024"}</p>
-                  </div>
-                  <div className="space-y-1 sm:space-y-2 text-left border-t border-slate-200 pt-4 sm:pt-6">
-                    <div className="flex justify-between">
-                      <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase">Patient</span>
-                      <span className="text-[10px] sm:text-xs font-black text-slate-900">{selectedPatient ? `${selectedPatient.firstName} ${selectedPatient.lastName}` : "Patient"}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase">Purpose</span>
-                      <span className="text-[10px] sm:text-xs font-black text-slate-900">{selectedPurpose}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase">Plan</span>
-                      <span className="text-[10px] sm:text-xs font-black text-slate-900">{selectedPlan}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase">Time</span>
-                      <span className="text-[10px] sm:text-xs font-black text-slate-900">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                    </div>
-                  </div>
-                  <div className="mx-auto rounded-2xl bg-white p-3 shadow-sm border border-slate-100 w-fit">
-                    <QRCode value={qrValue} size={72} bgColor="#ffffff" fgColor="#0f172a" />
+          {/* Two-Column Responsive Grid on Desktop */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-4 items-start">
+            {/* Left Column (5 cols on lg): Patient Lookup, Verified Card, Routing, Floor Map */}
+            <div className="lg:col-span-5 flex flex-col gap-3">
+              {/* Patient Lookup Search Bar */}
+              <section className="flex flex-col gap-1">
+                <label
+                  htmlFor="patientSearchInput"
+                  className="text-xs text-on-surface flex items-center justify-between"
+                >
+                  <span className="font-semibold">Patient Lookup & Verification</span>
+                  <span className="text-[10px] text-primary flex items-center gap-0.5 font-bold">
+                    <span className="material-symbols-outlined text-[13px]">offline_bolt</span>
+                    Fast Match
+                  </span>
+                </label>
+                <div className="relative flex items-center">
+                  <span className="material-symbols-outlined absolute left-2.5 text-outline text-[17px]">
+                    search
+                  </span>
+                  <input
+                    id="patientSearchInput"
+                    type="search"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search by Name, #VEM ID, Phone..."
+                    className="w-full h-8 sm:h-9 pl-8 pr-10 bg-surface-container-lowest rounded-lg text-xs sm:text-[13px] text-on-surface border border-surface-container shadow-xs outline-none focus:border-primary focus:ring-1.5 focus:ring-primary/20 transition-all placeholder:text-outline"
+                  />
+                  <div className="absolute right-1.5 flex items-center">
+                    <button
+                      type="button"
+                      aria-label="Scan QR Code"
+                      title="Scan Patient Barcode / QR"
+                      className="h-6 w-6 rounded-md bg-surface-container hover:bg-surface-container-high flex items-center justify-center text-primary active:scale-95 transition-transform"
+                    >
+                      <span className="material-symbols-outlined text-[15px]">qr_code_scanner</span>
+                    </button>
                   </div>
                 </div>
-              </div>
+              </section>
 
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
-                <button className="w-full sm:w-auto px-6 sm:px-10 py-4 sm:py-5 bg-slate-900 text-white rounded-xl sm:rounded-2xl font-black uppercase tracking-widest text-[10px] sm:text-xs flex items-center justify-center gap-2 sm:gap-3 hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/20">
-                  <Printer size={16} /> Print Ticket
+              {/* Verified Matched Patient Card */}
+              <section className="bg-surface-container-lowest rounded-xl shadow-xs border border-surface-container overflow-hidden flex flex-col">
+                <div className="p-2.5 sm:p-3 flex flex-col gap-2.5">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="relative shrink-0">
+                        <img
+                          src="https://lh3.googleusercontent.com/aida-public/AB6AXuDYPROPRESqxRiuvBnfZCzPXVfihN0uPPhndtsXt1n3pbWU3Y1mpItFTKSj7YdloEsdv_05NXFp7CIxlinWIcd8hVMU5hvYVe1MBN-SYdfX3MK9FKjAJyhWynddfm1paYnXC_inagY7vEK8jdnYO-ZpQai4t0gobbDmMEaDb4GMizYha0VeIcdA9BQ-cP-KeV8CTQz1401RkK7NL1ET7NmDJF3tmMkwgXZYStjPcYhP"
+                          alt="Olumide Adeleke"
+                          className="w-10 h-10 rounded-full object-cover shadow-xs border border-surface-container-high"
+                        />
+                        <span className="absolute -bottom-0.5 -right-0.5 bg-tertiary text-on-tertiary w-4 h-4 rounded-full flex items-center justify-center shadow-xs">
+                          <span className="material-symbols-outlined text-[10px]">verified</span>
+                        </span>
+                      </div>
+                      <div className="flex flex-col min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <h2 className="text-xs sm:text-sm text-on-surface truncate font-bold">
+                            Olumide Adeleke
+                          </h2>
+                          <span className="px-1.5 py-0.2 rounded-full bg-secondary-fixed text-on-secondary-fixed text-[10px] font-semibold">
+                            Male, 44y
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5 text-on-surface-variant text-[11px] mt-0.5">
+                          <span className="font-bold text-primary font-mono">#VEM-88219</span>
+                          <span>•</span>
+                          <span>+234 803 491 8820</span>
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      aria-label="Switch Patient"
+                      className="text-primary text-[11px] px-2 py-0.5 rounded-md hover:bg-surface-container active:bg-surface-container-high transition-colors font-bold shrink-0"
+                    >
+                      Change
+                    </button>
+                  </div>
+
+                  {/* Insurance Pre-Auth Badge Row */}
+                  <div className="flex items-center justify-between bg-surface-container-low px-2.5 py-1.5 rounded-lg border border-surface-container">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className="material-symbols-outlined text-primary text-[16px] shrink-0">
+                        verified_user
+                      </span>
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-xs text-on-surface font-semibold truncate">
+                          AXA Mansard HMO · #MAN-992-01
+                        </span>
+                        <span className="text-[10px] text-tertiary font-medium">
+                          Pre-Auth #AXA-8819 Cleared
+                        </span>
+                      </div>
+                    </div>
+                    <span className="px-2 py-0.5 rounded-full bg-tertiary-fixed text-on-tertiary-fixed text-[10px] font-bold shrink-0">
+                      Tier 1
+                    </span>
+                  </div>
+                </div>
+
+                {/* Match Banner: Booking Confirmation */}
+                <div className="bg-primary-fixed/60 px-3 py-2 flex items-center justify-between gap-2 text-on-primary-fixed border-t border-primary-fixed">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className="material-symbols-outlined text-primary text-[17px] shrink-0">
+                      calendar_month
+                    </span>
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-xs font-bold truncate">
+                        Today 10:30 AM · Dr. Amara Okafor
+                      </span>
+                      <span className="text-[10px] opacity-90 truncate">
+                        Retinal Specialist · Comprehensive Exam
+                      </span>
+                    </div>
+                  </div>
+                  <span className="px-2 py-0.2 rounded-full bg-primary text-on-primary uppercase tracking-wider shrink-0 shadow-xs font-bold text-[9px]">
+                    Confirmed
+                  </span>
+                </div>
+              </section>
+
+              {/* Station & Priority Routing Section */}
+              <section className="bg-surface-container-lowest p-2.5 sm:p-3 rounded-xl shadow-xs border border-surface-container flex flex-col gap-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-on-surface font-semibold flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-primary text-[16px]">meeting_room</span>
+                    Target Station Routing
+                  </span>
+                  <span className="text-[10px] text-tertiary font-bold bg-tertiary-fixed/40 px-2 py-0.2 rounded-full">
+                    Ready
+                  </span>
+                </div>
+
+                {/* Station Picker Card */}
+                <div className="bg-surface-container-low rounded-lg p-2 flex items-center justify-between border border-surface-container">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <img
+                      src="https://lh3.googleusercontent.com/aida-public/AB6AXuBKZWXr4FK9VmfizCEVT_vogodIbvZAp2tJbJFfOjJoKds_zZe33UY5bMbVnPLXIQwJ5EGQggX3bKtqLoCnd1a-63FoMDXbWVOGJhS5_hEQ6qemt5jNa5UxTmZLKu_KMh4DLHk6zf9TSgEIwyZJ7vzoYqamrnpoN-yl7NUEiQbKl781jQwDaH1NJfvZ2BstK7cdm30TYpLQh8KKl_MS5j4oHbef9f-CEtJFkhJeXK6_"
+                      alt="Dr. Amara Okafor"
+                      className="w-8 h-8 rounded-full object-cover shadow-xs border border-surface-container-highest shrink-0"
+                    />
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-xs text-on-surface font-bold truncate">Consultation Room 1</span>
+                      <span className="text-[10px] text-on-surface-variant truncate">
+                        Dr. Amara Okafor (Retinal Lead)
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    aria-label="Choose Station"
+                    className="h-6 px-2 rounded-md bg-surface-container hover:bg-surface-container-high text-on-surface text-[11px] flex items-center gap-0.5 font-semibold shrink-0"
+                  >
+                    <span>Change</span>
+                    <span className="material-symbols-outlined text-[13px]">expand_more</span>
+                  </button>
+                </div>
+
+                {/* Priority Selector Segmented Bar */}
+                <div className="flex flex-col gap-1">
+                  <span className="text-[10px] text-on-surface-variant font-medium">
+                    Queue Priority Level
+                  </span>
+                  <div className="grid grid-cols-3 gap-1 bg-surface-container-low p-1 rounded-lg border border-surface-container">
+                    <button
+                      type="button"
+                      onClick={() => setPriority("standard")}
+                      className={`py-1.5 rounded-md text-center text-xs transition-all ${
+                        priority === "standard"
+                          ? "bg-primary text-on-primary shadow-xs font-bold"
+                          : "text-on-surface hover:bg-surface-container font-medium"
+                      }`}
+                    >
+                      Standard
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPriority("senior")}
+                      className={`py-1.5 rounded-md text-center text-xs transition-all ${
+                        priority === "senior"
+                          ? "bg-primary text-on-primary shadow-xs font-bold"
+                          : "text-on-surface hover:bg-surface-container font-medium"
+                      }`}
+                    >
+                      Senior / Peds
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPriority("urgent")}
+                      className={`py-1.5 rounded-md text-center text-xs transition-all ${
+                        priority === "urgent"
+                          ? "bg-error text-on-error shadow-xs font-bold"
+                          : "text-on-surface hover:bg-surface-container font-medium"
+                      }`}
+                    >
+                      Stat Urgent
+                    </button>
+                  </div>
+                </div>
+              </section>
+
+              {/* Clinic Floor Map Preview */}
+              <section className="bg-surface-container-lowest p-2.5 sm:p-3 rounded-xl shadow-xs border border-surface-container flex flex-col gap-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-on-surface font-semibold flex items-center gap-1">
+                    <span className="material-symbols-outlined text-primary text-[15px]">map</span>
+                    Location: Ground Floor West Wing
+                  </span>
+                  <span className="text-[10px] text-primary font-bold">Map</span>
+                </div>
+                <div className="w-full h-20 rounded-lg bg-surface-container flex items-center justify-center relative overflow-hidden border border-surface-container-high">
+                  <div className="absolute inset-0 bg-primary/5 flex items-center justify-center">
+                    <div className="flex items-center gap-1.5 bg-surface-container-lowest px-2.5 py-1 rounded-full shadow-xs border border-primary/20">
+                      <span className="w-2 h-2 rounded-full bg-primary animate-ping"></span>
+                      <span className="text-xs text-on-surface font-bold">
+                        Dr. Okafor: Room 1
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </section>
+            </div>
+
+            {/* Right Column (7 cols on lg): Visit Purpose, Emergency Bypass, Billing, Ticket Generator */}
+            <div className="lg:col-span-7 flex flex-col gap-3">
+              {/* Visit Purpose Interactive Grid */}
+              <section className="bg-surface-container-lowest p-2.5 sm:p-3 rounded-xl shadow-xs border border-surface-container flex flex-col gap-2.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs text-on-surface font-semibold">
+                    Select Visit Purpose
+                  </label>
+                  <span className="text-[10px] text-on-surface-variant">Tap to switch destination</span>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {/* Option 1: Consultation */}
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPurpose("consultation")}
+                    className={`text-left p-2.5 rounded-lg transition-all transform active:scale-[0.98] flex flex-col justify-between min-h-[68px] sm:min-h-[76px] border ${
+                      selectedPurpose === "consultation"
+                        ? "bg-primary text-on-primary shadow-xs border-primary"
+                        : "bg-surface-container-lowest text-on-surface hover:bg-surface-container-low border-surface-container"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between w-full">
+                      <span
+                        className={`w-6 h-6 rounded-md flex items-center justify-center ${
+                          selectedPurpose === "consultation"
+                            ? "bg-surface-container-lowest/20 text-on-primary"
+                            : "bg-surface-container text-primary"
+                        }`}
+                      >
+                        <span className="material-symbols-outlined text-[15px]">medical_services</span>
+                      </span>
+                      {selectedPurpose === "consultation" && (
+                        <span className="material-symbols-outlined text-[16px] text-tertiary-fixed">
+                          check_circle
+                        </span>
+                      )}
+                    </div>
+                    <div className="mt-1">
+                      <span className="text-xs block font-bold leading-tight">Eye Consultation</span>
+                      <span
+                        className={`text-[10px] block mt-0.5 leading-tight ${
+                          selectedPurpose === "consultation" ? "opacity-90" : "text-on-surface-variant"
+                        }`}
+                      >
+                        Specialist exam
+                      </span>
+                    </div>
+                  </button>
+
+                  {/* Option 2: Test & Refraction */}
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPurpose("refraction")}
+                    className={`text-left p-2.5 rounded-lg transition-all transform active:scale-[0.98] flex flex-col justify-between min-h-[68px] sm:min-h-[76px] border ${
+                      selectedPurpose === "refraction"
+                        ? "bg-primary text-on-primary shadow-xs border-primary"
+                        : "bg-surface-container-lowest text-on-surface hover:bg-surface-container-low border-surface-container"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between w-full">
+                      <span
+                        className={`w-6 h-6 rounded-md flex items-center justify-center ${
+                          selectedPurpose === "refraction"
+                            ? "bg-surface-container-lowest/20 text-on-primary"
+                            : "bg-surface-container text-primary"
+                        }`}
+                      >
+                        <span className="material-symbols-outlined text-[15px]">visibility</span>
+                      </span>
+                      {selectedPurpose === "refraction" && (
+                        <span className="material-symbols-outlined text-[16px] text-tertiary-fixed">
+                          check_circle
+                        </span>
+                      )}
+                    </div>
+                    <div className="mt-1">
+                      <span className="text-xs block font-bold leading-tight">Test & Refraction</span>
+                      <span
+                        className={`text-[10px] block mt-0.5 leading-tight ${
+                          selectedPurpose === "refraction" ? "opacity-90" : "text-on-surface-variant"
+                        }`}
+                      >
+                        Optometry & IOP
+                      </span>
+                    </div>
+                  </button>
+
+                  {/* Option 3: Lens Purchase */}
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPurpose("lens_purchase")}
+                    className={`text-left p-2.5 rounded-lg transition-all transform active:scale-[0.98] flex flex-col justify-between min-h-[68px] sm:min-h-[76px] border ${
+                      selectedPurpose === "lens_purchase"
+                        ? "bg-primary text-on-primary shadow-xs border-primary"
+                        : "bg-surface-container-lowest text-on-surface hover:bg-surface-container-low border-surface-container"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between w-full">
+                      <span
+                        className={`w-6 h-6 rounded-md flex items-center justify-center ${
+                          selectedPurpose === "lens_purchase"
+                            ? "bg-surface-container-lowest/20 text-on-primary"
+                            : "bg-surface-container text-secondary"
+                        }`}
+                      >
+                        <span className="material-symbols-outlined text-[15px]">lens</span>
+                      </span>
+                      {selectedPurpose === "lens_purchase" && (
+                        <span className="material-symbols-outlined text-[16px] text-tertiary-fixed">
+                          check_circle
+                        </span>
+                      )}
+                    </div>
+                    <div className="mt-1">
+                      <span className="text-xs block font-bold leading-tight">Lens Purchase</span>
+                      <span
+                        className={`text-[10px] block mt-0.5 leading-tight ${
+                          selectedPurpose === "lens_purchase" ? "opacity-90" : "text-on-surface-variant"
+                        }`}
+                      >
+                        Single / Progressive
+                      </span>
+                    </div>
+                  </button>
+
+                  {/* Option 4: Frame Selection */}
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPurpose("frame_selection")}
+                    className={`text-left p-2.5 rounded-lg transition-all transform active:scale-[0.98] flex flex-col justify-between min-h-[68px] sm:min-h-[76px] border ${
+                      selectedPurpose === "frame_selection"
+                        ? "bg-primary text-on-primary shadow-xs border-primary"
+                        : "bg-surface-container-lowest text-on-surface hover:bg-surface-container-low border-surface-container"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between w-full">
+                      <span
+                        className={`w-6 h-6 rounded-md flex items-center justify-center ${
+                          selectedPurpose === "frame_selection"
+                            ? "bg-surface-container-lowest/20 text-on-primary"
+                            : "bg-surface-container text-primary"
+                        }`}
+                      >
+                        <span className="material-symbols-outlined text-[15px]">eyeglasses</span>
+                      </span>
+                      {selectedPurpose === "frame_selection" && (
+                        <span className="material-symbols-outlined text-[16px] text-tertiary-fixed">
+                          check_circle
+                        </span>
+                      )}
+                    </div>
+                    <div className="mt-1">
+                      <span className="text-xs block font-bold leading-tight">Frame Selection</span>
+                      <span
+                        className={`text-[10px] block mt-0.5 leading-tight ${
+                          selectedPurpose === "frame_selection" ? "opacity-90" : "text-on-surface-variant"
+                        }`}
+                      >
+                        Styling & fitting
+                      </span>
+                    </div>
+                  </button>
+
+                  {/* Option 5: Lens Pickup */}
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPurpose("pickup")}
+                    className={`text-left p-2.5 rounded-lg transition-all transform active:scale-[0.98] flex flex-col justify-between min-h-[68px] sm:min-h-[76px] border ${
+                      selectedPurpose === "pickup"
+                        ? "bg-primary text-on-primary shadow-xs border-primary"
+                        : "bg-surface-container-lowest text-on-surface hover:bg-surface-container-low border-surface-container"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between w-full">
+                      <span
+                        className={`w-6 h-6 rounded-md flex items-center justify-center ${
+                          selectedPurpose === "pickup"
+                            ? "bg-surface-container-lowest/20 text-on-primary"
+                            : "bg-surface-container text-tertiary"
+                        }`}
+                      >
+                        <span className="material-symbols-outlined text-[15px]">inventory_2</span>
+                      </span>
+                      {selectedPurpose === "pickup" && (
+                        <span className="material-symbols-outlined text-[16px] text-tertiary-fixed">
+                          check_circle
+                        </span>
+                      )}
+                    </div>
+                    <div className="mt-1">
+                      <span className="text-xs block font-bold leading-tight">Lens Pickup</span>
+                      <span
+                        className={`text-[10px] block mt-0.5 leading-tight ${
+                          selectedPurpose === "pickup" ? "opacity-90" : "text-on-surface-variant"
+                        }`}
+                      >
+                        Collection & review
+                      </span>
+                    </div>
+                  </button>
+
+                  {/* Option 6: Follow-up Check */}
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPurpose("follow_up")}
+                    className={`text-left p-2.5 rounded-lg transition-all transform active:scale-[0.98] flex flex-col justify-between min-h-[68px] sm:min-h-[76px] border ${
+                      selectedPurpose === "follow_up"
+                        ? "bg-primary text-on-primary shadow-xs border-primary"
+                        : "bg-surface-container-lowest text-on-surface hover:bg-surface-container-low border-surface-container"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between w-full">
+                      <span
+                        className={`w-6 h-6 rounded-md flex items-center justify-center ${
+                          selectedPurpose === "follow_up"
+                            ? "bg-surface-container-lowest/20 text-on-primary"
+                            : "bg-surface-container text-outline"
+                        }`}
+                      >
+                        <span className="material-symbols-outlined text-[15px]">history</span>
+                      </span>
+                      {selectedPurpose === "follow_up" && (
+                        <span className="material-symbols-outlined text-[16px] text-tertiary-fixed">
+                          check_circle
+                        </span>
+                      )}
+                    </div>
+                    <div className="mt-1">
+                      <span className="text-xs block font-bold leading-tight">Follow-up Check</span>
+                      <span
+                        className={`text-[10px] block mt-0.5 leading-tight ${
+                          selectedPurpose === "follow_up" ? "opacity-90" : "text-on-surface-variant"
+                        }`}
+                      >
+                        Post-review
+                      </span>
+                    </div>
+                  </button>
+                </div>
+
+                {/* Emergency Red Banner Bypass Option */}
+                <button
+                  type="button"
+                  onClick={handleEmergencyBypass}
+                  className={`w-full bg-error-container text-on-error-container p-2.5 rounded-lg flex items-center justify-between text-left border border-error/20 active:opacity-90 transition-all ${
+                    emergencyAlertActive ? "animate-pulse ring-2 ring-error/30" : ""
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-full bg-error text-on-error flex items-center justify-center shrink-0 shadow-xs">
+                      <span className="material-symbols-outlined text-[16px]">warning</span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-xs font-bold text-error">
+                        Emergency / Red Eye Trauma
+                      </span>
+                      <span className="text-[10px] text-on-error-container">
+                        Immediate Doctor Triage Bypass (STAT CODE RED)
+                      </span>
+                    </div>
+                  </div>
+                  <span className="material-symbols-outlined text-error text-[18px]">chevron_right</span>
                 </button>
-                <button onClick={() => { setStep("START"); setPatientId(""); setSelectedPatient(null); setSelectedPurpose(null); setSelectedPlan(null); setLookupError(""); }}
-                  className="w-full sm:w-auto px-6 sm:px-10 py-4 sm:py-5 bg-white border border-slate-200 text-slate-600 rounded-xl sm:rounded-2xl font-black uppercase tracking-widest text-[10px] sm:text-xs hover:bg-slate-50 transition-all">
-                  Done
+              </section>
+
+              {/* Payment & Billing Mode */}
+              <section className="bg-surface-container-lowest p-2.5 sm:p-3 rounded-xl shadow-xs border border-surface-container flex flex-col gap-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-on-surface font-semibold flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-primary text-[16px]">payments</span>
+                    Billing Mode
+                  </span>
+                  <span className="text-[10px] text-tertiary font-bold bg-tertiary-fixed/40 px-2 py-0.2 rounded-full">
+                    Verified
+                  </span>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label
+                    onClick={() => setBillingMode("hmo")}
+                    className={`flex items-center justify-between p-2 rounded-lg cursor-pointer border transition-all ${
+                      billingMode === "hmo"
+                        ? "bg-surface-container-low border-primary/40 shadow-xs"
+                        : "bg-surface-container-lowest border-surface-container hover:bg-surface-container-low"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span
+                        className="material-symbols-outlined text-primary text-[18px] shrink-0"
+                        style={{ fontVariationSettings: "'FILL' 1" }}
+                      >
+                        {billingMode === "hmo" ? "radio_button_checked" : "radio_button_unchecked"}
+                      </span>
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-xs text-on-surface font-bold truncate">
+                          AXA Mansard HMO (Pre-Authorized)
+                        </span>
+                        <span className="text-[10px] text-on-surface-variant truncate">
+                          Co-pay: ₦0.00 • Optical Consultation Included
+                        </span>
+                      </div>
+                    </div>
+                    <span className="px-2 py-0.5 rounded-full bg-tertiary-fixed text-on-tertiary-fixed text-[10px] font-bold shrink-0">
+                      Pre-Auth OK
+                    </span>
+                  </label>
+
+                  <label
+                    onClick={() => setBillingMode("cash")}
+                    className={`flex items-center justify-between p-2 rounded-lg cursor-pointer border transition-all ${
+                      billingMode === "cash"
+                        ? "bg-surface-container-low border-primary/40 shadow-xs"
+                        : "bg-surface-container-lowest border-surface-container hover:bg-surface-container-low"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="material-symbols-outlined text-outline text-[18px] shrink-0">
+                        {billingMode === "cash" ? "radio_button_checked" : "radio_button_unchecked"}
+                      </span>
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-xs text-on-surface font-semibold truncate">
+                          Private Self-Pay / Direct POS
+                        </span>
+                        <span className="text-[10px] text-on-surface-variant truncate">
+                          Card POS, Transfer or Cash at Desk
+                        </span>
+                      </div>
+                    </div>
+                    <span className="text-xs text-on-surface font-bold shrink-0">₦15,000</span>
+                  </label>
+                </div>
+              </section>
+
+              {/* Primary Action & Queue Generator Card */}
+              <div className="bg-surface-container-lowest p-2.5 sm:p-3 rounded-xl shadow-xs border border-surface-container flex flex-col gap-2">
+                <button
+                  type="button"
+                  id="checkInSubmitBtn"
+                  onClick={handleCheckIn}
+                  disabled={isSubmitting}
+                  className={`w-full h-10 sm:h-11 rounded-lg text-xs sm:text-[13px] font-bold flex items-center justify-center gap-1.5 shadow-sm transition-all active:scale-[0.99] ${
+                    isCheckedIn
+                      ? "bg-tertiary text-on-tertiary"
+                      : "bg-primary text-on-primary hover:bg-primary-hover active:bg-secondary"
+                  }`}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <span className="material-symbols-outlined animate-spin text-[18px]">
+                        progress_activity
+                      </span>
+                      <span>Dispensing Token #Q-04...</span>
+                    </>
+                  ) : isCheckedIn ? (
+                    <>
+                      <span className="material-symbols-outlined text-[18px]">done_all</span>
+                      <span>Checked In: Token Q-04 Active</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="material-symbols-outlined text-[18px]">how_to_reg</span>
+                      <span>Check-In & Generate Queue Token #Q-04</span>
+                    </>
+                  )}
                 </button>
+
+                <div className="flex items-center justify-center gap-1 text-on-surface-variant text-center px-2">
+                  <span className="material-symbols-outlined text-tertiary text-[14px]">sms</span>
+                  <span className="text-[10px]">
+                    SMS token to +234 803 491 8820 · Thermal slip queued
+                  </span>
+                </div>
               </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      {/* Slip Generator / Thermal Ticket Modal */}
+      {showSlipModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in">
+          <div className="bg-white text-slate-900 rounded-2xl max-w-sm w-full p-6 shadow-2xl flex flex-col items-center text-center relative border border-slate-200">
+            <button
+              onClick={() => setShowSlipModal(false)}
+              className="absolute top-3 right-3 text-slate-400 hover:text-slate-600 p-1 rounded-full"
+            >
+              <span className="material-symbols-outlined text-[20px]">close</span>
+            </button>
+
+            <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mb-2">
+              <span className="material-symbols-outlined text-[26px]">check_circle</span>
+            </div>
+
+            <h3 className="text-xl font-bold tracking-tight">Check-In Successful</h3>
+            <p className="text-xs text-slate-500 mb-4">VEMTAP Eye Clinic · Victoria Island</p>
+
+            <div className="w-full bg-slate-50 border border-dashed border-slate-300 rounded-xl p-4 flex flex-col items-center gap-2 my-2">
+              <span className="text-[10px] font-bold tracking-widest text-slate-400 uppercase">
+                Queue Token Pass
+              </span>
+              <div className="text-4xl font-extrabold text-[#0055c4] tracking-tight">#Q-04</div>
+              <div className="text-xs font-semibold text-slate-700">Olumide Adeleke</div>
+              <div className="text-[11px] text-slate-500">
+                Exam Room 1 · Dr. Amara Okafor (Retinal Lead)
+              </div>
+
+              <div className="my-2 p-2 bg-white rounded-lg border border-slate-200">
+                <QRCode value="VEMTAP:Q-04:VEM-88219" size={88} />
+              </div>
+
+              <div className="w-full flex justify-between text-[11px] text-slate-600 border-t border-slate-200 pt-2 font-mono">
+                <span>EST. WAIT: 11 MIN</span>
+                <span>STATUS: ACTIVE</span>
+              </div>
+            </div>
+
+            <div className="w-full grid grid-cols-2 gap-2 mt-4">
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="py-2.5 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs flex items-center justify-center gap-1.5"
+              >
+                <span className="material-symbols-outlined text-[16px]">print</span>
+                Print Slip
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowSlipModal(false);
+                  router.push("/reception/queue");
+                }}
+                className="py-2.5 px-3 rounded-xl bg-[#0055c4] hover:bg-[#0047a6] text-white font-semibold text-xs flex items-center justify-center gap-1.5 shadow-sm"
+              >
+                <span>View Queue</span>
+                <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { Modal } from "@/components/ui/modal";
 import { BottomNav } from "@/components/layout/bottom-nav";
-import { NotificationBell } from "@/components/layout/notification-bell";
+import { StaffTopHeader } from "@/components/layout/staff-top-header";
 import { useAuth } from "@/lib/auth-context";
 
 const sidebarLinks = [
@@ -114,21 +114,15 @@ export default function CashierLayout({ children }: { children: React.ReactNode 
       </aside>
 
       <main className="flex-1 min-w-0 flex flex-col h-full overflow-hidden">
-        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 shrink-0 z-40">
-          <button onClick={() => setIsSidebarOpen(true)} className="lg:hidden p-2 hover:bg-slate-100 rounded-xl">
-            <Menu size={20} className="text-slate-700" />
-          </button>
-          <div className="flex-1" />
-          <NotificationBell accentClass="bg-emerald-500" viewAllHref="/notifications" />
-          <button
-            onClick={() => setIsLogoutOpen(true)}
-            className="ml-2 inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-            aria-label="Log out"
-          >
-            <LogOut size={15} className="text-slate-500" />
-            <span className="hidden sm:inline">Logout</span>
-          </button>
-        </header>
+        <StaffTopHeader
+          portalSubtitle="POS CASHIER"
+          dashboardHref="/cashier"
+          accentClass="bg-emerald-500"
+          roleColor="text-emerald-600"
+          settingsHref="/cashier/settings"
+          profileHref="/profile"
+          onLogoutClick={() => setIsLogoutOpen(true)}
+        />
 
         <div className="flex-1 overflow-y-auto">
           {children}
