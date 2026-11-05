@@ -12,19 +12,47 @@ import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { Modal } from "@/components/ui/modal";
 import { BottomNav } from "@/components/layout/bottom-nav";
-import { NotificationBell } from "@/components/layout/notification-bell";
+import { SidebarNav, type SidebarEntry } from "@/components/layout/sidebar-nav";
+import { StaffTopHeader } from "@/components/layout/staff-top-header";
 import { useAuth } from "@/lib/auth-context";
 
-const sidebarLinks = [
-  { name: "Dashboard", href: "/nurse/dashboard", icon: LayoutDashboard },
-  { name: "Assigned Patients", href: "/nurse/patients", icon: Users },
-  { name: "Vitals Entry", href: "/nurse/vitals", icon: Activity },
-  { name: "Monitoring", href: "/nurse/monitoring", icon: Heart },
-  { name: "Treatment Notes", href: "/nurse/treatment", icon: ClipboardList },
-  { name: "Follow-ups", href: "/nurse/followups", icon: Calendar },
-  { name: "Eye Tests", href: "/nurse/eye-tests", icon: Eye },
-  { name: "Support", href: "/nurse/support", icon: Headphones },
-  { name: "Settings", href: "/nurse/settings", icon: Settings2 },
+const nurseSidebarEntries: SidebarEntry[] = [
+  {
+    type: "link",
+    item: { name: "Dashboard", href: "/nurse/dashboard", icon: LayoutDashboard },
+  },
+  {
+    type: "group",
+    group: {
+      name: "Patient Care",
+      icon: Activity,
+      items: [
+        { name: "Assigned Patients", href: "/nurse/patients", icon: Users },
+        { name: "Vitals Entry", href: "/nurse/vitals", icon: Activity },
+        { name: "In-Patient Monitoring", href: "/nurse/monitoring", icon: Heart },
+        { name: "Treatment Notes", href: "/nurse/treatment", icon: ClipboardList },
+      ],
+    },
+  },
+  {
+    type: "group",
+    group: {
+      name: "Clinical Testing",
+      icon: Eye,
+      items: [
+        { name: "Eye Tests & Screening", href: "/nurse/eye-tests", icon: Eye },
+        { name: "Follow-ups & Recalls", href: "/nurse/followups", icon: Calendar },
+      ],
+    },
+  },
+  {
+    type: "link",
+    item: { name: "Support", href: "/nurse/support", icon: Headphones },
+  },
+  {
+    type: "link",
+    item: { name: "Settings", href: "/nurse/settings", icon: Settings2 },
+  },
 ];
 
 export default function NurseLayout({ children }: { children: React.ReactNode }) {
@@ -72,47 +100,39 @@ export default function NurseLayout({ children }: { children: React.ReactNode })
         )}
       >
         <div className="h-full flex flex-col">
-          <div className="p-6 flex items-center justify-between shrink-0 h-20">
-            <Link href="/nurse/dashboard" className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-cyan-600 rounded-lg flex items-center justify-center shrink-0">
-                <Heart size={20} className="text-white" />
+          <div className="p-5 flex items-center justify-between shrink-0 h-20 border-b border-white/10">
+            <Link href="/nurse/dashboard" className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-full bg-[#EBF3FE] flex items-center justify-center shrink-0 shadow-xs border border-cyan-100">
+                <svg className="h-5 w-5 text-cyan-600" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
+                  <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
               </div>
-              <span className="text-xl font-bold tracking-tight">Nurse<span className="text-cyan-500">Station</span></span>
+              <div className="flex flex-col">
+                <span className="text-[14px] font-extrabold tracking-tight text-white leading-tight">VEMTAP</span>
+                <span className="text-[9px] font-bold tracking-[0.16em] text-cyan-400 uppercase leading-tight">NURSE STATION</span>
+              </div>
             </Link>
             <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden text-white/50 hover:text-white p-2">
               <X size={20} />
             </button>
           </div>
 
-          <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
-            {sidebarLinks.map((link) => {
-              const isActive = pathname.startsWith(link.href);
-              return (
-                <Link
-                  key={link.name}
-                  href={link.href}
-                  className={cn(
-                    "flex items-center gap-3 px-4 py-3 rounded-xl transition-all",
-                    isActive 
-                      ? "bg-cyan-600 text-white font-bold" 
-                      : "text-white/60 hover:text-white hover:bg-white/5"
-                  )}
-                >
-                  <link.icon size={22} />
-                  <span>{link.name}</span>
-                </Link>
-              );
-            })}
-          </nav>
+          <SidebarNav
+            entries={nurseSidebarEntries}
+            activeColor="bg-cyan-600"
+            onNavigate={() => setIsSidebarOpen(false)}
+          />
 
           <div className="p-4 border-t border-white/10 shrink-0">
-            <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5">
-              <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-cyan-400 font-bold">
+            <div className="flex min-w-0 items-center gap-3 rounded-xl bg-white/5 p-3">
+              <div className="h-10 w-10 shrink-0 rounded-full bg-slate-800 flex items-center justify-center text-cyan-400 font-bold">
                 {initials || "•"}
               </div>
-              <div>
-                <p className="text-sm font-bold">{displayName || "User"}</p>
-                <p className="text-[10px] text-white/50">{roleLabel || "Staff"}</p>
+              <div className="min-w-0 flex-1 overflow-hidden">
+                <p className="truncate text-sm font-bold text-white">{displayName || "Nurse"}</p>
+                <p className="truncate text-[10px] text-white/60">{user?.email || "nurse@clinic.com"}</p>
+                <p className="truncate text-[10px] text-cyan-400 font-semibold">{roleLabel || "Clinical Nurse"}</p>
               </div>
             </div>
           </div>
@@ -120,21 +140,15 @@ export default function NurseLayout({ children }: { children: React.ReactNode })
       </aside>
 
       <main className="flex-1 min-w-0 flex flex-col h-full overflow-hidden">
-        <header className="h-20 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0 z-40">
-          <button onClick={() => setIsSidebarOpen(true)} className="lg:hidden p-2 hover:bg-slate-100 rounded-xl">
-            <Menu size={24} className="text-slate-700" />
-          </button>
-          <div className="flex-1" />
-          <NotificationBell accentClass="bg-cyan-500" viewAllHref="/notifications" />
-          <button
-            onClick={() => setIsLogoutOpen(true)}
-            className="ml-2 inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-            aria-label="Log out"
-          >
-            <LogOut size={16} className="text-slate-500" />
-            <span className="hidden sm:inline">Logout</span>
-          </button>
-        </header>
+        <StaffTopHeader
+          portalSubtitle="NURSE STATION"
+          dashboardHref="/nurse/dashboard"
+          accentClass="bg-cyan-500"
+          roleColor="text-cyan-600"
+          settingsHref="/nurse/settings"
+          profileHref="/profile"
+          onLogoutClick={() => setIsLogoutOpen(true)}
+        />
 
         <div className="flex-1 overflow-y-auto p-4 md:p-8 pb-20 md:pb-8">
           {children}
@@ -149,7 +163,8 @@ export default function NurseLayout({ children }: { children: React.ReactNode })
         ]}
         moreItems={[
           { label: "Monitor", href: "/nurse/monitoring", icon: Heart },
-          { label: "Notes", href: "/nurse/treatment", icon: ClipboardList },
+          { label: "Eye Tests", href: "/nurse/eye-tests", icon: Eye },
+          { label: "Treatment", href: "/nurse/treatment", icon: ClipboardList },
           { label: "Follow-ups", href: "/nurse/followups", icon: Calendar },
           { label: "Settings", href: "/nurse/settings", icon: Settings2 },
         ]}

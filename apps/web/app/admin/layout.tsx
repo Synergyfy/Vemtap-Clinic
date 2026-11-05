@@ -149,17 +149,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <header className="h-20 bg-white border-b border-slate-200 flex items-center justify-between px-4 lg:px-6 shrink-0 z-40">
           <div className="flex items-center gap-2 lg:gap-4 flex-1">
             <button 
-              onClick={() => {
-                console.log("Mobile menu triggered");
-                setIsSidebarOpen(true);
-              }}
-              className="p-3 hover:bg-slate-100 rounded-xl transition-all lg:hidden relative z-[110] active:scale-95 bg-slate-50 border border-slate-100 shadow-sm"
-              aria-label="Open Menu"
-            >
-              <Menu size={24} className="text-brand-navy" />
-            </button>
-            
-            <button 
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
               className="p-2 hover:bg-slate-50 rounded-xl transition-colors hidden lg:block"
             >
