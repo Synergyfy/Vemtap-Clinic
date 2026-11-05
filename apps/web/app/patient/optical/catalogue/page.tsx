@@ -19,7 +19,7 @@ export default function CataloguePage() {
   const [query, setQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState("All");
   const [sortBy, setSortBy] = useState("name");
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [viewMode, setViewMode] = useState<"grid" | "list">("list");
   const [selectedProduct, setSelectedProduct] = useState<OpticalItem | null>(null);
   const [enquiryCart, setEnquiryCart] = useState<OpticalItem[]>([]);
   const [toast, setToast] = useState("");

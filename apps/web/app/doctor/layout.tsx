@@ -12,18 +12,40 @@ import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { Modal } from "@/components/ui/modal";
 import { BottomNav } from "@/components/layout/bottom-nav";
-import { NotificationBell } from "@/components/layout/notification-bell";
+import { SidebarNav, type SidebarEntry } from "@/components/layout/sidebar-nav";
+import { StaffTopHeader } from "@/components/layout/staff-top-header";
 import { useAuth } from "@/lib/auth-context";
 
-const sidebarLinks = [
-  { name: "Dashboard", href: "/doctor/dashboard", icon: LayoutDashboard },
-  { name: "Patients", href: "/doctor/patients", icon: Users },
-  { name: "Consultation Queue", href: "/doctor/queue", icon: Clock },
-  { name: "Appointments", href: "/doctor/appointments", icon: Calendar },
-  { name: "Medical Records", href: "/doctor/records", icon: ClipboardList },
-  { name: "Reports & Stats", href: "/doctor/reports", icon: BarChart3 },
-  { name: "Support", href: "/doctor/support", icon: Headphones },
-  { name: "Settings", href: "/doctor/settings", icon: Settings2 },
+const doctorSidebarEntries: SidebarEntry[] = [
+  {
+    type: "link",
+    item: { name: "Dashboard", href: "/doctor/dashboard", icon: LayoutDashboard },
+  },
+  {
+    type: "group",
+    group: {
+      name: "Clinical Practice",
+      icon: Stethoscope,
+      items: [
+        { name: "Consultation Queue", href: "/doctor/queue", icon: Clock },
+        { name: "Patients Directory", href: "/doctor/patients", icon: Users },
+        { name: "Appointments", href: "/doctor/appointments", icon: Calendar },
+        { name: "Medical Records", href: "/doctor/records", icon: ClipboardList },
+      ],
+    },
+  },
+  {
+    type: "link",
+    item: { name: "Reports & Stats", href: "/doctor/reports", icon: BarChart3 },
+  },
+  {
+    type: "link",
+    item: { name: "Support", href: "/doctor/support", icon: Headphones },
+  },
+  {
+    type: "link",
+    item: { name: "Settings", href: "/doctor/settings", icon: Settings2 },
+  },
 ];
 
 export default function DoctorLayout({ children }: { children: React.ReactNode }) {
@@ -71,47 +93,39 @@ export default function DoctorLayout({ children }: { children: React.ReactNode }
         )}
       >
         <div className="h-full flex flex-col">
-          <div className="p-6 flex items-center justify-between shrink-0 h-20">
-            <Link href="/doctor/dashboard" className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center shrink-0">
-                <Stethoscope size={20} className="text-white" />
+          <div className="p-5 flex items-center justify-between shrink-0 h-20 border-b border-white/10">
+            <Link href="/doctor/dashboard" className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-full bg-[#EBF3FE] flex items-center justify-center shrink-0 shadow-xs border border-emerald-100">
+                <svg className="h-5 w-5 text-emerald-600" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
+                  <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
               </div>
-              <span className="text-xl font-bold tracking-tight">Doctor<span className="text-emerald-500">Hub</span></span>
+              <div className="flex flex-col">
+                <span className="text-[14px] font-extrabold tracking-tight text-white leading-tight">VEMTAP</span>
+                <span className="text-[9px] font-bold tracking-[0.16em] text-emerald-400 uppercase leading-tight">DOCTOR HUB</span>
+              </div>
             </Link>
             <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden text-white/50 hover:text-white p-2">
               <X size={20} />
             </button>
           </div>
 
-          <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
-            {sidebarLinks.map((link) => {
-              const isActive = pathname.startsWith(link.href);
-              return (
-                <Link
-                  key={link.name}
-                  href={link.href}
-                  className={cn(
-                    "flex items-center gap-3 px-4 py-3 rounded-xl transition-all",
-                    isActive 
-                      ? "bg-emerald-600 text-white font-bold" 
-                      : "text-white/60 hover:text-white hover:bg-white/5"
-                  )}
-                >
-                  <link.icon size={22} />
-                  <span>{link.name}</span>
-                </Link>
-              );
-            })}
-          </nav>
+          <SidebarNav
+            entries={doctorSidebarEntries}
+            activeColor="bg-emerald-600"
+            onNavigate={() => setIsSidebarOpen(false)}
+          />
 
           <div className="p-4 border-t border-white/10 shrink-0">
-            <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5">
-              <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-emerald-400 font-bold">
-                DR
+            <div className="flex min-w-0 items-center gap-3 rounded-xl bg-white/5 p-3">
+              <div className="h-10 w-10 shrink-0 rounded-full bg-slate-800 flex items-center justify-center text-emerald-400 font-bold">
+                {doctorDisplayName.slice(0, 2).toUpperCase()}
               </div>
-              <div>
-                <p className="text-sm font-bold">{doctorDisplayName}</p>
-                <p className="text-[10px] text-white/50">{doctorRoleLabel}</p>
+              <div className="min-w-0 flex-1 overflow-hidden">
+                <p className="truncate text-sm font-bold text-white">{doctorDisplayName}</p>
+                <p className="truncate text-[10px] text-white/60">{user?.email || "doctor@clinic.com"}</p>
+                <p className="truncate text-[10px] text-emerald-400 font-semibold">{doctorRoleLabel}</p>
               </div>
             </div>
           </div>
@@ -119,21 +133,15 @@ export default function DoctorLayout({ children }: { children: React.ReactNode }
       </aside>
 
       <main className="flex-1 min-w-0 flex flex-col h-full overflow-hidden">
-        <header className="h-20 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0 z-40">
-          <button onClick={() => setIsSidebarOpen(true)} className="lg:hidden p-2 hover:bg-slate-100 rounded-xl">
-            <Menu size={24} className="text-slate-700" />
-          </button>
-          <div className="flex-1" />
-          <NotificationBell accentClass="bg-emerald-500" viewAllHref="/notifications" />
-          <button
-            onClick={() => setIsLogoutOpen(true)}
-            className="ml-2 inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-            aria-label="Log out"
-          >
-            <LogOut size={16} className="text-slate-500" />
-            <span className="hidden sm:inline">Logout</span>
-          </button>
-        </header>
+        <StaffTopHeader
+          portalSubtitle="DOCTOR HUB"
+          dashboardHref="/doctor/dashboard"
+          accentClass="bg-emerald-500"
+          roleColor="text-emerald-600"
+          settingsHref="/doctor/settings"
+          profileHref="/profile"
+          onLogoutClick={() => setIsLogoutOpen(true)}
+        />
 
         <div className="flex-1 overflow-y-auto p-4 md:p-8 pb-20 md:pb-8">
           {children}
@@ -148,6 +156,7 @@ export default function DoctorLayout({ children }: { children: React.ReactNode }
         ]}
         moreItems={[
           { label: "Appts", href: "/doctor/appointments", icon: Calendar },
+          { label: "Records", href: "/doctor/records", icon: ClipboardList },
           { label: "Reports", href: "/doctor/reports", icon: BarChart3 },
           { label: "Support", href: "/doctor/support", icon: Headphones },
           { label: "Settings", href: "/doctor/settings", icon: Settings2 },

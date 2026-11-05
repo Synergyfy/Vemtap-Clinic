@@ -1,850 +1,485 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
-import { PageHeader } from "@/app/clinic/_components/page-header";
 import { useAuth } from "@/lib/auth-context";
-import {
-  useDashboardOverview,
-  useDashboardRevenue,
-  useDashboardAppointmentAnalytics,
-  useDashboardHMOAnalytics,
-} from "@/hooks/useDashboard";
-import { useQueue } from "@/hooks/useQueue";
-import { useStaff } from "@/hooks/useStaff";
-import { useBranches } from "@/hooks/useBranches";
-import { useCreatePatient } from "@/hooks/usePatients";
-import { toast } from "sonner";
-import {
-  Calendar,
-  Clock,
-  DollarSign,
-  Eye,
-  Users,
-  CheckCircle2,
-  AlertCircle,
-  TrendingUp,
-  Activity,
-  FileText,
-  ShieldCheck,
-  RefreshCw,
-  ArrowUpRight,
-  Filter,
-  Check,
-  XCircle,
-  CalendarDays
-} from "lucide-react";
-import { cn } from "@/lib/utils";
 
-function statusBadge(status: string) {
-  const s = status?.toLowerCase() || "";
-  if (s === "urgent") return <Badge className="bg-rose-600 text-white font-bold">Urgent</Badge>;
-  if (s === "in_progress" || s === "in-progress") return <Badge className="bg-amber-600 text-white font-bold">In progress</Badge>;
-  if (s === "waiting") return <Badge variant="secondary" className="font-bold">Waiting</Badge>;
-  if (s === "completed" || s === "done") return <Badge className="bg-emerald-600 text-white font-bold">Done</Badge>;
-  if (s === "checked-in" || s === "checked_in") return <Badge className="bg-sky-600 text-white font-bold">Checked-in</Badge>;
-  if (s === "scheduled") return <Badge variant="outline" className="font-bold">Scheduled</Badge>;
-  if (s === "cancelled") return <Badge className="bg-slate-200 text-slate-700 font-bold">Cancelled</Badge>;
-  if (s === "no_show" || s === "no-show") return <Badge className="bg-rose-100 text-rose-800 font-bold">No-show</Badge>;
-  if (s === "submitted") return <Badge className="bg-sky-600 text-white font-bold">Submitted</Badge>;
-  if (s === "approved") return <Badge className="bg-emerald-600 text-white font-bold">Approved</Badge>;
-  if (s === "settled") return <Badge className="bg-emerald-700 text-white font-bold">Settled</Badge>;
-  if (s === "denied" || s === "rejected") return <Badge className="bg-rose-600 text-white font-bold">Rejected</Badge>;
-  return <Badge variant="outline" className="font-bold">{status}</Badge>;
-}
-
-function formatNGN(value: number) {
-  return new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 }).format(value || 0);
-}
-
-function computeWaitMinutes(createdAt: string): number {
-  if (!createdAt) return 0;
-  const diff = Date.now() - new Date(createdAt).getTime();
-  return Math.max(0, Math.round(diff / 60000));
-}
-
-function getPatientName(patient: { firstName: string; lastName: string } | undefined): string {
-  if (!patient) return "Unknown Patient";
-  return `${patient.firstName} ${patient.lastName}`;
-}
-
-type DatePreset = "7d" | "14d" | "30d" | "90d" | "custom";
-
-export default function ClinicDashboard() {
+export default function ClinicDashboardPage() {
   const router = useRouter();
   const { user } = useAuth();
-  const clinicId = user?.clinicId || null;
-  const createPatient = useCreatePatient();
-
-  const [isRegisterOpen, setIsRegisterOpen] = useState(false);
-  const [selectedBranchId, setSelectedBranchId] = useState("");
-  const [form, setForm] = useState({
-    firstName: "",
-    lastName: "",
-    phone: "",
-    dateOfBirth: "",
-    gender: "female" as "male" | "female" | "other",
-  });
-  const { data: branches = [] } = useBranches();
-
-  // Date Range Filter
-  const [datePreset, setDatePreset] = useState<DatePreset>("7d");
-  const todayISO = useMemo(() => new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Lagos" }).format(new Date()), []);
-  
-  const [customStartDate, setCustomStartDate] = useState(() => {
-    const d = new Date();
-    d.setDate(d.getDate() - 7);
-    return d.toISOString().split("T")[0];
-  });
-  const [customEndDate, setCustomEndDate] = useState(todayISO);
-
-  const { startDate, endDate } = useMemo(() => {
-    if (datePreset === "custom") {
-      return { startDate: customStartDate, endDate: customEndDate };
-    }
-    const days = datePreset === "7d" ? 7 : datePreset === "14d" ? 14 : datePreset === "30d" ? 30 : 90;
-    const d = new Date();
-    d.setDate(d.getDate() - days);
-    return { startDate: d.toISOString().split("T")[0], endDate: todayISO };
-  }, [datePreset, customStartDate, customEndDate, todayISO]);
-
-  // All 4 Dashboard API hooks
-  const { data: overview, isLoading: overviewLoading, refetch: refetchOverview, isFetching: fetchingOverview } = useDashboardOverview(clinicId);
-  const { data: revenueData = [], isLoading: revenueLoading, refetch: refetchRevenue, isFetching: fetchingRevenue } = useDashboardRevenue(clinicId, startDate, endDate);
-  const { data: appointmentAnalytics, isLoading: aptLoading, refetch: refetchAppointments, isFetching: fetchingAppointments } = useDashboardAppointmentAnalytics(clinicId, startDate, endDate);
-  const { data: hmoAnalytics, isLoading: hmoLoading, refetch: refetchHmo, isFetching: fetchingHmo } = useDashboardHMOAnalytics(clinicId);
-
-  // Queue & Staff
-  const { data: queueResponse } = useQueue({ clinicId: clinicId || undefined, limit: 8 });
-  const { data: staffResponse } = useStaff({ clinicId: clinicId || undefined, isActive: true, limit: 8 });
-
-  const queueEntries = queueResponse?.data || [];
-  const staffList = staffResponse?.data || [];
-
-  const isRefreshing = fetchingOverview || fetchingRevenue || fetchingAppointments || fetchingHmo;
-
-  const handleRefreshAll = () => {
-    refetchOverview();
-    refetchRevenue();
-    refetchAppointments();
-    refetchHmo();
-  };
-
-  React.useEffect(() => {
-    if (branches.length > 0 && !selectedBranchId) {
-      setSelectedBranchId(branches[0].id);
-    }
-  }, [branches, selectedBranchId]);
-
-  const handleCreatePatient = async (event: React.FormEvent) => {
-    event.preventDefault();
-
-    if (!form.firstName.trim() || !form.lastName.trim() || !form.phone.trim()) {
-      toast.error("Please fill in first name, last name, and phone number.");
-      return;
-    }
-
-    if (!form.dateOfBirth) {
-      toast.error("Please enter the patient's date of birth.");
-      return;
-    }
-
-    if (!user?.clinicId) {
-      toast.error("Clinic context is missing. Please sign in again.");
-      return;
-    }
-
-    if (!selectedBranchId) {
-      toast.error("No branch is available for this clinic yet. Create a branch first.");
-      router.push("/clinic/branches");
-      return;
-    }
-
-    try {
-      const createdPatient = await createPatient.mutateAsync({
-        firstName: form.firstName.trim(),
-        lastName: form.lastName.trim(),
-        phone: form.phone.trim(),
-        dateOfBirth: form.dateOfBirth,
-        gender: form.gender,
-        clinicId: user.clinicId,
-        branchId: selectedBranchId,
-      });
-
-      setIsRegisterOpen(false);
-      setForm({ firstName: "", lastName: "", phone: "", dateOfBirth: "", gender: "female" });
-      router.push(`/clinic/patients/${createdPatient.id}`);
-    } catch (error) {
-      console.error("Failed to create patient from dashboard", error);
-    }
-  };
-
-  // Computations for Revenue
-  const maxRevenue = useMemo(() => {
-    if (!revenueData || revenueData.length === 0) return 1;
-    return Math.max(...revenueData.map((r) => Math.max(r.collected || 0, r.billed || 0)), 1);
-  }, [revenueData]);
-
-  const totalRevenueCollected = useMemo(() => {
-    return revenueData.reduce((sum, r) => sum + (r.collected || 0), 0);
-  }, [revenueData]);
-
-  const totalRevenueBilled = useMemo(() => {
-    return revenueData.reduce((sum, r) => sum + (r.billed || 0), 0);
-  }, [revenueData]);
-
-  const collectionRate = useMemo(() => {
-    if (totalRevenueBilled <= 0) return 100;
-    return Math.round((totalRevenueCollected / totalRevenueBilled) * 100);
-  }, [totalRevenueBilled, totalRevenueCollected]);
-
-  const totalRevenueOutstanding = overview?.revenue?.outstanding || 0;
-
-  // Computations for Appointments
-  const totalPeriodAppointments = useMemo(() => {
-    if (!appointmentAnalytics?.byStatus) return 0;
-    return appointmentAnalytics.byStatus.reduce((sum, s) => sum + Number(s.count || 0), 0);
-  }, [appointmentAnalytics]);
-
-  const completedPeriodAppointments = useMemo(() => {
-    const completed = appointmentAnalytics?.byStatus.find((s) => s.status?.toLowerCase() === "completed");
-    return Number(completed?.count || 0);
-  }, [appointmentAnalytics]);
-
-  const appointmentCompletionRate = useMemo(() => {
-    if (totalPeriodAppointments === 0) return 0;
-    return Math.round((completedPeriodAppointments / totalPeriodAppointments) * 100);
-  }, [totalPeriodAppointments, completedPeriodAppointments]);
-
-  // Computations for HMO
-  const hmoTotalClaims = useMemo(() => {
-    if (!hmoAnalytics?.byStatus) return 0;
-    return hmoAnalytics.byStatus.reduce((sum, s) => sum + Number(s.count || 0), 0);
-  }, [hmoAnalytics]);
-
-  const hmoTotalClaimedAmount = useMemo(() => {
-    if (!hmoAnalytics?.byStatus) return 0;
-    return hmoAnalytics.byStatus.reduce((sum, s) => sum + Number(s.totalClaimed || 0), 0);
-  }, [hmoAnalytics]);
-
-  const hmoTotalApprovedAmount = useMemo(() => {
-    if (!hmoAnalytics?.byStatus) return 0;
-    return hmoAnalytics.byStatus.reduce((sum, s) => sum + Number(s.totalApproved || 0), 0);
-  }, [hmoAnalytics]);
-
-  const hmoRecoveryRate = useMemo(() => {
-    if (hmoTotalClaimedAmount === 0) return 0;
-    return Math.round((hmoTotalApprovedAmount / hmoTotalClaimedAmount) * 100);
-  }, [hmoTotalClaimedAmount, hmoTotalApprovedAmount]);
+  const [activeBranch, setActiveBranch] = useState("Victoria Island Hub");
+  const [restocked, setRestocked] = useState(false);
 
   return (
-    <div className="space-y-8 pb-24">
-      <PageHeader
-        title="Clinic Operations & Analytics Hub"
-        description="Comprehensive real-time command center: patient flow, queue throughput, appointment analytics, revenue reports, and HMO recovery."
-        actions={[
-          { label: "Register patient", onClick: () => setIsRegisterOpen(true), variant: "default" },
-          { label: "Book appointment", href: "/clinic/appointments" },
-          { label: "Verify HMO", href: "/clinic/hmo" },
-          { label: "Create invoice", href: "/clinic/finance" },
-        ]}
-      />
+    <div className="min-h-full bg-surface text-on-surface flex flex-col font-sans pb-16">
+      {/* Main Dashboard Workspace */}
+      <main className="flex-1 w-full max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 py-2 sm:py-3.5">
+        <div className="flex flex-col gap-3 sm:gap-4">
+          {/* Operational Date Sub-bar & Primary Check-In */}
+          <section className="bg-surface-container-lowest rounded-xl p-2.5 sm:p-3 shadow-xs border border-surface-container">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+              <div className="flex flex-col">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs sm:text-sm font-bold text-on-surface">Mon, 18 Nov 2024</span>
+                  <span className="bg-surface-container text-on-surface-variant text-[10px] px-2 py-0.2 rounded-full font-semibold">
+                    W47
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <span className="w-2 h-2 rounded-full bg-tertiary animate-pulse"></span>
+                  <span className="text-xs text-tertiary font-bold">Operational</span>
+                  <span className="text-outline-variant text-xs">·</span>
+                  <span className="text-xs text-on-surface-variant">{activeBranch}</span>
+                </div>
+              </div>
 
-      {/* Date Range Selector & Live Controls */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-2xl bg-white border border-slate-200 shadow-sm">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5 mr-1">
-            <Filter size={14} className="text-sky-600" /> Date Filter:
-          </span>
-          {(["7d", "14d", "30d", "90d"] as const).map((preset) => (
-            <button
-              key={preset}
-              onClick={() => setDatePreset(preset)}
-              className={cn(
-                "px-3 py-1.5 text-xs font-bold rounded-xl transition-all",
-                datePreset === preset
-                  ? "bg-sky-600 text-white shadow-sm"
-                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-              )}
-            >
-              Last {preset.replace("d", " Days")}
-            </button>
-          ))}
-          <button
-            onClick={() => setDatePreset("custom")}
-            className={cn(
-              "px-3 py-1.5 text-xs font-bold rounded-xl transition-all",
-              datePreset === "custom"
-                ? "bg-sky-600 text-white shadow-sm"
-                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-            )}
-          >
-            Custom Range
-          </button>
-        </div>
-
-        <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
-          {datePreset === "custom" && (
-            <div className="flex items-center gap-2 text-xs font-bold">
-              <input
-                type="date"
-                value={customStartDate}
-                onChange={(e) => setCustomStartDate(e.target.value)}
-                className="border border-slate-200 rounded-lg px-2.5 py-1 text-xs font-medium"
-              />
-              <span className="text-slate-400">to</span>
-              <input
-                type="date"
-                value={customEndDate}
-                onChange={(e) => setCustomEndDate(e.target.value)}
-                className="border border-slate-200 rounded-lg px-2.5 py-1 text-xs font-medium"
-              />
+              <div className="flex items-center gap-2">
+                <Link
+                  href="/reception/check-in"
+                  className="h-7 sm:h-8 px-2.5 rounded-lg bg-primary hover:bg-primary-hover active:bg-secondary text-on-primary text-xs font-bold shadow-xs transition-transform active:scale-95 flex items-center gap-1"
+                >
+                  <span className="material-symbols-outlined text-[15px] sm:text-[16px]">person_add</span>
+                  <span>+ Check-In</span>
+                </Link>
+                <Link
+                  href="/clinic/queue"
+                  className="h-7 sm:h-8 px-2.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface text-xs font-semibold transition-colors flex items-center gap-1"
+                >
+                  <span className="material-symbols-outlined text-[15px] sm:text-[16px]">schedule</span>
+                  <span>Live Queue</span>
+                </Link>
+              </div>
             </div>
-          )}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleRefreshAll}
-            disabled={isRefreshing}
-            className="rounded-xl font-bold text-xs gap-1.5 border-slate-200 hover:bg-slate-50 shrink-0"
-          >
-            <RefreshCw size={13} className={cn(isRefreshing && "animate-spin text-sky-600")} />
-            {isRefreshing ? "Syncing..." : "Refresh Data"}
-          </Button>
-        </div>
-      </div>
+          </section>
 
-      {isRegisterOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/30 backdrop-blur-sm">
-          <div className="w-full max-w-xl rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl">
-            <div className="mb-5 flex items-center justify-between gap-3">
+          {/* Quick Metrics (4 Cards Across on Desktop) */}
+          <section className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
+            {/* Registered Today */}
+            <div className="bg-surface-container-lowest rounded-xl p-2.5 sm:p-3.5 shadow-xs border border-surface-container flex flex-col justify-between space-y-1.5 sm:space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] sm:text-[11px] text-on-surface-variant font-medium">Registered</span>
+                <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-surface-container flex items-center justify-center text-primary">
+                  <span className="material-symbols-outlined text-[15px]">badge</span>
+                </div>
+              </div>
               <div>
-                <h2 className="text-xl font-bold text-slate-900">Register patient</h2>
-                <p className="text-sm text-slate-500">Create a new patient record for this clinic.</p>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-lg sm:text-2xl font-black text-on-surface">38</span>
+                  <span className="text-[10px] text-tertiary font-bold">+12%</span>
+                </div>
+                <p className="text-[10px] sm:text-[11px] text-on-surface-variant mt-0.5">
+                  Target: 45 patients
+                </p>
               </div>
-              <button
-                type="button"
-                onClick={() => setIsRegisterOpen(false)}
-                className="rounded-full border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
-              >
-                Close
-              </button>
             </div>
 
-            <form onSubmit={handleCreatePatient} className="space-y-4">
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div>
-                  <label className="text-sm font-medium text-slate-700">First name</label>
-                  <input
-                    value={form.firstName}
-                    onChange={(e) => setForm((prev) => ({ ...prev, firstName: e.target.value }))}
-                    className="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none focus:border-sky-300 focus:ring-2 focus:ring-sky-100"
-                    placeholder="e.g., Jane"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-slate-700">Last name</label>
-                  <input
-                    value={form.lastName}
-                    onChange={(e) => setForm((prev) => ({ ...prev, lastName: e.target.value }))}
-                    className="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none focus:border-sky-300 focus:ring-2 focus:ring-sky-100"
-                    placeholder="e.g., Doe"
-                    required
-                  />
+            {/* Waiting in Lounge */}
+            <div className="bg-surface-container-lowest rounded-xl p-2.5 sm:p-3.5 shadow-xs border border-surface-container flex flex-col justify-between space-y-1.5 sm:space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] sm:text-[11px] text-on-surface-variant font-medium">In Lounge</span>
+                <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-error-container text-error flex items-center justify-center">
+                  <span className="material-symbols-outlined text-[15px]">hourglass_top</span>
                 </div>
               </div>
-
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div>
-                  <label className="text-sm font-medium text-slate-700">Phone</label>
-                  <input
-                    value={form.phone}
-                    onChange={(e) => setForm((prev) => ({ ...prev, phone: e.target.value }))}
-                    className="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none focus:border-sky-300 focus:ring-2 focus:ring-sky-100"
-                    placeholder="e.g., 0803 555 0192"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-slate-700">Date of birth</label>
-                  <input
-                    type="date"
-                    value={form.dateOfBirth}
-                    onChange={(e) => setForm((prev) => ({ ...prev, dateOfBirth: e.target.value }))}
-                    className="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none focus:border-sky-300 focus:ring-2 focus:ring-sky-100"
-                    required
-                  />
-                </div>
-              </div>
-
               <div>
-                <label className="text-sm font-medium text-slate-700">Gender</label>
-                <select
-                  value={form.gender}
-                  onChange={(e) => setForm((prev) => ({ ...prev, gender: e.target.value as "female" | "male" | "other" }))}
-                  className="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none focus:border-sky-300 focus:ring-2 focus:ring-sky-100"
-                >
-                  <option value="female">Female</option>
-                  <option value="male">Male</option>
-                  <option value="other">Other</option>
-                </select>
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setIsRegisterOpen(false)}
-                  className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-5 py-2.5 text-sm font-medium text-slate-900 hover:bg-slate-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={createPatient.isPending}
-                  className="inline-flex items-center justify-center rounded-full bg-sky-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-sky-700 disabled:opacity-50"
-                >
-                  {createPatient.isPending ? "Creating..." : "Create patient"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* 1. CLINIC DASHBOARD OVERVIEW (GET /api/dashboard) */}
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-        {/* Total Patients Today */}
-        <Card className="rounded-2xl shadow-sm border-slate-200 hover:shadow-md transition-shadow">
-          <CardContent className="p-5 flex items-center justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Today&apos;s Patients</p>
-              <p className="mt-1 text-2xl font-black text-slate-900 tabular-nums">
-                {overviewLoading ? "—" : overview?.patients?.total ?? 0}
-              </p>
-              {overview?.patients?.newToday !== undefined && (
-                <div className="mt-1 flex items-center gap-1 text-[11px] font-bold text-emerald-600">
-                  <ArrowUpRight size={13} />
-                  <span>+{overview.patients.newToday} new registered</span>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-lg sm:text-2xl font-black text-on-surface">7</span>
+                  <span className="bg-error-container text-on-error-container text-[9px] px-1.5 py-0.2 rounded-full font-bold">
+                    1 Urgent
+                  </span>
                 </div>
-              )}
-            </div>
-            <div className="p-3 rounded-2xl bg-sky-50 text-sky-600 shrink-0">
-              <Users size={22} />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Appointments Today */}
-        <Card className="rounded-2xl shadow-sm border-slate-200 hover:shadow-md transition-shadow">
-          <CardContent className="p-5 flex items-center justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Today&apos;s Appointments</p>
-              <p className="mt-1 text-2xl font-black text-slate-900 tabular-nums">
-                {overviewLoading ? "—" : overview?.appointments?.today ?? 0}
-              </p>
-              <div className="mt-1 flex items-center gap-1 text-[11px] font-bold text-slate-500">
-                <CheckCircle2 size={13} className="text-emerald-500" />
-                <span>{overview?.appointments?.completed ?? 0} completed</span>
+                <p className="text-[10px] sm:text-[11px] text-on-surface-variant mt-0.5">Avg wait: 14m</p>
               </div>
             </div>
-            <div className="p-3 rounded-2xl bg-indigo-50 text-indigo-600 shrink-0">
-              <Calendar size={22} />
-            </div>
-          </CardContent>
-        </Card>
 
-        {/* Active Queue */}
-        <Card className="rounded-2xl shadow-sm border-slate-200 hover:shadow-md transition-shadow">
-          <CardContent className="p-5 flex items-center justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Active Patient Queue</p>
-              <p className="mt-1 text-2xl font-black text-amber-600 tabular-nums">
-                {overviewLoading ? "—" : (overview?.queue?.waiting ?? 0) + (overview?.queue?.inProgress ?? 0)}
-              </p>
-              <div className="mt-1 flex items-center gap-2 text-[11px] font-bold text-slate-500">
-                <span className="text-amber-600">{overview?.queue?.waiting ?? 0} waiting</span>
-                <span>•</span>
-                <span className="text-sky-600">{overview?.queue?.inProgress ?? 0} in consult</span>
-              </div>
-            </div>
-            <div className="p-3 rounded-2xl bg-amber-50 text-amber-600 shrink-0">
-              <Clock size={22} />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Revenue Collected Today */}
-        <Card className="rounded-2xl shadow-sm border-slate-200 hover:shadow-md transition-shadow">
-          <CardContent className="p-5 flex items-center justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Today&apos;s Revenue</p>
-              <p className="mt-1 text-2xl font-black text-emerald-600 tabular-nums truncate">
-                {overviewLoading ? "—" : formatNGN(overview?.revenue?.today ?? 0)}
-              </p>
-              <div className="mt-1 flex items-center gap-1 text-[11px] font-bold text-rose-500">
-                <span>{formatNGN(overview?.revenue?.outstanding ?? 0)} unbilled/bal</span>
-              </div>
-            </div>
-            <div className="p-3 rounded-2xl bg-emerald-50 text-emerald-600 shrink-0">
-              <DollarSign size={22} />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* 2. REVENUE REPORT BY DATE RANGE (GET /api/dashboard/revenue) */}
-      <Card className="rounded-2xl shadow-sm border-slate-200">
-        <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-4 border-b border-slate-100 gap-3">
-          <div>
-            <CardTitle className="text-base font-bold flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-emerald-600" />
-              Revenue Performance ({startDate} to {endDate})
-            </CardTitle>
-            <p className="text-xs text-slate-400 mt-0.5">Aggregated billing, daily collections, and outstanding invoice balances.</p>
-          </div>
-          <Link href="/clinic/finance" className="text-xs font-bold text-sky-600 hover:text-sky-700 self-start sm:self-auto">
-            View Financial Ledger &rarr;
-          </Link>
-        </CardHeader>
-        <CardContent className="pt-6 space-y-6">
-          {/* Revenue Summary KPI Row */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Total Billed</span>
-              <p className="text-lg font-black text-slate-900 mt-0.5">{formatNGN(totalRevenueBilled)}</p>
-            </div>
-            <div className="p-4 rounded-xl bg-emerald-50/60 border border-emerald-200">
-              <span className="text-[10px] font-black text-emerald-700 uppercase tracking-wider">Total Collected</span>
-              <p className="text-lg font-black text-emerald-700 mt-0.5">{formatNGN(totalRevenueCollected)}</p>
-            </div>
-            <div className="p-4 rounded-xl bg-rose-50/60 border border-rose-200">
-              <span className="text-[10px] font-black text-rose-700 uppercase tracking-wider">Outstanding Balance</span>
-              <p className="text-lg font-black text-rose-700 mt-0.5">{formatNGN(totalRevenueOutstanding)}</p>
-            </div>
-            <div className="p-4 rounded-xl bg-sky-50/60 border border-sky-200">
-              <span className="text-[10px] font-black text-sky-700 uppercase tracking-wider">Collection Efficiency</span>
-              <p className="text-lg font-black text-sky-800 mt-0.5">{collectionRate}%</p>
-            </div>
-          </div>
-
-          {/* Revenue Chart Visualizer */}
-          <div>
-            <p className="text-xs font-bold text-slate-500 mb-3 uppercase tracking-wider">Daily Trend</p>
-            {revenueLoading ? (
-              <div className="h-36 flex items-center justify-center text-xs text-slate-400 animate-pulse">
-                Loading revenue trend...
-              </div>
-            ) : revenueData.length === 0 ? (
-              <div className="h-36 flex items-center justify-center text-xs text-slate-400 bg-slate-50 rounded-xl">
-                No revenue transactions recorded between {startDate} and {endDate}.
-              </div>
-            ) : (
-              <div className="overflow-x-auto pb-2">
-                <div className="flex items-end gap-3 min-w-[500px] h-40 pt-4 px-2">
-                  {revenueData.map((r) => {
-                    const dateObj = new Date(r.date);
-                    const label = dateObj.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-                    const collectedHeight = Math.max(8, Math.round(((r.collected || 0) / maxRevenue) * 100));
-                    const billedHeight = Math.max(8, Math.round(((r.billed || 0) / maxRevenue) * 100));
-                    return (
-                      <div key={r.date} className="flex-1 flex flex-col items-center gap-2 group min-w-[36px]">
-                        <div className="w-full flex items-end justify-center gap-1 h-28 relative">
-                          {/* Billed bar */}
-                          <div
-                            style={{ height: `${billedHeight}%` }}
-                            className="w-1/2 bg-slate-200 rounded-t-sm group-hover:bg-slate-300 transition-all"
-                            title={`Billed: ${formatNGN(r.billed)}`}
-                          />
-                          {/* Collected bar */}
-                          <div
-                            style={{ height: `${collectedHeight}%` }}
-                            className="w-1/2 bg-emerald-600 rounded-t-sm group-hover:bg-emerald-500 transition-all shadow-sm"
-                            title={`Collected: ${formatNGN(r.collected)}`}
-                          />
-                        </div>
-                        <span className="text-[10px] font-bold text-slate-500 truncate w-full text-center">{label}</span>
-                      </div>
-                    );
-                  })}
+            {/* Consultations */}
+            <div className="bg-surface-container-lowest rounded-xl p-2.5 sm:p-3.5 shadow-xs border border-surface-container flex flex-col justify-between space-y-1.5 sm:space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] sm:text-[11px] text-on-surface-variant font-medium">Consultations</span>
+                <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-surface-container flex items-center justify-center text-secondary">
+                  <span className="material-symbols-outlined text-[15px]">visibility</span>
                 </div>
-                <div className="flex items-center justify-center gap-6 mt-3 text-xs font-bold text-slate-500">
+              </div>
+              <div>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-lg sm:text-2xl font-black text-on-surface">24</span>
+                  <span className="text-[9px] text-on-surface-variant font-bold bg-surface-container px-1.5 py-0.2 rounded-full">
+                    Done
+                  </span>
+                </div>
+                <p className="text-[10px] sm:text-[11px] text-on-surface-variant mt-0.5 truncate">
+                  6 in session
+                </p>
+              </div>
+            </div>
+
+            {/* Today's Revenue */}
+            <div className="bg-surface-container-lowest rounded-xl p-2.5 sm:p-3.5 shadow-xs border border-surface-container flex flex-col justify-between space-y-1.5 sm:space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] sm:text-[11px] text-on-surface-variant font-medium">Today's Total</span>
+                <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-surface-container flex items-center justify-center text-primary">
+                  <span className="material-symbols-outlined text-[15px]">payments</span>
+                </div>
+              </div>
+              <div>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-lg sm:text-2xl font-black text-on-surface">₦1.85M</span>
+                </div>
+                <div className="flex items-center justify-between text-on-surface-variant text-[10px] sm:text-[11px] mt-0.5 font-semibold">
+                  <span className="text-primary font-bold">HMO 66%</span>
+                  <span>Cash 34%</span>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* Middle Row: Payer Distribution & Optical Lab Pipeline (50/50 on Desktop) */}
+          <section className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
+            {/* Payer Breakdown */}
+            <div className="bg-surface-container-lowest rounded-xl p-3 sm:p-3.5 shadow-xs border border-surface-container flex flex-col justify-between gap-2.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-primary text-[17px]">
+                    health_and_safety
+                  </span>
+                  <h2 className="text-xs sm:text-sm font-bold text-on-surface">Payer Distribution</h2>
+                </div>
+                <span className="text-[10px] text-on-surface-variant bg-surface-container px-2 py-0.5 rounded-full font-semibold">
+                  AXA · Reliance · Hygeia
+                </span>
+              </div>
+
+              {/* Ratio Bar */}
+              <div className="space-y-1.5">
+                <div className="h-2.5 w-full bg-surface-container rounded-full overflow-hidden flex">
+                  <div className="bg-primary h-full transition-all duration-500" style={{ width: "64%" }} />
+                  <div className="bg-secondary-container h-full transition-all duration-500" style={{ width: "36%" }} />
+                </div>
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="text-primary flex items-center gap-1 font-bold">
+                    <span className="w-2 h-2 rounded-full bg-primary inline-block"></span>
+                    64% HMO (₦1.22M)
+                  </span>
+                  <span className="text-on-surface-variant flex items-center gap-1 font-semibold">
+                    <span className="w-2 h-2 rounded-full bg-secondary-container inline-block"></span>
+                    36% Private (₦625K)
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Optical Lab Pipeline */}
+            <div className="bg-surface-container-lowest rounded-xl p-3 sm:p-3.5 shadow-xs border border-surface-container flex flex-col justify-between gap-2.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-secondary text-[17px]">
+                    eyeglasses
+                  </span>
+                  <h2 className="text-xs sm:text-sm font-bold text-on-surface">Optical Lab Pipeline</h2>
+                </div>
+                <span className="bg-surface-container px-2 py-0.5 rounded-full text-on-surface font-bold text-[10px]">
+                  14 Active Jobs
+                </span>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2">
+                <div className="bg-surface-container-low rounded-lg p-2 text-center flex flex-col justify-center border border-surface-container">
+                  <span className="text-[10px] text-on-surface-variant font-medium">Surfacing</span>
+                  <span className="text-sm sm:text-base font-black text-on-surface mt-0.5">4</span>
+                  <span className="text-[9px] text-outline mt-0.5">Lathe / Polish</span>
+                </div>
+                <div className="bg-surface-container-low rounded-lg p-2 text-center flex flex-col justify-center border border-surface-container">
+                  <span className="text-[10px] text-on-surface-variant font-medium">Verification</span>
+                  <span className="text-sm sm:text-base font-black text-on-surface mt-0.5">5</span>
+                  <span className="text-[9px] text-outline mt-0.5">Lensometry</span>
+                </div>
+                <div className="bg-surface-container-high rounded-lg p-2 text-center flex flex-col justify-center text-tertiary border border-tertiary/20">
+                  <span className="text-[10px] text-tertiary font-bold">Ready</span>
+                  <span className="text-sm sm:text-base font-black mt-0.5 text-tertiary">5</span>
+                  <span className="text-[9px] text-tertiary mt-0.5 font-semibold">SMS Sent</span>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* Bottom Section: Split 2 Columns on Desktop */}
+          <section className="grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-4 items-start">
+            {/* Left Column (7 cols): Live Patient Flow & Equipment Alerts */}
+            <div className="lg:col-span-7 flex flex-col gap-3 sm:gap-4">
+              {/* Live Patient Flow */}
+              <div className="bg-surface-container-lowest rounded-xl p-3 sm:p-3.5 shadow-xs border border-surface-container space-y-2.5">
+                <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5">
-                    <div className="w-3 h-3 rounded-sm bg-slate-300" />
-                    <span>Invoiced / Billed</span>
+                    <span className="material-symbols-outlined text-primary text-[17px]">
+                      transfer_within_a_station
+                    </span>
+                    <h2 className="text-xs sm:text-sm font-bold text-on-surface">Live Patient Flow</h2>
                   </div>
-                  <div className="flex items-center gap-1.5">
-                    <div className="w-3 h-3 rounded-sm bg-emerald-600" />
-                    <span>Cash Collected</span>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* 3. APPOINTMENT ANALYTICS (GET /api/dashboard/appointments) & 4. HMO CLAIMS (GET /api/dashboard/hmo) */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Appointment Analytics Card */}
-        <Card className="rounded-2xl shadow-sm border-slate-200">
-          <CardHeader className="flex flex-row items-center justify-between pb-4 border-b border-slate-100">
-            <div>
-              <CardTitle className="text-base font-bold flex items-center gap-2">
-                <CalendarDays className="h-5 w-5 text-indigo-600" />
-                Appointment Analytics
-              </CardTitle>
-              <p className="text-xs text-slate-400 mt-0.5">Status & service distribution for selected period ({startDate} to {endDate})</p>
-            </div>
-            <Badge className="bg-indigo-50 text-indigo-700 border-indigo-200 font-bold">
-              {appointmentCompletionRate}% Completion
-            </Badge>
-          </CardHeader>
-          <CardContent className="pt-6 space-y-6">
-            {aptLoading ? (
-              <p className="text-xs text-slate-400 text-center py-8">Loading appointment analytics...</p>
-            ) : totalPeriodAppointments === 0 ? (
-              <p className="text-xs text-slate-400 text-center py-8">No appointments scheduled for this date range.</p>
-            ) : (
-              <>
-                {/* By Status */}
-                <div>
-                  <h4 className="text-xs font-black text-slate-400 uppercase tracking-wider mb-3">Status Breakdown</h4>
-                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                    {appointmentAnalytics?.byStatus.map((s) => (
-                      <div key={s.status} className="p-3 rounded-xl bg-slate-50 border border-slate-200">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold capitalize text-slate-700">{s.status.replace(/_/g, " ")}</span>
-                          <span className="text-sm font-black text-slate-900">{s.count}</span>
-                        </div>
-                        <div className="w-full bg-slate-200 h-1.5 rounded-full mt-2 overflow-hidden">
-                          <div
-                            className={cn(
-                              "h-full rounded-full",
-                              s.status === "completed" ? "bg-emerald-500" :
-                              s.status === "cancelled" ? "bg-rose-500" :
-                              s.status === "in_progress" ? "bg-amber-500" : "bg-sky-500"
-                            )}
-                            style={{ width: `${Math.min(100, Math.round((Number(s.count) / totalPeriodAppointments) * 100))}%` }}
-                          />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* By Type */}
-                {appointmentAnalytics?.byType && appointmentAnalytics.byType.length > 0 && (
-                  <div>
-                    <h4 className="text-xs font-black text-slate-400 uppercase tracking-wider mb-3">Service Type Mix</h4>
-                    <div className="space-y-2">
-                      {appointmentAnalytics.byType.map((t) => {
-                        const countNum = Number(t.count || 0);
-                        const pct = totalPeriodAppointments > 0 ? Math.round((countNum / totalPeriodAppointments) * 100) : 0;
-                        return (
-                          <div key={t.type} className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs">
-                            <span className="font-bold text-slate-800 capitalize">{t.type.replace(/_/g, " ")}</span>
-                            <div className="flex items-center gap-3">
-                              <span className="font-semibold text-slate-500">{pct}%</span>
-                              <span className="font-black text-slate-900 tabular-nums">{countNum} visits</span>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* HMO Claims Analytics Card */}
-        <Card className="rounded-2xl shadow-sm border-slate-200">
-          <CardHeader className="flex flex-row items-center justify-between pb-4 border-b border-slate-100">
-            <div>
-              <CardTitle className="text-base font-bold flex items-center gap-2">
-                <ShieldCheck className="h-5 w-5 text-sky-600" />
-                HMO Claims Analytics
-              </CardTitle>
-              <p className="text-xs text-slate-400 mt-0.5">Insurance claim status, approvals, and recovery rates</p>
-            </div>
-            <Link href="/clinic/hmo" className="text-xs font-bold text-sky-600 hover:text-sky-700">
-              HMO Hub &rarr;
-            </Link>
-          </CardHeader>
-          <CardContent className="pt-6 space-y-6">
-            {hmoLoading ? (
-              <p className="text-xs text-slate-400 text-center py-8">Loading HMO analytics...</p>
-            ) : hmoTotalClaims === 0 ? (
-              <p className="text-xs text-slate-400 text-center py-8">No HMO claims recorded yet.</p>
-            ) : (
-              <>
-                <div className="grid grid-cols-3 gap-2">
-                  <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
-                    <span className="text-[10px] font-black text-slate-400 uppercase">Total Claims</span>
-                    <p className="text-base font-black text-slate-900 mt-0.5">{hmoTotalClaims}</p>
-                  </div>
-                  <div className="p-3 rounded-xl bg-sky-50 border border-sky-200">
-                    <span className="text-[10px] font-black text-sky-700 uppercase">Claimed</span>
-                    <p className="text-base font-black text-sky-800 mt-0.5">{formatNGN(hmoTotalClaimedAmount)}</p>
-                  </div>
-                  <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200">
-                    <span className="text-[10px] font-black text-emerald-700 uppercase">Approved</span>
-                    <p className="text-base font-black text-emerald-800 mt-0.5">{formatNGN(hmoTotalApprovedAmount)}</p>
-                  </div>
+                  <span className="text-[10px] text-on-surface-variant font-medium">Real-time status</span>
                 </div>
 
                 <div className="space-y-2">
-                  <h4 className="text-xs font-black text-slate-400 uppercase tracking-wider mb-2">Claim Lifecycle Status</h4>
-                  {hmoAnalytics?.byStatus?.map((s) => (
-                    <div key={s.status} className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs">
-                      <div className="flex items-center gap-2">
-                        {statusBadge(s.status)}
-                        <span className="text-slate-500 font-semibold">{s.count} claims</span>
-                      </div>
-                      <div className="text-right">
-                        <span className="font-black text-slate-900 block tabular-nums">
-                          {formatNGN(Number(s.totalClaimed || 0))}
-                        </span>
-                        {Number(s.totalApproved || 0) > 0 && (
-                          <span className="text-[10px] font-bold text-emerald-600 block">
-                            Appr: {formatNGN(Number(s.totalApproved))}
+                  {/* Urgent Triage Card (Emergency emphasis) */}
+                  <div className="bg-error-container text-on-error-container rounded-lg p-2.5 sm:p-3 shadow-xs border border-error/20 relative overflow-hidden">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="space-y-0.5">
+                        <div className="flex items-center gap-1.5">
+                          <span className="bg-error text-on-error text-[9px] px-2 py-0.2 rounded-full flex items-center gap-1 font-bold">
+                            <span className="material-symbols-outlined text-[12px]">warning</span> URGENT TRIAGE
                           </span>
-                        )}
+                          <span className="text-[10px] text-error font-bold">11:20 AM</span>
+                        </div>
+                        <div className="text-xs sm:text-sm font-bold pt-0.5 text-on-error-container">
+                          Miss Kanyinsola Adeleke
+                        </div>
+                        <div className="text-[11px] font-medium text-on-error-container/90">
+                          VI-2024-8933 · Corneal Foreign Body (Left Eye)
+                        </div>
+                      </div>
+                      <div className="bg-surface-container-lowest text-error px-2 py-1 rounded-md text-[10px] font-bold shadow-xs shrink-0">
+                        Vitals Bay
                       </div>
                     </div>
-                  ))}
-                </div>
-              </>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* 5. CLINIC OPERATIONAL SUMMARY (Queue, Staff & Critical Alerts) */}
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-        {/* Queue Overview */}
-        <Card className="lg:col-span-2 rounded-2xl shadow-sm border-slate-200">
-          <CardHeader className="flex flex-row items-center justify-between pb-4 border-b border-slate-100">
-            <div>
-              <CardTitle className="text-base font-bold">Live Patient Queue</CardTitle>
-              <p className="text-xs text-slate-400 mt-0.5">Real-time patient progression across consult stations</p>
-            </div>
-            <Link href="/clinic/queue" className="text-xs font-bold text-sky-600 hover:text-sky-700">
-              Manage Queue &rarr;
-            </Link>
-          </CardHeader>
-          <CardContent className="pt-4">
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader className="bg-slate-50">
-                  <TableRow>
-                    <TableHead className="font-bold">Patient</TableHead>
-                    <TableHead className="font-bold">Station</TableHead>
-                    <TableHead className="font-bold">Priority</TableHead>
-                    <TableHead className="font-bold">Wait Time</TableHead>
-                    <TableHead className="font-bold">Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {queueEntries.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={5} className="text-center text-slate-400 py-6">
-                        No patients currently in queue.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    queueEntries.map((q) => (
-                      <TableRow key={q.id}>
-                        <TableCell className="font-bold text-slate-900">{getPatientName(q.patient)}</TableCell>
-                        <TableCell className="font-medium text-slate-600">{q.station || "Triage / Unassigned"}</TableCell>
-                        <TableCell>{statusBadge(q.priority || "Normal")}</TableCell>
-                        <TableCell className="tabular-nums font-bold text-slate-700">{computeWaitMinutes(q.createdAt)}m</TableCell>
-                        <TableCell>{statusBadge(q.status)}</TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Staff & Critical Alerts */}
-        <div className="space-y-6">
-          {/* Critical Operational Alerts */}
-          <Card className="rounded-2xl shadow-sm border-slate-200">
-            <CardHeader className="pb-3 border-b border-slate-100">
-              <CardTitle className="text-base font-bold flex items-center gap-2">
-                <AlertCircle className="h-5 w-5 text-amber-500" />
-                Clinic Alerts
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-4 space-y-2.5">
-              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-bold text-slate-900">Pharmacy Low Stock</p>
-                  <p className="text-[11px] text-slate-500 mt-0.5">Drugs below threshold</p>
-                </div>
-                <Badge className={overview?.pharmacy?.lowStock ? "bg-rose-600 text-white" : "bg-emerald-600 text-white"}>
-                  {overview?.pharmacy?.lowStock ?? 0} items
-                </Badge>
-              </div>
-
-              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-bold text-slate-900">Pending HMO Claims</p>
-                  <p className="text-[11px] text-slate-500 mt-0.5">Awaiting submission/review</p>
-                </div>
-                <Badge className={overview?.hmo?.pendingClaims ? "bg-amber-600 text-white" : "bg-slate-200 text-slate-700"}>
-                  {overview?.hmo?.pendingClaims ?? 0} claims
-                </Badge>
-              </div>
-
-              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-bold text-slate-900">Queue Waiting</p>
-                  <p className="text-[11px] text-slate-500 mt-0.5">Patients in waiting lounge</p>
-                </div>
-                <Badge className={overview?.queue?.waiting ? "bg-sky-600 text-white" : "bg-slate-200 text-slate-700"}>
-                  {overview?.queue?.waiting ?? 0} patients
-                </Badge>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Staff on Duty */}
-          <Card className="rounded-2xl shadow-sm border-slate-200">
-            <CardHeader className="flex flex-row items-center justify-between pb-3 border-b border-slate-100">
-              <CardTitle className="text-base font-bold">Staff On Duty</CardTitle>
-              <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 font-bold">
-                {overview?.staff?.onDuty ?? staffList.length} Active
-              </Badge>
-            </CardHeader>
-            <CardContent className="pt-4 space-y-2">
-              {staffList.length === 0 ? (
-                <p className="text-xs text-slate-400 text-center py-4">No staff roster active.</p>
-              ) : (
-                staffList.slice(0, 5).map((s) => (
-                  <div key={s.id} className="flex items-center justify-between p-2 rounded-xl hover:bg-slate-50 text-xs">
-                    <div>
-                      <p className="font-bold text-slate-900">{s.firstName} {s.lastName}</p>
-                      <p className="text-slate-400 capitalize">{s.role}</p>
-                    </div>
-                    <Badge className="bg-emerald-600 text-white text-[10px]">On duty</Badge>
                   </div>
-                ))
-              )}
-            </CardContent>
-          </Card>
+
+                  {/* In Consultation Card */}
+                  <div className="bg-surface-container-low rounded-lg p-2.5 shadow-xs border border-surface-container flex items-center justify-between">
+                    <div className="space-y-0.5 min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-bold text-on-surface truncate">
+                          Engr. Babatunde Adeleke
+                        </span>
+                        <span className="text-on-surface-variant text-[11px]">· VI-2024-8841</span>
+                      </div>
+                      <p className="text-[11px] text-on-surface-variant truncate">
+                        Dr. Okafor · Comprehensive Glaucoma Review
+                      </p>
+                    </div>
+                    <div className="flex flex-col items-end shrink-0 ml-2">
+                      <span className="bg-surface-container text-primary text-[10px] px-2 py-0.2 rounded-full font-bold">
+                        Room 2
+                      </span>
+                      <span className="text-outline mt-0.5 text-[9px]">11:42 AM</span>
+                    </div>
+                  </div>
+
+                  {/* Dilating Station Card */}
+                  <div className="bg-surface-container-low rounded-lg p-2.5 shadow-xs border border-surface-container flex items-center justify-between">
+                    <div className="space-y-0.5 min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-bold text-on-surface truncate">
+                          Mrs. Oluremi Ogundipe
+                        </span>
+                        <span className="text-on-surface-variant text-[11px]">· VI-2024-8902</span>
+                      </div>
+                      <p className="text-[11px] text-on-surface-variant truncate">
+                        Mydriasis drop admin (Tropicamide 1%)
+                      </p>
+                    </div>
+                    <div className="flex flex-col items-end shrink-0 ml-2">
+                      <span className="bg-surface-container text-on-surface-variant text-[10px] px-2 py-0.2 rounded-full font-bold">
+                        Dilating Bay
+                      </span>
+                      <span className="text-outline mt-0.5 text-[9px]">11:35 AM</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Clinic Urgent Alerts */}
+              <div className="bg-surface-container-lowest rounded-xl p-3 sm:p-3.5 shadow-xs border border-surface-container space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-error text-[17px]">
+                      notifications_active
+                    </span>
+                    <h2 className="text-xs sm:text-sm font-bold text-on-surface">Equipment & Pharmacy Alerts</h2>
+                  </div>
+                  <span className="bg-error-container text-on-error-container text-[10px] px-2 py-0.2 rounded-full font-bold">
+                    2 Action Required
+                  </span>
+                </div>
+
+                <div className="space-y-2">
+                  {/* Calibration Alert */}
+                  <div className="bg-surface-container-low rounded-lg p-2.5 shadow-xs border border-surface-container flex items-start gap-2.5">
+                    <div className="w-7 h-7 rounded-lg bg-surface-container flex items-center justify-center text-primary shrink-0 mt-0.5">
+                      <span className="material-symbols-outlined text-[16px]">biotech</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-on-surface">
+                          Slit Lamp 2 Calibration
+                        </span>
+                        <span className="text-outline text-[10px]">Tomorrow 09:00</span>
+                      </div>
+                      <p className="text-[11px] text-on-surface-variant mt-0.5">
+                        Optovision Biomedical scheduled for diagnostic recalibration.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Low Dispensary Inventory */}
+                  <div className="bg-surface-container-low rounded-lg p-2.5 shadow-xs border border-surface-container flex items-center justify-between gap-2.5">
+                    <div className="flex items-start gap-2.5 min-w-0">
+                      <div className="w-7 h-7 rounded-lg bg-error-container text-error flex items-center justify-center shrink-0 mt-0.5">
+                        <span className="material-symbols-outlined text-[16px]">medication</span>
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-xs font-bold text-on-surface truncate">
+                          Low Dispensary Inventory
+                        </div>
+                        <p className="text-[11px] text-on-surface-variant truncate">
+                          Ciprofloxacin 0.3% Eye Drops
+                        </p>
+                        <span className="text-error font-bold text-[10px]">
+                          {restocked ? "15 units restocked" : "4 units remaining"}
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setRestocked(true)}
+                      className="h-7 px-2.5 rounded-lg bg-primary text-on-primary hover:bg-primary-hover font-bold shadow-xs shrink-0 transition-transform active:scale-95 text-[11px]"
+                    >
+                      {restocked ? "Restocked ✓" : "Restock"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Column (5 cols): Staff on Duty Roster */}
+            <div className="lg:col-span-5 flex flex-col gap-3 sm:gap-4">
+              <div className="bg-surface-container-lowest rounded-xl p-3 sm:p-3.5 shadow-xs border border-surface-container space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xs sm:text-sm font-bold text-on-surface">Staff on Duty</h2>
+                  <span className="text-[11px] text-primary font-bold">VI Hub Roster</span>
+                </div>
+
+                <div className="space-y-2">
+                  {/* Dr. Amara Okafor */}
+                  <div className="bg-surface-container-low rounded-lg p-2 shadow-xs border border-surface-container flex items-center justify-between">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="relative w-8 h-8 rounded-full overflow-hidden shrink-0 bg-surface-container border border-surface-container-high">
+                        <img
+                          src="https://lh3.googleusercontent.com/aida-public/AB6AXuDEXcHmhw_TXs1PxYtcYUG5olnLMgo5Ty_Vt06Z4lYkEUHgTIdWGzP8soUW_eRsjvpqIJvmr-_TQXOlfj_HX85BuAJuMNNA8Y_sIpZzZlQb0lGb48FPxmZylZkHTpuayMP6TmxD2b0FKJLj846RAoTpczC8o2jMkEYeLfhueijJyp7m2lqv2fPQl_4ShcnIf2cbtnkblfgNv7oqkzQK_pMloSJCCTf7-i8R-r6r7uox"
+                          alt="Dr. Amara Okafor"
+                          className="w-full h-full object-cover"
+                        />
+                        <span className="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-secondary ring-1 ring-surface-container-lowest"></span>
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-xs font-bold text-on-surface truncate">
+                          Dr. Amara Okafor
+                        </div>
+                        <div className="text-[10px] text-on-surface-variant truncate">
+                          Consultant Optometrist
+                        </div>
+                      </div>
+                    </div>
+                    <span className="bg-surface-container text-on-surface-variant text-[10px] px-2 py-0.5 rounded-full whitespace-nowrap font-medium">
+                      Exam Rm 1 · In Session
+                    </span>
+                  </div>
+
+                  {/* Dr. Babatunde Jinadu */}
+                  <div className="bg-surface-container-low rounded-lg p-2 shadow-xs border border-surface-container flex items-center justify-between">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="relative w-8 h-8 rounded-full overflow-hidden shrink-0 bg-surface-container border border-surface-container-high">
+                        <img
+                          src="https://lh3.googleusercontent.com/aida-public/AB6AXuC3Cy0eTwyFLyUG5jUjYkrlEN6XiZd49Pql_29yBjyvW7WDVXmwejp5iUzCTFlLHrkyCEcPWW3NbGU8Ufv-xNIAuCXRt8hdBQ8lcIZmsQonnoiQ6bZd8aGSxTRBaF-6u6Qg83Lyr24soGzKGqF7Dgq0T5fgOUrejA_i0AvB2iYr3QqNLvxLQwmyqDJLDixXdF4qt90ay1HoqEt4_amM-IPQ_UeDAOmggK5UWdGTerXS"
+                          alt="Dr. Babatunde Jinadu"
+                          className="w-full h-full object-cover"
+                        />
+                        <span className="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-secondary ring-1 ring-surface-container-lowest"></span>
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-xs font-bold text-on-surface truncate">
+                          Dr. Babatunde Jinadu
+                        </div>
+                        <div className="text-[10px] text-on-surface-variant truncate">
+                          Refraction Specialist
+                        </div>
+                      </div>
+                    </div>
+                    <span className="bg-surface-container text-on-surface-variant text-[10px] px-2 py-0.5 rounded-full whitespace-nowrap font-medium">
+                      Refraction 2 · In Session
+                    </span>
+                  </div>
+
+                  {/* Nurse Folake Ade */}
+                  <div className="bg-surface-container-low rounded-lg p-2 shadow-xs border border-surface-container flex items-center justify-between">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="relative w-8 h-8 rounded-full overflow-hidden shrink-0 bg-surface-container border border-surface-container-high">
+                        <img
+                          src="https://lh3.googleusercontent.com/aida-public/AB6AXuA7q6dH6m5nSDpUHVfphNjEtZw4FN-C74CPP8VwB9hVVpkbSCsos3aDO3N8Hpimd2kic7YXd9Wg0f2XXUXzX_Oo0nZ6OYRb0A6Yfsr23GSs07zs85ePe_f3Q-mkJq1a8zgLFZL80GGsrH6J5BAnlQdnvB3hHVKDG8u_ap4PHAcp8gn5DmxcEzoZ5HcJHEGkea4VLnCWvCuUr2XxKw4OhwwbqqAEoSu-GEY7CzDNimvI"
+                          alt="Nurse Folake Ade"
+                          className="w-full h-full object-cover"
+                        />
+                        <span className="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-tertiary ring-1 ring-surface-container-lowest"></span>
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-xs font-bold text-on-surface truncate">
+                          Nurse Folake Ade
+                        </div>
+                        <div className="text-[10px] text-on-surface-variant truncate">
+                          Ophthalmic Triage Lead
+                        </div>
+                      </div>
+                    </div>
+                    <span className="bg-surface-container-high text-tertiary text-[10px] px-2 py-0.5 rounded-full whitespace-nowrap font-bold">
+                      Triage Bay · Active
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Clinical Quick Links */}
+              <div className="bg-surface-container-lowest rounded-xl p-3 sm:p-3.5 shadow-xs border border-surface-container space-y-2">
+                <h3 className="text-xs sm:text-sm font-bold text-on-surface">Quick Station Navigation</h3>
+                <div className="grid grid-cols-2 gap-2">
+                  <Link
+                    href="/clinic/patients"
+                    className="p-2 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface border border-surface-container flex items-center gap-2 transition-colors text-xs font-semibold"
+                  >
+                    <span className="material-symbols-outlined text-primary text-[17px]">groups</span>
+                    <span>Patient Directory</span>
+                  </Link>
+                  <Link
+                    href="/reception/documents/ocr"
+                    className="p-2 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface border border-surface-container flex items-center gap-2 transition-colors text-xs font-semibold"
+                  >
+                    <span className="material-symbols-outlined text-primary text-[17px]">
+                      document_scanner
+                    </span>
+                    <span>OCR Scanner</span>
+                  </Link>
+                  <Link
+                    href="/clinic/optical"
+                    className="p-2 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface border border-surface-container flex items-center gap-2 transition-colors text-xs font-semibold"
+                  >
+                    <span className="material-symbols-outlined text-secondary text-[17px]">
+                      eyeglasses
+                    </span>
+                    <span>Optical Lab</span>
+                  </Link>
+                  <Link
+                    href="/clinic/clinical-reporting"
+                    className="p-2 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface border border-surface-container flex items-center gap-2 transition-colors text-xs font-semibold"
+                  >
+                    <span className="material-symbols-outlined text-tertiary text-[17px]">
+                      analytics
+                    </span>
+                    <span>Reporting</span>
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </section>
         </div>
-      </div>
+      </main>
     </div>
   );
 }
