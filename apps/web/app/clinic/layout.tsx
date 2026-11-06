@@ -19,6 +19,7 @@ import { useAuth } from "@/lib/auth-context";
 
 const sidebarLinks = [
   { name: "Dashboard", href: "/clinic/dashboard", icon: LayoutDashboard },
+  { name: "Onboarding", href: "/clinic/onboarding", icon: Building2 },
   { name: "Patients", href: "/clinic/patients", icon: Users },
   { name: "Appointments", href: "/clinic/appointments", icon: Calendar },
   { name: "Queue Management", href: "/clinic/queue", icon: Clock },

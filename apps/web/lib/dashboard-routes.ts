@@ -3,7 +3,26 @@ export type DashboardUserLike = {
   roles?: string[];
 } | string | null | undefined;
 
+const ONBOARDING_STORAGE_KEY = 'vemtap-clinic-onboarding';
+
 const normalizeRole = (role: string) => role.trim().toLowerCase().replace(/[-\s]+/g, '_');
+
+const getOnboardingState = () => {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  try {
+    const raw = window.localStorage.getItem(ONBOARDING_STORAGE_KEY);
+    if (!raw) {
+      return null;
+    }
+
+    return JSON.parse(raw) as { completed?: boolean } | null;
+  } catch {
+    return null;
+  }
+};
 
 export const dashboardRedirectMap: Record<string, string> = {
   super_admin: '/admin/dashboard',
@@ -45,4 +64,22 @@ export function getDashboardRoute(userOrRole?: DashboardUserLike) {
 
   const role = typeof userOrRole === 'string' ? normalizeRole(userOrRole) : '';
   return dashboardRedirectMap[role] ?? '/admin/dashboard';
+}
+
+export function getClinicEntryRoute(userOrRole?: DashboardUserLike) {
+  if (typeof userOrRole !== 'object' || userOrRole === null || !userOrRole.clinicId) {
+    return getDashboardRoute(userOrRole);
+  }
+
+  const onboardingState = getOnboardingState();
+
+  if (onboardingState?.completed === true) {
+    return getDashboardRoute(userOrRole);
+  }
+
+  if (!onboardingState || onboardingState.completed === false) {
+    return '/clinic/onboarding';
+  }
+
+  return getDashboardRoute(userOrRole);
 }

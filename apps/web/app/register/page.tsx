@@ -18,7 +18,7 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
-import { getDashboardRoute } from "@/lib/dashboard-routes";
+import { getClinicEntryRoute, getDashboardRoute } from "@/lib/dashboard-routes";
 
 const steps = ["Account"];
 
@@ -47,7 +47,7 @@ export default function RegisterPage() {
 
   useEffect(() => {
     if (isAuthenticated && user) {
-      router.replace(getDashboardRoute(user));
+      router.replace(getClinicEntryRoute(user));
     }
   }, [isAuthenticated, user, router]);
 
@@ -95,7 +95,7 @@ export default function RegisterPage() {
         clinicPhone: formData.clinicPhone,
         clinicCity: formData.clinicCity,
       });
-      router.push(getDashboardRoute(registeredUser ?? user));
+      router.push(getClinicEntryRoute(registeredUser ?? user));
     } catch (err: any) {
       setError(getErrorMessage(err));
     } finally {

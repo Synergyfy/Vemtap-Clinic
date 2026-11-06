@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
-import { getDashboardRoute } from "@/lib/dashboard-routes";
+import { getClinicEntryRoute, getDashboardRoute } from "@/lib/dashboard-routes";
 
 type IconProps = {
   size?: number;
@@ -46,7 +46,7 @@ export default function LoginPage() {
 
   React.useEffect(() => {
     if (!isAuthenticated || !user) return;
-    router.replace(getDashboardRoute(user));
+    router.replace(getClinicEntryRoute(user));
   }, [isAuthenticated, user, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -56,7 +56,7 @@ export default function LoginPage() {
 
     try {
       const authenticatedUser = await login(formData.email, formData.password);
-      router.push(getDashboardRoute(authenticatedUser ?? user));
+      router.push(getClinicEntryRoute(authenticatedUser ?? user));
     } catch (err: any) {
       setError(err?.response?.data?.message ?? "Invalid credentials. Please try again.");
     } finally {
