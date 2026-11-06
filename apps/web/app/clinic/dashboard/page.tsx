@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/app/clinic/_components/page-header";
 import { useAuth } from "@/lib/auth-context";
+import { getClinicById } from "@/services/clinics.service";
 import {
   useDashboardOverview,
   useDashboardRevenue,
@@ -37,7 +38,8 @@ import {
   Filter,
   Check,
   XCircle,
-  CalendarDays
+  CalendarDays,
+  Building2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -79,6 +81,7 @@ export default function ClinicDashboard() {
   const router = useRouter();
   const { user } = useAuth();
   const clinicId = user?.clinicId || null;
+  const [clinicName, setClinicName] = useState<string>(user?.clinicName || "");
   const createPatient = useCreatePatient();
 
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
@@ -140,6 +143,35 @@ export default function ClinicDashboard() {
       setSelectedBranchId(branches[0].id);
     }
   }, [branches, selectedBranchId]);
+
+  React.useEffect(() => {
+    if (!clinicId) {
+      setClinicName(user?.clinicName || "");
+      return;
+    }
+
+    if (user?.clinicName) {
+      setClinicName(user.clinicName);
+      return;
+    }
+
+    let isMounted = true;
+    getClinicById(clinicId)
+      .then((clinic) => {
+        if (isMounted && clinic?.name) {
+          setClinicName(clinic.name);
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setClinicName("");
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [clinicId, user?.clinicName]);
 
   const handleCreatePatient = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -244,6 +276,13 @@ export default function ClinicDashboard() {
 
   return (
     <div className="space-y-8 pb-24">
+      {clinicName ? (
+        <div className="inline-flex items-center gap-2 rounded-full border border-sky-100 bg-sky-50 px-3 py-1.5 text-sm font-bold text-sky-700">
+          <Building2 size={16} />
+          {clinicName}
+        </div>
+      ) : null}
+
       <PageHeader
         title="Clinic Operations & Analytics Hub"
         description="Comprehensive real-time command center: patient flow, queue throughput, appointment analytics, revenue reports, and HMO recovery."

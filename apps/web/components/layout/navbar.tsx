@@ -123,7 +123,10 @@ export const Navbar = () => {
         </div>
 
         <div className="hidden md:flex items-center gap-3">
-          <Link href="/login" className="text-sm font-medium text-slate-600 hover:text-brand-blue px-4">
+          <Link href="/admin/dashboard" className="text-sm font-medium text-brand-blue hover:text-brand-blue/80 px-3">
+            Dashboard
+          </Link>
+          <Link href="/login" className="text-sm font-medium text-slate-600 hover:text-brand-blue px-3">
             Login
           </Link>
           <Link href="/book-demo">
@@ -198,6 +201,9 @@ export const Navbar = () => {
               ))}
               <hr className="border-slate-100" />
               <div className="grid grid-cols-1 gap-2 pt-1">
+                <Link href="/admin/dashboard" onClick={() => setIsMobileMenuOpen(false)}>
+                  <Button variant="default" className="w-full justify-center">Quick Dashboard</Button>
+                </Link>
                 <Link href="/login" onClick={() => setIsMobileMenuOpen(false)}>
                   <Button variant="outline" className="w-full justify-center">Login</Button>
                 </Link>

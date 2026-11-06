@@ -16,6 +16,8 @@ const steps = ["Clinic Type", "Clinic Details", "Schedule", "Contact"];
 
 export default function BookDemoPage() {
   const [currentStep, setCurrentStep] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
   const [formData, setFormData] = useState({
     clinicType: "",
     clinicName: "",
@@ -33,6 +35,49 @@ export default function BookDemoPage() {
 
   const updateForm = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleSubmit = async () => {
+    const requiredFields = [
+      formData.clinicType,
+      formData.clinicName,
+      formData.preferredDate,
+      formData.preferredTime,
+      formData.firstName,
+      formData.lastName,
+      formData.email,
+      formData.phone,
+    ];
+
+    if (requiredFields.some((field) => !field || field.trim() === "")) {
+      setSubmitError("Please complete all required fields before submitting your request.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    setSubmitError("");
+
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001"}/api/demo-requests`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
+      });
+
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(data?.message || "We could not submit your demo request right now. Please try again.");
+      }
+
+      setCurrentStep(4);
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : "We could not submit your demo request right now. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const renderStep = () => {
@@ -174,7 +219,7 @@ export default function BookDemoPage() {
           >
             <div className="text-center mb-10">
               <h2 className="text-3xl font-bold text-brand-navy mb-4">Final Details</h2>
-              <p className="text-slate-500">Where should we send the calendar invite?</p>
+              <p className="text-slate-500">How can we reach you about your demo?</p>
             </div>
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -220,9 +265,18 @@ export default function BookDemoPage() {
                 />
               </div>
             </div>
-            <div className="flex gap-4 pt-6">
-              <Button variant="outline" className="flex-1" onClick={prevStep}>Back</Button>
-              <Button variant="default" className="flex-1" onClick={() => setCurrentStep(4)}>Confirm Demo</Button>
+            <div className="space-y-4 pt-6">
+              {submitError && (
+                <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                  {submitError}
+                </div>
+              )}
+              <div className="flex gap-4">
+                <Button variant="outline" className="flex-1" onClick={prevStep}>Back</Button>
+                <Button variant="default" className="flex-1" onClick={handleSubmit} disabled={isSubmitting}>
+                  {isSubmitting ? "Submitting..." : "Submit Request"}
+                </Button>
+              </div>
             </div>
           </motion.div>
         );
@@ -236,9 +290,9 @@ export default function BookDemoPage() {
             <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-8">
               <CheckCircle2 size={48} />
             </div>
-            <h2 className="text-4xl font-bold text-brand-navy mb-4">You're all set!</h2>
+            <h2 className="text-4xl font-bold text-brand-navy mb-4">Your request is in!</h2>
             <p className="text-xl text-slate-500 mb-8 max-w-md mx-auto">
-              We've received your request for a demo of Vemtap Health. A calendar invite has been sent to <span className="font-bold text-brand-blue">{formData.email}</span>.
+              We&apos;ve received your demo request for Vemtap Health. Our team will review it and follow up at <span className="font-bold text-brand-blue">{formData.email}</span> to confirm a suitable time.
             </p>
             <div className="p-8 rounded-[2rem] bg-slate-50 border border-slate-100 inline-block text-left mb-10">
               <div className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">Demo Summary</div>
@@ -280,7 +334,7 @@ export default function BookDemoPage() {
                   <h3 className="text-xl font-bold text-brand-navy">Book a Demo</h3>
                 </div>
                 <div className="space-y-5 relative pl-1">
-                  <div className="absolute left-[11px] top-2 bottom-2 w-px bg-slate-200"></div>
+                  <div className="absolute left-2.75 top-2 bottom-2 w-px bg-slate-200"></div>
                   {steps.map((step, i) => (
                     <div key={i} className="flex items-center gap-3 relative z-10">
                       <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black border transition-all ${currentStep >= i ? "bg-brand-blue border-brand-blue text-white shadow-sm shadow-brand-blue/30" : "bg-white border-slate-200 text-slate-400"}`}>

@@ -22,6 +22,12 @@ interface RegisterData {
   lastName: string;
   email: string;
   password: string;
+  clinicName?: string;
+  clinicAddress?: string;
+  clinicCity?: string;
+  clinicState?: string;
+  clinicPhone?: string;
+  clinicEmail?: string;
   clinicId?: string | null;
 }
 
@@ -32,6 +38,12 @@ const sanitizeRegisterPayload = (data: RegisterData) => {
   if (!clinicId) {
     delete payload.clinicId;
   }
+
+  Object.entries(payload).forEach(([key, value]) => {
+    if (key.startsWith('clinic') && (value === undefined || value === null || String(value).trim() === '')) {
+      delete payload[key as keyof RegisterData];
+    }
+  });
 
   return payload;
 };

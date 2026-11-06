@@ -1,6 +1,8 @@
 import { api } from '@/lib/api';
 
-export type StaffRole = 
+export type StaffRole =
+  | 'super_admin'
+  | 'clinic_admin'
   | 'doctor'
   | 'nurse'
   | 'receptionist'

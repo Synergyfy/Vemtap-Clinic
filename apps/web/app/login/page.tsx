@@ -24,11 +24,23 @@ const EyeOffIcon = EyeOff as React.ComponentType<IconProps>;
 const LoaderIcon = Loader2 as React.ComponentType<IconProps>;
 const SmartphoneIcon = Smartphone as React.ComponentType<IconProps>;
 
+const dashboardOptions = [
+  { label: "Super Admin Dashboard", value: "/admin/dashboard" },
+  { label: "Clinic Admin Dashboard", value: "/clinic/dashboard" },
+  { label: "Doctor Dashboard", value: "/doctor/dashboard" },
+  { label: "Nurse Dashboard", value: "/nurse/dashboard" },
+  { label: "Reception Dashboard", value: "/reception/dashboard" },
+  { label: "Pharmacy Dashboard", value: "/pharmacy/dashboard" },
+  { label: "Optician Dashboard", value: "/optician/dashboard" },
+  { label: "Patient Dashboard", value: "/patient/dashboard" },
+];
+
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedDashboard, setSelectedDashboard] = useState(dashboardOptions[0].value);
   const { login, isAuthenticated, user } = useAuth();
   const router = useRouter();
 
@@ -146,6 +158,31 @@ export default function LoginPage() {
                     "Authenticate"
                   )}
                 </Button>
+
+                <div className="space-y-3 pt-1">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block ml-1">Dashboard Access</label>
+                  <div className="flex gap-2">
+                    <select
+                      value={selectedDashboard}
+                      onChange={(e) => setSelectedDashboard(e.target.value)}
+                      className="w-full rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700 outline-none ring-0 transition-all focus:border-brand-blue/50 focus:bg-white"
+                    >
+                      {dashboardOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="shrink-0 px-4 py-3 text-sm font-bold rounded-2xl border-brand-blue/20 text-brand-blue hover:bg-brand-blue/5"
+                      onClick={() => router.push(selectedDashboard)}
+                    >
+                      Open
+                    </Button>
+                  </div>
+                </div>
 
                 <p className="text-center text-sm text-slate-500">
                   Don&apos;t have an account?{' '}

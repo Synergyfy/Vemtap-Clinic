@@ -30,6 +30,9 @@ export default function RegisterPage() {
     firstName: "",
     lastName: "",
     email: "",
+    clinicName: "",
+    clinicPhone: "",
+    clinicCity: "",
     password: "",
     confirmPassword: "",
   });
@@ -37,6 +40,10 @@ export default function RegisterPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { register, isAuthenticated, user } = useAuth();
   const router = useRouter();
+  const passwordMismatch =
+    !!formData.password &&
+    !!formData.confirmPassword &&
+    formData.password !== formData.confirmPassword;
 
   useEffect(() => {
     if (isAuthenticated && user) {
@@ -52,10 +59,27 @@ export default function RegisterPage() {
     if (error) setError(null);
   };
 
+  const getErrorMessage = (err: any) => {
+    const responseMessage = err?.response?.data?.message;
+    if (Array.isArray(responseMessage)) {
+      return responseMessage.join(" ");
+    }
+    if (typeof responseMessage === "string" && responseMessage.trim()) {
+      return responseMessage;
+    }
+    if (typeof err?.response?.data?.error === "string" && err.response.data.error.trim()) {
+      return err.response.data.error;
+    }
+    if (typeof err?.message === "string" && err.message.trim()) {
+      return err.message;
+    }
+    return "Registration failed. Please check your information and try again.";
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (formData.password !== formData.confirmPassword) {
-      setError("Passwords do not match");
+      setError("Passwords do not match.");
       return;
     }
     setError(null);
@@ -67,10 +91,13 @@ export default function RegisterPage() {
         lastName: formData.lastName,
         email: formData.email,
         password: formData.password,
+        clinicName: formData.clinicName,
+        clinicPhone: formData.clinicPhone,
+        clinicCity: formData.clinicCity,
       });
       router.push(getDashboardRoute(registeredUser ?? user));
     } catch (err: any) {
-      setError(err?.response?.data?.message ?? "Registration failed. Please try again.");
+      setError(getErrorMessage(err));
     } finally {
       setIsSubmitting(false);
     }
@@ -91,6 +118,17 @@ export default function RegisterPage() {
               <p className="text-slate-500 text-sm">Join the Vemtap Health ecosystem.</p>
             </div>
             <div className="space-y-4">
+              {error && (
+                <div
+                  className="flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+                  role="alert"
+                  aria-live="polite"
+                >
+                  <AlertCircle size={18} className="mt-0.5 shrink-0" />
+                  <span>{error}</span>
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-sm font-bold text-slate-700">First Name</label>
@@ -134,6 +172,43 @@ export default function RegisterPage() {
                   required
                   disabled={isSubmitting}
                 />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2 md:col-span-2">
+                  <label className="text-sm font-bold text-slate-700">Clinic Name</label>
+                  <input
+                    type="text"
+                    value={formData.clinicName}
+                    onChange={(e) => updateForm("clinicName", e.target.value)}
+                    className="w-full px-6 py-4 rounded-2xl bg-slate-50 border border-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-blue/50"
+                    placeholder="Apex Vision Clinic"
+                    required
+                    disabled={isSubmitting}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-slate-700">Clinic Phone</label>
+                  <input
+                    type="tel"
+                    value={formData.clinicPhone}
+                    onChange={(e) => updateForm("clinicPhone", e.target.value)}
+                    className="w-full px-6 py-4 rounded-2xl bg-slate-50 border border-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-blue/50"
+                    placeholder="08012345678"
+                    disabled={isSubmitting}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-slate-700">Clinic City</label>
+                  <input
+                    type="text"
+                    value={formData.clinicCity}
+                    onChange={(e) => updateForm("clinicCity", e.target.value)}
+                    className="w-full px-6 py-4 rounded-2xl bg-slate-50 border border-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-blue/50"
+                    placeholder="Lagos"
+                    disabled={isSubmitting}
+                  />
+                </div>
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-bold text-slate-700">Password</label>
@@ -179,21 +254,27 @@ export default function RegisterPage() {
                     {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                   </button>
                 </div>
+                {passwordMismatch && (
+                  <p className="flex items-center gap-2 text-sm text-red-600" role="alert">
+                    <AlertCircle size={16} className="shrink-0" />
+                    Passwords do not match.
+                  </p>
+                )}
               </div>
             </div>
             <Button
               variant="default"
               className="w-full py-5 text-lg font-bold rounded-2xl mt-4"
               onClick={handleSubmit}
-              disabled={!formData.firstName || !formData.lastName || !formData.email || !formData.password || formData.password !== formData.confirmPassword || isSubmitting}
+              disabled={!formData.firstName || !formData.lastName || !formData.email || !formData.clinicName || !formData.password || passwordMismatch || isSubmitting}
             >
               {isSubmitting ? (
                 <span className="flex items-center justify-center gap-2">
                   <Loader2 size={20} className="animate-spin" />
-                  Creating Account...
+                  Creating Clinic Account...
                 </span>
               ) : (
-                "Create Admin Account"
+                "Create Clinic Admin Account"
               )}
             </Button>
             <p className="text-center text-sm text-slate-500">

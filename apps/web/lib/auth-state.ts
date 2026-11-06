@@ -6,6 +6,7 @@ export interface AuthUser {
   email: string;
   roles: string[];
   clinicId: string;
+  clinicName?: string;
   branchId?: string;
   firstName?: string;
   lastName?: string;
@@ -37,6 +38,7 @@ export const normalizeAuthUser = (user: Partial<AuthUser> | null | undefined): A
     email: user.email ?? '',
     roles,
     clinicId: normalizedClinicId,
+    clinicName: user.clinicName?.trim() || undefined,
     branchId: normalizedBranchId || undefined,
     firstName: user.firstName,
     lastName: user.lastName,

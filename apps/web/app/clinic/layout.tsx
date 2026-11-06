@@ -46,8 +46,13 @@ export default function ClinicLayout({ children }: { children: React.ReactNode }
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout: logoutUser } = useAuth();
-  const displayName = user ? [user.firstName, user.lastName].filter(Boolean).join(" ").trim() || "User" : "User";
+  const displayName = user
+    ? [user.firstName, user.lastName].filter(Boolean).join(" ").trim()
+      || (user.email ? user.email.split("@")[0].replace(/[._+]/g, " ").replace(/\s+/g, " ").trim() : "")
+      || "Clinic Admin"
+    : "Clinic Admin";
   const displayEmail = user?.email || "";
+  const clinicName = user?.clinicName || "Clinic";
   const roleLabel = user?.roles?.[0] ? user.roles[0].replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase()) : "";
   const initials = displayName.split(" ").filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase() || "").join("");
 
@@ -125,9 +130,10 @@ export default function ClinicLayout({ children }: { children: React.ReactNode }
                 {initials || "•"}
               </div>
               <div className="min-w-0 flex-1 overflow-hidden">
-                <p className="truncate text-sm font-bold text-white">{displayName || "User"}</p>
+                <p className="truncate text-sm font-bold text-white">{displayName || "Clinic Admin"}</p>
                 <p className="truncate text-[10px] text-white/60">{displayEmail || "user@example.com"}</p>
                 <p className="truncate text-[10px] text-white/40">{roleLabel || "Staff"}</p>
+                <p className="truncate text-[9px] text-sky-200/90 mt-1">{clinicName}</p>
               </div>
             </div>
           </div>

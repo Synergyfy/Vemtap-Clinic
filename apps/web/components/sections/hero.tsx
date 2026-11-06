@@ -41,10 +41,13 @@ export const Hero = () => {
           </p>
 
           <div className="mb-8 flex flex-col gap-3 sm:flex-row">
-            <Button variant="default" size="lg" className="w-full gap-2 justify-center sm:w-auto" onClick={() => router.push("/book-demo")}>
-              Request Demo <ChevronRight size={18} />
+            <Button variant="default" size="lg" className="w-full gap-2 justify-center sm:w-auto" onClick={() => router.push("/admin/dashboard")}>
+              Quick Dashboard <ChevronRight size={18} />
             </Button>
-            <Button variant="outline" size="lg" className="w-full gap-2 justify-center sm:w-auto" onClick={() => openModal("tour")}>
+            <Button variant="outline" size="lg" className="w-full gap-2 justify-center sm:w-auto" onClick={() => router.push("/book-demo")}>
+              Request Demo
+            </Button>
+            <Button variant="ghost" size="lg" className="w-full gap-2 justify-center sm:w-auto" onClick={() => openModal("tour")}>
               <Play size={18} fill="currentColor" /> Watch Tour
             </Button>
           </div>

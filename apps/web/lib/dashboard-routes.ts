@@ -3,8 +3,12 @@ export type DashboardUserLike = {
   roles?: string[];
 } | string | null | undefined;
 
+const normalizeRole = (role: string) => role.trim().toLowerCase().replace(/[-\s]+/g, '_');
+
 export const dashboardRedirectMap: Record<string, string> = {
+  super_admin: '/admin/dashboard',
   admin: '/admin/dashboard',
+  clinic_admin: '/clinic/dashboard',
   doctor: '/doctor/dashboard',
   nurse: '/nurse/dashboard',
   optometrist: '/optician/dashboard',
@@ -17,10 +21,14 @@ export const dashboardRedirectMap: Record<string, string> = {
 export function getDashboardRoute(userOrRole?: DashboardUserLike) {
   if (typeof userOrRole === 'object' && userOrRole !== null) {
     const roles = userOrRole.roles ?? [];
-    const normalizedRoles = roles.map((role) => role.toLowerCase());
+    const normalizedRoles = roles.map((role) => normalizeRole(role));
 
-    if (normalizedRoles.includes('admin')) {
+    if (normalizedRoles.includes('super_admin') || normalizedRoles.includes('admin')) {
       return '/admin/dashboard';
+    }
+
+    if (normalizedRoles.includes('clinic_admin')) {
+      return '/clinic/dashboard';
     }
 
     const role = normalizedRoles[0] ?? '';
@@ -35,6 +43,6 @@ export function getDashboardRoute(userOrRole?: DashboardUserLike) {
     return '/admin/dashboard';
   }
 
-  const role = typeof userOrRole === 'string' ? userOrRole.toLowerCase() : '';
+  const role = typeof userOrRole === 'string' ? normalizeRole(userOrRole) : '';
   return dashboardRedirectMap[role] ?? '/admin/dashboard';
 }
