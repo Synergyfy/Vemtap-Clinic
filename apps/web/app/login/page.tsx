@@ -15,7 +15,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-context";
-import { getClinicEntryRoute, getDashboardRoute } from "@/lib/dashboard-routes";
+import { getClinicEntryRoute } from "@/lib/dashboard-routes";
 
 type IconProps = {
   size?: number;
@@ -45,15 +45,15 @@ const dashboardOptions = [
 ];
 
 const dashboardLinks = [
-  { name: "Super Admin Dashboard", href: "/admin/dashboard", icon: LayoutDashboard, color: "text-slate-900", desc: "Global network oversight", roles: ["admin"] },
-  { name: "Clinic Admin Dashboard", href: "/clinic/dashboard", icon: Building2, color: "text-sky-600", desc: "Branch & clinical operations", roles: ["admin"] },
-  { name: "Doctor Clinical Hub", href: "/doctor/dashboard", icon: Stethoscope, color: "text-emerald-600", desc: "Patient care & consultations", roles: ["doctor"] },
-  { name: "Nurse Station", href: "/nurse/dashboard", icon: Heart, color: "text-cyan-600", desc: "Vitals, monitoring & patient care", roles: ["nurse"] },
-  { name: "Optical Hub", href: "/optician/dashboard", icon: Eye, color: "text-amber-600", desc: "Lens orders, production & inventory", roles: ["optometrist"] },
-  { name: "Pharmacy Station", href: "/pharmacy/dashboard", icon: Pill, color: "text-emerald-600", desc: "Prescriptions, inventory & dispensing", roles: ["pharmacist"] },
-  { name: "Receptionist Frontdesk", href: "/reception/dashboard", icon: Clock, color: "text-amber-600", desc: "Registration & queue flow", roles: ["receptionist"] },
-  { name: "Cashier Counter", href: "/cashier", icon: Wallet, color: "text-teal-600", desc: "Payments, billing & reconciliation", roles: ["cashier"] },
-  { name: "Patient Success Portal", href: "/patient/dashboard", icon: UserCircle, color: "text-emerald-600", desc: "Results, orders & bookings", roles: ["patient"] },
+  { name: "Super Admin Dashboard", href: "/admin/dashboard", icon: LayoutDashboard, color: "text-slate-900", desc: "Global network oversight" },
+  { name: "Clinic Admin Dashboard", href: "/clinic/dashboard", icon: Building2, color: "text-sky-600", desc: "Branch & clinical operations" },
+  { name: "Doctor Clinical Hub", href: "/doctor/dashboard", icon: Stethoscope, color: "text-emerald-600", desc: "Patient care & consultations" },
+  { name: "Nurse Station", href: "/nurse/dashboard", icon: Heart, color: "text-cyan-600", desc: "Vitals, monitoring & patient care" },
+  { name: "Optical Hub", href: "/optician/dashboard", icon: Eye, color: "text-amber-600", desc: "Lens orders, production & inventory" },
+  { name: "Pharmacy Station", href: "/pharmacy/dashboard", icon: Pill, color: "text-emerald-600", desc: "Prescriptions, inventory & dispensing" },
+  { name: "Receptionist Frontdesk", href: "/reception/dashboard", icon: Clock, color: "text-amber-600", desc: "Registration & queue flow" },
+  { name: "Cashier Counter", href: "/cashier", icon: Wallet, color: "text-teal-600", desc: "Payments, billing & reconciliation" },
+  { name: "Patient Success Portal", href: "/patient/dashboard", icon: UserCircle, color: "text-emerald-600", desc: "Results, orders & bookings" },
 ];
 
 export default function LoginPage() {
@@ -229,7 +229,6 @@ export default function LoginPage() {
                   </Link>
                 </p>
 
-                {/* Unified Quick Access — demo logins for every dashboard */}
                 <div className="relative pt-4 border-t border-slate-50 z-[80]">
                   <button
                     type="button"

@@ -1,15 +1,18 @@
-import { Injectable, UnauthorizedException, ConflictException, NotFoundException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, ConflictException, NotFoundException, BadRequestException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
 import { Patient } from '../entities/patient.entity';
+import { Clinic } from '../entities/clinic.entity';
+import { Branch } from '../entities/branch.entity';
 import { Appointment, AppointmentStatus } from '../entities/appointment.entity';
 import { MedicalRecord } from '../entities/medical-record.entity';
 import { Invoice, InvoiceStatus } from '../entities/invoice.entity';
 import { Payment, PaymentMethod } from '../entities/payment.entity';
 import { PatientLoginDto, PatientRegisterDto, BookAppointmentDto, UpdatePatientProfileDto, RescheduleAppointmentDto, MakePaymentDto } from './dto';
 import { EmailService } from '../common/services/email.service';
+import { SmsService } from '../common/services/sms.service';
 
 export interface PatientTokenPair {
   accessToken: string;
@@ -21,24 +24,30 @@ export interface PatientAuthUser {
   lastName: string;
   email: string;
   phone: string;
-  clinicId: string;
+  clinicId: string | null;
 }
 
 @Injectable()
 export class PatientPortalService {
+  private readonly otpStore = new Map<string, { code: string; expiresAt: number }>();
+
   constructor(
     @InjectRepository(Patient) private patientRepo: Repository<Patient>,
+    @InjectRepository(Clinic) private clinicRepo: Repository<Clinic>,
+    @InjectRepository(Branch) private branchRepo: Repository<Branch>,
     @InjectRepository(Appointment) private appointmentRepo: Repository<Appointment>,
     @InjectRepository(MedicalRecord) private recordRepo: Repository<MedicalRecord>,
     @InjectRepository(Invoice) private invoiceRepo: Repository<Invoice>,
     private jwtService: JwtService,
     private emailService: EmailService,
+    private smsService: SmsService,
   ) {}
 
   async register(dto: PatientRegisterDto): Promise<{ tokens: PatientTokenPair; patient: PatientAuthUser }> {
     const existing = await this.patientRepo.findOne({ where: { email: dto.email } });
     if (existing) throw new ConflictException('Email already registered');
 
+    const { clinicId, branchId } = await this.resolveClinicAssociation(dto.clinicId, dto.branchId, dto.clinicQrCode);
     const hashedPassword = await bcrypt.hash(dto.password, 10);
     const patient = this.patientRepo.create({
       firstName: dto.firstName,
@@ -48,8 +57,8 @@ export class PatientPortalService {
       phone: dto.phone,
       email: dto.email,
       patientPassword: hashedPassword,
-      clinicId: dto.clinicId,
-      branchId: dto.branchId,
+      clinicId,
+      branchId,
       patientType: 'private',
       portalAccessEnabled: true,
     });
@@ -83,6 +92,113 @@ export class PatientPortalService {
     return this.generateToken(patient);
   }
 
+  async sendPhoneOtp(phone: string): Promise<{ success: boolean; code?: string; messageId?: string; expiresAt?: string; error?: string }> {
+    const normalizedPhone = this.normalizePhone(phone);
+    const code = this.generateOtpCode();
+    const expiresAt = Date.now() + 10 * 60 * 1000;
+
+    const result = await this.smsService.sendOtpSms(normalizedPhone, code, 10);
+    const allowLocalDebug = process.env.NODE_ENV !== 'production' && process.env.ALLOW_OTP_DEBUG === 'true';
+
+    this.otpStore.set(normalizedPhone, { code, expiresAt });
+
+    if (result.success) {
+      return {
+        success: true,
+        messageId: result.messageId,
+        expiresAt: new Date(expiresAt).toISOString(),
+        code: allowLocalDebug ? code : undefined,
+      };
+    }
+
+    const isMissingProviderConfig = /not configured|unsupported|No SMS provider configured/i.test(result.error || '');
+    if (isMissingProviderConfig && allowLocalDebug) {
+      console.log(`[OTP DEBUG] ${normalizedPhone} -> ${code}`);
+      return {
+        success: true,
+        messageId: `local-otp-${Date.now()}`,
+        expiresAt: new Date(expiresAt).toISOString(),
+        code,
+      };
+    }
+
+    return {
+      success: false,
+      error: result.error || 'Unable to send OTP.',
+    };
+  }
+
+  async verifyPhoneOtp(phone: string, code: string): Promise<boolean> {
+    const normalizedPhone = this.normalizePhone(phone);
+    const record = this.otpStore.get(normalizedPhone);
+    if (!record) return false;
+    if (Date.now() > record.expiresAt) {
+      this.otpStore.delete(normalizedPhone);
+      return false;
+    }
+
+    const isValid = record.code === code.trim();
+    if (isValid) {
+      this.otpStore.delete(normalizedPhone);
+    }
+    return isValid;
+  }
+
+  private normalizePhone(phone: string): string {
+    const cleaned = String(phone ?? '').trim().replace(/\s+/g, '');
+    if (!/^\+?[0-9]{10,15}$/.test(cleaned)) {
+      throw new BadRequestException('A valid phone number is required.');
+    }
+    return cleaned.startsWith('+') ? cleaned : `+${cleaned}`;
+  }
+
+  private generateOtpCode(): string {
+    return String(Math.floor(100000 + Math.random() * 900000));
+  }
+
+  private async resolveClinicAssociation(
+    clinicId?: string,
+    branchId?: string,
+    clinicQrCode?: string,
+  ): Promise<{ clinicId: string | null; branchId: string | null }> {
+    let resolvedClinicId: string | null = clinicId ?? null;
+    let resolvedBranchId: string | null = branchId ?? null;
+
+    if (clinicQrCode) {
+      const clinicFromQr = await this.clinicRepo.findOne({ where: { qrCode: clinicQrCode.trim() } });
+      if (clinicFromQr) {
+        resolvedClinicId = clinicFromQr.id;
+      }
+    }
+
+    if (!resolvedClinicId) {
+      return { clinicId: null, branchId: null };
+    }
+
+    if (!resolvedBranchId) {
+      const defaultBranch = await this.branchRepo.findOne({
+        where: { clinicId: resolvedClinicId, isActive: true },
+        order: { createdAt: 'DESC' },
+      });
+
+      if (defaultBranch) {
+        resolvedBranchId = defaultBranch.id;
+        return { clinicId: resolvedClinicId, branchId: resolvedBranchId };
+      }
+
+      const clinicBranch = await this.branchRepo.findOne({
+        where: { clinicId: resolvedClinicId },
+        order: { createdAt: 'DESC' },
+      });
+
+      if (clinicBranch) {
+        resolvedBranchId = clinicBranch.id;
+      }
+    }
+
+    return { clinicId: resolvedClinicId, branchId: resolvedBranchId };
+  }
+
   async getProfile(patientId: string) {
     const patient = await this.patientRepo.findOne({ where: { id: patientId } });
     if (!patient) throw new UnauthorizedException('Patient not found');
@@ -100,6 +216,9 @@ export class PatientPortalService {
   async bookAppointment(patientId: string, dto: BookAppointmentDto) {
     const patient = await this.patientRepo.findOne({ where: { id: patientId } });
     if (!patient) throw new UnauthorizedException('Patient not found');
+    if (!patient.clinicId) {
+      throw new BadRequestException('This patient account is not linked to a clinic yet.');
+    }
 
     const appointment = this.appointmentRepo.create({
       ...dto,

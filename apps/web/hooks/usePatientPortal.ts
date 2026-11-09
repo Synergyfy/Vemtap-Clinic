@@ -16,6 +16,7 @@ import {
   BookAppointmentPayload,
   RescheduleAppointmentPayload,
   MakePaymentPayload,
+  SendPhoneOtpResponse,
 } from '@/services/patient-portal.service';
 import { useAuth } from '@/lib/auth-context';
 
@@ -41,6 +42,18 @@ export function usePatientLogin() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [PATIENT_PORTAL_KEY, 'profile'] });
     },
+  });
+}
+
+export function useSendPatientOtp() {
+  return useMutation({
+    mutationFn: (phone: string): Promise<SendPhoneOtpResponse> => patientPortalService.sendPhoneOtp(phone),
+  });
+}
+
+export function useVerifyPatientOtp() {
+  return useMutation({
+    mutationFn: ({ phone, code }: { phone: string; code: string }) => patientPortalService.verifyPhoneOtp(phone, code),
   });
 }
 

@@ -16,32 +16,32 @@ export default function ReceptionPatientRegistrationPage() {
 
   // Form Fields
   const [title, setTitle] = useState("Mr.");
-  const [firstName, setFirstName] = useState("Babatunde");
-  const [middleName, setMiddleName] = useState("Olusegun");
-  const [surname, setSurname] = useState("Adeleke");
-  const [dob, setDob] = useState("14/03/1990");
+  const [firstName, setFirstName] = useState("Patient");
+  const [middleName, setMiddleName] = useState("");
+  const [surname, setSurname] = useState("Surname");
+  const [dob, setDob] = useState("DD/MM/YYYY");
   const [gender, setGender] = useState<"M" | "F">("M");
-  const [phone, setPhone] = useState("803 123 4567");
-  const [email, setEmail] = useState("b.adeleke@example.com");
-  const [address, setAddress] = useState("Plot 14B, Admiralty Way, Lekki Phase 1, Lagos");
-  const [nin, setNin] = useState("••••••••394");
+  const [phone, setPhone] = useState("000 000 0000");
+  const [email, setEmail] = useState("patient@example.com");
+  const [address, setAddress] = useState("Clinic address");
+  const [nin, setNin] = useState("••••••••••");
 
   // Next of Kin
-  const [kinName, setKinName] = useState("Dr. Folake Adeleke");
-  const [kinRelation, setKinRelation] = useState("Spouse");
-  const [kinPhone, setKinPhone] = useState("+234 802 334 5566");
+  const [kinName, setKinName] = useState("Emergency contact name");
+  const [kinRelation, setKinRelation] = useState("Relative");
+  const [kinPhone, setKinPhone] = useState("+000 000 0000");
   const [hasProxy, setHasProxy] = useState(true);
 
   // Clinic Metadata
-  const [occupation, setOccupation] = useState("Software Engineer / FinTech");
-  const [referralSource, setReferralSource] = useState("Consultant Ophthalmologist");
-  const [priorEyewear, setPriorEyewear] = useState("Progressive Multifocal");
-  const [chiefComplaint, setChiefComplaint] = useState("Computer Vision Syndrome");
+  const [occupation, setOccupation] = useState("Occupation");
+  const [referralSource, setReferralSource] = useState("Referral source");
+  const [priorEyewear, setPriorEyewear] = useState("Previous eyewear");
+  const [chiefComplaint, setChiefComplaint] = useState("Primary complaint");
 
   // HMO & Billing
-  const [hmoProvider, setHmoProvider] = useState("AXA Mansard (Tier-1)");
-  const [enrolleeId, setEnrolleeId] = useState("MAN-992-01");
-  const [copayRate, setCopayRate] = useState("₦0 (100%)");
+  const [hmoProvider, setHmoProvider] = useState("Select provider");
+  const [enrolleeId, setEnrolleeId] = useState("Policy number");
+  const [copayRate, setCopayRate] = useState("₦0.00");
 
   // UI Feedback
   const [toastMessage, setToastMessage] = useState<string | null>(null);

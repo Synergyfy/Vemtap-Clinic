@@ -74,10 +74,10 @@ export default function TopNav() {
         </div>
 
         <div className="hidden lg:flex items-center gap-2.5">
-          <span className="text-sm font-bold text-[#0F2942]">Victoria Island Center</span>
+          <span className="text-sm font-bold text-[#0F2942]">Clinic portal</span>
           <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-xs font-semibold">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-            Clinic Open
+            Active
           </span>
         </div>
       </div>
@@ -91,7 +91,7 @@ export default function TopNav() {
           title="Switch active patient profile"
         >
           <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
-          <span>#VEM-88219-LG</span>
+          <span>Patient profile</span>
           <span className="text-[#73889B] font-medium">• Switch</span>
         </Link>
 
@@ -197,12 +197,12 @@ export default function TopNav() {
           >
             <div className="w-9 h-9 rounded-full overflow-hidden ring-2 ring-white shadow-sm flex items-center justify-center bg-slate-200 shrink-0">
               <img
-                alt="Olumide Adebayo avatar"
+                alt="Patient profile avatar"
                 className="w-full h-full object-cover"
                 src="https://lh3.googleusercontent.com/aida-public/AB6AXuBmpdS6fW3w6q_GSA18ahdQjjXSccucGdf6YRS45bRNpy7HH7uO0G8wK6tuXdpZ7YPrQbejZiS7LUFZriLWGak4pIGM-6vB0p3o33KeWvKmalVr1vwI134g-cUOFPk7BgRvWUhW1ZKKVzhaR2qJ8LUuWy4n8OzKQ6SQ8anztCM-idrUamwtbYGMqbQkop95WGiywIBkh3vbtQqc87NkXuUzSy7_xNmqsarhTVIOp29U"
               />
             </div>
-            <span className="hidden md:block text-xs font-bold text-[#0F2942]">Olumide</span>
+            <span className="hidden md:block text-xs font-bold text-[#0F2942]">Patient</span>
           </button>
 
           <AnimatePresence>
@@ -215,8 +215,8 @@ export default function TopNav() {
                 className="absolute right-0 mt-2 w-60 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden z-50 origin-top-right"
               >
                 <div className="p-3.5 border-b border-gray-100 bg-[#F4F9FD]/70">
-                  <p className="text-sm font-bold text-[#0F2942]">Olumide Adeleke</p>
-                  <p className="text-xs text-[#0055C4] font-semibold mt-0.5">#VEM-88219-LG • Primary</p>
+                  <p className="text-sm font-bold text-[#0F2942]">Patient Profile</p>
+                  <p className="text-xs text-[#0055C4] font-semibold mt-0.5">Primary profile • Active</p>
                 </div>
                 <div className="p-2 space-y-1">
                   <Link

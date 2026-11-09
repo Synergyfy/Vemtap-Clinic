@@ -13,7 +13,7 @@ export default function CompleteProfilePage() {
   const [address, setAddress] = useState("Plot 18, Bishop Oluwole St, Victoria Island, Lagos");
   const [branch, setBranch] = useState("Victoria Island Clinic, Lagos");
   const [paymentType, setPaymentType] = useState<"hmo" | "self">("hmo");
-  const [hmoProvider, setHmoProvider] = useState("AXA Mansard Health");
+  const [hmoProvider, setHmoProvider] = useState("Your insurer");
   const [policyNumber, setPolicyNumber] = useState("#AX-8910-LG");
   const [emergencyName, setEmergencyName] = useState("Folake Alade (Sister)");
   const [emergencyPhone, setEmergencyPhone] = useState("+234 803 456 7890");
@@ -29,8 +29,8 @@ export default function CompleteProfilePage() {
       localStorage.setItem(
         "vemtap_patient_info",
         JSON.stringify({
-          patientId: "VEM-88219-LG",
-          fullName: "Olumide Adeleke",
+          patientId: "PATIENT-PENDING",
+          fullName: "Patient",
           gender,
           branch,
           paymentType,
@@ -126,7 +126,7 @@ export default function CompleteProfilePage() {
                   Temporary ID
                 </span>
                 <span className="text-[13px] font-bold text-[#131b2e] font-mono">
-                  #VEM-88219-PENDING
+                  #PATIENT-PENDING
                 </span>
               </div>
             </div>

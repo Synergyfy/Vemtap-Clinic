@@ -144,13 +144,22 @@ export interface PatientRegisterPayload {
   phone: string;
   email: string;
   password: string;
-  clinicId: string;
-  branchId: string;
+  clinicId?: string;
+  branchId?: string;
+  clinicQrCode?: string;
 }
 
 export interface PatientLoginPayload {
   email: string;
   password: string;
+}
+
+export interface SendPhoneOtpResponse {
+  success: boolean;
+  code?: string;
+  messageId?: string;
+  expiresAt?: string;
+  error?: string;
 }
 
 export interface UpdatePatientProfilePayload {
@@ -194,6 +203,16 @@ export const patientPortalService = {
     const response = await api.post('/patient-portal/login', dto);
     const { patient, accessToken } = response.data ?? {};
     if (patient && accessToken) persistPatientAuth(patient, accessToken);
+    return response.data;
+  },
+
+  async sendPhoneOtp(phone: string): Promise<SendPhoneOtpResponse> {
+    const response = await api.post('/patient-portal/otp/send', { phone });
+    return response.data;
+  },
+
+  async verifyPhoneOtp(phone: string, code: string): Promise<{ verified: boolean }> {
+    const response = await api.post('/patient-portal/otp/verify', { phone, code });
     return response.data;
   },
 

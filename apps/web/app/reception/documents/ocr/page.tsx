@@ -20,7 +20,7 @@ export default function OCRDocumentScannerPage() {
   const [accepted, setAccepted] = useState(false);
 
   // Editable parsed values
-  const [patientName, setPatientName] = useState("Adeleke, Olumide Babatunde");
+  const [patientName, setPatientName] = useState("Patient Name");
   const [patientDob, setPatientDob] = useState("14/03/1990");
   const [odSph, setOdSph] = useState("-1.75");
   const [odCyl, setOdCyl] = useState("-0.50");
@@ -174,7 +174,7 @@ export default function OCRDocumentScannerPage() {
                       </span>
                     </div>
                     <p className="font-headline-sm text-on-surface font-extrabold text-[15px] tracking-wide">
-                      Adeleke, Olumide Babatunde
+                      Patient Name
                     </p>
                     <div className="flex gap-4 mt-1 font-body-sm text-[12px] text-on-surface-variant font-medium">
                       <span>

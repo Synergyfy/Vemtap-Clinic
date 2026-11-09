@@ -2,7 +2,7 @@ import { Controller, Get, Post, Put, Body, Res, Req, UseGuards, Param } from '@n
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { Response, Request as ExpressRequest } from 'express';
 import { PatientPortalService } from './patient-portal.service';
-import { PatientLoginDto, PatientRegisterDto, BookAppointmentDto, UpdatePatientProfileDto, RescheduleAppointmentDto, MakePaymentDto } from './dto';
+import { PatientLoginDto, PatientRegisterDto, BookAppointmentDto, UpdatePatientProfileDto, RescheduleAppointmentDto, MakePaymentDto, SendPhoneOtpDto, VerifyPhoneOtpDto } from './dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { COOKIE_CONFIG } from '../auth/cookie.config';
 
@@ -40,6 +40,19 @@ export class PatientPortalController {
     const { tokens, patient } = await this.portalService.login(dto);
     this.setAccessCookie(res, tokens.accessToken);
     return { patient, accessToken: tokens.accessToken };
+  }
+
+  @Post('otp/send')
+  @ApiOperation({ summary: 'Send SMS OTP for phone verification' })
+  async sendPhoneOtp(@Body() dto: SendPhoneOtpDto) {
+    return this.portalService.sendPhoneOtp(dto.phone);
+  }
+
+  @Post('otp/verify')
+  @ApiOperation({ summary: 'Verify a phone OTP code' })
+  async verifyPhoneOtp(@Body() dto: VerifyPhoneOtpDto) {
+    const isValid = await this.portalService.verifyPhoneOtp(dto.phone, dto.code);
+    return { verified: isValid };
   }
 
   @Post('logout')

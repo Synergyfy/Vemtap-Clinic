@@ -19,14 +19,14 @@ interface Profile {
 const PROFILES: Profile[] = [
   {
     id: "p1",
-    name: "Olumide",
-    fullName: "Olumide Adeleke",
+    name: "Primary",
+    fullName: "Primary Account Holder",
     role: "Primary Holder",
-    details: "#VEM-88219 • Age 32",
+    details: "Primary patient profile",
     visitInfo: {
       icon: "calendar_today",
-      text: "Nov 18 • Retinal Exam with Dr. Amara",
-      subtext: "Victoria Island Center • 10:30 AM",
+      text: "Selected patient account",
+      subtext: "Clinic profile • account active",
     },
     image:
       "https://lh3.googleusercontent.com/aida-public/AB6AXuA4yrohSgI6-TWXFUzqtaretv3OnzerWL8EF3feZvcl-Ml3uJIVY4wSTvgbyc1v59zl-f0-aZgODg9bZTMfPx0LkqfPjYcBEMEfOuxJ_Y7TBjUHuSqODO1EFbw9FsS4lv3iHqCkwQxIi5RroIVVDcCPIqahf8R1CWOwE1wpPOjoHTTwfVHXxm_RtbU-P8T_vZZRvix7bgXwo2DWbToQ0_zbmJMMgh4tUCRQeMUPOtQS",
@@ -34,28 +34,28 @@ const PROFILES: Profile[] = [
   },
   {
     id: "p2",
-    name: "Tiwa",
-    fullName: "Tiwa Adeleke",
-    role: "Daughter",
-    details: "Daughter, 8 yrs • #VEM-88219-D1",
-    badge: { text: "Due", icon: "schedule", type: "error" },
+    name: "Dependent",
+    fullName: "Dependent Profile 1",
+    role: "Dependent",
+    details: "Family linked profile",
+    badge: { text: "Ready", icon: "schedule", type: "secondary" },
     visitInfo: {
       icon: "child_care",
-      text: "Pediatric Review due • Dr. Jinadu",
+      text: "Family account profile",
     },
     image:
       "https://lh3.googleusercontent.com/aida-public/AB6AXuCDvNsi13bmcrozDMaDJZF96d6imSCThoiducW2Dc0xI66NLA4pwr1_k7RrMGj1Am4FBSvAHiew5Lhzlr8ve0dk0HxIwgGEvgsO5QQ55nNXUmYdNlGcgVdLadlh2zRk0_9grLHl42ZfBjUOswk-1Vz_1eZBjQLCK35LpDWsunw_XtSmHNZgLL_Q5-nowOf8ZSAeJMbLfEg0fBjjBl2bjCJnwFnCfeXQtM8YaM4o8oFf",
   },
   {
     id: "p3",
-    name: "Funke",
-    fullName: "Funke Adeleke",
-    role: "Spouse",
-    details: "Spouse, 30 yrs • #VEM-88219-D2",
+    name: "Dependent",
+    fullName: "Dependent Profile 2",
+    role: "Dependent",
+    details: "Family linked profile",
     badge: { text: "Ready", icon: "eyeglasses", type: "secondary" },
     visitInfo: {
       icon: "eyeglasses",
-      text: "Glasses ready for pickup at VI Clinic",
+      text: "Account ready for appointment",
     },
     image:
       "https://lh3.googleusercontent.com/aida-public/AB6AXuDtKwYoejhj1khuGSH3dyG5YZRh2HeF0ECTkBdGhN2UAVSpigawDPTZezREEeaeI9sGyZB2lR2ZBw15FP8FVFfVESnThMK55stP4CK2SbVB37yuJtw47v5pmnO5BR5jHOwJ4H3etbAi09eyoUGBo17RwzQhxNL2lM8vc_DT8gY0sgEH8tRlqPmXngwz4ZCYWXdSn-0-_Rt9x4F3eSmxMzfEGVLt7AURblYcTPBqy3Z8",
@@ -157,12 +157,12 @@ export default function SelectProfilePage() {
                         {p.fullName}
                       </span>
                       <div className="flex items-center gap-2 text-sm text-[#424655]">
-                        <span className="font-semibold text-[#0055c4]">#VEM-88219</span>
+                        <span className="font-semibold text-[#0055c4]">Primary profile</span>
                         <span>•</span>
-                        <span>Age 32</span>
+                        <span>Active account</span>
                         <span>•</span>
                         <span className="text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.2 rounded-full text-xs">
-                          Active Account
+                          Ready
                         </span>
                       </div>
                     </div>

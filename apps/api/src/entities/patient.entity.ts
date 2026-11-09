@@ -84,19 +84,19 @@ export class Patient {
   @Column({ type: 'enum', enum: ['new', 'active', 'inactive'], default: 'new' })
   status: string;
 
-  @Column()
-  clinicId: string;
+  @Column({ nullable: true })
+  clinicId: string | null;
 
-  @ManyToOne(() => Clinic)
+  @ManyToOne(() => Clinic, { nullable: true })
   @JoinColumn({ name: 'clinicId' })
-  clinic: Clinic;
+  clinic: Clinic | null;
 
-  @Column()
-  branchId: string;
+  @Column({ nullable: true })
+  branchId: string | null;
 
-  @ManyToOne(() => Branch)
+  @ManyToOne(() => Branch, { nullable: true })
   @JoinColumn({ name: 'branchId' })
-  branch: Branch;
+  branch: Branch | null;
 
   @CreateDateColumn()
   createdAt: Date;

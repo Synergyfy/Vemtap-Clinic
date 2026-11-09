@@ -171,7 +171,7 @@ export default function ClinicLayout({ children }: { children: React.ReactNode }
               </div>
               <div className="flex flex-col">
                 <span className="text-[14px] font-extrabold tracking-tight text-white leading-tight">VEMTAP</span>
-                <span className="text-[9px] font-bold tracking-[0.16em] text-sky-400 uppercase leading-tight">CLINIC HUB</span>
+                <span className="text-[9px] font-bold tracking-[0.16em] text-sky-400 uppercase leading-tight">Clinic</span>
               </div>
             </Link>
             <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden text-white/50 hover:text-white p-2">
@@ -203,7 +203,7 @@ export default function ClinicLayout({ children }: { children: React.ReactNode }
 
       <main className="flex-1 min-w-0 flex flex-col h-full overflow-hidden">
         <StaffTopHeader
-          portalSubtitle="CLINIC HUB"
+          portalSubtitle="Clinic workspace"
           dashboardHref="/clinic/dashboard"
           accentClass="bg-sky-500"
           roleColor="text-sky-600"

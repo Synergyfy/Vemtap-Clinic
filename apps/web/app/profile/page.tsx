@@ -127,9 +127,9 @@ export default function ProfilePage() {
 
   return (
     <main className="min-h-screen bg-slate-50">
-      <div className="max-w-4xl mx-auto px-6 py-12">
+      <div className="w-full max-w-[1100px] mx-auto px-4 sm:px-6 py-8 sm:py-12">
         {/* Header */}
-        <div className="mb-8">
+        <div className="mb-8 md:mb-10">
           <h1 className="text-3xl font-bold text-brand-navy">Profile Settings</h1>
           <p className="text-slate-500 mt-1">Manage your account settings and preferences</p>
         </div>
@@ -148,7 +148,7 @@ export default function ProfilePage() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-[320px_minmax(0,1fr)] items-start gap-6 lg:gap-8">
           {/* Sidebar */}
           <div className="lg:col-span-1">
             <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 sticky top-24">

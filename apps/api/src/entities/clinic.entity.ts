@@ -27,6 +27,12 @@ export class Clinic {
   @Column({ nullable: true, length: 50, default: 'free' })
   plan: string;
 
+  @Column({ nullable: true, unique: true, type: 'varchar', length: 80 })
+  qrCode: string;
+
+  @Column({ nullable: true, type: 'varchar', length: 255 })
+  qrUrl: string;
+
   @Column({ nullable: true })
   ownerId: string | null;
 

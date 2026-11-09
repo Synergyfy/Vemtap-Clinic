@@ -44,13 +44,20 @@ export class PatientRegisterDto {
   @MinLength(6)
   password: string;
 
-  @ApiProperty({ example: 'clinic-uuid' })
+  @ApiPropertyOptional({ example: 'clinic-uuid' })
+  @IsOptional()
   @IsUUID()
-  clinicId: string;
+  clinicId?: string;
 
-  @ApiProperty({ example: 'branch-uuid' })
+  @ApiPropertyOptional({ example: 'branch-uuid' })
+  @IsOptional()
   @IsUUID()
-  branchId: string;
+  branchId?: string;
+
+  @ApiPropertyOptional({ example: 'VEM-CLINIC123' })
+  @IsOptional()
+  @IsString()
+  clinicQrCode?: string;
 }
 
 export class PatientPortalAuthDto {
@@ -63,6 +70,28 @@ export class PatientPortalAuthDto {
     phone: string;
     clinicId: string;
   };
+}
+
+export class SendPhoneOtpDto {
+  @ApiProperty({ example: '+2348012345678' })
+  @IsString()
+  @MinLength(10)
+  @MaxLength(20)
+  phone: string;
+}
+
+export class VerifyPhoneOtpDto {
+  @ApiProperty({ example: '+2348012345678' })
+  @IsString()
+  @MinLength(10)
+  @MaxLength(20)
+  phone: string;
+
+  @ApiProperty({ example: '123456' })
+  @IsString()
+  @MinLength(4)
+  @MaxLength(8)
+  code: string;
 }
 
 export class BookAppointmentDto {

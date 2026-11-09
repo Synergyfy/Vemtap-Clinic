@@ -4,18 +4,28 @@ import React from "react";
 import Link from "next/link";
 import { Activity, ArrowRight, Building2, CalendarDays, ShieldCheck, Users, Wallet } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
+import { useDashboardOverview } from "@/hooks/useDashboard";
+
+const formatCurrency = (amount: number) =>
+  new Intl.NumberFormat("en-NG", {
+    style: "currency",
+    currency: "NGN",
+    maximumFractionDigits: 0,
+  }).format(amount || 0);
 
 export default function ClinicDashboardPage() {
   const { user } = useAuth();
+  const clinicId = user?.clinicId ?? null;
+  const { data: overview, isLoading } = useDashboardOverview(clinicId);
 
   const clinicName = user?.clinicName || "Your clinic";
   const displayName = [user?.firstName, user?.lastName].filter(Boolean).join(" ") || user?.email || "Clinic admin";
 
   const stats = [
-    { label: "Patients today", value: "38", icon: Users },
-    { label: "Appointments", value: "24", icon: CalendarDays },
-    { label: "Revenue", value: "₦1.85M", icon: Wallet },
-    { label: "Operations", value: "Healthy", icon: Activity },
+    { label: "Patients today", value: String(overview?.patients?.total ?? 0), icon: Users },
+    { label: "Appointments", value: String(overview?.appointments?.today ?? 0), icon: CalendarDays },
+    { label: "Revenue", value: formatCurrency(overview?.revenue?.today ?? 0), icon: Wallet },
+    { label: "Operations", value: overview ? `${overview.queue.waiting} waiting` : "0 waiting", icon: Activity },
   ];
 
   const quickActions = [
@@ -34,12 +44,14 @@ export default function ClinicDashboardPage() {
             {clinicName}
           </div>
           <h1 className="text-2xl font-black text-slate-900">Welcome back, {displayName}</h1>
-          <p className="mt-1 text-sm text-slate-600">Clinic operations are active and ready for patient care.</p>
+          <p className="mt-1 text-sm text-slate-600">
+            {isLoading ? "Loading live clinic data..." : "Clinic operations are active and ready for patient care."}
+          </p>
         </div>
 
         <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-bold text-emerald-700">
           <ShieldCheck size={16} />
-          System online
+          {isLoading ? "Refreshing" : "System online"}
         </div>
       </div>
 
@@ -83,9 +95,15 @@ export default function ClinicDashboardPage() {
         <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
           <h2 className="text-lg font-black text-slate-900">Clinic status</h2>
           <div className="mt-4 space-y-3">
-            <div className="rounded-2xl bg-emerald-50 p-3 text-sm font-bold text-emerald-700">Onboarding complete</div>
-            <div className="rounded-2xl bg-slate-50 p-3 text-sm text-slate-600">Primary branch setup is active.</div>
-            <div className="rounded-2xl bg-slate-50 p-3 text-sm text-slate-600">HMO and finance modules are available.</div>
+            <div className="rounded-2xl bg-emerald-50 p-3 text-sm font-bold text-emerald-700">
+              {isLoading ? "Loading live data" : "Live clinic metrics"}
+            </div>
+            <div className="rounded-2xl bg-slate-50 p-3 text-sm text-slate-600">
+              {overview ? `${overview.queue.waiting} patients waiting in queue.` : "No live queue data yet."}
+            </div>
+            <div className="rounded-2xl bg-slate-50 p-3 text-sm text-slate-600">
+              {overview ? `${overview.hmo.pendingClaims} HMO claims pending review.` : "HMO status pending."}
+            </div>
           </div>
         </div>
       </section>

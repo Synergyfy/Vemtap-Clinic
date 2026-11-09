@@ -35,6 +35,16 @@ export class CreateClinicDto {
   @IsOptional()
   @IsString()
   plan?: string;
+
+  @ApiPropertyOptional({ example: 'VEM-CLINIC123' })
+  @IsOptional()
+  @IsString()
+  qrCode?: string;
+
+  @ApiPropertyOptional({ example: 'http://localhost:3000/reception/check-in?clinic=VEM-CLINIC123' })
+  @IsOptional()
+  @IsString()
+  qrUrl?: string;
 }
 
 export class UpdateClinicDto {
@@ -72,6 +82,16 @@ export class UpdateClinicDto {
   @IsOptional()
   @IsString()
   plan?: string;
+
+  @ApiPropertyOptional({ example: 'VEM-CLINIC123' })
+  @IsOptional()
+  @IsString()
+  qrCode?: string;
+
+  @ApiPropertyOptional({ example: 'http://localhost:3000/reception/check-in?clinic=VEM-CLINIC123' })
+  @IsOptional()
+  @IsString()
+  qrUrl?: string;
 
   @ApiPropertyOptional({ example: true })
   @IsOptional()

@@ -7,7 +7,7 @@ export default function AddDependentPage() {
   const router = useRouter();
 
   const [relationship, setRelationship] = useState<"child" | "spouse" | "parent" | "other">("child");
-  const [fullName, setFullName] = useState("Zainab Adeleke");
+  const [fullName, setFullName] = useState("Dependent Full Name");
   const [dobDay, setDobDay] = useState("12");
   const [dobMonth, setDobMonth] = useState("May");
   const [dobYear, setDobYear] = useState("2016");
@@ -42,7 +42,7 @@ export default function AddDependentPage() {
 
   const handleSave = () => {
     setIsSubmitting(true);
-    showToast(`Profile Registered! ${fullName} synced with AXA HMO.`);
+    showToast(`Profile registered successfully for ${fullName}.`);
 
     setTimeout(() => {
       setIsSubmitting(false);
@@ -160,7 +160,7 @@ export default function AddDependentPage() {
               <input
                 className="w-full h-11 pl-10 pr-3.5 rounded-xl bg-[#f2f3ff] border border-transparent focus:border-[#0055c4] focus:bg-white text-[#131b2e] text-sm transition-all outline-none"
                 id="child-fullname"
-                placeholder="e.g. Zainab Adeleke"
+                placeholder="e.g. Dependent full name"
                 type="text"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
@@ -328,7 +328,7 @@ export default function AddDependentPage() {
             </div>
             <div className="flex flex-col min-w-0 flex-1">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-bold text-[#131b2e]">AXA Mansard Health Plan</span>
+                <span className="text-sm font-bold text-[#131b2e]">Primary insurance plan</span>
                 <span className="text-xs font-bold text-[#0055c4]">Covered</span>
               </div>
               <span className="text-xs text-[#424655] mt-0.5">

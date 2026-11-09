@@ -2,10 +2,14 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { usePatientRegister } from "@/hooks/usePatientPortal";
 
 export default function PatientRegisterPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const registerMutation = usePatientRegister();
+  const clinicQrCode = searchParams.get("clinic") ?? undefined;
 
   const [accountType, setAccountType] = useState<"individual" | "guardian">("individual");
   const [fullName, setFullName] = useState("");
@@ -29,7 +33,7 @@ export default function PatientRegisterPage() {
 
   const strength = getStrengthLevel();
 
-  const handleContinue = (e: React.FormEvent) => {
+  const handleContinue = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
@@ -54,26 +58,48 @@ export default function PatientRegisterPage() {
       return;
     }
 
-    setIsLoading(true);
-    // Store onboarding draft in sessionStorage so verify & complete profile can access it
-    try {
-      sessionStorage.setItem(
-        "vemtap_registration_draft",
-        JSON.stringify({
-          fullName,
-          phone,
-          email,
-          accountType,
-        })
-      );
-    } catch {
-      // ignore
-    }
+    const nameParts = fullName.trim().split(/\s+/);
+    const firstName = nameParts[0] ?? "";
+    const lastName = nameParts.slice(1).join(" ") || "Patient";
 
-    setTimeout(() => {
-      setIsLoading(false);
+    setIsLoading(true);
+
+    try {
+      await registerMutation.mutateAsync({
+        firstName,
+        lastName,
+        dateOfBirth: "2000-01-15",
+        gender: "other",
+        phone,
+        email,
+        password,
+        clinicQrCode,
+      });
+
+      try {
+        sessionStorage.setItem(
+          "vemtap_registration_draft",
+          JSON.stringify({
+            fullName,
+            phone,
+            email,
+            accountType,
+          })
+        );
+      } catch {
+        // ignore
+      }
+
       router.push(`/patient/verify?phone=${encodeURIComponent(phone)}`);
-    }, 800);
+    } catch (err: any) {
+      setError(
+        err?.response?.data?.message ??
+        err?.message ??
+        "We couldn’t create your account right now. Please try again."
+      );
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -232,7 +258,7 @@ export default function PatientRegisterPage() {
                   className="w-full h-[52px] pl-11 pr-3 rounded-xl bg-white border border-[#c2c6d7]/40 text-[#131b2e] text-[15px] placeholder:text-[#727786]/70 focus:outline-none focus:border-[#0055c4] focus:ring-1 focus:ring-[#0055c4] transition-all"
                   id="fullName"
                   name="fullName"
-                  placeholder="e.g. Olumide Adeleke"
+                  placeholder="e.g. Patient Name"
                   required
                   type="text"
                   value={fullName}
@@ -288,7 +314,7 @@ export default function PatientRegisterPage() {
                   className="w-full h-[52px] pl-11 pr-3 rounded-xl bg-white border border-[#c2c6d7]/40 text-[#131b2e] text-[15px] placeholder:text-[#727786]/70 focus:outline-none focus:border-[#0055c4] focus:ring-1 focus:ring-[#0055c4] transition-all"
                   id="email"
                   name="email"
-                  placeholder="olumide.adeleke@example.com"
+                  placeholder="patient@example.com"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -418,11 +444,11 @@ export default function PatientRegisterPage() {
                 {isLoading ? (
                   <>
                     <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                    <span>Generating SMS OTP...</span>
+                    <span>Creating Account...</span>
                   </>
                 ) : (
                   <>
-                    <span>Continue to Phone Verification</span>
+                    <span>Create Account</span>
                     <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
                   </>
                 )}

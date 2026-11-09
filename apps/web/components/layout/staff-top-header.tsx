@@ -23,7 +23,7 @@ interface StaffTopHeaderProps {
 }
 
 export function StaffTopHeader({
-  portalSubtitle = "CLINIC HUB",
+  portalSubtitle = "Clinic workspace",
   dashboardHref,
   accentClass = "bg-sky-500",
   roleColor = "text-sky-600",
@@ -67,11 +67,11 @@ export function StaffTopHeader({
 
   // Active branch
   const activeBranch = branches.find((b: any) => b.id === user?.branchId) || branches[0];
-  const branchName = activeBranch?.name || "Victoria Island Center";
+  const branchName = activeBranch?.name || "Clinic";
 
   return (
     <header className="h-16 sm:h-20 border-b border-slate-200 bg-white/95 backdrop-blur-md flex items-center justify-between px-3 sm:px-6 md:px-8 shrink-0 z-40 shadow-xs">
-      {/* LEFT: Victoria Island Center & Status */}
+      {/* LEFT: active branch or neutral fallback */}
       <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
         <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-sky-50 flex items-center justify-center shrink-0 border border-sky-100 text-[#0055C4] shadow-xs">
           <Building2 size={18} className="sm:w-5 sm:h-5" />
@@ -83,7 +83,7 @@ export function StaffTopHeader({
             </span>
             <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-bold shrink-0 border border-emerald-100">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="hidden xs:inline">Clinic</span> Open
+              <span className="hidden xs:inline">Status</span> Active
             </span>
           </div>
           <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider hidden sm:block truncate">

@@ -18,7 +18,7 @@ export default function PatientDashboard() {
 
   const handleCheckIn = () => {
     setCheckedIn(true);
-    showToast("Checked in successfully for Dr. Amara Okafor's clinic queue.");
+    showToast("Checked in successfully for your assigned clinic queue.");
   };
 
   const handleMedication = () => {
@@ -43,14 +43,14 @@ export default function PatientDashboard() {
         <div>
           <p className="text-[11px] font-bold tracking-wider text-[#73889B] uppercase">Welcome Back</p>
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[#0F2942] leading-tight mt-0.5">
-            Good morning, Olumide
+            Good morning, Patient
           </h1>
         </div>
         <div className="flex items-center gap-2.5 self-start sm:self-auto">
           <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#F4F9FD] rounded-full border border-[#E2EBF2] shadow-sm shrink-0">
             <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
-            <span className="text-xs font-bold text-[#0F2942] font-mono tracking-tight">#VEM-88219-LG</span>
-            <span className="text-[11px] text-[#73889B] font-medium">• VI Center</span>
+            <span className="text-xs font-bold text-[#0F2942] font-mono tracking-tight">Patient profile</span>
+            <span className="text-[11px] text-[#73889B] font-medium">• Active</span>
           </div>
           <Link
             href="/patient/select-profile"
@@ -82,14 +82,14 @@ export default function PatientDashboard() {
                 <div className="flex items-center gap-3.5 min-w-0">
                   <div className="w-12 h-12 rounded-full bg-[#EDF5FF] overflow-hidden shrink-0 ring-2 ring-[#F2F7FC] flex items-center justify-center">
                     <img
-                      alt="Dr. Amara Okafor"
+                      alt="Assigned clinician"
                       className="w-full h-full object-cover"
                       src="https://lh3.googleusercontent.com/aida-public/AB6AXuDrK6DGWwAfn32_QM8kIrMOQMTBol-UdD-8nJ1Ij6zGD0XCPrRKIJTMc-1NeOOxRO7_5L8HG4v7SRpc2rBZrycjjRkd8E5h00M5j6js1UAtkaUGohmglGnxKKMghL4umFOXeSN5ljqYEU0tp67633fLne582UWIF8iF_wfQ2BD4B1h99TeOyb6aD9WXar4ix9E6AKdWGLNFdEgkM_vsxmkrtdzEK6mqOUk03bVkby3_"
                     />
                   </div>
                   <div className="min-w-0">
                     <h3 className="text-[16px] font-bold text-[#0F2942] truncate leading-snug">
-                      Dr. Amara Okafor
+                      Assigned Clinician
                     </h3>
                     <p className="text-[12px] font-bold text-[#0055C4] truncate">
                       Consultant Retinal Specialist
@@ -318,7 +318,7 @@ export default function PatientDashboard() {
                     <h4 className="text-[14px] font-bold text-[#0F2942] truncate">HMO &amp; Billing</h4>
                     <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full shrink-0">Active</span>
                   </div>
-                  <p className="text-[11px] text-[#73889B] truncate">AXA Mansard • #AX-8910</p>
+                  <p className="text-[11px] text-[#73889B] truncate">Insurance provider • active plan</p>
                 </div>
               </div>
               <Link
@@ -398,7 +398,7 @@ export default function PatientDashboard() {
               </span>
             </div>
             <p className="text-[12px] text-[#73889B] mb-3">
-              Manage pediatric visits, eye checks, and prescriptions for Tiwa and Funke.
+              Manage linked family profiles and shared care records for dependents.
             </p>
             <div className="flex items-center gap-2">
               <Link

@@ -29,6 +29,12 @@ export class ClinicsController {
     return this.clinicsService.getStats(user);
   }
 
+  @Get('qr/:qrCode')
+  @ApiOperation({ summary: 'Get clinic details by unique QR code' })
+  findByQrCode(@Param('qrCode') qrCode: string) {
+    return this.clinicsService.findByQrCode(qrCode);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get clinic details by ID' })
   findOne(@Param('id') id: string) {
