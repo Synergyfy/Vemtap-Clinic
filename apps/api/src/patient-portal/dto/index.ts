@@ -58,6 +58,11 @@ export class PatientRegisterDto {
   @IsOptional()
   @IsString()
   clinicQrCode?: string;
+
+  @ApiPropertyOptional({ example: 'guardian', enum: ['individual', 'guardian'] })
+  @IsOptional()
+  @IsIn(['individual', 'guardian'])
+  accountType?: 'individual' | 'guardian';
 }
 
 export class PatientPortalAuthDto {

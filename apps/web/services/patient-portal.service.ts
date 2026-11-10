@@ -11,6 +11,9 @@ const persistPatientAuth = (
     phone?: string;
     clinicId?: string | null;
     branchId?: string | null;
+    guardianId?: string | null;
+    guardianRelationship?: string | null;
+    accountType?: 'individual' | 'guardian';
   },
   accessToken?: string,
 ) => {
@@ -25,6 +28,9 @@ const persistPatientAuth = (
     roles: ['patient'],
     clinicId: patient.clinicId ?? '',
     branchId: patient.branchId ?? undefined,
+    guardianId: patient.guardianId ?? undefined,
+    guardianRelationship: patient.guardianRelationship ?? undefined,
+    accountType: patient.accountType ?? (patient.guardianRelationship === 'guardian' ? 'guardian' : 'individual'),
   };
 
   console.log('[patient-login] authenticated user:', {
@@ -49,6 +55,9 @@ export interface PatientProfile {
   emergencyContact?: string;
   emergencyPhone?: string;
   clinicId: string;
+  guardianId?: string | null;
+  guardianRelationship?: string | null;
+  accountType?: 'individual' | 'guardian';
   createdAt: string;
 }
 
@@ -183,6 +192,7 @@ export interface PatientRegisterPayload {
   clinicId?: string;
   branchId?: string;
   clinicQrCode?: string;
+  accountType?: 'individual' | 'guardian';
 }
 
 export interface PatientLoginPayload {

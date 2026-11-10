@@ -40,6 +40,19 @@ export default function TopNav() {
     || user?.email
     || "Patient profile";
 
+  const isFamilyMember = Boolean(
+    user?.guardianId ||
+    profile?.guardianId ||
+    user?.guardianRelationship === 'guardian' ||
+    profile?.guardianRelationship === 'guardian' ||
+    user?.accountType === 'guardian' ||
+    profile?.accountType === 'guardian'
+  );
+  const profileTypeLabel = isFamilyMember ? "Family profile" : "Patient profile";
+  const profileStatusText = isFamilyMember
+    ? `${(user?.guardianRelationship || profile?.guardianRelationship || 'family member').replace(/^./, (c) => c.toUpperCase())} profile • Linked`
+    : "Primary profile • Active";
+
   const patientInitials = patientDisplayName
     .split(/\s+/)
     .filter(Boolean)
@@ -106,8 +119,8 @@ export default function TopNav() {
           className="hidden sm:inline-flex items-center gap-2 px-3 py-1.5 bg-[#F4F9FD] hover:bg-[#EBF4FE] text-[#0F2942] rounded-full border border-[#E2EBF2] transition-colors text-xs font-semibold"
           title="Switch active patient profile"
         >
-          <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
-          <span>Patient profile</span>
+          <span className={`w-2 h-2 rounded-full shrink-0 ${isFamilyMember ? 'bg-violet-500' : 'bg-emerald-500'}`}></span>
+          <span>{profileTypeLabel}</span>
           <span className="text-[#73889B] font-medium">• Switch</span>
         </Link>
 
@@ -230,7 +243,7 @@ export default function TopNav() {
               >
                 <div className="p-3.5 border-b border-gray-100 bg-[#F4F9FD]/70">
                   <p className="text-sm font-bold text-[#0F2942]">{patientDisplayName === "Patient profile" ? "Patient Profile" : patientDisplayName}</p>
-                  <p className="text-xs text-[#0055C4] font-semibold mt-0.5">{user?.userId ? "Primary profile • Active" : "Profile not loaded"}</p>
+                  <p className="text-xs text-[#0055C4] font-semibold mt-0.5">{user?.userId ? profileStatusText : "Profile not loaded"}</p>
                 </div>
                 <div className="p-2 space-y-1">
                   <Link
