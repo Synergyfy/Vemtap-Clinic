@@ -8,12 +8,13 @@ import { Branch } from '../entities/branch.entity';
 import { Appointment } from '../entities/appointment.entity';
 import { MedicalRecord } from '../entities/medical-record.entity';
 import { Invoice } from '../entities/invoice.entity';
+import { PatientClinicMembership } from '../entities/patient-clinic-membership.entity';
 import { PatientPortalService } from './patient-portal.service';
 import { PatientPortalController } from './patient-portal.controller';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Patient, Clinic, Branch, Appointment, MedicalRecord, Invoice]),
+    TypeOrmModule.forFeature([Patient, Clinic, Branch, Appointment, MedicalRecord, Invoice, PatientClinicMembership]),
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: (config: ConfigService) => ({

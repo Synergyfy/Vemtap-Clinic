@@ -2,12 +2,14 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
+import { patientPortalService } from "@/services/patient-portal.service";
 
 export default function AddDependentPage() {
   const router = useRouter();
 
   const [relationship, setRelationship] = useState<"child" | "spouse" | "parent" | "other">("child");
   const [fullName, setFullName] = useState("Dependent Full Name");
+  const [email, setEmail] = useState("");
   const [dobDay, setDobDay] = useState("12");
   const [dobMonth, setDobMonth] = useState("May");
   const [dobYear, setDobYear] = useState("2016");
@@ -40,14 +42,33 @@ export default function AddDependentPage() {
     }, 3000);
   };
 
-  const handleSave = () => {
-    setIsSubmitting(true);
-    showToast(`Profile registered successfully for ${fullName}.`);
+  const handleSave = async () => {
+    const trimmedName = fullName.trim();
+    const trimmedEmail = email.trim();
 
-    setTimeout(() => {
+    if (!trimmedName || !trimmedEmail) {
+      showToast("Please enter the dependent name and email address.");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      await patientPortalService.sendFamilyActivationInvite({
+        fullName: trimmedName,
+        email: trimmedEmail,
+        relationship,
+      });
+
+      showToast(`Activation link sent to ${trimmedEmail}.`);
+      setTimeout(() => {
+        setIsSubmitting(false);
+        router.push("/patient/select-profile");
+      }, 1200);
+    } catch (error: any) {
       setIsSubmitting(false);
-      router.push("/patient/select-profile");
-    }, 1200);
+      showToast(error?.response?.data?.message || error?.message || "Unable to send the activation email right now.");
+    }
   };
 
   return (
@@ -164,6 +185,25 @@ export default function AddDependentPage() {
                 type="text"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-[#131b2e]" htmlFor="dependent-email">
+              Email for Independent Account Activation
+            </label>
+            <div className="relative flex items-center">
+              <span className="material-symbols-outlined absolute left-3.5 text-[#727786] text-[18px]">
+                mail
+              </span>
+              <input
+                className="w-full h-11 pl-10 pr-3.5 rounded-xl bg-[#f2f3ff] border border-transparent focus:border-[#0055c4] focus:bg-white text-[#131b2e] text-sm transition-all outline-none"
+                id="dependent-email"
+                placeholder="e.g. dependent@example.com"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
               />
             </div>
           </div>

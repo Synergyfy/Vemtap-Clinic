@@ -44,8 +44,8 @@ export class Patient {
   @Column({ type: 'enum', enum: ['private', 'hmo'], default: 'private' })
   patientType: string;
 
-  @Column({ nullable: true })
-  hmoId: string;
+  @Column({ nullable: true, type: 'uuid' })
+  hmoId?: string | null;
 
   @ManyToOne(() => HMO, { nullable: true })
   @JoinColumn({ name: 'hmoId' })
@@ -78,21 +78,27 @@ export class Patient {
   @Column({ nullable: true })
   patientPin: string;
 
+  @Column({ nullable: true, type: 'uuid' })
+  guardianId?: string | null;
+
+  @Column({ nullable: true, length: 50 })
+  guardianRelationship: string;
+
   @Column({ default: false })
   portalAccessEnabled: boolean;
 
   @Column({ type: 'enum', enum: ['new', 'active', 'inactive'], default: 'new' })
   status: string;
 
-  @Column({ nullable: true })
-  clinicId: string | null;
+  @Column({ nullable: true, type: 'uuid' })
+  clinicId?: string | null;
 
   @ManyToOne(() => Clinic, { nullable: true })
   @JoinColumn({ name: 'clinicId' })
   clinic: Clinic | null;
 
-  @Column({ nullable: true })
-  branchId: string | null;
+  @Column({ nullable: true, type: 'uuid' })
+  branchId?: string | null;
 
   @ManyToOne(() => Branch, { nullable: true })
   @JoinColumn({ name: 'branchId' })

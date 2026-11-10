@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Calendar as CalendarUI } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { usePatientAppointmentsList, useBookAppointment, useRescheduleAppointment, useCancelAppointment, PatientAppointment } from "@/hooks/usePatientPortal";
+import { usePatientAppointmentsList, useBookAppointment, useRescheduleAppointment, useCancelAppointment, usePatientClinicMemberships, PatientAppointment } from "@/hooks/usePatientPortal";
 import { useBranches } from "@/hooks/useBranches";
 import { useAuth } from "@/lib/auth-context";
 
@@ -44,6 +44,7 @@ function getStatusBadge(status: string) {
 export default function AppointmentsPage() {
   const { user } = useAuth();
   const { data: appointments = [], isLoading } = usePatientAppointmentsList();
+  const { data: memberships = [] } = usePatientClinicMemberships();
   const { data: branches = [] } = useBranches();
   const bookAppointment = useBookAppointment();
   const rescheduleAppointment = useRescheduleAppointment();
@@ -53,6 +54,7 @@ export default function AppointmentsPage() {
   const [isRescheduleModalOpen, setRescheduleModalOpen] = useState(false);
   const [isCancelModalOpen, setCancelModalOpen] = useState(false);
   const [selectedApptId, setSelectedApptId] = useState<string | null>(null);
+  const [selectedClinicId, setSelectedClinicId] = useState<string | null>(null);
 
   const [bookType, setBookType] = useState("consultation");
   const [bookBranch, setBookBranch] = useState("");
@@ -60,7 +62,31 @@ export default function AppointmentsPage() {
   const [bookDate, setBookDate] = useState<Date>();
   const [bookTime, setBookTime] = useState("09:00");
 
-  const effectiveBranchId = bookBranch || branches[0]?.id || user?.branchId || "";
+  const selectedMembership = memberships.find((membership) => membership.clinicId === selectedClinicId) ?? memberships[0] ?? null;
+  const selectedClinicName = selectedMembership?.clinic?.name ?? selectedMembership?.clinic?.clinicName ?? "Your clinic";
+  const selectedBranchName = selectedMembership?.branch?.name ?? selectedMembership?.branch?.branchName ?? "Your branch";
+  const filteredAppointments = selectedMembership
+    ? appointments.filter((appt) => appt.clinicId === selectedMembership.clinicId)
+    : appointments;
+
+  React.useEffect(() => {
+    if (!memberships.length) {
+      setSelectedClinicId(null);
+      return;
+    }
+
+    if (!selectedClinicId || !memberships.some((membership) => membership.clinicId === selectedClinicId)) {
+      setSelectedClinicId(memberships[0].clinicId);
+    }
+  }, [memberships, selectedClinicId]);
+
+  React.useEffect(() => {
+    if (!bookBranch && selectedMembership?.branchId) {
+      setBookBranch(selectedMembership.branchId);
+    }
+  }, [bookBranch, selectedMembership]);
+
+  const effectiveBranchId = bookBranch || selectedMembership?.branchId || branches[0]?.id || user?.branchId || "";
 
   const [rescheduleDate, setRescheduleDate] = useState<Date>();
   const [rescheduleTime, setRescheduleTime] = useState("");
@@ -107,7 +133,7 @@ export default function AppointmentsPage() {
       <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Appointments</h1>
-          <p className="text-sm sm:text-base text-gray-500 mt-1">Manage your past and upcoming visits.</p>
+          <p className="text-sm sm:text-base text-gray-500 mt-1">Manage your past and upcoming visits for {selectedClinicName}.</p>
         </div>
         <button
           onClick={() => setBookModalOpen(true)}
@@ -117,6 +143,37 @@ export default function AppointmentsPage() {
         </button>
       </header>
 
+      {memberships.length > 0 && (
+        <div className="mb-6 bg-white rounded-[1.5rem] border border-gray-100 p-4 shadow-sm">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Clinic access</p>
+              <h2 className="text-lg font-bold text-gray-900">{selectedClinicName}</h2>
+              <p className="text-sm text-gray-500">{selectedBranchName}</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {memberships.map((membership) => {
+                const clinicName = membership.clinic?.name ?? membership.clinic?.clinicName ?? "Clinic";
+                const branchName = membership.branch?.name ?? membership.branch?.branchName ?? "Branch";
+                const active = membership.clinicId === selectedClinicId;
+                return (
+                  <button
+                    key={membership.id}
+                    type="button"
+                    onClick={() => setSelectedClinicId(membership.clinicId)}
+                    className={`rounded-full px-3 py-2 text-xs font-bold border transition-colors ${
+                      active ? "bg-teal-600 text-white border-teal-600" : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100"
+                    }`}
+                  >
+                    {clinicName} • {branchName}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
       {isLoading ? (
         <div className="space-y-4">
           {[1, 2, 3].map((i) => (
@@ -125,7 +182,7 @@ export default function AppointmentsPage() {
         </div>
       ) : (
         <div className="space-y-4">
-          {appointments.map((appt, idx) => (
+          {filteredAppointments.map((appt, idx) => (
             <motion.div
               key={appt.id}
               initial={{ opacity: 0, y: 10 }}
@@ -182,10 +239,10 @@ export default function AppointmentsPage() {
               )}
             </motion.div>
           ))}
-          {appointments.length === 0 && (
+          {filteredAppointments.length === 0 && (
             <div className="text-center py-20 bg-gray-50 rounded-[3rem] border-2 border-dashed border-gray-200">
               <Calendar className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500 font-bold">No appointments found.</p>
+              <p className="text-gray-500 font-bold">No appointments found for {selectedClinicName}.</p>
               <p className="text-gray-400 text-sm mt-1">Book your first eye checkup above.</p>
             </div>
           )}
@@ -231,9 +288,11 @@ export default function AppointmentsPage() {
                         <SelectValue placeholder="Select branch" />
                       </SelectTrigger>
                       <SelectContent className="rounded-2xl border-gray-100 shadow-xl">
-                        {branches.map((b) => (
-                          <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
-                        ))}
+                        {branches
+                          .filter((branch) => !selectedClinicId || branch.clinicId === selectedClinicId)
+                          .map((b) => (
+                            <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                          ))}
                       </SelectContent>
                     </Select>
                   </div>

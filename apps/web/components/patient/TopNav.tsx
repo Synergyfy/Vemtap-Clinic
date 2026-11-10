@@ -5,7 +5,8 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Bell, CheckCircle2, FileText, CalendarDays, Info, User, ArrowRightFromLine, Users } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { usePatientNotifications, useMarkNotificationRead, useMarkAllNotificationsRead } from "@/hooks/usePatientPortal";
+import { usePatientNotifications, useMarkNotificationRead, useMarkAllNotificationsRead, usePatientProfile } from "@/hooks/usePatientPortal";
+import { useAuth } from "@/lib/auth-context";
 import { Modal } from "@/components/ui/modal";
 
 const getIcon = (type: string) => {
@@ -26,10 +27,25 @@ export default function TopNav() {
   const notifRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
 
+  const { user } = useAuth();
+  const { data: profile } = usePatientProfile();
   const { data: notifications = [] } = usePatientNotifications();
   const markRead = useMarkNotificationRead();
   const markAllRead = useMarkAllNotificationsRead();
   const unreadCount = notifications.filter(n => !n.isRead).length;
+
+  const patientDisplayName = [profile?.firstName, profile?.lastName].filter(Boolean).join(" ").trim()
+    || [user?.firstName, user?.lastName].filter(Boolean).join(" ").trim()
+    || profile?.email
+    || user?.email
+    || "Patient profile";
+
+  const patientInitials = patientDisplayName
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("") || "P";
 
   const handleLogout = () => {
     try {
@@ -195,14 +211,12 @@ export default function TopNav() {
             className="flex items-center gap-2 p-1 rounded-full hover:ring-2 hover:ring-[#0055C4]/20 transition-all cursor-pointer"
             aria-label="Profile menu"
           >
-            <div className="w-9 h-9 rounded-full overflow-hidden ring-2 ring-white shadow-sm flex items-center justify-center bg-slate-200 shrink-0">
-              <img
-                alt="Patient profile avatar"
-                className="w-full h-full object-cover"
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuBmpdS6fW3w6q_GSA18ahdQjjXSccucGdf6YRS45bRNpy7HH7uO0G8wK6tuXdpZ7YPrQbejZiS7LUFZriLWGak4pIGM-6vB0p3o33KeWvKmalVr1vwI134g-cUOFPk7BgRvWUhW1ZKKVzhaR2qJ8LUuWy4n8OzKQ6SQ8anztCM-idrUamwtbYGMqbQkop95WGiywIBkh3vbtQqc87NkXuUzSy7_xNmqsarhTVIOp29U"
-              />
+            <div className="w-9 h-9 rounded-full ring-2 ring-white shadow-sm flex items-center justify-center bg-[#E6F4FE] text-[#0055C4] text-xs font-bold shrink-0">
+              {patientInitials}
             </div>
-            <span className="hidden md:block text-xs font-bold text-[#0F2942]">Patient</span>
+            <span className="hidden md:block text-xs font-bold text-[#0F2942] truncate max-w-[140px]">
+              {patientDisplayName === "Patient profile" ? "Profile" : patientDisplayName}
+            </span>
           </button>
 
           <AnimatePresence>
@@ -215,8 +229,8 @@ export default function TopNav() {
                 className="absolute right-0 mt-2 w-60 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden z-50 origin-top-right"
               >
                 <div className="p-3.5 border-b border-gray-100 bg-[#F4F9FD]/70">
-                  <p className="text-sm font-bold text-[#0F2942]">Patient Profile</p>
-                  <p className="text-xs text-[#0055C4] font-semibold mt-0.5">Primary profile • Active</p>
+                  <p className="text-sm font-bold text-[#0F2942]">{patientDisplayName === "Patient profile" ? "Patient Profile" : patientDisplayName}</p>
+                  <p className="text-xs text-[#0055C4] font-semibold mt-0.5">{user?.userId ? "Primary profile • Active" : "Profile not loaded"}</p>
                 </div>
                 <div className="p-2 space-y-1">
                   <Link

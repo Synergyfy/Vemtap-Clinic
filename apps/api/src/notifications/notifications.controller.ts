@@ -14,35 +14,44 @@ export class NotificationsController {
   constructor(private readonly notificationsService: NotificationsService) {}
 
   @Get()
-  @Roles(UserRole.ADMIN, UserRole.DOCTOR, UserRole.NURSE, UserRole.RECEPTIONIST, UserRole.PHARMACIST, UserRole.OPTOMETRIST, UserRole.CASHIER)
+  @Roles('patient' as any, UserRole.ADMIN, UserRole.DOCTOR, UserRole.NURSE, UserRole.RECEPTIONIST, UserRole.PHARMACIST, UserRole.OPTOMETRIST, UserRole.CASHIER)
   @ApiOperation({ summary: 'Get my notifications' })
   getMyNotifications(@Request() req: any, @Query('unreadOnly') unreadOnly?: boolean) {
-    return this.notificationsService.findByUser(req.user.sub, unreadOnly === true);
+    const isPatient = Array.isArray(req.user?.roles) && req.user.roles.includes('patient');
+    return isPatient
+      ? this.notificationsService.findByPatient(req.user.sub, unreadOnly === true)
+      : this.notificationsService.findByUser(req.user.sub, unreadOnly === true);
   }
 
   @Get('unread-count')
-  @Roles(UserRole.ADMIN, UserRole.DOCTOR, UserRole.NURSE, UserRole.RECEPTIONIST, UserRole.PHARMACIST, UserRole.OPTOMETRIST, UserRole.CASHIER)
+  @Roles('patient' as any, UserRole.ADMIN, UserRole.DOCTOR, UserRole.NURSE, UserRole.RECEPTIONIST, UserRole.PHARMACIST, UserRole.OPTOMETRIST, UserRole.CASHIER)
   @ApiOperation({ summary: 'Get unread notification count' })
   getUnreadCount(@Request() req: any) {
-    return this.notificationsService.getUnreadCount(req.user.sub);
+    const isPatient = Array.isArray(req.user?.roles) && req.user.roles.includes('patient');
+    return isPatient
+      ? this.notificationsService.getPatientUnreadCount(req.user.sub)
+      : this.notificationsService.getUnreadCount(req.user.sub);
   }
 
   @Put('read-all')
-  @Roles(UserRole.ADMIN, UserRole.DOCTOR, UserRole.NURSE, UserRole.RECEPTIONIST, UserRole.PHARMACIST, UserRole.OPTOMETRIST, UserRole.CASHIER)
+  @Roles('patient' as any, UserRole.ADMIN, UserRole.DOCTOR, UserRole.NURSE, UserRole.RECEPTIONIST, UserRole.PHARMACIST, UserRole.OPTOMETRIST, UserRole.CASHIER)
   @ApiOperation({ summary: 'Mark all notifications as read' })
   markAllAsRead(@Request() req: any) {
-    return this.notificationsService.markAllAsRead(req.user.sub);
+    const isPatient = Array.isArray(req.user?.roles) && req.user.roles.includes('patient');
+    return isPatient
+      ? this.notificationsService.markAllPatientNotificationsAsRead(req.user.sub)
+      : this.notificationsService.markAllAsRead(req.user.sub);
   }
 
   @Put(':id/read')
-  @Roles(UserRole.ADMIN, UserRole.DOCTOR, UserRole.NURSE, UserRole.RECEPTIONIST, UserRole.PHARMACIST, UserRole.OPTOMETRIST, UserRole.CASHIER)
+  @Roles('patient' as any, UserRole.ADMIN, UserRole.DOCTOR, UserRole.NURSE, UserRole.RECEPTIONIST, UserRole.PHARMACIST, UserRole.OPTOMETRIST, UserRole.CASHIER)
   @ApiOperation({ summary: 'Mark notification as read' })
   markAsRead(@Param('id') id: string) {
     return this.notificationsService.markAsRead(id);
   }
 
   @Delete(':id')
-  @Roles(UserRole.ADMIN, UserRole.DOCTOR, UserRole.NURSE, UserRole.RECEPTIONIST, UserRole.PHARMACIST, UserRole.OPTOMETRIST, UserRole.CASHIER)
+  @Roles('patient' as any, UserRole.ADMIN, UserRole.DOCTOR, UserRole.NURSE, UserRole.RECEPTIONIST, UserRole.PHARMACIST, UserRole.OPTOMETRIST, UserRole.CASHIER)
   @ApiOperation({ summary: 'Delete notification' })
   remove(@Param('id') id: string) {
     return this.notificationsService.remove(id);

@@ -2,15 +2,37 @@ import axios from 'axios';
 import { api } from '@/lib/api';
 import { useAuthState } from '@/lib/auth-state';
 
-const persistPatientAuth = (patient: { id: string; email: string; clinicId: string }, accessToken?: string) => {
+const persistPatientAuth = (
+  patient: {
+    id: string;
+    email: string;
+    firstName?: string;
+    lastName?: string;
+    phone?: string;
+    clinicId?: string | null;
+    branchId?: string | null;
+  },
+  accessToken?: string,
+) => {
   if (!accessToken) return;
 
-  useAuthState.getState().setAuth(accessToken, {
+  const authUser = {
     userId: patient.id,
     email: patient.email,
+    firstName: patient.firstName,
+    lastName: patient.lastName,
+    phone: patient.phone,
     roles: ['patient'],
-    clinicId: patient.clinicId,
+    clinicId: patient.clinicId ?? '',
+    branchId: patient.branchId ?? undefined,
+  };
+
+  console.log('[patient-login] authenticated user:', {
+    ...authUser,
+    accessToken,
   });
+
+  useAuthState.getState().setAuth(accessToken, authUser);
 };
 
 export interface PatientProfile {
@@ -41,6 +63,20 @@ export interface PatientAppointment {
   patient?: { id: string; firstName: string; lastName: string };
   clinicId: string;
   branchId?: string;
+  clinic?: { id: string; name?: string; clinicName?: string };
+  branch?: { id: string; name?: string; branchName?: string };
+  createdAt: string;
+}
+
+export interface PatientClinicMembership {
+  id: string;
+  patientId: string;
+  clinicId: string;
+  branchId?: string | null;
+  isPrimary?: boolean;
+  isActive?: boolean;
+  clinic?: { id: string; name?: string; clinicName?: string };
+  branch?: { id: string; name?: string; branchName?: string };
   createdAt: string;
 }
 
@@ -162,6 +198,29 @@ export interface SendPhoneOtpResponse {
   error?: string;
 }
 
+export interface SendEmailOtpResponse {
+  success: boolean;
+  code?: string;
+  messageId?: string;
+  expiresAt?: string;
+  error?: string;
+}
+
+export interface FamilyActivationInvitePayload {
+  fullName: string;
+  email: string;
+  relationship: 'child' | 'spouse' | 'parent' | 'other';
+}
+
+export interface FamilyActivationPayload {
+  token: string;
+  fullName: string;
+  dateOfBirth: string;
+  gender: 'male' | 'female' | 'other' | string;
+  phone: string;
+  password: string;
+}
+
 export interface UpdatePatientProfilePayload {
   phone?: string;
   address?: string;
@@ -216,6 +275,26 @@ export const patientPortalService = {
     return response.data;
   },
 
+  async sendEmailOtp(email: string): Promise<SendEmailOtpResponse> {
+    const response = await api.post('/patient-portal/email-otp/send', { email });
+    return response.data;
+  },
+
+  async verifyEmailOtp(email: string, code: string): Promise<{ verified: boolean }> {
+    const response = await api.post('/patient-portal/email-otp/verify', { email, code });
+    return response.data;
+  },
+
+  async sendFamilyActivationInvite(dto: FamilyActivationInvitePayload): Promise<{ success: boolean; invitationId: string; email: string; activationUrl: string; expiresAt: string }> {
+    const response = await api.post('/patient-portal/family/invite', dto);
+    return response.data;
+  },
+
+  async activateFamilyMember(dto: FamilyActivationPayload): Promise<{ success: boolean; patient: Record<string, any> }> {
+    const response = await api.post('/patient-portal/family/activate', dto);
+    return response.data;
+  },
+
   async logout(): Promise<void> {
     const token = useAuthState.getState().accessToken;
 
@@ -247,6 +326,11 @@ export const patientPortalService = {
 
   async getAppointments(): Promise<PatientAppointment[]> {
     const response = await api.get('/patient-portal/appointments');
+    return Array.isArray(response.data) ? response.data : (response.data?.data || []);
+  },
+
+  async getClinicMemberships(): Promise<PatientClinicMembership[]> {
+    const response = await api.get('/patient-portal/memberships');
     return Array.isArray(response.data) ? response.data : (response.data?.data || []);
   },
 

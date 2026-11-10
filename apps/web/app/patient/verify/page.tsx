@@ -2,27 +2,49 @@
 
 import React, { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useSendPatientOtp, useVerifyPatientOtp } from "@/hooks/usePatientPortal";
+import { useSendPatientEmailOtp, useSendPatientOtp, useVerifyPatientEmailOtp, useVerifyPatientOtp } from "@/hooks/usePatientPortal";
 
 function VerifyContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const emailParam = useMemo(() => searchParams.get("email") || "", [searchParams]);
   const phoneParam = useMemo(() => searchParams.get("phone") || "", [searchParams]);
   const sendOtpMutation = useSendPatientOtp();
   const verifyOtpMutation = useVerifyPatientOtp();
+  const sendEmailOtpMutation = useSendPatientEmailOtp();
+  const verifyEmailOtpMutation = useVerifyPatientEmailOtp();
 
   const [code, setCode] = useState("");
   const [debugCode, setDebugCode] = useState<string | null>(null);
-  const [status, setStatus] = useState("Sending verification code...");
+  const [status, setStatus] = useState("Preparing verification...");
   const [error, setError] = useState<string | null>(null);
 
   const requestOtp = async () => {
+    setError(null);
+
+    if (emailParam) {
+      setStatus("Sending verification code...");
+
+      try {
+        const result = await sendEmailOtpMutation.mutateAsync(emailParam);
+        if (result.code) {
+          setDebugCode(result.code);
+          setStatus(`Verification code sent to ${emailParam}. Use the code below while testing locally.`);
+        } else {
+          setStatus(`Verification code sent to ${emailParam}. Check your inbox and spam folder, then enter the 6-digit code below.`);
+        }
+      } catch (err: any) {
+        setError(err?.response?.data?.message || err?.message || "We couldn’t send the verification code.");
+        setStatus("Please try again.");
+      }
+      return;
+    }
+
     if (!phoneParam) {
       setError("A mobile number is required for verification.");
       return;
     }
 
-    setError(null);
     setStatus("Sending verification code...");
 
     try {
@@ -41,9 +63,28 @@ function VerifyContent() {
 
   useEffect(() => {
     void requestOtp();
-  }, [phoneParam]);
+  }, [emailParam, phoneParam]);
 
   const handleVerify = async () => {
+    if (emailParam) {
+      if (code.length !== 6) {
+        setError("Enter the 6-digit verification code you received.");
+        return;
+      }
+
+      try {
+        const result = await verifyEmailOtpMutation.mutateAsync({ email: emailParam, code });
+        if (result.verified) {
+          router.push("/patient/complete-profile");
+          return;
+        }
+        setError("That code is incorrect or has expired. Please request a new one.");
+      } catch (err: any) {
+        setError(err?.response?.data?.message || err?.message || "Verification failed. Please try again.");
+      }
+      return;
+    }
+
     if (!phoneParam) {
       setError("A valid phone number is required.");
       return;
@@ -81,14 +122,14 @@ function VerifyContent() {
             </button>
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-lg bg-[#0055c4]/10 flex items-center justify-center text-[#0055c4]">
-                <span className="material-symbols-outlined text-[20px]">visibility</span>
+                <span className="material-symbols-outlined text-[20px]">mail</span>
               </div>
               <div className="flex flex-col">
                 <span className="text-[12px] leading-4 text-[#0055c4] font-semibold tracking-wide uppercase">
                   VEMTAP EYE CLINIC
                 </span>
                 <span className="text-[16px] font-bold text-[#131b2e] leading-none">
-                  Phone Verification
+                  {emailParam ? "Email Verification" : "Phone Verification"}
                 </span>
               </div>
             </div>
@@ -100,7 +141,7 @@ function VerifyContent() {
         <div className="flex flex-col w-full max-w-[440px] mx-auto px-4">
           <div className="w-full rounded-2xl border border-[#c2c6d7]/40 bg-white p-6 shadow-sm mt-5">
             <div className="flex items-center justify-center w-14 h-14 rounded-full bg-[#e8f1ff] text-[#0055c4] mx-auto mb-4">
-              <span className="material-symbols-outlined text-[28px]">phone_iphone</span>
+              <span className="material-symbols-outlined text-[28px]">{emailParam ? "mail" : "phone_iphone"}</span>
             </div>
 
             <div className="text-center mb-4">
@@ -113,7 +154,7 @@ function VerifyContent() {
             </div>
 
             <p className="text-[14px] text-[#424655] leading-relaxed text-center">
-              We sent a verification code to {phoneParam || "your mobile number"}.
+              {emailParam ? `We sent a verification code to ${emailParam}.` : `We sent a verification code to ${phoneParam || "your mobile number"}.`}
             </p>
 
             {debugCode && (

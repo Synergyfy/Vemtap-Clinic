@@ -24,6 +24,7 @@ export interface AuthUser {
   email: string;
   roles: string[];
   clinicId: string | null;
+  branchId?: string | null;
   clinicName?: string;
   firstName?: string;
   lastName?: string;
@@ -105,6 +106,7 @@ export class AuthService {
         'user.password',
         'user.role',
         'user.clinicId',
+        'user.branchId',
         'user.isActive',
       ])
       .getOne();
@@ -125,6 +127,7 @@ export class AuthService {
 
     const authResult = await this.generateTokens(user, reqInfo);
     authResult.user.clinicName = await this.getClinicNameById(user.clinicId);
+    authResult.user.branchId = user.branchId ?? null;
     return authResult;
   }
 
@@ -172,6 +175,7 @@ export class AuthService {
 
     const authUser = this.mapUserToAuthUser(storedToken.user);
     authUser.clinicName = await this.getClinicNameById(storedToken.user.clinicId);
+    authUser.branchId = storedToken.user.branchId ?? null;
 
     return {
       tokens: newTokens,
@@ -395,6 +399,8 @@ export class AuthService {
       user_id: user.id,
       userId: user.id,
       roles: [user.role],
+      clinicId: user.clinicId,
+      branchId: user.branchId,
     };
     return this.jwtService.sign(payload);
   }
@@ -405,6 +411,7 @@ export class AuthService {
       email: user.email,
       roles: [user.role],
       clinicId: user.clinicId,
+      branchId: user.branchId ?? null,
       firstName: user.firstName,
       lastName: user.lastName,
     };

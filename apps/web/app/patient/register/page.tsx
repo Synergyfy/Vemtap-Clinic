@@ -33,6 +33,21 @@ export default function PatientRegisterPage() {
 
   const strength = getStrengthLevel();
 
+  const getApiErrorMessage = (err: any): string => {
+    const payload = err?.response?.data;
+    const message = payload?.message;
+
+    if (Array.isArray(message)) {
+      return message.join(" ");
+    }
+
+    if (typeof message === "string" && message.trim()) {
+      return message;
+    }
+
+    return err?.message ?? "We couldn’t create your account right now. Please try again.";
+  };
+
   const handleContinue = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -43,6 +58,10 @@ export default function PatientRegisterPage() {
     }
     if (!phone.trim() || phone.length < 10) {
       setError("Please enter a valid Nigerian mobile phone number.");
+      return;
+    }
+    if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setError("Please enter a valid email address for verification.");
       return;
     }
     if (password.length < 8) {
@@ -90,13 +109,9 @@ export default function PatientRegisterPage() {
         // ignore
       }
 
-      router.push(`/patient/verify?phone=${encodeURIComponent(phone)}`);
+      router.push(`/patient/verify?email=${encodeURIComponent(email)}&phone=${encodeURIComponent(phone)}`);
     } catch (err: any) {
-      setError(
-        err?.response?.data?.message ??
-        err?.message ??
-        "We couldn’t create your account right now. Please try again."
-      );
+      setError(getApiErrorMessage(err));
     } finally {
       setIsLoading(false);
     }
@@ -295,16 +310,16 @@ export default function PatientRegisterPage() {
                 />
               </div>
               <p className="text-[12px] text-[#424655] flex items-center gap-1 mt-0.5">
-                <span className="material-symbols-outlined text-[14px] text-[#006847]">sms</span>
-                <span>We will send an instant SMS verification code</span>
+                <span className="material-symbols-outlined text-[14px] text-[#006847]">phone_iphone</span>
+                <span>We will use this for contact and account recovery</span>
               </p>
             </div>
 
-            {/* Field 3: Email Address (Optional) */}
+            {/* Field 3: Email Address */}
             <div className="flex flex-col gap-1.5">
               <label className="text-[12px] font-semibold text-[#131b2e] flex items-center justify-between" htmlFor="email">
-                <span>Email Address (Optional)</span>
-                <span className="text-[12px] text-[#727786] font-normal">For digital receipts</span>
+                <span>Email Address</span>
+                <span className="text-[#ba1a1a] text-[12px]">*</span>
               </label>
               <div className="relative flex items-center">
                 <span className="absolute left-3.5 material-symbols-outlined text-[#727786] text-[20px] pointer-events-none">
@@ -315,11 +330,16 @@ export default function PatientRegisterPage() {
                   id="email"
                   name="email"
                   placeholder="patient@example.com"
+                  required
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                 />
               </div>
+              <p className="text-[12px] text-[#424655] flex items-center gap-1 mt-0.5">
+                <span className="material-symbols-outlined text-[14px] text-[#006847]">verified_user</span>
+                <span>We will send your verification code to this email</span>
+              </p>
             </div>
 
             {/* Field 4: Password */}

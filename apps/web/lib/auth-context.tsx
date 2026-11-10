@@ -1,8 +1,8 @@
 'use client';
 
-import { createContext, useContext, useEffect, useCallback, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useCallback, useState, ReactNode, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { useAuthState, AuthUser, normalizeAuthUser } from './auth-state';
+import { useAuthState, AuthUser, normalizeAuthUser, hasUsablePatientIdentity, hasActivePersistedSession } from './auth-state';
 import { api } from './api';
 
 interface AuthContextType {
@@ -52,36 +52,78 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
-  const { user, isAuthenticated, isHydrated, isLoggedOut, setAuth, clearAuth: clearAuthState } = useAuthState();
+  const { accessToken, user, isAuthenticated, isHydrated, isLoggedOut, setAuth, clearAuth: clearAuthState } = useAuthState();
   const [isLoading, setIsLoading] = useState(true);
+  const hasCheckedAuth = useRef(false);
 
   const checkAuth = useCallback(async () => {
-    if (isLoggedOut) {
+    const hasActiveSession = hasActivePersistedSession({ accessToken, user, isLoggedOut, isAuthenticated });
+
+    if (isLoggedOut && !hasActiveSession) {
       setIsLoading(false);
+      return;
+    }
+
+    if (user?.roles?.includes('patient')) {
+      if (!hasUsablePatientIdentity(user)) {
+        clearAuthState();
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const response = await api.get('/patient-portal/profile');
+        const profile = response.data ?? {};
+        const refreshedUser = normalizeAuthUser({
+          ...user,
+          userId: profile.id ?? user.userId,
+          email: profile.email ?? user.email,
+          firstName: profile.firstName ?? user.firstName,
+          lastName: profile.lastName ?? user.lastName,
+          phone: profile.phone ?? user.phone,
+          clinicId: profile.clinicId ?? user.clinicId ?? '',
+          branchId: profile.branchId ?? user.branchId,
+          roles: ['patient'],
+        });
+
+        if (refreshedUser && accessToken) {
+          setAuth(accessToken, refreshedUser);
+        }
+      } catch {
+        clearAuthState();
+      } finally {
+        setIsLoading(false);
+      }
       return;
     }
 
     try {
       const response = await api.post('/auth/refresh');
-      const { accessToken: newAccessToken, user: newUser } = response.data;
-      if (newAccessToken && newUser) {
-        const normalizedUser = normalizeAuthUser(newUser);
-        if (normalizedUser) {
-          setAuth(newAccessToken, normalizedUser);
-        }
+      const { accessToken: newAccessToken, user: newUser } = response.data ?? {};
+
+      if (!newAccessToken || !newUser) {
+        clearAuthState();
+        return;
+      }
+
+      const normalizedUser = normalizeAuthUser(newUser);
+      if (normalizedUser) {
+        setAuth(newAccessToken, normalizedUser);
       }
     } catch {
       clearAuthState();
     } finally {
       setIsLoading(false);
     }
-  }, [isLoggedOut, setAuth, clearAuthState]);
+  }, [isLoggedOut, user?.roles, setAuth, clearAuthState]);
 
   useEffect(() => {
-    if (isHydrated) {
-      // Schedule the async check to avoid synchronous state update in effect
-      checkAuth();
+    if (!isHydrated || hasCheckedAuth.current) {
+      return;
     }
+
+    hasCheckedAuth.current = true;
+    void checkAuth();
   }, [isHydrated, checkAuth]);
 
   const login = async (email: string, password: string): Promise<AuthUser | null> => {
@@ -92,6 +134,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (newAccessToken && newUser) {
         const normalizedUser = normalizeAuthUser(newUser);
         if (normalizedUser) {
+          console.log('[clinic-login] authenticated user:', {
+            ...normalizedUser,
+            accessToken: newAccessToken,
+          });
           setAuth(newAccessToken, normalizedUser);
           return normalizedUser;
         }
@@ -122,6 +168,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = async () => {
+    hasCheckedAuth.current = false;
     try {
       await api.post('/auth/logout');
     } finally {

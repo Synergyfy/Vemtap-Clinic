@@ -21,7 +21,6 @@ type OnboardingFormState = {
   address: string;
   city: string;
   registrationNumber: string;
-  logoUrl: string;
   branchName: string;
   branchAddress: string;
   branchManager: string;
@@ -36,11 +35,10 @@ type OnboardingFormState = {
 
 const defaultFormState: OnboardingFormState = {
   clinicName: "",
-  clinicType: "Eye Clinic",
+  clinicType: "",
   address: "",
   city: "",
   registrationNumber: "",
-  logoUrl: "",
   branchName: "",
   branchAddress: "",
   branchManager: "",
@@ -54,17 +52,8 @@ const defaultFormState: OnboardingFormState = {
 };
 
 const steps: OnboardingStep[] = [
-  { id: "account", title: "Create account", description: "Owner details and login setup", completed: true },
-  { id: "verify", title: "Verify contact details", description: "Email and phone validation", completed: false },
-  { id: "clinic", title: "Register clinic", description: "Clinic name, type and legal details", completed: false },
-  { id: "branch", title: "Primary branch", description: "Main branch setup", completed: false },
-  { id: "plan", title: "Select subscription", description: "Starter, Growth, Enterprise", completed: false },
-  { id: "profile", title: "Complete clinic profile", description: "Services, hours and departments", completed: false },
-  { id: "staff", title: "Invite staff", description: "Doctors, nurses and support teams", completed: false },
-  { id: "operations", title: "Configure operations", description: "Pricing, HMOs and workflows", completed: false },
-  { id: "verification", title: "Verification and activation", description: "Review and activate clinic", completed: false },
-  { id: "qr", title: "Generate QR codes", description: "Patient check-in entry points", completed: false },
-  { id: "dashboard", title: "Enter clinic dashboard", description: "Ready for patient onboarding", completed: false },
+  { id: "welcome", title: "Welcome to Vemtap Clinic", description: "A quick overview of how the clinic will work", completed: false },
+  { id: "complete", title: "Ready to begin", description: "Create your branch, add patients and launch operations", completed: false },
 ];
 
 const stepTitles = steps.map((step) => step.title);
@@ -72,7 +61,7 @@ const stepTitles = steps.map((step) => step.title);
 export default function ClinicOnboardingPage() {
   const router = useRouter();
   const { user } = useAuth();
-  const [currentStepIndex, setCurrentStepIndex] = useState(2);
+  const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [form, setForm] = useState<OnboardingFormState>(defaultFormState);
   const [isSaved, setIsSaved] = useState(false);
 
@@ -95,7 +84,7 @@ export default function ClinicOnboardingPage() {
           setForm({ ...defaultFormState, ...parsed.form });
         }
         if (typeof parsed?.step === "number") {
-          setCurrentStepIndex(Math.min(Math.max(parsed.step, 2), steps.length - 1));
+          setCurrentStepIndex(Math.min(Math.max(parsed.step, 0), steps.length - 1));
         }
       } catch {
         // ignore invalid local cache
@@ -129,17 +118,7 @@ export default function ClinicOnboardingPage() {
     setIsSaved(true);
   };
 
-  const canContinue = () => {
-    if (currentStepIndex === 2) return !!form.clinicName.trim() && !!form.clinicType.trim();
-    if (currentStepIndex === 3) return !!form.branchName.trim() && !!form.branchAddress.trim();
-    if (currentStepIndex === 4) return !!form.plan.trim();
-    if (currentStepIndex === 5) return !!form.services.trim() && !!form.operatingHours.trim();
-    if (currentStepIndex === 6) return !!form.inviteStaff.trim();
-    if (currentStepIndex === 7) return !!form.hmoSetup.trim() || !!form.services.trim();
-    if (currentStepIndex === 8) return true;
-    if (currentStepIndex === 9) return !!form.qrFocus.trim();
-    return true;
-  };
+  const canContinue = () => true;
 
   const goNext = () => {
     saveProgress();
@@ -159,141 +138,52 @@ export default function ClinicOnboardingPage() {
   };
 
   const goBack = () => {
-    setCurrentStepIndex((prev) => Math.max(prev - 1, 2));
+    setCurrentStepIndex((prev) => Math.max(prev - 1, 0));
   };
 
   const renderForm = () => {
     switch (currentStep.id) {
-      case "clinic":
+      case "welcome":
         return (
-          <div className="space-y-5">
-            <div>
-              <label className="mb-2 block text-sm font-bold text-slate-700">Clinic name</label>
-              <input value={form.clinicName} onChange={(e) => updateField("clinicName", e.target.value)} className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3" placeholder="Flourish iClinic" />
+          <div className="space-y-5 rounded-3xl border border-sky-200 bg-sky-50 p-6">
+            <div className="flex items-center gap-3 text-sky-700">
+              <Sparkles size={22} />
+              <h3 className="text-xl font-bold">Welcome to Vemtap Clinic</h3>
             </div>
-            <div>
-              <label className="mb-2 block text-sm font-bold text-slate-700">Clinic type</label>
-              <select value={form.clinicType} onChange={(e) => updateField("clinicType", e.target.value)} className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                <option>Eye Clinic</option>
-                <option>Optical Center</option>
-                <option>Multi-specialty Clinic</option>
-                <option>Vision Care Center</option>
-              </select>
-            </div>
-            <div>
-              <label className="mb-2 block text-sm font-bold text-slate-700">Address</label>
-              <textarea value={form.address} onChange={(e) => updateField("address", e.target.value)} className="min-h-24 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3" placeholder="12 Lekki Phase 1 Road" />
-            </div>
-            <div className="grid gap-5 md:grid-cols-2">
-              <div>
-                <label className="mb-2 block text-sm font-bold text-slate-700">City</label>
-                <input value={form.city} onChange={(e) => updateField("city", e.target.value)} className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3" placeholder="Lagos" />
+
+            <p className="text-sm leading-6 text-slate-600">
+              Vemtap helps clinics manage patients, branches, appointments, medical records, billing, and operations from one place.
+            </p>
+
+            <div className="grid gap-4 md:grid-cols-3">
+              <div className="rounded-2xl bg-white p-4 shadow-sm">
+                <div className="mb-2 text-sm font-black text-slate-900">Create branches</div>
+                <p className="text-sm text-slate-600">Set up each clinic location and manage the teams working there.</p>
               </div>
-              <div>
-                <label className="mb-2 block text-sm font-bold text-slate-700">Registration no.</label>
-                <input value={form.registrationNumber} onChange={(e) => updateField("registrationNumber", e.target.value)} className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3" placeholder="RC-12345" />
+              <div className="rounded-2xl bg-white p-4 shadow-sm">
+                <div className="mb-2 text-sm font-black text-slate-900">Add patients</div>
+                <p className="text-sm text-slate-600">Register patients, track visits and handle their care journey.</p>
+              </div>
+              <div className="rounded-2xl bg-white p-4 shadow-sm">
+                <div className="mb-2 text-sm font-black text-slate-900">Run operations</div>
+                <p className="text-sm text-slate-600">Manage bookings, payments, staff, and clinical workflows without the chaos.</p>
               </div>
             </div>
-            <div>
-              <label className="mb-2 block text-sm font-bold text-slate-700">Clinic logo URL</label>
-              <input value={form.logoUrl} onChange={(e) => updateField("logoUrl", e.target.value)} className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3" placeholder="https://..." />
-            </div>
           </div>
         );
-      case "branch":
-        return (
-          <div className="space-y-5">
-            <div>
-              <label className="mb-2 block text-sm font-bold text-slate-700">Branch name</label>
-              <input value={form.branchName} onChange={(e) => updateField("branchName", e.target.value)} className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3" placeholder="Branch A - Main branch" />
-            </div>
-            <div>
-              <label className="mb-2 block text-sm font-bold text-slate-700">Branch address</label>
-              <textarea value={form.branchAddress} onChange={(e) => updateField("branchAddress", e.target.value)} className="min-h-24 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3" placeholder="45 Marina Road" />
-            </div>
-            <div>
-              <label className="mb-2 block text-sm font-bold text-slate-700">Branch manager</label>
-              <input value={form.branchManager} onChange={(e) => updateField("branchManager", e.target.value)} className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3" placeholder="Jane Smith" />
-            </div>
-          </div>
-        );
-      case "plan":
-        return (
-          <div className="space-y-4">
-            {[
-              "Starter",
-              "Growth",
-              "Enterprise",
-            ].map((option) => (
-              <button
-                key={option}
-                type="button"
-                onClick={() => updateField("plan", option)}
-                className={`w-full rounded-2xl border p-4 text-left transition ${form.plan === option ? "border-sky-500 bg-sky-50" : "border-slate-200 bg-white hover:bg-slate-50"}`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-lg font-bold text-slate-800">{option}</span>
-                  {form.plan === option ? <CheckCircle2 className="text-sky-600" size={18} /> : null}
-                </div>
-                <p className="mt-2 text-sm text-slate-500">
-                  {option === "Starter" && "For small clinics and focused care teams"}
-                  {option === "Growth" && "For scaling multi-service clinics and workflows"}
-                  {option === "Enterprise" && "For multi-branch organizations and complex operations"}
-                </p>
-              </button>
-            ))}
-          </div>
-        );
-      case "profile":
-        return (
-          <div className="space-y-5">
-            <div>
-              <label className="mb-2 block text-sm font-bold text-slate-700">Services</label>
-              <textarea value={form.services} onChange={(e) => updateField("services", e.target.value)} className="min-h-28 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3" />
-            </div>
-            <div>
-              <label className="mb-2 block text-sm font-bold text-slate-700">Operating hours</label>
-              <input value={form.operatingHours} onChange={(e) => updateField("operatingHours", e.target.value)} className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3" />
-            </div>
-            <div>
-              <label className="mb-2 block text-sm font-bold text-slate-700">Departments</label>
-              <input value={form.departments} onChange={(e) => updateField("departments", e.target.value)} className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3" />
-            </div>
-          </div>
-        );
-      case "staff":
-        return (
-          <div>
-            <label className="mb-2 block text-sm font-bold text-slate-700">Invite staff</label>
-            <textarea value={form.inviteStaff} onChange={(e) => updateField("inviteStaff", e.target.value)} className="min-h-32 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3" placeholder="doctor@clinic.com, nurse@clinic.com, reception@clinic.com" />
-          </div>
-        );
-      case "operations":
-        return (
-          <div className="space-y-5">
-            <div>
-              <label className="mb-2 block text-sm font-bold text-slate-700">HMO & operations setup</label>
-              <textarea value={form.hmoSetup} onChange={(e) => updateField("hmoSetup", e.target.value)} className="min-h-28 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3" placeholder="List HMOs, pricing and service rules" />
-            </div>
-          </div>
-        );
-      case "qr":
-        return (
-          <div>
-            <label className="mb-2 block text-sm font-bold text-slate-700">QR entry point</label>
-            <input value={form.qrFocus} onChange={(e) => updateField("qrFocus", e.target.value)} className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3" placeholder="Patient check-in" />
-          </div>
-        );
-      case "dashboard":
+      case "complete":
         return (
           <div className="space-y-4 rounded-3xl border border-emerald-200 bg-emerald-50 p-6">
             <div className="flex items-center gap-3 text-emerald-700">
               <CheckCircle2 size={22} />
-              <h3 className="text-xl font-bold">Clinic is ready for onboarding</h3>
+              <h3 className="text-xl font-bold">You are ready to begin</h3>
             </div>
-            <p className="text-sm text-slate-600">
-              Your clinic {form.clinicName || "organization"} has been created and is ready for operational setup and patient onboarding.
+            <p className="text-sm leading-6 text-slate-600">
+              Once you complete this onboarding, you can create your clinic branch, add patients, invite staff, and begin using Vemtap to run your clinic operations.
             </p>
+            <div className="rounded-2xl bg-white p-4 text-sm text-slate-600">
+              This is just a short intro. You can always create branches, add patients, and configure more details later from the clinic dashboard.
+            </div>
           </div>
         );
       default:
@@ -301,31 +191,15 @@ export default function ClinicOnboardingPage() {
           <div className="space-y-4 rounded-3xl border border-sky-200 bg-sky-50 p-6">
             <div className="flex items-center gap-3 text-sky-700">
               <ShieldCheck size={20} />
-              <h3 className="text-xl font-bold">Verify contact details</h3>
+              <h3 className="text-xl font-bold">Welcome to Vemtap Clinic</h3>
             </div>
-            <p className="text-sm text-slate-600">Send OTP to the owner email and/or phone before moving to clinic setup.</p>
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="rounded-2xl bg-white p-4">
-                <div className="text-xs font-bold uppercase tracking-widest text-slate-400">Email</div>
-                <div className="mt-2 text-sm font-medium text-slate-700">{user?.email || "owner@clinic.com"}</div>
-              </div>
-              <div className="rounded-2xl bg-white p-4">
-                <div className="text-xs font-bold uppercase tracking-widest text-slate-400">Phone</div>
-                <div className="mt-2 text-sm font-medium text-slate-700">{user?.phone || "0801 234 5678"}</div>
-              </div>
-            </div>
+            <p className="text-sm text-slate-600">Create branches, add patients, and manage your clinic from one dashboard.</p>
           </div>
         );
     }
   };
 
-  const stepBadgeIcon =
-    currentStepIndex === 2 ? <Building2 size={18} /> :
-    currentStepIndex === 3 ? <MapPin size={18} /> :
-    currentStepIndex === 4 ? <Wallet size={18} /> :
-    currentStepIndex === 6 ? <Users size={18} /> :
-    currentStepIndex === 9 ? <QrCode size={18} /> :
-    <Sparkles size={18} />;
+  const stepBadgeIcon = currentStepIndex === 0 ? <Sparkles size={18} /> : <CheckCircle2 size={18} />;
 
   return (
     <main className="min-h-screen bg-slate-50 pb-12">
@@ -386,7 +260,7 @@ export default function ClinicOnboardingPage() {
             {renderForm()}
 
             <div className="mt-8 flex items-center justify-between gap-4 border-t border-slate-200 pt-6">
-              <Button type="button" variant="outline" onClick={goBack} disabled={currentStepIndex <= 2} className="gap-2">
+              <Button type="button" variant="outline" onClick={goBack} disabled={currentStepIndex === 0} className="gap-2">
                 <ChevronLeft size={16} /> Back
               </Button>
 

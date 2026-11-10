@@ -57,6 +57,18 @@ export function useVerifyPatientOtp() {
   });
 }
 
+export function useSendPatientEmailOtp() {
+  return useMutation({
+    mutationFn: (email: string) => patientPortalService.sendEmailOtp(email),
+  });
+}
+
+export function useVerifyPatientEmailOtp() {
+  return useMutation({
+    mutationFn: ({ email, code }: { email: string; code: string }) => patientPortalService.verifyEmailOtp(email, code),
+  });
+}
+
 export function usePatientLogout() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -94,6 +106,16 @@ export function usePatientAppointmentsList() {
   return useQuery({
     queryKey: [PATIENT_PORTAL_KEY, 'appointments', user?.userId],
     queryFn: () => patientPortalService.getAppointments(),
+    enabled: !!user?.userId,
+    staleTime: 30_000,
+  });
+}
+
+export function usePatientClinicMemberships() {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: [PATIENT_PORTAL_KEY, 'memberships', user?.userId],
+    queryFn: () => patientPortalService.getClinicMemberships(),
     enabled: !!user?.userId,
     staleTime: 30_000,
   });

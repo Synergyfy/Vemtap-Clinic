@@ -1,5 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
 import { Clinic } from './clinic.entity';
+import { Branch } from './branch.entity';
 
 export enum UserRole {
   SUPER_ADMIN = 'super_admin',
@@ -42,6 +43,13 @@ export class User {
   @ManyToOne(() => Clinic, { nullable: true })
   @JoinColumn({ name: 'clinicId' })
   clinic: Clinic;
+
+  @Column({ nullable: true })
+  branchId: string | null;
+
+  @ManyToOne(() => Branch, { nullable: true })
+  @JoinColumn({ name: 'branchId' })
+  branch: Branch;
 
   @CreateDateColumn()
   createdAt: Date;
