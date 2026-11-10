@@ -66,11 +66,12 @@ export default function LoginPage() {
   const [pendingEnvironment, setPendingEnvironment] = useState<string | null>(null);
   const { login, isAuthenticated, user } = useAuth();
   const router = useRouter();
+  const isPatientSession = user?.roles?.includes('patient');
 
   React.useEffect(() => {
-    if (!isAuthenticated || !user) return;
+    if (!isAuthenticated || !user || isPatientSession) return;
     router.replace(getClinicEntryRoute(user));
-  }, [isAuthenticated, user, router]);
+  }, [isAuthenticated, user, isPatientSession, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -96,7 +97,7 @@ export default function LoginPage() {
     router.push(href);
   };
 
-  if (isAuthenticated && user) {
+  if (isAuthenticated && user && !isPatientSession) {
     return null;
   }
 

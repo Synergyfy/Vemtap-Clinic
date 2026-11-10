@@ -24,7 +24,7 @@ export interface Patient {
   allergies?: string;
   status: 'new' | 'active' | 'inactive';
   clinicId: string;
-  branchId: string;
+  branchId?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -71,7 +71,7 @@ export interface CreatePatientData {
   genotype?: string;
   allergies?: string;
   clinicId: string;
-  branchId: string;
+  branchId?: string;
 }
 
 export interface UpdatePatientData {

@@ -115,7 +115,7 @@ export default function ReceptionPatientRegistrationPage() {
         emergencyContact: kinName.trim() || undefined,
         emergencyPhone: kinPhone.replace(/\D/g, "") || undefined,
         clinicId: user.clinicId,
-        branchId: user.branchId || undefined,
+        branchId: user.branchId ?? "",
       });
 
       showToast("Patient registered successfully");
