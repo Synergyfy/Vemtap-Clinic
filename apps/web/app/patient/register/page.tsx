@@ -117,7 +117,8 @@ function PatientRegisterPage() {
         // ignore
       }
 
-      router.push(`/patient/verify?email=${encodeURIComponent(email)}&phone=${encodeURIComponent(phone)}`);
+      // Temporary: skip OTP verification for patient registration while the flow is being stabilized.
+      router.push('/patient/complete-profile');
     } catch (err: any) {
       setError(getApiErrorMessage(err));
     } finally {

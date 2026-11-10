@@ -11,7 +11,6 @@ export default function CompleteProfilePage() {
   const [dobYear, setDobYear] = useState("1992");
   const [gender, setGender] = useState<"male" | "female" | "other">("male");
   const [address, setAddress] = useState("Plot 18, Bishop Oluwole St, Victoria Island, Lagos");
-  const [branch, setBranch] = useState("Victoria Island Clinic, Lagos");
   const [paymentType, setPaymentType] = useState<"hmo" | "self">("hmo");
   const [hmoProvider, setHmoProvider] = useState("Your insurer");
   const [policyNumber, setPolicyNumber] = useState("#AX-8910-LG");
@@ -32,7 +31,6 @@ export default function CompleteProfilePage() {
           patientId: "PATIENT-PENDING",
           fullName: "Patient",
           gender,
-          branch,
           paymentType,
           hmoProvider: paymentType === "hmo" ? hmoProvider : null,
           policyNumber: paymentType === "hmo" ? policyNumber : null,
@@ -263,26 +261,7 @@ export default function CompleteProfilePage() {
               </div>
             </div>
 
-            {/* Field 4: Preferred Clinic Branch */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[13px] font-semibold text-[#131b2e]">
-                Preferred Clinic Branch <span className="text-[#ba1a1a]">*</span>
-              </label>
-              <div className="bg-[#f2f3ff] rounded-xl p-3 flex flex-col gap-1 border border-[#e2e7ff]/70 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-[#0055c4]">
-                    <span className="material-symbols-outlined text-[20px]">local_hospital</span>
-                    <span className="text-[13px] font-bold">{branch}</span>
-                  </div>
-                  <span className="material-symbols-outlined text-[#727786] text-[20px]">expand_more</span>
-                </div>
-                <span className="text-[12px] text-[#424655]">
-                  Plot 14 Adeola Odeku Street • Open Mon-Sat
-                </span>
-              </div>
-            </div>
-
-            {/* Field 5: Healthcare Payment Method */}
+            {/* Field 4: Healthcare Payment Method */}
             <div className="flex flex-col gap-2">
               <div className="flex items-center justify-between">
                 <label className="text-[13px] font-semibold text-[#131b2e]">
