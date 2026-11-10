@@ -3,15 +3,18 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { Patient } from '../entities/patient.entity';
+import { Clinic } from '../entities/clinic.entity';
+import { Branch } from '../entities/branch.entity';
 import { Appointment } from '../entities/appointment.entity';
 import { MedicalRecord } from '../entities/medical-record.entity';
 import { Invoice } from '../entities/invoice.entity';
+import { PatientClinicMembership } from '../entities/patient-clinic-membership.entity';
 import { PatientPortalService } from './patient-portal.service';
 import { PatientPortalController } from './patient-portal.controller';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Patient, Appointment, MedicalRecord, Invoice]),
+    TypeOrmModule.forFeature([Patient, Clinic, Branch, Appointment, MedicalRecord, Invoice, PatientClinicMembership]),
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: (config: ConfigService) => ({

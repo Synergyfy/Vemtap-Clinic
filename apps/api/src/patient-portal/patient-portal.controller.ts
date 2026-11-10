@@ -2,7 +2,7 @@ import { Controller, Get, Post, Put, Body, Res, Req, UseGuards, Param } from '@n
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { Response, Request as ExpressRequest } from 'express';
 import { PatientPortalService } from './patient-portal.service';
-import { PatientLoginDto, PatientRegisterDto, BookAppointmentDto, UpdatePatientProfileDto, RescheduleAppointmentDto, MakePaymentDto } from './dto';
+import { PatientLoginDto, PatientRegisterDto, BookAppointmentDto, UpdatePatientProfileDto, RescheduleAppointmentDto, MakePaymentDto, SendPhoneOtpDto, VerifyPhoneOtpDto, SendEmailOtpDto, VerifyEmailOtpDto, CreateFamilyMemberInviteDto, ActivateFamilyMemberDto } from './dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { COOKIE_CONFIG } from '../auth/cookie.config';
 
@@ -42,6 +42,46 @@ export class PatientPortalController {
     return { patient, accessToken: tokens.accessToken };
   }
 
+  @Post('otp/send')
+  @ApiOperation({ summary: 'Send SMS OTP for phone verification' })
+  async sendPhoneOtp(@Body() dto: SendPhoneOtpDto) {
+    return this.portalService.sendPhoneOtp(dto.phone);
+  }
+
+  @Post('otp/verify')
+  @ApiOperation({ summary: 'Verify a phone OTP code' })
+  async verifyPhoneOtp(@Body() dto: VerifyPhoneOtpDto) {
+    const isValid = await this.portalService.verifyPhoneOtp(dto.phone, dto.code);
+    return { verified: isValid };
+  }
+
+  @Post('email-otp/send')
+  @ApiOperation({ summary: 'Send an email OTP for account verification' })
+  async sendEmailOtp(@Body() dto: SendEmailOtpDto) {
+    return this.portalService.sendEmailOtp(dto.email);
+  }
+
+  @Post('email-otp/verify')
+  @ApiOperation({ summary: 'Verify an email OTP code' })
+  async verifyEmailOtp(@Body() dto: VerifyEmailOtpDto) {
+    const isValid = await this.portalService.verifyEmailOtp(dto.email, dto.code);
+    return { verified: isValid };
+  }
+
+  @Post('family/invite')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Send an email activation link to a dependent under a guardian account' })
+  async createFamilyMemberInvite(@Req() req: ExpressRequest & { user: JwtPayload }, @Body() dto: CreateFamilyMemberInviteDto) {
+    return this.portalService.createFamilyMemberInvite(req.user.sub, dto);
+  }
+
+  @Post('family/activate')
+  @ApiOperation({ summary: 'Activate a dependent account from a guardian invitation link' })
+  async activateFamilyMember(@Body() dto: ActivateFamilyMemberDto) {
+    return this.portalService.activateFamilyMember(dto.token, dto);
+  }
+
   @Post('logout')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
@@ -57,6 +97,14 @@ export class PatientPortalController {
   @ApiOperation({ summary: 'Get patient profile' })
   getProfile(@Req() req: ExpressRequest & { user: JwtPayload }) {
     return this.portalService.getProfile(req.user.sub);
+  }
+
+  @Get('memberships')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get all clinics and branches the patient belongs to' })
+  getMyClinicMemberships(@Req() req: ExpressRequest & { user: JwtPayload }) {
+    return this.portalService.getClinicMemberships(req.user.sub);
   }
 
   @Put('profile')

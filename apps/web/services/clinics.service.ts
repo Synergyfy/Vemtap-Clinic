@@ -11,6 +11,8 @@ export interface Clinic {
   website?: string;
   plan?: string;
   isActive?: boolean;
+  qrCode?: string | null;
+  qrUrl?: string | null;
   createdAt?: string;
   updatedAt?: string;
 }

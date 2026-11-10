@@ -14,12 +14,21 @@ export class PatientsService {
     private hmoPlanRepository: Repository<HMOPlan>,
   ) {}
 
-  async create(dto: CreatePatientDto, currentUser?: { clinicId?: string | null }): Promise<Patient> {
-    const safeDto = {
-      ...dto,
-      clinicId: currentUser?.clinicId ?? dto.clinicId,
-    };
-    const patient = this.patientRepository.create(safeDto);
+  async create(dto: CreatePatientDto, currentUser?: { clinicId?: string | null; branchId?: string | null }): Promise<Patient> {
+    const safeDto: any = { ...dto };
+    const effectiveClinicId = currentUser?.clinicId ?? dto.clinicId;
+    const effectiveBranchId = currentUser?.branchId ?? dto.branchId;
+
+    if (effectiveClinicId) safeDto.clinicId = effectiveClinicId;
+    else delete safeDto.clinicId;
+
+    if (!effectiveBranchId || effectiveBranchId === effectiveClinicId || effectiveBranchId.trim() === '') {
+      delete safeDto.branchId;
+    } else {
+      safeDto.branchId = effectiveBranchId.trim();
+    }
+
+    const patient = this.patientRepository.create(safeDto) as unknown as Patient;
     return this.patientRepository.save(patient);
   }
 

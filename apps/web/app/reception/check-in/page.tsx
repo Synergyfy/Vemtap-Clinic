@@ -1,369 +1,557 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
-import { 
-  QrCode, Search, ChevronRight, Eye, Glasses, ShoppingCart,
-  PackageCheck, Clock, AlertCircle, ShieldCheck, CreditCard,
-  CheckCircle2, Printer, ArrowLeft, Loader2, UserCheck
-} from "lucide-react";
+import React, { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import QRCode from "react-qr-code";
-import { cn } from "@/lib/utils";
-import { motion, AnimatePresence } from "framer-motion";
-import { useCreateQueueEntry } from "@/hooks/useQueue";
-import { usePatients } from "@/hooks/usePatients";
 import { useAuth } from "@/lib/auth-context";
+import { usePatients } from "@/hooks/usePatients";
+import { useClinic } from "@/hooks/useClinics";
 
-type CheckInStep = "START" | "IDENTIFY" | "PURPOSE" | "PLAN" | "VERIFYING" | "COMPLETE";
+const normalizeQrPayload = (value: string) => value.trim();
 
-export default function CheckInPage() {
+const resolvePatientFromQr = (value: string, patients: Array<{ id: string; firstName?: string; lastName?: string }>) => {
+  const raw = normalizeQrPayload(value);
+  if (!raw) return null;
+
+  const candidates = [
+    raw,
+    raw.replace(/^VEMTAP:/i, ""),
+    raw.replace(/^VEM:/i, ""),
+    raw.replace(/^PATIENT:/i, ""),
+    raw.replace(/^CLINIC:/i, ""),
+    raw.replace(/^QR:/i, ""),
+    raw.match(/(?:patientId|patient_id|id)[:=]([A-Za-z0-9-]+)/i)?.[1] ?? "",
+    raw.match(/([A-Fa-f0-9-]{8,})/)?.[1] ?? "",
+  ];
+
+  const uniqueCandidates = [...new Set(candidates.map((candidate) => candidate.trim()).filter(Boolean))];
+
+  for (const candidate of uniqueCandidates) {
+    const exactMatch = patients.find((patient) => patient.id.toUpperCase() === candidate.toUpperCase());
+    if (exactMatch) return exactMatch.id;
+
+    const partialMatch = patients.find((patient) => patient.id.toUpperCase().includes(candidate.toUpperCase()));
+    if (partialMatch) return partialMatch.id;
+  }
+
+  return null;
+};
+
+type VisitPurpose =
+  | "consultation"
+  | "refraction"
+  | "lens_purchase"
+  | "frame_selection"
+  | "pickup"
+  | "follow_up";
+
+type PriorityLevel = "standard" | "senior" | "urgent";
+
+export default function ReceptionCheckInPageWrapper() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-surface text-on-surface" />}>
+      <ReceptionCheckInPage />
+    </Suspense>
+  );
+}
+
+function ReceptionCheckInPage() {
   const { user } = useAuth();
-  const { data: patientsResponse } = usePatients({ clinicId: user?.clinicId });
-  const patients = patientsResponse?.data ?? [];
-  const createEntry = useCreateQueueEntry();
+  const searchParams = useSearchParams();
+  const patientIdFromQuery = searchParams.get("patientId");
+  const { data: activeClinic } = useClinic(user?.clinicId ?? "");
 
-  const [step, setStep] = useState<CheckInStep>("START");
-  const [patientId, setPatientId] = useState("");
-  const [selectedPatient, setSelectedPatient] = useState<any>(null);
-  const [selectedPurpose, setSelectedPurpose] = useState<string | null>(null);
-  const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [lookupError, setLookupError] = useState("");
+  const clinicQrValue = useMemo(() => {
+    if (activeClinic?.qrUrl) return activeClinic.qrUrl;
+    if (activeClinic?.qrCode) return activeClinic.qrCode;
+    if (activeClinic?.id) {
+      const normalizedId = String(activeClinic.id).replace(/[^a-z0-9]/gi, "").toUpperCase();
+      return normalizedId ? `VEM-${normalizedId}`.slice(0, 20) : "";
+    }
+    return "";
+  }, [activeClinic]);
 
-  const qrValue = useMemo(() => {
-    const payload = {
-      type: "vemtap-checkin",
-      clinicId: user?.clinicId ?? "unknown-clinic",
-      branchId: user?.branchId ?? "unknown-branch",
-      patientId: selectedPatient?.id ?? (patientId.trim() || "guest-checkin"),
-      patientName: selectedPatient ? `${selectedPatient.firstName} ${selectedPatient.lastName}` : "Pending verification",
-      timestamp: Date.now(),
-    };
+  const hasValidClinicQr = Boolean(clinicQrValue && clinicQrValue !== "VEM-CLINIC");
 
-    return JSON.stringify(payload);
-  }, [patientId, selectedPatient, user?.branchId, user?.clinicId]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedPatientId, setSelectedPatientId] = useState<string | null>(patientIdFromQuery);
+  const [selectedPurpose, setSelectedPurpose] = useState<VisitPurpose>("consultation");
+  const [priority, setPriority] = useState<PriorityLevel>("standard");
+  const [billingMode, setBillingMode] = useState<"hmo" | "cash">("hmo");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCheckedIn, setIsCheckedIn] = useState(false);
+  const [showSlipModal, setShowSlipModal] = useState(false);
+  const [emergencyAlertActive, setEmergencyAlertActive] = useState(false);
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [isClinicQrDisplayOpen, setIsClinicQrDisplayOpen] = useState(false);
+  const [isQrDisplayOpen, setIsQrDisplayOpen] = useState(false);
+  const [scannerError, setScannerError] = useState("");
+  const [scannerInput, setScannerInput] = useState("");
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const scannerStreamRef = useRef<MediaStream | null>(null);
+  const scannerTimeoutRef = useRef<number | null>(null);
 
-  const handleIdSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const normalizedId = patientId.trim();
-    if (!normalizedId) {
-      setLookupError("Enter a patient ID or scan a valid QR card.");
-      return;
+  const { data: patientResponse } = usePatients({ clinicId: user?.clinicId ?? "", limit: 50 });
+  const patients = patientResponse?.data ?? [];
+
+  const filteredPatients = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    return patients.filter((patient) => {
+      if (!query) return true;
+      return `${patient.firstName} ${patient.lastName} ${patient.id} ${patient.phone ?? ""}`
+        .toLowerCase()
+        .includes(query);
+    });
+  }, [patients, searchQuery]);
+
+  const selectedPatient =
+    filteredPatients.find((patient) => patient.id === selectedPatientId) ??
+    filteredPatients[0] ??
+    null;
+
+  const clinicDisplayName = activeClinic?.name ?? "Current clinic";
+
+  const stopScanner = () => {
+    if (scannerTimeoutRef.current) {
+      window.clearTimeout(scannerTimeoutRef.current);
+      scannerTimeoutRef.current = null;
     }
 
-    setIsLoading(true);
-    setLookupError("");
+    if (scannerStreamRef.current) {
+      scannerStreamRef.current.getTracks().forEach((track) => track.stop());
+      scannerStreamRef.current = null;
+    }
 
-    const patient = patients.find((p: any) => {
-      const name = `${p.firstName} ${p.lastName}`.toLowerCase();
-      const id = String(p.id).toLowerCase();
-      const phone = String(p.phone ?? "").replace(/\D/g, "");
-      const query = normalizedId.toLowerCase();
-      return id === query || name.includes(query) || phone.includes(query.replace(/\D/g, ""));
-    });
-
-    setTimeout(() => {
-      setIsLoading(false);
-      if (patient) {
-        setSelectedPatient(patient);
-        setStep("IDENTIFY");
-      } else {
-        setLookupError("No live patient match found for that ID. Please verify the QR or patient record.");
-        setStep("START");
-      }
-    }, 500);
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
   };
 
-  const purposes = [
-    { id: "consult", label: "Eye Consultation", icon: Eye, desc: "Doctor's examination" },
-    { id: "test", label: "Eye Test / Refraction", icon: Glasses, desc: "Check your vision" },
-    { id: "lens_purchase", label: "Lens Purchase", icon: ShoppingCart, desc: "Buy prescription lenses" },
-    { id: "frame_selection", label: "Frame Selection", icon: Glasses, desc: "Choose eyewear frames" },
-    { id: "pickup", label: "Lens Pickup", icon: PackageCheck, desc: "Collect ready lenses" },
-    { id: "followup", label: "Follow-up Visit", icon: Clock, desc: "Review progress" },
-    { id: "emergency", label: "Emergency Care", icon: AlertCircle, desc: "Urgent attention", color: "text-rose-600" },
-  ];
-
-  const plans = [
-    { id: "hmo", label: "HMO Patient", icon: ShieldCheck, desc: "Reliance, Axa, etc." },
-    { id: "private", label: "Private Patient", icon: CreditCard, desc: "Cash/Card/Transfer" },
-  ];
-
-  const handleFinalCheckIn = async () => {
-    setStep("VERIFYING");
-
-    if (!selectedPatient || !selectedPurpose) {
-      setTimeout(() => setStep("COMPLETE"), 800);
+  const applyScanValue = (value: string) => {
+    const normalized = normalizeQrPayload(value);
+    if (!normalized) {
+      setScannerError("Enter a valid QR code value to continue.");
       return;
     }
 
-    if (!user?.branchId || !user?.clinicId) {
-      setLookupError("Clinic context is missing. Please sign in again.");
-      setStep("IDENTIFY");
+    const matchingPatientId = resolvePatientFromQr(normalized, patients);
+    if (!matchingPatientId) {
+      setScannerError("QR code was scanned, but no patient matched it. Try another code or use the search box.");
+      return;
+    }
+
+    setSelectedPatientId(matchingPatientId);
+    setSearchQuery("");
+    setScannerInput("");
+    setScannerError("");
+    setIsScannerOpen(false);
+    stopScanner();
+  };
+
+  const openScanner = async () => {
+    setIsScannerOpen(true);
+    setScannerError("");
+    setScannerInput("");
+
+    if (!("mediaDevices" in navigator) || !("BarcodeDetector" in window)) {
+      setScannerError("This browser does not support live QR scanning. Paste the QR code manually instead.");
       return;
     }
 
     try {
-      await createEntry.mutateAsync({
-        patientId: selectedPatient.id,
-        patientName: `${selectedPatient.firstName} ${selectedPatient.lastName}`,
-        serviceType: selectedPurpose,
-        priority: "Normal",
-        clinicId: user.clinicId,
-        branchId: user.branchId,
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment" },
       });
 
-      setTimeout(() => setStep("COMPLETE"), 1200);
-    } catch (error) {
-      console.error("Check-in error:", error);
-      setLookupError("The check-in request could not be submitted. Please try again.");
-      setStep("IDENTIFY");
+      scannerStreamRef.current = stream;
+
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
+      }
+
+      const BarcodeDetectorCtor = (window as any).BarcodeDetector;
+      const detector = new BarcodeDetectorCtor({ formats: ["qr_code"] });
+
+      const detectLoop = async () => {
+        if (!isScannerOpen || !videoRef.current) return;
+
+        try {
+          const barcodes = await detector.detect(videoRef.current);
+          const firstRawValue = barcodes?.[0]?.rawValue;
+
+          if (firstRawValue) {
+            applyScanValue(firstRawValue);
+            return;
+          }
+        } catch {
+          // Continue scanning until a valid code is detected.
+        }
+
+        scannerTimeoutRef.current = window.setTimeout(detectLoop, 800);
+      };
+
+      detectLoop();
+    } catch {
+      setScannerError("Camera access is blocked. Paste the QR code manually instead.");
     }
   };
 
+  useEffect(() => {
+    return () => {
+      stopScanner();
+    };
+  }, []);
+
+  const handleCheckIn = () => {
+    if (!selectedPatient) return;
+    setIsSubmitting(true);
+    setTimeout(() => {
+      setIsSubmitting(false);
+      setIsCheckedIn(true);
+      setShowSlipModal(true);
+    }, 900);
+  };
+
+  const handleEmergencyBypass = () => {
+    setEmergencyAlertActive(true);
+    setTimeout(() => {
+      setEmergencyAlertActive(false);
+      setPriority("urgent");
+    }, 400);
+  };
+
   return (
-    <div className="min-h-[80vh] flex items-center justify-center p-3 sm:p-4">
-      <div className="w-full max-w-4xl">
-        <AnimatePresence mode="wait">
-          {step === "START" && (
-            <motion.div key="start"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="bg-white rounded-2xl sm:rounded-[3.5rem] p-6 sm:p-12 border border-slate-100 shadow-2xl shadow-slate-200/50 text-center space-y-6 sm:space-y-12"
-            >
-              <div className="space-y-3 sm:space-y-4">
-                <div className="w-16 h-16 sm:w-24 sm:h-24 bg-sky-50 rounded-xl sm:rounded-[2rem] flex items-center justify-center mx-auto text-sky-600">
-                  <QrCode size={28} />
-                </div>
-                <h1 className="text-2xl sm:text-4xl font-black text-slate-900 tracking-tight">Patient Check-In</h1>
-                <p className="text-sm sm:text-lg text-slate-500 font-medium">Scan your QR code or enter your Patient ID.</p>
+    <div className="min-h-full bg-surface text-on-surface flex flex-col font-sans pb-12">
+      <main className="flex-1 w-full max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 py-2 sm:py-3.5">
+        <div className="flex flex-col gap-3 sm:gap-4">
+          <div className="bg-surface-container-low rounded-xl p-2.5 sm:p-3 shadow-xs border border-surface-container flex flex-col md:flex-row md:items-center justify-between gap-2.5">
+            <div className="flex flex-col gap-0.5">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="w-2 h-2 rounded-full bg-tertiary-container animate-pulse"></span>
+                <span className="text-[10px] text-tertiary font-bold uppercase tracking-wider">
+                  Front Office Intake
+                </span>
               </div>
+              <div className="flex items-baseline gap-2 pt-0.5">
+                <h2 className="text-xs sm:text-sm font-bold text-on-surface">Reception Intake & Routing</h2>
+              </div>
+            </div>
+          </div>
 
-              <div className="max-w-md mx-auto space-y-4 sm:space-y-6">
-                <form onSubmit={handleIdSubmit} className="relative">
-                  <Search className="absolute left-4 sm:left-6 top-1/2 -translate-y-1/2 text-slate-400 transition-colors" size={16} />
-                  <input type="text" placeholder="Enter Patient ID (e.g. PT-2024-001)"
-                    value={patientId} onChange={(e) => setPatientId(e.target.value)}
-                    className="w-full pl-11 sm:pl-16 pr-24 sm:pr-28 py-4 sm:py-6 rounded-xl sm:rounded-3xl bg-slate-50 border-2 border-transparent focus:border-sky-500/20 focus:bg-white focus:outline-none transition-all text-base sm:text-xl font-bold text-slate-900 placeholder:text-slate-300" />
-                  <button disabled={isLoading}
-                    className="absolute right-2 sm:right-3 top-2 sm:top-3 bottom-2 sm:bottom-3 px-4 sm:px-6 rounded-lg sm:rounded-2xl bg-slate-900 text-white font-black text-[10px] sm:text-sm uppercase tracking-widest hover:bg-slate-800 transition-all disabled:opacity-50">
-                    {isLoading ? <Loader2 className="animate-spin" size={16} /> : "Start"}
-                  </button>
-                </form>
-
-                {lookupError && (
-                  <p className="text-xs sm:text-sm font-medium text-rose-600 bg-rose-50 rounded-xl border border-rose-100 px-3 py-2">
-                    {lookupError}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-4 items-start">
+            <div className="lg:col-span-5 flex flex-col gap-3">
+              <section className="rounded-xl border border-surface-container bg-surface-container-lowest p-3 shadow-xs">
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <div>
+                    <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">Clinic QR</div>
+                    <h3 className="text-sm font-bold text-on-surface">{clinicDisplayName}</h3>
+                  </div>
+                  {hasValidClinicQr ? (
+                    <button
+                      type="button"
+                      onClick={() => setIsClinicQrDisplayOpen(true)}
+                      className="rounded-lg border border-surface-container bg-white p-1.5 shadow-xs transition hover:scale-[1.02] hover:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary/20"
+                      aria-label="Open clinic QR code"
+                    >
+                      <QRCode value={clinicQrValue} size={56} />
+                    </button>
+                  ) : (
+                    <div className="rounded-lg border border-dashed border-surface-container bg-surface-container px-2 py-2 text-[10px] text-on-surface-variant text-center min-w-[72px]">
+                      No QR
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-[11px] text-on-surface-variant">
+                    {hasValidClinicQr
+                      ? "Patients scan this code to open the check-in flow for this clinic."
+                      : "Clinic QR is unavailable until a valid clinic is linked to this user."}
                   </p>
-                )}
-
-                <div className="flex items-center gap-3 sm:gap-4 text-slate-300">
-                   <div className="h-px flex-1 bg-current" />
-                   <span className="text-[10px] sm:text-xs font-black uppercase tracking-widest">OR</span>
-                   <div className="h-px flex-1 bg-current" />
-                </div>
-
-                <div className="p-5 sm:p-8 rounded-xl sm:rounded-[2.5rem] border-2 sm:border-4 border-dashed border-slate-100 bg-slate-50/50 flex flex-col items-center gap-3 sm:gap-4 group cursor-pointer hover:border-sky-200 hover:bg-sky-50 transition-all">
-                  <div className="bg-white rounded-2xl border border-slate-100 p-3 shadow-sm">
-                    <QRCode value={qrValue} size={132} bgColor="#ffffff" fgColor="#0f172a" />
-                  </div>
-                  <p className="text-xs sm:text-sm font-bold text-slate-500 group-hover:text-sky-600 transition-colors">Point Camera at QR Code</p>
-                </div>
-              </div>
-            </motion.div>
-          )}
-
-          {step === "IDENTIFY" && (
-            <motion.div key="identify"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              className="bg-white rounded-2xl sm:rounded-[3.5rem] p-5 sm:p-12 border border-slate-100 shadow-2xl shadow-slate-200/50"
-            >
-              <button onClick={() => setStep("START")}
-                className="flex items-center gap-2 text-slate-400 hover:text-slate-900 transition-colors mb-5 sm:mb-8 text-xs sm:text-sm font-bold uppercase tracking-widest">
-                <ArrowLeft size={14} /> Back
-              </button>
-              
-              <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-8 p-5 sm:p-8 rounded-xl sm:rounded-[2.5rem] bg-sky-50 border border-sky-100 mb-6 sm:mb-12">
-                <div className="w-16 h-16 sm:w-24 sm:h-24 rounded-xl sm:rounded-[2rem] bg-white shadow-sm flex items-center justify-center text-sky-600 text-xl sm:text-3xl font-black shrink-0 mx-auto sm:mx-0">
-                  {selectedPatient?.firstName?.[0]}{selectedPatient?.lastName?.[0]}
-                </div>
-                <div className="text-center sm:text-left">
-                  <h2 className="text-xl sm:text-3xl font-black text-slate-900">
-                    {selectedPatient ? `${selectedPatient.firstName} ${selectedPatient.lastName}` : "Patient Not Found"}
-                  </h2>
-                  <p className="text-slate-500 font-bold uppercase tracking-widest text-[9px] sm:text-xs flex items-center gap-1 sm:gap-2 mt-1 justify-center sm:justify-start">
-                    <UserCheck size={12} className="text-sky-500" /> Patient ID: {selectedPatient?.id || patientId}
-                  </p>
-                </div>
-                <div className="mt-1 sm:mt-0 sm:ml-auto px-3 sm:px-6 py-2 sm:py-3 bg-white rounded-lg sm:rounded-2xl border border-sky-100 shadow-sm text-sky-600 font-black text-[9px] sm:text-sm uppercase tracking-widest text-center">
-                  {selectedPatient ? "Returning Patient" : "New Patient"}
-                </div>
-              </div>
-
-              <div className="space-y-4 sm:space-y-6">
-                <h3 className="text-base sm:text-xl font-black text-slate-900 px-1 sm:px-2">Is this you?</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
-                  <button onClick={() => setStep("PURPOSE")}
-                    className="p-5 sm:p-8 rounded-xl sm:rounded-[2.5rem] bg-slate-900 text-white flex items-center justify-between group hover:bg-slate-800 transition-all">
-                    <span className="text-sm sm:text-xl font-bold">Yes, proceed</span>
-                    <ChevronRight className="group-hover:translate-x-1 sm:group-hover:translate-x-2 transition-transform" size={18} />
-                  </button>
-                  <button onClick={() => { setSelectedPatient(null); setPatientId(""); setStep("START"); }}
-                    className="p-5 sm:p-8 rounded-xl sm:rounded-[2.5rem] border-2 border-slate-100 text-slate-400 flex items-center justify-between hover:border-rose-100 hover:text-rose-500 transition-all">
-                    <span className="text-sm sm:text-xl font-bold">No, not me</span>
+                  <button
+                    type="button"
+                    onClick={() => hasValidClinicQr && setIsClinicQrDisplayOpen(true)}
+                    disabled={!hasValidClinicQr}
+                    className="text-[10px] font-bold uppercase tracking-wide text-primary hover:text-primary/80 disabled:text-outline disabled:cursor-not-allowed"
+                  >
+                    View
                   </button>
                 </div>
-              </div>
-            </motion.div>
-          )}
+              </section>
 
-          {step === "PURPOSE" && (
-            <motion.div key="purpose"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              className="bg-white rounded-2xl sm:rounded-[3.5rem] p-5 sm:p-12 border border-slate-100 shadow-2xl shadow-slate-200/50"
-            >
-              <button onClick={() => setStep("IDENTIFY")}
-                className="flex items-center gap-2 text-slate-400 hover:text-slate-900 transition-colors mb-5 sm:mb-8 text-xs sm:text-sm font-bold uppercase tracking-widest">
-                <ArrowLeft size={14} /> Back
-              </button>
+              <section className="flex flex-col gap-1">
+                <div className="flex items-center justify-between gap-2">
+                  <label htmlFor="patientSearchInput" className="text-xs text-on-surface font-semibold">
+                    Patient Lookup & Verification
+                  </label>
+                </div>
+                <div className="relative flex items-center">
+                  <span className="material-symbols-outlined absolute left-2.5 text-outline text-[17px]">search</span>
+                  <input
+                    id="patientSearchInput"
+                    type="search"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search by Name, #VEM ID, Phone..."
+                    className="w-full h-8 sm:h-9 pl-8 pr-10 bg-surface-container-lowest rounded-lg text-xs sm:text-[13px] text-on-surface border border-surface-container shadow-xs outline-none focus:border-primary focus:ring-1.5 focus:ring-primary/20 transition-all placeholder:text-outline"
+                  />
+                </div>
+              </section>
 
-              <div className="mb-6 sm:mb-12">
-                <h2 className="text-xl sm:text-3xl font-black text-slate-900 tracking-tight">Purpose of Visit</h2>
-                <p className="text-sm sm:text-base text-slate-500 font-medium">Select the reason for your visit today.</p>
-              </div>
-
-              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-                {purposes.map((p) => (
-                  <button key={p.id} onClick={() => { setSelectedPurpose(p.label); setStep("PLAN"); }}
-                    className="p-3 sm:p-6 rounded-xl sm:rounded-[2rem] border border-slate-100 hover:border-sky-500/20 hover:bg-sky-50 transition-all group text-left">
-                    <div className={cn("w-8 h-8 sm:w-12 sm:h-12 rounded-lg sm:rounded-2xl bg-slate-50 flex items-center justify-center mb-2 sm:mb-4 text-slate-400 group-hover:bg-white group-hover:text-sky-600 transition-all", p.color)}>
-                      <p.icon size={16} />
+              {selectedPatient ? (
+                <section className="bg-surface-container-lowest rounded-xl shadow-xs border border-surface-container overflow-hidden flex flex-col">
+                  <div className="p-2.5 sm:p-3 flex flex-col gap-2.5">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="relative shrink-0">
+                          <div className="w-10 h-10 rounded-full bg-primary-fixed flex items-center justify-center text-primary font-bold text-xs shadow-xs border border-surface-container-high">
+                            {selectedPatient.firstName[0]}{selectedPatient.lastName[0]}
+                          </div>
+                          <span className="absolute -bottom-0.5 -right-0.5 bg-tertiary text-on-tertiary w-4 h-4 rounded-full flex items-center justify-center shadow-xs">
+                            <span className="material-symbols-outlined text-[10px]">verified</span>
+                          </span>
+                        </div>
+                        <div className="flex flex-col min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <h2 className="text-xs sm:text-sm text-on-surface truncate font-bold">
+                              {selectedPatient.firstName} {selectedPatient.lastName}
+                            </h2>
+                          </div>
+                          <div className="flex items-center gap-1.5 text-on-surface-variant text-[11px] mt-0.5">
+                            <span className="font-bold text-primary font-mono">#{selectedPatient.id.slice(0, 8).toUpperCase()}</span>
+                            <span>•</span>
+                            <span>{selectedPatient.phone ?? "No phone"}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => setIsQrDisplayOpen(true)}
+                          className="rounded-lg bg-white p-1.5 border border-surface-container shadow-xs transition hover:border-primary/40 hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-primary/20"
+                          aria-label="Open patient QR code"
+                        >
+                          <QRCode value={`VEMTAP:${selectedPatient.id}`} size={48} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedPatientId(null)}
+                          className="text-primary text-[11px] px-2 py-0.5 rounded-md hover:bg-surface-container active:bg-surface-container-high transition-colors font-bold shrink-0"
+                        >
+                          Change
+                        </button>
+                      </div>
                     </div>
-                    <h3 className="text-[10px] sm:text-base font-black text-slate-900 mb-0.5 sm:mb-1 truncate">{p.label}</h3>
-                    <p className="text-[8px] sm:text-[11px] text-slate-400 font-bold uppercase tracking-tight">{p.desc}</p>
+
+                    <div className="flex items-center justify-between bg-surface-container-low px-2.5 py-1.5 rounded-lg border border-surface-container">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="material-symbols-outlined text-primary text-[16px] shrink-0">verified_user</span>
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-xs text-on-surface font-semibold truncate">
+                            {selectedPatient.hmoName ?? "Private patient"}
+                          </span>
+                          <span className="text-[10px] text-tertiary font-medium">
+                            {selectedPatient.patientType === "hmo" ? "Coverage available" : "Self-pay patient"}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+              ) : (
+                <div className="rounded-xl border border-dashed border-surface-container bg-surface-container-lowest p-4 text-sm text-on-surface-variant">
+                  Search a patient to begin check-in.
+                </div>
+              )}
+
+              {filteredPatients.length > 0 && (
+                <div className="bg-surface-container-lowest rounded-xl p-2.5 sm:p-3 border border-surface-container">
+                  <div className="text-[10px] font-bold uppercase tracking-wide text-on-surface-variant mb-2">Matching patients</div>
+                  <div className="space-y-2">
+                    {filteredPatients.slice(0, 5).map((patient) => (
+                      <button
+                        key={patient.id}
+                        type="button"
+                        onClick={() => setSelectedPatientId(patient.id)}
+                        className={`w-full text-left rounded-lg p-2 border transition-colors ${
+                          selectedPatient?.id === patient.id
+                            ? "border-primary bg-primary/5"
+                            : "border-surface-container bg-surface-container"
+                        }`}
+                      >
+                        <div className="font-bold text-on-surface text-sm">{patient.firstName} {patient.lastName}</div>
+                        <div className="text-[10px] text-on-surface-variant">#{patient.id.slice(0, 8).toUpperCase()} • {patient.phone ?? "No phone"}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="lg:col-span-7 flex flex-col gap-3">
+              <section className="bg-surface-container-lowest rounded-xl p-3 shadow-xs border border-surface-container flex flex-col gap-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-bold text-on-surface">Check-in details</h3>
+                  <button
+                    type="button"
+                    onClick={handleEmergencyBypass}
+                    className={`rounded-lg px-2 py-1 text-[10px] font-bold uppercase tracking-wide ${
+                      emergencyAlertActive ? "bg-error text-on-error animate-pulse" : "bg-error text-on-error"
+                    }`}
+                  >
+                    Emergency bypass
                   </button>
-                ))}
-              </div>
-            </motion.div>
-          )}
-
-          {step === "PLAN" && (
-            <motion.div key="plan"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              className="bg-white rounded-2xl sm:rounded-[3.5rem] p-5 sm:p-12 border border-slate-100 shadow-2xl shadow-slate-200/50"
-            >
-              <button onClick={() => setStep("PURPOSE")}
-                className="flex items-center gap-2 text-slate-400 hover:text-slate-900 transition-colors mb-5 sm:mb-8 text-xs sm:text-sm font-bold uppercase tracking-widest">
-                <ArrowLeft size={14} /> Back
-              </button>
-
-              <div className="mb-6 sm:mb-12">
-                <h2 className="text-xl sm:text-3xl font-black text-slate-900 tracking-tight">Payment Method</h2>
-                <p className="text-sm sm:text-base text-slate-500 font-medium">How are you paying for your visit?</p>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-                {plans.map((p) => (
-                  <button key={p.id} onClick={() => { setSelectedPlan(p.label); handleFinalCheckIn(); }}
-                    className="p-6 sm:p-10 rounded-xl sm:rounded-[2.5rem] border border-slate-100 hover:border-sky-500/20 hover:bg-sky-50 transition-all group flex flex-col items-center text-center gap-4 sm:gap-6">
-                    <div className="w-14 h-14 sm:w-20 sm:h-20 rounded-xl sm:rounded-[1.5rem] bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-white group-hover:text-sky-600 transition-all">
-                      <p.icon size={28} />
-                    </div>
-                    <div>
-                      <h3 className="text-base sm:text-xl font-black text-slate-900 mb-1 sm:mb-2">{p.label}</h3>
-                      <p className="text-[10px] sm:text-sm text-slate-400 font-bold uppercase tracking-widest">{p.desc}</p>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </motion.div>
-          )}
-
-          {step === "VERIFYING" && (
-            <motion.div key="verifying"
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="bg-white rounded-2xl sm:rounded-[3.5rem] p-10 sm:p-20 border border-slate-100 shadow-2xl shadow-slate-200/50 text-center space-y-5 sm:space-y-8"
-            >
-              <div className="relative w-20 h-20 sm:w-32 sm:h-32 mx-auto">
-                <motion.div animate={{ rotate: 360 }}
-                  transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                  className="absolute inset-0 rounded-full border-4 border-slate-100 border-t-sky-600" />
-                <div className="absolute inset-0 flex items-center justify-center text-sky-600">
-                  <ShieldCheck size={28} />
                 </div>
-              </div>
-              <div className="space-y-1 sm:space-y-2">
-                <h2 className="text-xl sm:text-3xl font-black text-slate-900">Finalizing Check-In</h2>
-                <p className="text-xs sm:text-base text-slate-500 font-medium italic">Verifying and assigning queue ticket...</p>
-              </div>
-            </motion.div>
-          )}
 
-          {step === "COMPLETE" && (
-            <motion.div key="complete"
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="bg-white rounded-2xl sm:rounded-[3.5rem] p-6 sm:p-12 border border-slate-100 shadow-2xl shadow-slate-200/50 text-center"
-            >
-              <div className="mb-6 sm:mb-12">
-                <div className="w-16 h-16 sm:w-24 sm:h-24 bg-emerald-50 rounded-full flex items-center justify-center mx-auto text-emerald-600 mb-4 sm:mb-6">
-                  <CheckCircle2 size={28} />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <label className="text-xs text-on-surface-variant">
+                    <span className="mb-1 block font-semibold">Visit purpose</span>
+                    <select
+                      value={selectedPurpose}
+                      onChange={(e) => setSelectedPurpose(e.target.value as VisitPurpose)}
+                      className="w-full bg-surface-container rounded-lg px-3 py-2 text-on-surface border border-surface-container focus:border-primary outline-none"
+                    >
+                      <option value="consultation">Consultation</option>
+                      <option value="refraction">Refraction</option>
+                      <option value="lens_purchase">Lens purchase</option>
+                      <option value="frame_selection">Frame selection</option>
+                      <option value="pickup">Pickup</option>
+                      <option value="follow_up">Follow up</option>
+                    </select>
+                  </label>
+
+                  <label className="text-xs text-on-surface-variant">
+                    <span className="mb-1 block font-semibold">Priority</span>
+                    <select
+                      value={priority}
+                      onChange={(e) => setPriority(e.target.value as PriorityLevel)}
+                      className="w-full bg-surface-container rounded-lg px-3 py-2 text-on-surface border border-surface-container focus:border-primary outline-none"
+                    >
+                      <option value="standard">Standard</option>
+                      <option value="senior">Senior</option>
+                      <option value="urgent">Urgent</option>
+                    </select>
+                  </label>
                 </div>
-                <h2 className="text-2xl sm:text-4xl font-black text-slate-900 tracking-tight">Check-In Successful!</h2>
-                <p className="text-sm sm:text-base text-slate-500 font-medium">Your ticket has been generated. Please take your seat.</p>
-              </div>
 
-              <div className="mx-auto p-5 sm:p-8 rounded-xl sm:rounded-[2.5rem] bg-slate-50 border-2 border-dashed border-slate-200 mb-6 sm:mb-12 relative overflow-hidden">
-                <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/50 rounded-full blur-3xl" />
-                <div className="relative z-10 space-y-4 sm:space-y-6">
-                  <div className="text-center">
-                    <p className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Queue Ticket</p>
-                    <p className="text-4xl sm:text-6xl font-black text-slate-900">{createEntry.data?.ticketNumber || "V-024"}</p>
+                <label className="text-xs text-on-surface-variant">
+                  <span className="mb-1 block font-semibold">Billing mode</span>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setBillingMode("hmo")}
+                      className={`rounded-lg px-3 py-2 font-semibold ${billingMode === "hmo" ? "bg-primary text-on-primary" : "bg-surface-container text-on-surface"}`}
+                    >
+                      HMO
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setBillingMode("cash")}
+                      className={`rounded-lg px-3 py-2 font-semibold ${billingMode === "cash" ? "bg-primary text-on-primary" : "bg-surface-container text-on-surface"}`}
+                    >
+                      Cash
+                    </button>
                   </div>
-                  <div className="space-y-1 sm:space-y-2 text-left border-t border-slate-200 pt-4 sm:pt-6">
-                    <div className="flex justify-between">
-                      <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase">Patient</span>
-                      <span className="text-[10px] sm:text-xs font-black text-slate-900">{selectedPatient ? `${selectedPatient.firstName} ${selectedPatient.lastName}` : "Patient"}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase">Purpose</span>
-                      <span className="text-[10px] sm:text-xs font-black text-slate-900">{selectedPurpose}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase">Plan</span>
-                      <span className="text-[10px] sm:text-xs font-black text-slate-900">{selectedPlan}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase">Time</span>
-                      <span className="text-[10px] sm:text-xs font-black text-slate-900">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                    </div>
-                  </div>
-                  <div className="mx-auto rounded-2xl bg-white p-3 shadow-sm border border-slate-100 w-fit">
-                    <QRCode value={qrValue} size={72} bgColor="#ffffff" fgColor="#0f172a" />
-                  </div>
-                </div>
-              </div>
+                </label>
 
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
-                <button className="w-full sm:w-auto px-6 sm:px-10 py-4 sm:py-5 bg-slate-900 text-white rounded-xl sm:rounded-2xl font-black uppercase tracking-widest text-[10px] sm:text-xs flex items-center justify-center gap-2 sm:gap-3 hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/20">
-                  <Printer size={16} /> Print Ticket
+                <button
+                  type="button"
+                  onClick={handleCheckIn}
+                  disabled={!selectedPatient || isSubmitting}
+                  className="w-full rounded-lg bg-primary text-on-primary py-3 text-sm font-bold disabled:opacity-50"
+                >
+                  {isSubmitting ? "Checking in..." : "Complete check-in"}
                 </button>
-                <button onClick={() => { setStep("START"); setPatientId(""); setSelectedPatient(null); setSelectedPurpose(null); setSelectedPlan(null); setLookupError(""); }}
-                  className="w-full sm:w-auto px-6 sm:px-10 py-4 sm:py-5 bg-white border border-slate-200 text-slate-600 rounded-xl sm:rounded-2xl font-black uppercase tracking-widest text-[10px] sm:text-xs hover:bg-slate-50 transition-all">
-                  Done
-                </button>
+              </section>
+
+              {showSlipModal && selectedPatient && (
+                <section className="bg-surface-container-lowest rounded-xl p-3 shadow-xs border border-surface-container flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="text-[10px] uppercase tracking-wide text-on-surface-variant mb-1">Check-in slip</div>
+                    <div className="font-bold text-on-surface text-sm">
+                      {selectedPatient.firstName} {selectedPatient.lastName}
+                    </div>
+                    <div className="text-[10px] text-on-surface-variant">
+                      {selectedPurpose} • {priority} • {billingMode.toUpperCase()}
+                    </div>
+                  </div>
+                  <div className="rounded-lg bg-white p-2">
+                    <QRCode value={`VEMTAP:${selectedPatient.id}`} size={88} />
+                  </div>
+                </section>
+              )}
+            </div>
+          </div>
+        </div>
+      </main>
+
+      {isClinicQrDisplayOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 p-4">
+          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">Clinic QR Code</p>
+                <h3 className="text-lg font-bold text-slate-900">{clinicDisplayName}</h3>
               </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+              <button
+                type="button"
+                onClick={() => setIsClinicQrDisplayOpen(false)}
+                className="rounded-full bg-slate-100 px-2.5 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-200"
+              >
+                Close
+              </button>
+            </div>
+
+            {hasValidClinicQr ? (
+              <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                <div className="rounded-2xl bg-white p-4 shadow-sm border border-slate-200">
+                  <QRCode value={clinicQrValue} size={200} />
+                </div>
+
+                <div className="text-center">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500">Clinic code</p>
+                  <p className="mt-1 font-mono text-sm font-bold text-slate-800">{clinicQrValue}</p>
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-5 text-sm text-slate-600 text-center">
+                No valid clinic QR is available yet. Link a real clinic to generate the check-in QR.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {isQrDisplayOpen && selectedPatient && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 p-4">
+          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">Patient QR Code</p>
+                <h3 className="text-lg font-bold text-slate-900">{selectedPatient.firstName} {selectedPatient.lastName}</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsQrDisplayOpen(false)}
+                className="rounded-full bg-slate-100 px-2.5 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-200"
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-5">
+              <div className="rounded-2xl bg-white p-4 shadow-sm border border-slate-200">
+                <QRCode value={`VEMTAP:${selectedPatient.id}`} size={200} />
+              </div>
+
+              <div className="text-center">
+                <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500">Patient code</p>
+                <p className="mt-1 font-mono text-sm font-bold text-slate-800">{selectedPatient.id}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

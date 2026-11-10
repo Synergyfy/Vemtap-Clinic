@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import {
   Camera, CheckCircle2, ClipboardCheck, FileImage, FileText,
   Loader2, Paperclip, ScanLine, Search, ShieldCheck, Upload,
@@ -185,7 +186,16 @@ export default function DocumentsPage() {
 
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">Documents</h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">Documents</h1>
+            <Link
+              href="/reception/documents/ocr"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-bold hover:bg-primary hover:text-white transition-colors"
+            >
+              <ScanLine size={13} />
+              <span>AI OCR Scanner</span>
+            </Link>
+          </div>
           <p className="text-sm sm:text-base text-slate-500 font-medium">Scan forms, extract OCR, and attach files to patient records.</p>
         </div>
         <div className="grid grid-cols-3 gap-2 sm:gap-3">

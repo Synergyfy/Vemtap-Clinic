@@ -31,6 +31,42 @@ export class RegisterDto {
   @MinLength(6)
   password: string;
 
+  @ApiProperty({ example: 'Apex Vision Clinic', required: false })
+  @Transform(({ value }) => (value === '' || value === null ? undefined : value))
+  @IsOptional()
+  @IsString()
+  clinicName?: string;
+
+  @ApiProperty({ example: '12 Medical Drive', required: false })
+  @Transform(({ value }) => (value === '' || value === null ? undefined : value))
+  @IsOptional()
+  @IsString()
+  clinicAddress?: string;
+
+  @ApiProperty({ example: 'Ikeja', required: false })
+  @Transform(({ value }) => (value === '' || value === null ? undefined : value))
+  @IsOptional()
+  @IsString()
+  clinicCity?: string;
+
+  @ApiProperty({ example: 'Lagos', required: false })
+  @Transform(({ value }) => (value === '' || value === null ? undefined : value))
+  @IsOptional()
+  @IsString()
+  clinicState?: string;
+
+  @ApiProperty({ example: '08012345678', required: false })
+  @Transform(({ value }) => (value === '' || value === null ? undefined : value))
+  @IsOptional()
+  @IsString()
+  clinicPhone?: string;
+
+  @ApiProperty({ example: 'contact@apexvision.ng', required: false })
+  @Transform(({ value }) => (value === '' || value === null ? undefined : value))
+  @IsOptional()
+  @IsEmail()
+  clinicEmail?: string;
+
   @ApiProperty({ example: 'clinic-uuid', required: false, nullable: true })
   @Transform(({ value }) => (value === '' || value === null ? undefined : value))
   @IsOptional()
@@ -88,6 +124,15 @@ export class AuthUserDto {
 
   @ApiProperty({ nullable: true })
   clinicId: string | null;
+
+  @ApiProperty({ required: false, nullable: true })
+  clinicName?: string;
+
+  @ApiProperty({ required: false })
+  firstName?: string;
+
+  @ApiProperty({ required: false })
+  lastName?: string;
 }
 
 export class AuthResponseDto {

@@ -127,7 +127,7 @@ export default function HMODatabasePage() {
             <label className="text-sm font-bold text-slate-700">Contact Person</label>
             <input 
               className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none"
-              placeholder="e.g. Dr. John Adeleke"
+              placeholder="e.g. HMO contact person"
               value={newHmo.contactPerson}
               onChange={(e) => setNewHmo({...newHmo, contactPerson: e.target.value})}
             />

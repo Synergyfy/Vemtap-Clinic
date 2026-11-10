@@ -38,8 +38,10 @@ export class NotificationsService {
     return this.notificationRepo.find({ where, order: { createdAt: 'DESC' } });
   }
 
-  async findByPatient(patientId: string): Promise<Notification[]> {
-    return this.notificationRepo.find({ where: { patientId }, order: { createdAt: 'DESC' } });
+  async findByPatient(patientId: string, unreadOnly?: boolean): Promise<Notification[]> {
+    const where: any = { patientId };
+    if (unreadOnly) where.isRead = false;
+    return this.notificationRepo.find({ where, order: { createdAt: 'DESC' } });
   }
 
   async markAsRead(id: string): Promise<Notification | null> {
@@ -55,8 +57,16 @@ export class NotificationsService {
     await this.notificationRepo.update({ userId, isRead: false }, { isRead: true });
   }
 
+  async markAllPatientNotificationsAsRead(patientId: string): Promise<void> {
+    await this.notificationRepo.update({ patientId, isRead: false }, { isRead: true });
+  }
+
   async getUnreadCount(userId: string): Promise<number> {
     return this.notificationRepo.count({ where: { userId, isRead: false } });
+  }
+
+  async getPatientUnreadCount(patientId: string): Promise<number> {
+    return this.notificationRepo.count({ where: { patientId, isRead: false } });
   }
 
   async remove(id: string): Promise<void> {

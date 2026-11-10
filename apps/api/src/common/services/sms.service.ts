@@ -19,7 +19,7 @@ export class SmsService {
   private config: Record<string, any>;
 
   constructor(private configService: ConfigService) {
-    this.provider = this.configService.get('SMS_PROVIDER') || 'twilio';
+    this.provider = this.configService.get('SMS_PROVIDER') || this.resolveDefaultProvider();
     this.config = {
       twilio: {
         accountSid: this.configService.get('TWILIO_ACCOUNT_SID'),
@@ -37,8 +37,25 @@ export class SmsService {
     };
   }
 
+  private resolveDefaultProvider(): string {
+    if (this.configService.get('TWILIO_ACCOUNT_SID') && this.configService.get('TWILIO_AUTH_TOKEN') && this.configService.get('TWILIO_PHONE_NUMBER')) {
+      return 'twilio';
+    }
+    if (this.configService.get('TERMII_API_KEY')) {
+      return 'termii';
+    }
+    if (this.configService.get('AFRICAS_TALKING_USERNAME') && this.configService.get('AFRICAS_TALKING_API_KEY')) {
+      return 'africastalking';
+    }
+    return '';
+  }
+
   async sendSms(options: { to: string; message: string }): Promise<{ success: boolean; messageId?: string; error?: string }> {
     try {
+      if (!this.provider) {
+        throw new BadRequestException('No SMS provider configured. Set SMS_PROVIDER and the provider credentials in your environment.');
+      }
+
       switch (this.provider) {
         case 'twilio':
           return await this.sendViaTwilio(options);
@@ -50,7 +67,8 @@ export class SmsService {
           throw new BadRequestException(`Unsupported SMS provider: ${this.provider}`);
       }
     } catch (error) {
-      return { success: false, error: error.message };
+      const message = error instanceof Error ? error.message : 'Unable to send SMS.';
+      return { success: false, error: message };
     }
   }
 

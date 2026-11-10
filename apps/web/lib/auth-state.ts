@@ -6,6 +6,7 @@ export interface AuthUser {
   email: string;
   roles: string[];
   clinicId: string;
+  clinicName?: string;
   branchId?: string;
   firstName?: string;
   lastName?: string;
@@ -37,6 +38,7 @@ export const normalizeAuthUser = (user: Partial<AuthUser> | null | undefined): A
     email: user.email ?? '',
     roles,
     clinicId: normalizedClinicId,
+    clinicName: user.clinicName?.trim() || undefined,
     branchId: normalizedBranchId || undefined,
     firstName: user.firstName,
     lastName: user.lastName,
@@ -44,9 +46,39 @@ export const normalizeAuthUser = (user: Partial<AuthUser> | null | undefined): A
   } satisfies AuthUser;
 };
 
+export const hasUsablePatientIdentity = (user: Partial<AuthUser> | null | undefined): boolean => {
+  if (!user) return false;
+
+  if (!user.roles?.includes('patient')) {
+    return true;
+  }
+
+  const identityFields = [user.userId, user.email, user.firstName, user.lastName, user.phone].filter(
+    (value): value is string => typeof value === 'string' && value.trim().length > 0,
+  );
+
+  return identityFields.length > 0;
+};
+
 export const getEffectiveBranchId = (user: Partial<AuthUser> | null | undefined) => {
   const branchId = user?.branchId?.trim();
   return branchId ?? '';
+};
+
+export const hasActivePersistedSession = (state: Partial<{
+  accessToken: string | null;
+  user: AuthUser | null;
+  isLoggedOut: boolean;
+  isAuthenticated: boolean;
+}> | null | undefined): boolean => {
+  if (!state) return false;
+
+  const hasAccessToken = typeof state.accessToken === 'string' && state.accessToken.trim().length > 0;
+  const hasUser = !!state.user && (
+    !!state.user.userId || !!state.user.email || !!state.user.firstName || !!state.user.lastName || !!state.user.phone
+  );
+
+  return hasAccessToken || hasUser;
 };
 
 interface AuthState {
@@ -93,6 +125,15 @@ export const useAuthState = create<AuthState>()(
         isLoggedOut: state.isLoggedOut,
       }),
       onRehydrateStorage: () => (state) => {
+        if (state && state.isLoggedOut && hasActivePersistedSession(state)) {
+          const fallbackUser = state.user ?? {
+            userId: '',
+            email: '',
+            roles: [],
+            clinicId: '',
+          };
+          state.setAuth(state.accessToken ?? '', fallbackUser);
+        }
         state?.setHydrated(true);
       },
     },

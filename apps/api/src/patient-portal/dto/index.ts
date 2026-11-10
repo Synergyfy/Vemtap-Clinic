@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsEmail, IsUUID, MinLength, MaxLength, IsNumber, IsEnum } from 'class-validator';
+import { IsString, IsOptional, IsEmail, IsUUID, MinLength, MaxLength, IsNumber, IsEnum, IsIn } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class PatientLoginDto {
@@ -44,13 +44,20 @@ export class PatientRegisterDto {
   @MinLength(6)
   password: string;
 
-  @ApiProperty({ example: 'clinic-uuid' })
+  @ApiPropertyOptional({ example: 'clinic-uuid' })
+  @IsOptional()
   @IsUUID()
-  clinicId: string;
+  clinicId?: string;
 
-  @ApiProperty({ example: 'branch-uuid' })
+  @ApiPropertyOptional({ example: 'branch-uuid' })
+  @IsOptional()
   @IsUUID()
-  branchId: string;
+  branchId?: string;
+
+  @ApiPropertyOptional({ example: 'VEM-CLINIC123' })
+  @IsOptional()
+  @IsString()
+  clinicQrCode?: string;
 }
 
 export class PatientPortalAuthDto {
@@ -63,6 +70,91 @@ export class PatientPortalAuthDto {
     phone: string;
     clinicId: string;
   };
+}
+
+export class SendPhoneOtpDto {
+  @ApiProperty({ example: '+2348012345678' })
+  @IsString()
+  @MinLength(10)
+  @MaxLength(20)
+  phone: string;
+}
+
+export class VerifyPhoneOtpDto {
+  @ApiProperty({ example: '+2348012345678' })
+  @IsString()
+  @MinLength(10)
+  @MaxLength(20)
+  phone: string;
+
+  @ApiProperty({ example: '123456' })
+  @IsString()
+  @MinLength(4)
+  @MaxLength(8)
+  code: string;
+}
+
+export class SendEmailOtpDto {
+  @ApiProperty({ example: 'patient@example.com' })
+  @IsEmail()
+  email: string;
+}
+
+export class VerifyEmailOtpDto {
+  @ApiProperty({ example: 'patient@example.com' })
+  @IsEmail()
+  email: string;
+
+  @ApiProperty({ example: '123456' })
+  @IsString()
+  @MinLength(4)
+  @MaxLength(8)
+  code: string;
+}
+
+export class CreateFamilyMemberInviteDto {
+  @ApiProperty({ example: 'Sam Doe' })
+  @IsString()
+  fullName: string;
+
+  @ApiProperty({ example: 'dependent@example.com' })
+  @IsEmail()
+  email: string;
+
+  @ApiProperty({ example: 'child', enum: ['child', 'spouse', 'parent', 'other'] })
+  @IsString()
+  @IsIn(['child', 'spouse', 'parent', 'other'])
+  relationship: 'child' | 'spouse' | 'parent' | 'other';
+}
+
+export class ActivateFamilyMemberDto {
+  @ApiProperty({ example: 'invite-token' })
+  @IsString()
+  token: string;
+
+  @ApiProperty({ example: 'Sam Doe' })
+  @IsString()
+  fullName: string;
+
+  @ApiProperty({ example: '2015-04-12' })
+  @IsString()
+  dateOfBirth: string;
+
+  @ApiProperty({ example: 'male', enum: ['male', 'female', 'other'] })
+  @IsString()
+  @IsIn(['male', 'female', 'other'])
+  gender: string;
+
+  @ApiProperty({ example: '+2348000000001' })
+  @IsString()
+  @MinLength(10)
+  @MaxLength(20)
+  phone: string;
+
+  @ApiProperty({ example: 'newPassword123' })
+  @IsString()
+  @MinLength(6)
+  password: string;
 }
 
 export class BookAppointmentDto {

@@ -1,7 +1,10 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
 import { Clinic } from './clinic.entity';
+import { Branch } from './branch.entity';
 
 export enum UserRole {
+  SUPER_ADMIN = 'super_admin',
+  CLINIC_ADMIN = 'clinic_admin',
   ADMIN = 'admin',
   DOCTOR = 'doctor',
   NURSE = 'nurse',
@@ -28,7 +31,7 @@ export class User {
   @Column({ select: false })
   password: string;
 
-  @Column({ type: 'enum', enum: UserRole, default: UserRole.ADMIN })
+  @Column({ type: 'enum', enum: UserRole, default: UserRole.CLINIC_ADMIN })
   role: UserRole;
 
   @Column({ default: true })
@@ -40,6 +43,13 @@ export class User {
   @ManyToOne(() => Clinic, { nullable: true })
   @JoinColumn({ name: 'clinicId' })
   clinic: Clinic;
+
+  @Column({ nullable: true })
+  branchId: string | null;
+
+  @ManyToOne(() => Branch, { nullable: true })
+  @JoinColumn({ name: 'branchId' })
+  branch: Branch;
 
   @CreateDateColumn()
   createdAt: Date;

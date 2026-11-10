@@ -20,6 +20,27 @@ export class ClinicsService {
     private claimRepo: Repository<HMOClaim>,
   ) {}
 
+  private generateClinicQrCode(clinicId: string): string {
+    const normalizedId = String(clinicId || '').replace(/[^a-z0-9]/gi, '').toUpperCase();
+    return `VEM-${normalizedId || 'CLINIC'}`.slice(0, 20);
+  }
+
+  resolveClinicQrCodeValue(
+    clinic?: (Partial<Clinic> & { qrCode?: string | null; qrUrl?: string | null }) | null,
+  ): string {
+    const savedQrCode = clinic?.qrCode?.trim();
+    if (savedQrCode) return savedQrCode;
+
+    const normalizedId = String(clinic?.id ?? '').replace(/[^a-z0-9]/gi, '').toUpperCase();
+    return normalizedId ? `VEM-${normalizedId}`.slice(0, 20) : '';
+  }
+
+  private buildClinicQrUrl(qrCode: string): string {
+    if (!qrCode) return '';
+    const baseUrl = process.env.APP_URL || process.env.FRONTEND_URL || 'http://localhost:3000';
+    return `${baseUrl.replace(/\/$/, '')}/reception/check-in?clinic=${encodeURIComponent(qrCode)}`;
+  }
+
   isDemoClinic(clinic: Partial<Clinic>): boolean {
     const name = (clinic.name ?? '').trim().toLowerCase();
     const email = (clinic.email ?? '').trim().toLowerCase();
@@ -38,12 +59,31 @@ export class ClinicsService {
     });
 
     const savedClinic = await this.clinicRepo.save(clinic);
+    const qrCode = this.resolveClinicQrCodeValue(savedClinic);
+    const qrUrl = this.buildClinicQrUrl(qrCode);
+
+    const withQrCode = await this.clinicRepo.save({
+      ...savedClinic,
+      qrCode,
+      qrUrl,
+    });
 
     if (ownerId) {
-      await this.userRepo.update({ id: ownerId }, { clinicId: savedClinic.id });
+      await this.userRepo.update({ id: ownerId }, { clinicId: withQrCode.id });
     }
 
-    return savedClinic;
+    return withQrCode;
+  }
+
+  async findByQrCode(qrCode: string): Promise<Clinic> {
+    const normalizedQrCode = (qrCode ?? '').trim();
+    if (!normalizedQrCode || normalizedQrCode === 'VEM-CLINIC') {
+      throw new NotFoundException(`Clinic QR code ${qrCode} not found`);
+    }
+
+    const clinic = await this.clinicRepo.findOne({ where: { qrCode: normalizedQrCode } });
+    if (!clinic) throw new NotFoundException(`Clinic QR code ${normalizedQrCode} not found`);
+    return clinic;
   }
 
   async findAll(

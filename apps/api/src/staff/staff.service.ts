@@ -30,6 +30,7 @@ export class StaffService {
       existingAuthUser.lastName = dto.lastName;
       existingAuthUser.role = this.mapStaffRoleToUserRole(dto.role);
       existingAuthUser.clinicId = dto.clinicId;
+      existingAuthUser.branchId = dto.branchId;
       existingAuthUser.isActive = true;
       existingAuthUser.password = await bcrypt.hash(dto.password ?? 'password123', 10);
       await this.userRepository.save(existingAuthUser);
@@ -43,6 +44,7 @@ export class StaffService {
       password: await bcrypt.hash(dto.password ?? 'password123', 10),
       role: this.mapStaffRoleToUserRole(dto.role),
       clinicId: dto.clinicId,
+      branchId: dto.branchId,
       isActive: true,
     });
 

@@ -142,6 +142,7 @@ export class EmailService {
       'claim-submitted': `HMO Claim Submitted - ${data.claimNumber}`,
       'claim-status': `HMO Claim Status Update - ${data.claimNumber}`,
       'otp-verification': 'Your Verification Code',
+      'family-activation': `Activate your Vemtap family account`,
     };
     return subjects[template] || 'Vemtap Health Clinic Notification';
   }
@@ -265,6 +266,18 @@ export class EmailService {
           <span style="background: #f3f4f6; border: 2px dashed #059669; padding: 20px 40px; border-radius: 12px; font-size: 32px; font-weight: 700; letter-spacing: 8px; color: #059669; font-family: monospace;">${data.code}</span>
         </div>
         <p>This code expires in 5 minutes.</p>
+      `,
+      'family-activation': `
+        <h2 style="color: #1f2937;">Activate your family account</h2>
+        <p>Hello <strong>${data.firstName || 'there'}</strong>,</p>
+        <p><strong>${data.guardianName || 'Your guardian'}</strong> has linked you to their family account as a <strong>${data.relationship || 'family member'}</strong>.</p>
+        <p>Please complete your activation to create your own independent patient profile.</p>
+        <p style="text-align: center; margin: 30px 0;">
+          <a href="${data.activationUrl}" style="display: inline-block; background: #0055c4; color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600;">Activate My Account</a>
+        </p>
+        <p>If the button does not work, copy and open this link manually:</p>
+        <p><a href="${data.activationUrl}">${data.activationUrl}</a></p>
+        <p>This activation link expires on ${data.expiresAt || 'the same day'}.</p>
       `,
     };
 

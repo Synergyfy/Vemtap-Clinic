@@ -6,25 +6,56 @@ import { usePathname, useRouter } from "next/navigation";
 import { 
   LayoutDashboard, Users, Calendar, Clock, 
   Wallet, Headphones, Settings2, Bell, 
-  Menu, X, LogOut, QrCode, FileText, ClipboardList
+  Menu, X, LogOut, FileText, ClipboardList
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { Modal } from "@/components/ui/modal";
 import { BottomNav } from "@/components/layout/bottom-nav";
+import { SidebarNav, type SidebarEntry } from "@/components/layout/sidebar-nav";
+import { StaffTopHeader } from "@/components/layout/staff-top-header";
 import { useAuth } from "@/lib/auth-context";
 
-const sidebarLinks = [
-  { name: "Dashboard", href: "/reception/dashboard", icon: LayoutDashboard },
-  { name: "Patients", href: "/reception/patients", icon: Users },
-  { name: "Queue Overview", href: "/reception/queue", icon: Clock },
-  { name: "Appointments", href: "/reception/appointments", icon: Calendar },
-  { name: "Self Check-in", href: "/reception/check-in", icon: QrCode },
-  { name: "Billing & HMO", href: "/reception/billing", icon: Wallet },
-  { name: "Documents", href: "/reception/documents", icon: FileText },
-  { name: "Tasks", href: "/reception/tasks", icon: ClipboardList },
-  { name: "Support", href: "/reception/support", icon: Headphones },
-  { name: "Settings", href: "/reception/settings", icon: Settings2 },
+const receptionSidebarEntries: SidebarEntry[] = [
+  {
+    type: "link",
+    item: { name: "Dashboard", href: "/reception/dashboard", icon: LayoutDashboard },
+  },
+  {
+    type: "group",
+    group: {
+      name: "Patient Desk",
+      icon: Users,
+      items: [
+        { name: "Patients Directory", href: "/reception/patients", icon: Users },
+        { name: "Queue Management", href: "/reception/queue", icon: Clock },
+        { name: "Appointments", href: "/reception/appointments", icon: Calendar },
+      ],
+    },
+  },
+  {
+    type: "group",
+    group: {
+      name: "Billing & Records",
+      icon: Wallet,
+      items: [
+        { name: "Billing & HMO", href: "/reception/billing", icon: Wallet },
+        { name: "Documents Archive", href: "/reception/documents", icon: FileText },
+      ],
+    },
+  },
+  {
+    type: "link",
+    item: { name: "Daily Tasks", href: "/reception/tasks", icon: ClipboardList },
+  },
+  {
+    type: "link",
+    item: { name: "Support", href: "/reception/support", icon: Headphones },
+  },
+  {
+    type: "link",
+    item: { name: "Settings", href: "/reception/settings", icon: Settings2 },
+  },
 ];
 
 export default function ReceptionLayout({ children }: { children: React.ReactNode }) {
@@ -72,54 +103,38 @@ export default function ReceptionLayout({ children }: { children: React.ReactNod
         )}
       >
         <div className="h-full flex flex-col">
-          <div className="p-6 flex items-center justify-between shrink-0 h-20">
-            <Link href="/reception/dashboard" className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-sky-600 rounded-lg flex items-center justify-center shrink-0">
-                <div className="w-4 h-4 bg-white rounded-sm rotate-45" />
+          <div className="p-5 flex items-center justify-between shrink-0 h-20 border-b border-white/10">
+            <Link href="/reception/dashboard" className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-full bg-[#EBF3FE] flex items-center justify-center shrink-0 shadow-xs border border-sky-100">
+                <svg className="h-5 w-5 text-[#0055C4]" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
+                  <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
               </div>
-              <span className="text-xl font-bold tracking-tight">Vemtap<span className="text-sky-500">Reception</span></span>
+              <div className="flex flex-col">
+                <span className="text-[14px] font-extrabold tracking-tight text-white leading-tight">VEMTAP</span>
+                <span className="text-[9px] font-bold tracking-[0.16em] text-sky-400 uppercase leading-tight">RECEPTION</span>
+              </div>
             </Link>
             <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden text-white/50 hover:text-white p-2">
               <X size={20} />
             </button>
           </div>
 
-          <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
-            {sidebarLinks.map((link) => {
-              const isActive = pathname.startsWith(link.href);
-              return (
-                <Link
-                  key={link.name}
-                  href={link.href}
-                  className={cn(
-                    "flex items-center gap-3 px-4 py-3 rounded-xl transition-all",
-                    isActive 
-                      ? "bg-sky-600 text-white font-bold" 
-                      : "text-white/60 hover:text-white hover:bg-white/5"
-                  )}
-                >
-                  <link.icon size={22} />
-                  <span>{link.name}</span>
-                </Link>
-              );
-            })}
-          </nav>
+          <SidebarNav
+            entries={receptionSidebarEntries}
+            activeColor="bg-sky-600"
+            onNavigate={() => setIsSidebarOpen(false)}
+          />
 
           <div className="p-4 border-t border-white/10 shrink-0">
             <div className="flex min-w-0 items-center gap-3 rounded-xl bg-white/5 p-3">
-              {initials ? (
-                <div className="h-10 w-10 shrink-0 rounded-full bg-slate-800 flex items-center justify-center text-sky-400 font-bold">
-                  {initials}
-                </div>
-              ) : (
-                <div className="h-10 w-10 shrink-0 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 font-bold">
-                  •
-                </div>
-              )}
+              <div className="h-10 w-10 shrink-0 rounded-full bg-slate-800 flex items-center justify-center text-sky-400 font-bold">
+                {initials || "•"}
+              </div>
               <div className="min-w-0 flex-1 overflow-hidden">
                 <p className="truncate text-sm font-bold text-white">{displayName || "User"}</p>
-                <p className="truncate text-[10px] text-white/60">{user?.email || "user@example.com"}</p>
-                <p className="truncate text-[10px] text-white/40">{roleLabel || "Staff"}</p>
+                <p className="truncate text-[10px] text-white/60">{roleLabel || "Receptionist"}</p>
               </div>
             </div>
           </div>
@@ -127,23 +142,15 @@ export default function ReceptionLayout({ children }: { children: React.ReactNod
       </aside>
 
       <main className="flex-1 min-w-0 flex flex-col h-full overflow-hidden">
-        <header className="h-20 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0 z-40">
-          <button onClick={() => setIsSidebarOpen(true)} className="lg:hidden p-2 hover:bg-slate-100 rounded-xl">
-            <Menu size={24} className="text-slate-700" />
-          </button>
-          <div className="flex-1" />
-          <button className="relative p-2 hover:bg-slate-100 rounded-xl" aria-label="Notifications">
-            <Bell size={20} className="text-slate-500" />
-          </button>
-          <button
-            onClick={() => setIsLogoutOpen(true)}
-            className="ml-2 inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-            aria-label="Log out"
-          >
-            <LogOut size={16} className="text-slate-500" />
-            <span className="hidden sm:inline">Logout</span>
-          </button>
-        </header>
+        <StaffTopHeader
+          portalSubtitle="RECEPTION"
+          dashboardHref="/reception/dashboard"
+          accentClass="bg-sky-500"
+          roleColor="text-sky-600"
+          settingsHref="/reception/settings"
+          profileHref="/profile"
+          onLogoutClick={() => setIsLogoutOpen(true)}
+        />
 
         <div className="flex-1 overflow-y-auto p-4 md:p-8 pb-20 md:pb-8">
           {children}
@@ -160,6 +167,7 @@ export default function ReceptionLayout({ children }: { children: React.ReactNod
           { label: "Appts", href: "/reception/appointments", icon: Calendar },
           { label: "Billing", href: "/reception/billing", icon: Wallet },
           { label: "Documents", href: "/reception/documents", icon: FileText },
+          { label: "Tasks", href: "/reception/tasks", icon: ClipboardList },
           { label: "Settings", href: "/reception/settings", icon: Settings2 },
         ]}
         activeColor="text-sky-600"

@@ -29,6 +29,7 @@ import { CashierModule } from './cashier/cashier.module';
 import { PatientDocumentsModule } from './patient-documents/patient-documents.module';
 import { StaffTasksModule } from './staff-tasks/staff-tasks.module';
 import { SupportTicketsModule } from './support-tickets/support-tickets.module';
+import { DemoRequestsModule } from './demo-requests/demo-requests.module';
 import { FeedbackModule } from './feedback/feedback.module';
 import { AuditLogsModule } from './audit-logs/audit-logs.module';
 import { SurgeryModule } from './surgery/surgery.module';
@@ -90,6 +91,7 @@ import { SettingsModule } from './settings/settings.module';
     FileUploadModule,
     ExpensesModule,
     SupportTicketsModule,
+    DemoRequestsModule,
     AnalyticsModule,
     SettingsModule,
   ],

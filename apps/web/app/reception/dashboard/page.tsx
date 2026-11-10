@@ -8,13 +8,14 @@ import {
   Search, ArrowRight, Plus, CheckCircle2, AlertCircle,
   MoreHorizontal, ChevronRight, Phone, UserCheck, X,
   RefreshCw, Stethoscope, Activity, Camera, FileText,
-  Ban, CalendarClock, Save, LogIn
+  Ban, CalendarClock, Save, LogIn, QrCode
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { Modal } from "@/components/ui/modal";
 
 import { useAuth } from "@/lib/auth-context";
+import { getPatientsRegisterRoute } from "@/lib/dashboard-routes";
 import { 
   useQueue, 
   useQueueStats, 
@@ -34,6 +35,7 @@ import { Loader2 } from "lucide-react";
 export default function ReceptionDashboard() {
   const router = useRouter();
   const { user } = useAuth();
+  const newPatientHref = getPatientsRegisterRoute(user);
   const clinicId = user?.clinicId ?? "";
 
   const [toast, setToast] = useState("");
@@ -223,115 +225,148 @@ export default function ReceptionDashboard() {
   ];
 
   return (
-    <div className="space-y-8 max-w-[1600px] mx-auto">
+    <div className="space-y-4 sm:space-y-5 max-w-[1600px] mx-auto pb-12">
       {/* Toast */}
       {toast && (
-        <div className="fixed top-6 right-6 z-50 px-6 py-4 rounded-2xl bg-slate-900 text-white text-xs font-black shadow-2xl flex items-center gap-3 animate-in slide-in-from-top-2 z-[100]">
-          <CheckCircle2 size={18} className="text-emerald-400" /> {toast}
+        <div className="fixed top-4 right-4 z-50 px-4 py-2.5 rounded-xl bg-slate-900 text-white text-xs font-bold shadow-xl flex items-center gap-2 animate-in slide-in-from-top-2 z-[100]">
+          <CheckCircle2 size={16} className="text-emerald-400" /> {toast}
         </div>
       )}
 
       {/* Header Section */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">Frontdesk Dashboard</h1>
-          <p className="text-slate-500 font-medium">Welcome back. Here&apos;s what&apos;s happening at the reception today.</p>
+          <h1 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">Frontdesk Dashboard</h1>
+          <p className="text-xs text-slate-500 font-medium">Welcome back. Real-time front desk activity & queue status.</p>
         </div>
-        <div className="px-4 py-2 bg-white border border-slate-200 rounded-2xl shadow-sm flex items-center gap-2 text-sm font-bold text-slate-600">
-          <CalendarDays size={18} className="text-sky-500" />
-          {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+        <div className="px-3 py-1.5 bg-white border border-slate-200 rounded-xl shadow-xs flex items-center gap-1.5 text-xs font-bold text-slate-600 self-start sm:self-auto">
+          <CalendarDays size={15} className="text-sky-500" />
+          {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
         </div>
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
         {stats.map((stat, i) => (
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.1 }}
+            transition={{ delay: i * 0.05 }}
             key={stat.label}
             onClick={() => router.push(stat.href)}
-            className="bg-white p-4 sm:p-6 rounded-[2rem] sm:rounded-[2.5rem] border border-slate-100 shadow-sm flex items-center gap-4 sm:gap-5 hover:shadow-md hover:border-sky-200 transition-all cursor-pointer"
+            className="bg-white p-2.5 sm:p-3.5 rounded-xl border border-slate-100 shadow-xs flex items-center gap-2.5 sm:gap-3 hover:shadow-sm hover:border-sky-200 transition-all cursor-pointer"
           >
-            <div className={cn("w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-110", stat.bg, stat.color)}>
-              <stat.icon size={24} />
+            <div className={cn("w-8 h-8 sm:w-9 sm:h-9 rounded-lg flex items-center justify-center shrink-0 transition-transform group-hover:scale-105", stat.bg, stat.color)}>
+              <stat.icon size={16} />
             </div>
             <div>
-              <p className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest">{stat.label}</p>
-              <p className="text-xl sm:text-2xl font-black text-slate-900">{stat.value}</p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{stat.label}</p>
+              <p className="text-base sm:text-lg font-black text-slate-900">{stat.value}</p>
             </div>
           </motion.div>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
         {/* Left Column */}
-        <div className="lg:col-span-2 space-y-6 sm:space-y-8">
-          {/* Quick Actions — now open modals */}
-          <section className="space-y-4">
-            <h2 className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Quick Registration & Entry</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <button onClick={() => setShowQuickReg(true)}
-                className="group relative bg-white p-5 sm:p-6 rounded-[1.5rem] sm:rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-sky-500/5 hover:-translate-y-1 transition-all text-left overflow-hidden">
-                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center mb-3 sm:mb-4 text-white shadow-lg bg-sky-500">
-                  <UserPlus size={20} />
+        <div className="lg:col-span-2 space-y-3 sm:space-y-4">
+          {/* Quick Actions */}
+          <section className="space-y-2">
+            <h2 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1">Quick Desk & Patient Actions</h2>
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-2.5">
+              <Link
+                href="/reception/check-in"
+                className="group relative bg-white p-2.5 sm:p-3 rounded-xl border border-slate-100 shadow-xs hover:shadow-md hover:border-sky-200 transition-all text-left flex flex-col justify-between"
+              >
+                <div>
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center mb-2 text-white shadow-xs bg-sky-600">
+                    <QrCode size={15} />
+                  </div>
+                  <h3 className="text-xs font-bold text-slate-900 mb-0.5">Check-In Desk</h3>
+                  <p className="text-[10px] text-slate-400 font-medium leading-tight">Fast kiosk & routing check-in</p>
                 </div>
-                <h3 className="text-sm font-bold text-slate-900 mb-1">Quick Registration</h3>
-                <p className="text-[11px] text-slate-400 font-medium leading-relaxed">Basic details for immediate queueing</p>
-                <div className="absolute bottom-6 right-6 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <ChevronRight size={18} className="text-sky-500" />
+                <div className="mt-2 flex items-center gap-0.5 text-[10px] font-bold text-sky-600">
+                  <span>Open</span>
+                  <ChevronRight size={12} className="group-hover:translate-x-0.5 transition-transform" />
+                </div>
+              </Link>
+
+              <Link
+                href={newPatientHref}
+                className="group relative bg-white p-2.5 sm:p-3 rounded-xl border border-slate-100 shadow-xs hover:shadow-md hover:border-emerald-200 transition-all text-left flex flex-col justify-between"
+              >
+                <div>
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center mb-2 text-white shadow-xs bg-emerald-500">
+                    <UserPlus size={15} />
+                  </div>
+                  <h3 className="text-xs font-bold text-slate-900 mb-0.5">New Patient</h3>
+                  <p className="text-[10px] text-slate-400 font-medium leading-tight">Intake & HMO registration</p>
+                </div>
+                <div className="mt-2 flex items-center gap-0.5 text-[10px] font-bold text-emerald-600">
+                  <span>Register</span>
+                  <ChevronRight size={12} className="group-hover:translate-x-0.5 transition-transform" />
+                </div>
+              </Link>
+
+              <button
+                type="button"
+                onClick={() => setShowQuickReg(true)}
+                className="group relative bg-white p-2.5 sm:p-3 rounded-xl border border-slate-100 shadow-xs hover:shadow-md hover:border-indigo-200 transition-all text-left flex flex-col justify-between"
+              >
+                <div>
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center mb-2 text-white shadow-xs bg-indigo-500">
+                    <Plus size={15} />
+                  </div>
+                  <h3 className="text-xs font-bold text-slate-900 mb-0.5">Quick Queue</h3>
+                  <p className="text-[10px] text-slate-400 font-medium leading-tight">Direct queue entry</p>
+                </div>
+                <div className="mt-2 flex items-center gap-0.5 text-[10px] font-bold text-indigo-600">
+                  <span>Add Queue</span>
+                  <ChevronRight size={12} className="group-hover:translate-x-0.5 transition-transform" />
                 </div>
               </button>
 
-              <button onClick={() => setShowWalkIn(true)}
-                className="group relative bg-white p-5 sm:p-6 rounded-[1.5rem] sm:rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-sky-500/5 hover:-translate-y-1 transition-all text-left overflow-hidden">
-                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center mb-3 sm:mb-4 text-white shadow-lg bg-emerald-500">
-                  <Plus size={20} />
+              <Link
+                href="/reception/documents/ocr"
+                className="group relative bg-white p-2.5 sm:p-3 rounded-xl border border-slate-100 shadow-xs hover:shadow-md hover:border-slate-300 transition-all text-left flex flex-col justify-between"
+              >
+                <div>
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center mb-2 text-white shadow-xs bg-slate-800">
+                    <Search size={15} />
+                  </div>
+                  <h3 className="text-xs font-bold text-slate-900 mb-0.5">AI OCR Scanner</h3>
+                  <p className="text-[10px] text-slate-400 font-medium leading-tight">Auto ID & HMO scan</p>
                 </div>
-                <h3 className="text-sm font-bold text-slate-900 mb-1">Walk-in Entry</h3>
-                <p className="text-[11px] text-slate-400 font-medium leading-relaxed">Full profile for new walk-in patients</p>
-                <div className="absolute bottom-6 right-6 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <ChevronRight size={18} className="text-sky-500" />
+                <div className="mt-2 flex items-center gap-0.5 text-[10px] font-bold text-slate-700">
+                  <span>Scanner</span>
+                  <ChevronRight size={12} className="group-hover:translate-x-0.5 transition-transform" />
                 </div>
-              </button>
-
-              <button onClick={() => setShowScanDocs(true)}
-                className="group relative bg-white p-5 sm:p-6 rounded-[1.5rem] sm:rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-sky-500/5 hover:-translate-y-1 transition-all text-left overflow-hidden">
-                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center mb-3 sm:mb-4 text-white shadow-lg bg-slate-700">
-                  <Search size={20} />
-                </div>
-                <h3 className="text-sm font-bold text-slate-900 mb-1">Scan Documents</h3>
-                <p className="text-[11px] text-slate-400 font-medium leading-relaxed">OCR for IDs and HMO cards</p>
-                <div className="absolute bottom-6 right-6 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <ChevronRight size={18} className="text-sky-500" />
-                </div>
-              </button>
+              </Link>
             </div>
           </section>
 
           {/* Queue Overview */}
-          <section className="bg-white rounded-[1.5rem] sm:rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
-            <div className="p-5 sm:p-8 border-b border-slate-50 flex items-center justify-between">
+          <section className="bg-white rounded-xl border border-slate-100 shadow-xs overflow-hidden">
+            <div className="p-3 sm:p-3.5 border-b border-slate-50 flex items-center justify-between">
               <div>
-                <h2 className="text-base sm:text-lg font-black text-slate-900">Queue Overview</h2>
-                <p className="text-[10px] sm:text-xs text-slate-400 font-bold uppercase tracking-tight">Active patients in workflow</p>
+                <h2 className="text-xs sm:text-sm font-bold text-slate-900">Queue Overview</h2>
+                <p className="text-[10px] text-slate-400 font-medium">Active patients in workflow</p>
               </div>
-              <Link href="/reception/queue" className="text-[10px] sm:text-xs font-black text-sky-600 uppercase tracking-widest hover:underline flex items-center gap-1">
-                View Full Queue <ArrowRight size={14} />
+              <Link href="/reception/queue" className="text-[10px] font-bold text-sky-600 uppercase tracking-wider hover:underline flex items-center gap-1">
+                Full Queue <ArrowRight size={12} />
               </Link>
             </div>
             <div className="divide-y divide-slate-50">
               {loadingQueue ? (
-                <div className="p-12 text-center text-slate-400">
-                  <Loader2 size={24} className="animate-spin mx-auto text-sky-500 mb-2" />
-                  Loading live queue...
+                <div className="p-8 text-center text-slate-400">
+                  <Loader2 size={20} className="animate-spin mx-auto text-sky-500 mb-1.5" />
+                  <p className="text-xs">Loading live queue...</p>
                 </div>
               ) : queueEntries.length === 0 ? (
-                <div className="p-12 text-center text-slate-400">
-                  <Users size={28} className="mx-auto mb-2 opacity-30" />
-                  <p className="text-sm font-bold text-slate-600">No patients currently in queue</p>
-                  <p className="text-xs text-slate-400 mt-1">Use &quot;Quick Registration&quot; or &quot;Walk-in Entry&quot; above to add patients.</p>
+                <div className="p-8 text-center text-slate-400">
+                  <Users size={22} className="mx-auto mb-1 opacity-30" />
+                  <p className="text-xs font-bold text-slate-600">No patients currently in queue</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">Use &quot;Quick Registration&quot; above to add patients.</p>
                 </div>
               ) : (
                 queueEntries.slice(0, 5).map((item: any) => {
@@ -341,26 +376,26 @@ export default function ReceptionDashboard() {
                   const color = item.status === "in_progress" ? "emerald" : item.status === "waiting" ? "sky" : "amber";
 
                   return (
-                    <div key={item.id} className="p-4 sm:p-6 flex items-center justify-between hover:bg-slate-50 transition-colors">
-                      <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-                        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-slate-50 flex items-center justify-center font-black text-slate-400 text-[10px] sm:text-xs shrink-0">
+                    <div key={item.id} className="p-2.5 sm:p-3 flex items-center justify-between hover:bg-slate-50 transition-colors">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-slate-50 flex items-center justify-center font-bold text-slate-500 text-[10px] shrink-0 border border-slate-100">
                           {item.ticketNumber || item.id.slice(0, 4).toUpperCase()}
                         </div>
                         <div className="min-w-0">
-                          <h4 className="text-sm font-bold text-slate-900 truncate">{patientName}</h4>
-                          <p className="text-[10px] sm:text-[11px] text-slate-400 font-medium">{time}</p>
+                          <h4 className="text-xs font-bold text-slate-900 truncate">{patientName}</h4>
+                          <p className="text-[10px] text-slate-400 font-medium">{time}</p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2 sm:gap-6 shrink-0">
+                      <div className="flex items-center gap-2 shrink-0">
                         <div className={cn(
-                          "px-2 sm:px-3 py-1 rounded-full text-[8px] sm:text-[10px] font-black uppercase tracking-widest",
+                          "px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider",
                           color === "amber" ? "bg-amber-100 text-amber-700" : 
                           color === "sky" ? "bg-sky-100 text-sky-700" : "bg-emerald-100 text-emerald-700"
                         )}>
                           {status}
                         </div>
-                        <button onClick={() => setQueueAction(item)} className="p-2 hover:bg-white rounded-lg transition-colors text-slate-400 hover:text-slate-900">
-                          <MoreHorizontal size={18} />
+                        <button onClick={() => setQueueAction(item)} className="p-1 hover:bg-slate-100 rounded-md transition-colors text-slate-400 hover:text-slate-900">
+                          <MoreHorizontal size={15} />
                         </button>
                       </div>
                     </div>
@@ -372,22 +407,22 @@ export default function ReceptionDashboard() {
         </div>
 
         {/* Right Column */}
-        <div className="space-y-6 sm:space-y-8">
+        <div className="space-y-3 sm:space-y-4">
           {/* Today's Bookings */}
-          <section className="bg-white rounded-[1.5rem] sm:rounded-[2.5rem] border border-slate-100 shadow-sm">
-            <div className="p-5 sm:p-8 border-b border-slate-50">
-              <h2 className="text-base sm:text-lg font-black text-slate-900">Today&apos;s Bookings</h2>
-              <p className="text-[10px] sm:text-xs text-slate-400 font-bold uppercase tracking-tight">Scheduled Appointments</p>
+          <section className="bg-white rounded-xl border border-slate-100 shadow-xs">
+            <div className="p-3 sm:p-3.5 border-b border-slate-50">
+              <h2 className="text-xs sm:text-sm font-bold text-slate-900">Today&apos;s Bookings</h2>
+              <p className="text-[10px] text-slate-400 font-medium">Scheduled Appointments</p>
             </div>
-            <div className="p-3 sm:p-4 space-y-3">
+            <div className="p-2.5 sm:p-3 space-y-2">
               {loadingApts ? (
-                <div className="py-8 text-center text-slate-400">
-                  <Loader2 size={20} className="animate-spin mx-auto text-sky-500 mb-1" />
+                <div className="py-6 text-center text-slate-400">
+                  <Loader2 size={18} className="animate-spin mx-auto text-sky-500 mb-1" />
                   <p className="text-xs">Loading appointments...</p>
                 </div>
               ) : todayAppointments.length === 0 ? (
-                <div className="py-8 text-center text-slate-400">
-                  <CalendarDays size={24} className="mx-auto mb-1 opacity-40" />
+                <div className="py-6 text-center text-slate-400">
+                  <CalendarDays size={20} className="mx-auto mb-1 opacity-40" />
                   <p className="text-xs font-bold text-slate-500">No bookings scheduled for today</p>
                 </div>
               ) : (
@@ -399,22 +434,22 @@ export default function ReceptionDashboard() {
 
                   return (
                     <div key={apt.id} onClick={() => setAptDetail({ ...apt, patient: patientName, time, hmo, type })}
-                      className="p-4 sm:p-5 rounded-[1.5rem] border border-slate-50 bg-slate-50/30 hover:bg-white hover:shadow-lg hover:shadow-slate-200/50 transition-all cursor-pointer">
-                      <div className="flex items-start justify-between mb-3">
+                      className="p-2.5 rounded-lg border border-slate-50 bg-slate-50/30 hover:bg-white hover:shadow-xs hover:border-slate-200 transition-all cursor-pointer">
+                      <div className="flex items-start justify-between mb-1.5">
                         <div className="min-w-0">
-                          <p className="text-[10px] sm:text-xs font-black text-sky-600 mb-1">{time}</p>
-                          <h4 className="text-sm font-bold text-slate-900 truncate">{patientName}</h4>
+                          <p className="text-[10px] font-bold text-sky-600">{time}</p>
+                          <h4 className="text-xs font-bold text-slate-900 truncate">{patientName}</h4>
                         </div>
                         {apt.status === "arrived" || apt.status === "Arrived" ? (
-                          <CheckCircle2 size={18} className="text-emerald-500 shrink-0" />
+                          <CheckCircle2 size={15} className="text-emerald-500 shrink-0" />
                         ) : apt.status === "emergency" || apt.status === "Emergency" ? (
-                          <AlertCircle size={18} className="text-rose-500 animate-pulse shrink-0" />
+                          <AlertCircle size={15} className="text-rose-500 animate-pulse shrink-0" />
                         ) : null}
                       </div>
-                      <div className="flex items-center justify-between gap-2 flex-wrap">
-                        <span className="text-[9px] sm:text-[10px] text-slate-400 font-bold uppercase tracking-tight">{type}</span>
+                      <div className="flex items-center justify-between gap-1.5 flex-wrap">
+                        <span className="text-[10px] text-slate-400 font-medium">{type}</span>
                         <span className={cn(
-                          "text-[8px] sm:text-[9px] font-black px-2 py-0.5 rounded-md",
+                          "text-[9px] font-bold px-1.5 py-0.2 rounded",
                           hmo === "Private" ? "bg-slate-200 text-slate-600" : "bg-sky-100 text-sky-700"
                         )}>
                           {hmo}
@@ -425,25 +460,25 @@ export default function ReceptionDashboard() {
                 })
               )}
             </div>
-            <div className="p-4 sm:p-6">
+            <div className="p-2.5 sm:p-3 border-t border-slate-50">
               <Link href="/reception/appointments"
-                className="w-full py-3 sm:py-4 rounded-2xl bg-slate-900 text-white text-[10px] sm:text-xs font-black uppercase tracking-widest hover:bg-slate-800 transition-all flex items-center justify-center gap-2 shadow-lg shadow-slate-900/20">
-                <CalendarDays size={16} /> Manage All Appointments
+                className="w-full py-2 rounded-lg bg-slate-900 text-white text-[10px] font-bold uppercase tracking-wider hover:bg-slate-800 transition-all flex items-center justify-center gap-1.5 shadow-xs">
+                <CalendarDays size={14} /> Manage Appointments
               </Link>
             </div>
           </section>
 
           {/* HMO Verification Notice */}
           <button onClick={() => setShowHmoModal(true)}
-            className="w-full bg-gradient-to-br from-amber-500 to-orange-600 p-6 sm:p-8 rounded-[1.5rem] sm:rounded-[2.5rem] text-white shadow-xl shadow-amber-500/20 relative overflow-hidden group text-left">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-3xl -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-700" />
-            <ShieldCheck size={40} className="mb-4 sm:mb-6 opacity-80" />
-            <h3 className="text-lg sm:text-xl font-black mb-2">HMO Verification Queue</h3>
-            <p className="text-xs sm:text-sm text-white/80 font-medium mb-4 sm:mb-6">
-              There are {hmoPendingList.length} pending HMO verification requests that require immediate frontdesk attention.
+            className="w-full bg-gradient-to-br from-amber-500 to-orange-600 p-3.5 sm:p-4 rounded-xl text-white shadow-md shadow-amber-500/10 relative overflow-hidden group text-left">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full blur-2xl -mr-12 -mt-12 group-hover:scale-125 transition-transform duration-500" />
+            <ShieldCheck size={28} className="mb-2 opacity-80" />
+            <h3 className="text-xs sm:text-sm font-bold mb-1">HMO Verification Queue</h3>
+            <p className="text-[10px] text-white/80 font-medium mb-3">
+              {hmoPendingList.length} pending HMO requests need frontdesk attention.
             </p>
-            <div className="inline-flex px-5 sm:px-6 py-2.5 sm:py-3 bg-white text-amber-600 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest hover:bg-amber-50 transition-all items-center gap-2">
-              Process Queue ({hmoPendingList.length}) <ArrowRight size={16} />
+            <div className="inline-flex px-3 py-1.5 bg-white text-amber-600 rounded-lg text-[10px] font-bold uppercase tracking-wider hover:bg-amber-50 transition-all items-center gap-1.5">
+              Process Queue ({hmoPendingList.length}) <ArrowRight size={13} />
             </div>
           </button>
         </div>

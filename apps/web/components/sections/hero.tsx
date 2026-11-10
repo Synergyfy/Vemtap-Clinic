@@ -41,10 +41,13 @@ export const Hero = () => {
           </p>
 
           <div className="mb-8 flex flex-col gap-3 sm:flex-row">
-            <Button variant="default" size="lg" className="w-full gap-2 justify-center sm:w-auto" onClick={() => router.push("/book-demo")}>
-              Request Demo <ChevronRight size={18} />
+            <Button variant="default" size="lg" className="w-full gap-2 justify-center sm:w-auto" onClick={() => router.push("/admin/dashboard")}>
+              Quick Dashboard <ChevronRight size={18} />
             </Button>
-            <Button variant="outline" size="lg" className="w-full gap-2 justify-center sm:w-auto" onClick={() => openModal("tour")}>
+            <Button variant="outline" size="lg" className="w-full gap-2 justify-center sm:w-auto" onClick={() => router.push("/book-demo")}>
+              Request Demo
+            </Button>
+            <Button variant="ghost" size="lg" className="w-full gap-2 justify-center sm:w-auto" onClick={() => openModal("tour")}>
               <Play size={18} fill="currentColor" /> Watch Tour
             </Button>
           </div>
@@ -92,43 +95,36 @@ export const Hero = () => {
 
             <div className="mb-5 grid grid-cols-3 gap-2 sm:gap-4 sm:mb-6">
               {[
-                { label: "Patients", value: "128", color: "text-blue-600" },
-                { label: "Active Queue", value: "14", color: "text-amber-600" },
-                { label: "Revenue", value: "$4.2k", color: "text-emerald-600" },
+                { label: "Check-ins", accent: "text-blue-600" },
+                { label: "Queue", accent: "text-amber-600" },
+                { label: "Operations", accent: "text-emerald-600" },
               ].map((stat, idx) => (
                 <div key={idx} className="rounded-2xl bg-slate-50 p-2.5 sm:p-3">
                   <div className="mb-1 text-[9px] text-slate-500 sm:text-[10px]">{stat.label}</div>
-                  <div className={cn("text-base font-bold sm:text-lg", stat.color)}>{stat.value}</div>
+                  <div className={cn("text-base font-bold sm:text-lg", stat.accent)}>Live</div>
                 </div>
               ))}
             </div>
 
             <div className="space-y-2.5 sm:space-y-3">
-              <div className="text-[9px] font-bold uppercase tracking-wider text-slate-400 sm:text-[10px]">Live Queue Status</div>
+              <div className="text-[9px] font-bold uppercase tracking-wider text-slate-400 sm:text-[10px]">Operational Snapshot</div>
               {[
-                { name: "John Doe", type: "Eye Exam", status: "In Room", time: "10:30 AM" },
-                { name: "Jane Smith", type: "Lens Pickup", status: "Waiting", time: "10:45 AM" },
-                { name: "Robert Fox", type: "Consultation", status: "Check-in", time: "11:00 AM" },
-              ].map((patient, idx) => (
+                { title: "Patient registration", detail: "Real-time intake and forms" },
+                { title: "Clinical review", detail: "Doctor and nurse workflows" },
+                { title: "Prescription handoff", detail: "Pharmacy and optical coordination" },
+              ].map((item, idx) => (
                 <div key={idx} className="flex items-center justify-between rounded-xl border border-slate-50 bg-white p-2.5 shadow-sm sm:p-3">
                   <div className="flex items-center gap-2.5 sm:gap-3">
                     <div className="flex h-7 w-7 items-center justify-center rounded-full bg-brand-soft-blue text-[9px] font-bold text-brand-blue sm:h-8 sm:w-8 sm:text-[10px]">
-                      {patient.name.charAt(0)}
+                      {idx + 1}
                     </div>
                     <div>
-                      <div className="text-[11px] font-bold text-brand-navy sm:text-xs">{patient.name}</div>
-                      <div className="text-[9px] text-slate-500 sm:text-[10px]">{patient.type}</div>
+                      <div className="text-[11px] font-bold text-brand-navy sm:text-xs">{item.title}</div>
+                      <div className="text-[9px] text-slate-500 sm:text-[10px]">{item.detail}</div>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <div className={cn(
-                      "mb-1 inline-block rounded-full px-1.5 py-0.5 text-[8px] font-bold sm:text-[10px]",
-                      patient.status === "In Room" ? "bg-emerald-100 text-emerald-700" :
-                      patient.status === "Waiting" ? "bg-amber-100 text-amber-700" : "bg-blue-100 text-blue-700"
-                    )}>
-                      {patient.status}
-                    </div>
-                    <div className="text-[8px] text-slate-400 sm:text-[9px]">{patient.time}</div>
+                  <div className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[8px] font-bold text-emerald-700 sm:text-[10px]">
+                    Active
                   </div>
                 </div>
               ))}

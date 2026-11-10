@@ -41,6 +41,28 @@ const sanitizeNullishValues = (value: unknown, key?: string): unknown => {
   return value;
 };
 
+export const isPublicAuthEndpoint = (url: string) => {
+  const normalized = url.toLowerCase();
+
+  return (
+    normalized.includes('/auth/clinics') ||
+    normalized.includes('/auth/login') ||
+    normalized.includes('/auth/register') ||
+    normalized.includes('/auth/forgot-password') ||
+    normalized.includes('/auth/reset-password') ||
+    normalized.includes('/auth/refresh') ||
+    normalized.includes('/patient-portal/login') ||
+    normalized.includes('/patient-portal/register') ||
+    normalized.includes('/patient-portal/otp/') ||
+    normalized.includes('/patient-portal/verify/')
+  );
+};
+
+export const shouldSkipAuthHeader = (url: string) => {
+  const normalized = url.toLowerCase();
+  return isPublicAuthEndpoint(normalized);
+};
+
 class ApiClient {
   private client: AxiosInstance | null = null;
   private isRefreshing = false;
@@ -63,13 +85,6 @@ class ApiClient {
       this.client.interceptors.request.use(
         (config: InternalAxiosRequestConfig) => {
           const url = config.url || '';
-          const isPublicAuthEndpoint =
-            url.includes('/auth/clinics') ||
-            url.includes('/auth/login') ||
-            url.includes('/auth/register') ||
-            url.includes('/auth/forgot-password') ||
-            url.includes('/auth/reset-password') ||
-            url.includes('/auth/refresh');
 
           if (config.params) {
             config.params = sanitizeNullishValues(config.params) as Record<string, unknown>;
@@ -79,7 +94,7 @@ class ApiClient {
             config.data = sanitizeNullishValues(config.data) as typeof config.data;
           }
 
-          if (isPublicAuthEndpoint) {
+          if (shouldSkipAuthHeader(url)) {
             return config;
           }
 
@@ -98,7 +113,11 @@ class ApiClient {
           const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
           const url = originalRequest.url || '';
-          const isAuthEndpoint = url.includes('/auth/refresh') || url.includes('/auth/login') || url.includes('/auth/logout');
+          const isAuthEndpoint =
+            url.includes('/auth/refresh') ||
+            url.includes('/auth/login') ||
+            url.includes('/auth/logout') ||
+            url.includes('/patient-portal/logout');
 
           if (error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
             if (this.isRefreshing) {

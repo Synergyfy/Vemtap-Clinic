@@ -1,487 +1,243 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
-import { motion } from "framer-motion";
-import {
-  CalendarDays,
-  Clock,
-  Glasses,
-  ChevronRight,
-  FileText,
-  CreditCard,
-  Plus,
-  ArrowRight,
-  ShieldCheck,
-  CheckCircle2,
-  Star
-} from "lucide-react";
+import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { cn } from "@/lib/utils";
-import { Modal } from "@/components/ui/modal";
+import { usePatientClinicMemberships, usePatientProfile, usePatientAppointmentsList } from "@/hooks/usePatientPortal";
 import { useAuth } from "@/lib/auth-context";
-import {
-  usePatientAppointments,
-  usePatientLensOrders,
-} from "@/hooks/usePatientDashboard";
-import { useSubmitFeedback } from "@/hooks/useFeedback";
-
-function getStaffName(staff: { firstName: string; lastName: string } | undefined): string {
-  if (!staff) return "Doctor TBD";
-  return `Dr. ${staff.firstName} ${staff.lastName}`;
-}
-
-function getAppointmentType(status: string): string {
-  const s = status?.toLowerCase();
-  if (s === "scheduled" || s === "confirmed") return "Upcoming";
-  if (s === "in_progress") return "In Progress";
-  if (s === "completed") return "Completed";
-  if (s === "cancelled") return "Cancelled";
-  return status;
-}
-
-function getOpticalProgress(status: string): number {
-  const s = status?.toLowerCase();
-  if (s === "pending") return 25;
-  if (s === "processing") return 65;
-  if (s === "ready") return 100;
-  if (s === "delivered") return 100;
-  return 10;
-}
 
 export default function PatientDashboard() {
   const { user } = useAuth();
-  const patientId = user?.userId || null;
-  const clinicId = user?.clinicId || null;
+  const { data: profile, isLoading: profileLoading } = usePatientProfile();
+  const { data: memberships = [], isLoading: membershipsLoading } = usePatientClinicMemberships();
+  const { data: appointments = [] } = usePatientAppointmentsList();
 
-  const { data: appointments = [], isLoading: apptsLoading } = usePatientAppointments(patientId, clinicId);
-  const { data: lensOrders = [], isLoading: ordersLoading } = usePatientLensOrders(patientId, clinicId);
+  const [selectedClinicId, setSelectedClinicId] = useState<string | null>(null);
 
-  const [checkedIn, setCheckedIn] = useState(false);
-  const [toast, setToast] = useState("");
-
-  // Feedback State
-  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
-  const [feedbackRating, setFeedbackRating] = useState(5);
-  const [feedbackCategory, setFeedbackCategory] = useState("General Care");
-  const [feedbackComment, setFeedbackComment] = useState("");
-  const submitFeedbackMut = useSubmitFeedback();
-
-  const upcomingAppt = useMemo(() =>
-    appointments.find((a) => a.status === "scheduled" || a.status === "confirmed"),
-    [appointments]
-  );
-
-  const activeOrder = useMemo(() =>
-    lensOrders.find((o) => o.status !== "delivered") || lensOrders[0],
-    [lensOrders]
-  );
-
-  const recentAppts = useMemo(() => appointments.slice(0, 3), [appointments]);
-
-  const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 3000); };
-
-  const handleCheckIn = () => {
-    setCheckedIn(true);
-    showToast("Checked in successfully");
-  };
-
-  const handleSubmitFeedback = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!patientId || !clinicId) {
-      showToast("Session missing required patient details");
+  useEffect(() => {
+    if (!memberships.length) {
+      setSelectedClinicId(null);
       return;
     }
 
-    submitFeedbackMut.mutate(
-      {
-        rating: feedbackRating,
-        category: feedbackCategory,
-        comment: feedbackComment.trim() || undefined,
-        patientId,
-        clinicId,
-      },
-      {
-        onSuccess: () => {
-          setShowFeedbackModal(false);
-          setFeedbackRating(5);
-          setFeedbackComment("");
-          showToast("Thank you for your feedback!");
-        },
-        onError: (err: any) => {
-          showToast(err?.response?.data?.message || err?.message || "Failed to submit feedback");
-        },
-      }
-    );
-  };
+    if (!selectedClinicId || !memberships.some((membership) => membership.clinicId === selectedClinicId)) {
+      setSelectedClinicId(memberships[0]?.clinicId ?? null);
+    }
+  }, [memberships, selectedClinicId]);
 
-  const quickActions = [
-    { label: "Book Appointment", icon: Plus, href: "/patient/appointments", color: "bg-teal-50 text-teal-600" },
-    { label: "Medical Records", icon: FileText, href: "/patient/records", color: "bg-blue-50 text-blue-600" },
-    { label: "Pay Bills", icon: CreditCard, href: "/patient/billing", color: "bg-orange-50 text-orange-600" },
-    { label: "Optical Orders", icon: Glasses, href: "/patient/optical", color: "bg-purple-50 text-purple-600" },
-  ];
+  const selectedMembership = useMemo(
+    () => memberships.find((membership) => membership.clinicId === selectedClinicId) ?? memberships[0] ?? null,
+    [memberships, selectedClinicId],
+  );
+
+  const clinicAppointments = useMemo(
+    () =>
+      selectedMembership
+        ? appointments.filter((appointment) => appointment.clinicId === selectedMembership.clinicId)
+        : appointments,
+    [appointments, selectedMembership],
+  );
+
+  const nextAppointment = clinicAppointments[0] ?? null;
+  const selectedClinicName = selectedMembership?.clinic?.name ?? selectedMembership?.clinic?.clinicName ?? "Your clinic";
+  const selectedBranchName = selectedMembership?.branch?.name ?? selectedMembership?.branch?.branchName ?? "Primary branch";
+
+  const patientName = [profile?.firstName, profile?.lastName].filter(Boolean).join(" ").trim()
+    || [user?.firstName, user?.lastName].filter(Boolean).join(" ").trim()
+    || profile?.email
+    || user?.email
+    || "";
 
   return (
-    <div className="space-y-8 pb-10">
-      {toast && (
-        <div className="fixed top-6 right-6 z-50 px-5 py-3 rounded-2xl bg-slate-900 text-white text-xs font-black shadow-2xl flex items-center gap-3 animate-in slide-in-from-top-2 z-[100]">
-          <CheckCircle2 size={16} className="text-emerald-400" /> {toast}
+    <div className="w-full text-[#0F2942] antialiased selection:bg-blue-100 font-['Plus_Jakarta_Sans',sans-serif]">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6 bg-white p-4 sm:p-5 rounded-2xl border border-[#E9F1F7]/70 shadow-[0_8px_30px_-4px_rgba(12,38,70,0.05)]">
+        <div>
+          <p className="text-[11px] font-bold tracking-wider text-[#73889B] uppercase">Welcome Back</p>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[#0F2942] leading-tight mt-0.5">
+            {profileLoading ? "Good morning..." : patientName ? `Good morning, ${patientName}` : "Good morning"}
+          </h1>
+        </div>
+        <div className="flex items-center gap-2.5 self-start sm:self-auto">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#F4F9FD] rounded-full border border-[#E2EBF2] shadow-sm shrink-0">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
+            <span className="text-xs font-bold text-[#0F2942] font-mono tracking-tight">Patient profile</span>
+            <span className="text-[11px] text-[#73889B] font-medium">• Active</span>
+          </div>
+          <Link
+            href="/patient/select-profile"
+            className="inline-flex items-center gap-1 px-3 py-1.5 bg-[#EBF4FE] hover:bg-[#D9E2FF] text-[#0055C4] rounded-full text-xs font-bold transition-colors"
+          >
+            <span className="material-symbols-outlined text-[15px]">switch_account</span>
+            <span>Switch Profile</span>
+          </Link>
+        </div>
+      </div>
+
+      {memberships.length > 0 && (
+        <div className="mb-6 bg-white rounded-2xl border border-[#E9F1F7]/70 p-4 shadow-[0_8px_30px_-4px_rgba(12,38,70,0.05)]">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-wider text-[#73889B]">Clinic access</p>
+              <h2 className="text-lg font-bold text-[#0F2942]">{selectedClinicName}</h2>
+              <p className="text-sm text-[#73889B]">{selectedBranchName}</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {memberships.map((membership) => {
+                const clinicName = membership.clinic?.name ?? membership.clinic?.clinicName ?? "Clinic";
+                const branchName = membership.branch?.name ?? membership.branch?.branchName ?? "Branch";
+                const isActive = membership.clinicId === selectedClinicId;
+                return (
+                  <button
+                    key={membership.id}
+                    type="button"
+                    onClick={() => setSelectedClinicId(membership.clinicId)}
+                    className={`rounded-full px-3 py-2 text-xs font-bold border transition-colors ${
+                      isActive
+                        ? "bg-[#0055C4] text-white border-[#0055C4]"
+                        : "bg-[#F4F9FD] text-[#0F2942] border-[#E2EBF2] hover:bg-[#EAF4FF]"
+                    }`}
+                  >
+                    {clinicName} • {branchName}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </div>
       )}
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="min-w-0">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
-            Welcome back
-          </h1>
-          <p className="text-sm sm:text-base text-gray-500 mt-1 font-medium leading-relaxed">
-            {upcomingAppt
-              ? `You have an appointment ${upcomingAppt.appointmentTime ? `at ${upcomingAppt.appointmentTime}` : `on ${upcomingAppt.appointmentDate}`}.`
-              : "No upcoming appointments."}
-          </p>
-        </div>
-        <Link href="/patient/profile" className="self-end sm:self-auto">
-          <div className="w-12 h-12 rounded-full bg-teal-100 border-2 border-white shadow-sm flex items-center justify-center text-teal-700 font-bold hover:scale-105 transition-transform cursor-pointer">
-            {user?.email?.[0]?.toUpperCase() }
+
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-6">
+        <div className="lg:col-span-8 space-y-5 lg:space-y-6">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between px-1">
+              <h2 className="text-[16px] sm:text-[18px] font-bold tracking-tight text-[#0F2942]">
+                Upcoming Appointments
+              </h2>
+              <span className="text-[11px] font-bold text-[#0055C4] bg-[#E6F4FE] px-2.5 py-0.5 rounded-full">
+                {nextAppointment ? "Confirmed" : "No upcoming visit"}
+              </span>
+            </div>
+
+            {membershipsLoading ? (
+              <div className="bg-white rounded-2xl p-6 border border-[#E9F1F7]/70 text-sm text-[#73889B]">
+                Loading your clinic memberships...
+              </div>
+            ) : nextAppointment ? (
+              <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-[0_8px_30px_-4px_rgba(12,38,70,0.05)] border border-[#E9F1F7]/70 transition-all hover:shadow-lg">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="flex items-center gap-3.5 min-w-0">
+                    <div className="w-12 h-12 rounded-full bg-[#EDF5FF] overflow-hidden shrink-0 ring-2 ring-[#F2F7FC] flex items-center justify-center">
+                      <span className="material-symbols-outlined text-[24px] text-[#0055C4]">medical_services</span>
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="text-[16px] font-bold text-[#0F2942] truncate leading-snug">
+                        {nextAppointment.type || "Consultation"}
+                      </h3>
+                      <p className="text-[12px] font-bold text-[#0055C4] truncate">
+                        {selectedClinicName}
+                      </p>
+                      <p className="text-[12px] font-medium text-[#73889B] truncate mt-0.5">
+                        {nextAppointment.reason || `Visit at ${selectedBranchName}`}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex sm:flex-col sm:items-end justify-between border-t sm:border-t-0 pt-2 sm:pt-0 border-gray-100 text-xs text-[#73889B]">
+                    <div className="flex items-center gap-1 font-semibold text-[#0F2942]">
+                      <span className="material-symbols-outlined text-[16px] text-[#0055C4]">calendar_today</span>
+                      <span>{new Date(nextAppointment.appointmentDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
+                    </div>
+                    <div className="flex items-center gap-1 font-medium mt-1">
+                      <span className="material-symbols-outlined text-[16px]">schedule</span>
+                      <span>{nextAppointment.appointmentTime || "Time scheduled"}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-4 pt-3.5 border-t border-[#F1F5F9] flex flex-col sm:flex-row items-center gap-2.5">
+                  <Link
+                    className="w-full sm:w-auto sm:px-6 py-2 rounded-xl bg-[#F0F6FD] hover:bg-[#E2EFFC] text-[#0055C4] text-[12px] font-bold text-center transition-colors"
+                    href="/patient/appointments"
+                  >
+                    View Details
+                  </Link>
+                  <Link
+                    className="w-full sm:flex-1 py-2 rounded-xl text-white text-[12px] font-bold text-center transition-colors shadow-sm bg-[#0055C4] hover:bg-[#0047A6]"
+                    href="/patient/appointments"
+                  >
+                    View Appointments
+                  </Link>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-white rounded-2xl p-6 border border-[#E9F1F7]/70 text-sm text-[#73889B]">
+                No appointments are currently linked to {selectedClinicName}. Book a visit to get started.
+              </div>
+            )}
           </div>
-        </Link>
-      </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          {upcomingAppt ? (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.98 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.4 }}
-              className="bg-teal-600 rounded-[2rem] p-4 sm:rounded-[2.5rem] sm:p-8 text-white shadow-xl shadow-teal-900/10 relative overflow-hidden h-full flex flex-col justify-between"
-            >
-              <div className="absolute -right-10 -top-10 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
-              <div className="absolute -left-20 -bottom-20 w-80 h-80 bg-teal-500/30 rounded-full blur-3xl"></div>
-
-              <div className="relative z-10">
-                <div className="flex justify-between items-center mb-4 sm:mb-8">
-                  <div className="flex items-center gap-2 bg-white/20 rounded-full px-3 py-1.5 text-[10px] sm:text-xs font-bold uppercase tracking-widest backdrop-blur-md border border-white/20">
-                    <div className="w-2 h-2 rounded-full bg-white animate-pulse"></div>
-                    <span>{getAppointmentType(upcomingAppt.status)}</span>
-                  </div>
-                </div>
-
-                <h2 className="text-2xl sm:text-3xl font-extrabold mb-2 leading-tight">{upcomingAppt.type}</h2>
-                <p className="text-teal-50 text-sm sm:text-lg mb-5 sm:mb-8 opacity-90">{getStaffName(upcomingAppt.staff)}</p>
-
-                <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                  <div className="bg-white/10 p-3 sm:p-5 rounded-2xl sm:rounded-3xl backdrop-blur-md border border-white/10">
-                    <p className="text-[10px] sm:text-xs text-teal-100 uppercase tracking-widest font-bold mb-1 opacity-80">Date</p>
-                    <p className="text-base sm:text-xl font-black">{upcomingAppt.appointmentDate}</p>
-                  </div>
-                  <div className="bg-white/10 p-3 sm:p-5 rounded-2xl sm:rounded-3xl backdrop-blur-md border border-white/10">
-                    <p className="text-[10px] sm:text-xs text-teal-100 uppercase tracking-widest font-bold mb-1 opacity-80">Time</p>
-                    <p className="text-base sm:text-xl font-black">{upcomingAppt.appointmentTime || "—"}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="relative z-10 mt-8 pt-6 border-t border-white/10 flex justify-end">
-                <button onClick={handleCheckIn} disabled={checkedIn}
-                  className={`px-6 py-2.5 rounded-2xl font-bold text-sm shadow-lg transition-all ${checkedIn ? 'bg-emerald-100 text-emerald-700' : 'bg-white text-teal-700 hover:bg-teal-50'}`}>
-                  {checkedIn ? 'Checked In' : 'Check In'}
-                </button>
-              </div>
-            </motion.div>
-          ) : (
-            <div className="bg-white rounded-[2.5rem] p-10 text-center shadow-sm border border-gray-100 h-full flex flex-col justify-center items-center">
-              <div className="bg-gray-50 p-6 rounded-full mb-6">
-                <CalendarDays className="w-12 h-12 text-gray-300" />
-              </div>
-              <h2 className="text-xl font-bold text-gray-900 mb-2">No Appointments Today</h2>
-              <p className="text-gray-500 mb-8 max-w-xs mx-auto">Routine checkups keep your vision sharp. Book your next visit in seconds.</p>
-              <Link href="/patient/appointments" className="bg-teal-600 hover:bg-teal-700 text-white px-8 py-3.5 rounded-2xl font-bold shadow-lg shadow-teal-600/20 transition-all flex items-center gap-2">
-                Book Visit <ArrowRight className="w-4 h-4" />
+          <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-[0_8px_30px_-4px_rgba(12,38,70,0.05)] border border-[#E9F1F7]/70 space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-[15px] sm:text-[16px] font-bold tracking-tight text-[#0F2942]">
+                Quick access
+              </h3>
+              <Link className="text-[12px] font-bold text-[#0055C4] hover:underline" href="/patient/records">
+                Open records
               </Link>
             </div>
-          )}
-        </div>
-
-        <div className="space-y-6">
-          <div className="bg-white rounded-[1.5rem] p-4 sm:rounded-[2rem] sm:p-6 shadow-sm border border-gray-100">
-            <h3 className="font-bold text-gray-900 mb-4 px-2 text-sm uppercase tracking-widest">Quick Actions</h3>
-            <div className="grid grid-cols-2 gap-3 sm:gap-4">
-              {quickActions.map((action, idx) => (
-                <Link key={idx} href={action.href}>
-                  <div className={`${action.color} rounded-2xl p-3 sm:p-4 flex flex-col items-center justify-center text-center group cursor-pointer hover:scale-[1.02] transition-transform border border-transparent hover:border-current/10 min-h-[96px]`}>
-                    <action.icon className="w-5 h-5 sm:w-6 sm:h-6 mb-2" />
-                    <span className="text-[10px] sm:text-[11px] font-bold leading-tight">{action.label}</span>
-                  </div>
-                </Link>
-              ))}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <Link href="/patient/appointments" className="rounded-xl border border-[#E9F1F7] bg-[#F4F9FD] p-3 text-left">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-[#73889B]">Appointments</p>
+                <p className="mt-2 text-sm font-bold text-[#0F2942]">{clinicAppointments.length}</p>
+              </Link>
+              <Link href="/patient/records" className="rounded-xl border border-[#E9F1F7] bg-[#F4F9FD] p-3 text-left">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-[#73889B]">Records</p>
+                <p className="mt-2 text-sm font-bold text-[#0F2942]">{profile ? "Available" : "—"}</p>
+              </Link>
+              <Link href="/patient/billing" className="rounded-xl border border-[#E9F1F7] bg-[#F4F9FD] p-3 text-left">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-[#73889B]">Billing</p>
+                <p className="mt-2 text-sm font-bold text-[#0F2942]">{selectedClinicName}</p>
+              </Link>
             </div>
           </div>
+        </div>
 
-          <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-gray-100 flex-1">
-            <div className="flex items-center justify-between mb-4 px-2">
-              <h3 className="font-bold text-gray-900 text-sm uppercase tracking-widest">Recent Appointments</h3>
-              <Link href="/patient/appointments" className="text-teal-600 text-xs font-bold hover:underline">View All</Link>
+        <div className="lg:col-span-4 space-y-5 lg:space-y-6">
+          <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-[0_8px_30px_-4px_rgba(12,38,70,0.05)] border border-[#E9F1F7]/70">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-[#73889B]">Selected clinic</p>
+            <h3 className="mt-2 text-xl font-bold text-[#0F2942]">{selectedClinicName}</h3>
+            <p className="mt-1 text-sm text-[#73889B]">{selectedBranchName}</p>
+            <Link
+              className="mt-4 block w-full py-2.5 rounded-xl bg-[#0055C4] text-white text-[12px] font-bold text-center hover:bg-[#0047A6] transition-colors"
+              href="/patient/appointments"
+            >
+              Book Visit
+            </Link>
+          </div>
+
+          <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-[0_8px_30px_-4px_rgba(12,38,70,0.05)] border border-[#E9F1F7]/70">
+            <div className="flex items-center justify-between gap-2">
+              <h4 className="text-[14px] font-bold text-[#0F2942]">Clinic access</h4>
+              <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
+                {memberships.length} active
+              </span>
             </div>
-            <div className="space-y-4">
-              {recentAppts.map((a) => (
-                <div key={a.id} className="flex gap-4 p-2 rounded-xl hover:bg-gray-50 transition-colors">
-                  <div className={`mt-1 w-2 h-2 rounded-full flex-shrink-0 ${
-                    a.status === "completed" ? "bg-emerald-500" : a.status === "scheduled" ? "bg-orange-500" : "bg-gray-300"
-                  }`} />
-                  <div>
-                    <p className="text-sm font-bold text-gray-900 leading-none mb-1">{a.type}</p>
-                    <p className="text-xs text-gray-500">{a.appointmentDate} &bull; {getStaffName(a.staff)}</p>
+            <div className="mt-3 space-y-2 text-sm text-[#73889B]">
+              {memberships.length > 0 ? (
+                memberships.map((membership) => (
+                  <div key={membership.id} className="rounded-xl border border-[#E9F1F7] bg-[#F4F9FD] px-3 py-2">
+                    <p className="font-bold text-[#0F2942]">{membership.clinic?.name ?? membership.clinic?.clinicName ?? "Clinic"}</p>
+                    <p>{membership.branch?.name ?? membership.branch?.branchName ?? "Branch"}</p>
                   </div>
-                </div>
-              ))}
-              {recentAppts.length === 0 && !apptsLoading && (
-                <p className="text-xs text-gray-400 text-center py-4">No appointments yet</p>
+                ))
+              ) : (
+                <p className="rounded-xl border border-dashed border-[#D8E6F3] bg-[#F9FBFE] px-3 py-4 text-sm text-[#73889B]">
+                  No clinic memberships yet.
+                </p>
               )}
             </div>
           </div>
         </div>
       </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.1 }}
-          className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-gray-100 relative overflow-hidden"
-        >
-          <div className="flex items-center justify-between mb-8">
-            <div className="flex items-center gap-4">
-              <div className="bg-blue-100 p-3 rounded-2xl">
-                <Glasses className="w-6 h-6 text-blue-600" />
-              </div>
-              <div>
-                <h3 className="font-black text-xl text-gray-900 tracking-tight">Lens Order</h3>
-                <p className="text-xs text-gray-500 font-medium">Tracking Status</p>
-              </div>
-            </div>
-            <Link href="/patient/optical" className="bg-gray-50 p-2 rounded-full text-gray-400 hover:text-teal-600 transition-colors">
-              <ChevronRight className="w-6 h-6" />
-            </Link>
-          </div>
-
-          {activeOrder ? (
-            <div className="space-y-6">
-              <div className="flex justify-between items-end">
-                <div>
-                  <p className="text-sm font-black text-gray-900 mb-1">{activeOrder.id.slice(0, 8)}</p>
-                  <p className="text-xs text-gray-500 line-clamp-1">{activeOrder.lensType}</p>
-                </div>
-                <div className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter ${
-                  activeOrder.status === "ready" ? "bg-green-100 text-green-700" :
-                  activeOrder.status === "processing" ? "bg-amber-100 text-amber-700" : "bg-blue-100 text-blue-700"
-                }`}>
-                  {activeOrder.status}
-                </div>
-              </div>
-
-              <div className="relative pt-1">
-                <div className="overflow-hidden h-3 mb-4 text-xs flex rounded-full bg-gray-100">
-                  <div
-                    style={{ width: `${getOpticalProgress(activeOrder.status)}%` }}
-                    className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-blue-500 transition-all duration-1000"
-                  ></div>
-                </div>
-                <div className="flex justify-between text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                  <span>Ordered</span>
-                  <span>Lab</span>
-                  <span>Ready</span>
-                </div>
-              </div>
-
-              <div className="bg-gray-50 rounded-2xl p-4 flex items-center gap-3">
-                <Clock className="w-4 h-4 text-gray-400" />
-                <p className="text-xs font-medium text-gray-600">
-                  Estimated pickup: <span className="text-gray-900 font-bold">{activeOrder.expectedDeliveryDate || "TBD"}</span>
-                </p>
-              </div>
-            </div>
-          ) : (
-            <div className="py-10 text-center">
-              <p className="text-gray-400 font-medium italic">No active optical orders</p>
-            </div>
-          )}
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.2 }}
-          className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-gray-100"
-        >
-          <div className="flex items-center justify-between mb-8">
-            <div className="flex items-center gap-4">
-              <div className="bg-orange-100 p-3 rounded-2xl">
-                <CreditCard className="w-6 h-6 text-orange-600" />
-              </div>
-              <div>
-                <h3 className="font-black text-xl text-gray-900 tracking-tight">Billing</h3>
-                <p className="text-xs text-gray-500 font-medium">Financial Overview</p>
-              </div>
-            </div>
-            <Link href="/patient/billing" className="bg-gray-50 p-2 rounded-full text-gray-400 hover:text-teal-600 transition-colors">
-              <ChevronRight className="w-6 h-6" />
-            </Link>
-          </div>
-
-          <div className="space-y-6">
-            <div className="bg-orange-50 rounded-[2rem] p-6 border border-orange-100 flex justify-between items-center">
-              <div>
-                <p className="text-xs text-orange-700 uppercase tracking-widest font-bold mb-1">Outstanding Balance</p>
-                <p className="text-3xl font-black text-orange-900">₦0</p>
-              </div>
-              <button className="bg-orange-600 text-white p-3 rounded-2xl shadow-lg shadow-orange-600/20 hover:bg-orange-700 transition-colors">
-                <ArrowRight className="w-6 h-6" />
-              </button>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-gray-50 rounded-2xl p-4 flex items-center gap-3">
-                <div className="w-8 h-8 rounded-xl bg-green-100 flex items-center justify-center">
-                  <ShieldCheck className="w-4 h-4 text-green-600" />
-                </div>
-                <div>
-                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">HMO Status</p>
-                  <p className="text-xs font-bold text-gray-900">Active</p>
-                </div>
-              </div>
-              <div className="bg-gray-50 rounded-2xl p-4 flex items-center gap-3">
-                <div className="w-8 h-8 rounded-xl bg-blue-100 flex items-center justify-center">
-                  <FileText className="w-4 h-4 text-blue-600" />
-                </div>
-                <div>
-                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">Appointments</p>
-                  <p className="text-xs font-bold text-gray-900">{appointments.length} total</p>
-                </div>
-              </div>
-            </div>
-
-            <p className="text-[10px] text-center text-gray-400 font-medium italic">
-              Payments are processed securely via Paystack
-            </p>
-          </div>
-        </motion.div>
-      </div>
-
-      {/* Patient Feedback Prompt Card */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 0.25 }}
-        className="bg-gradient-to-br from-amber-500/10 via-amber-50 to-orange-50 rounded-[2.5rem] p-6 sm:p-8 border border-amber-200/60 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
-      >
-        <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-lg shadow-amber-500/20">
-            <Star size={28} className="fill-white" />
-          </div>
-          <div>
-            <h3 className="text-lg font-black text-slate-900 tracking-tight">How was your clinic visit?</h3>
-            <p className="text-xs text-slate-500 font-medium mt-0.5">
-              Your rating and reviews help us improve care quality and service.
-            </p>
-          </div>
-        </div>
-        <button
-          onClick={() => setShowFeedbackModal(true)}
-          className="px-5 py-3 rounded-2xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-black uppercase tracking-wider shadow-lg shadow-amber-500/20 transition-all shrink-0"
-        >
-          Rate Experience
-        </button>
-      </motion.div>
-
-      {/* Feedback Submission Modal */}
-      <Modal
-        isOpen={showFeedbackModal}
-        onClose={() => setShowFeedbackModal(false)}
-        title="Share Your Feedback"
-      >
-        <form onSubmit={handleSubmitFeedback} className="space-y-4">
-          <div>
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2 text-center">
-              Overall Rating
-            </label>
-            <div className="flex items-center justify-center gap-2 text-amber-400">
-              {[1, 2, 3, 4, 5].map((star) => (
-                <button
-                  key={star}
-                  type="button"
-                  onClick={() => setFeedbackRating(star)}
-                  className="p-1 hover:scale-110 transition-transform"
-                >
-                  <Star
-                    size={32}
-                    className={cn(
-                      star <= feedbackRating
-                        ? "fill-amber-400 text-amber-400"
-                        : "text-slate-200"
-                    )}
-                  />
-                </button>
-              ))}
-            </div>
-            <p className="text-center text-xs font-bold text-slate-600 mt-1">
-              {feedbackRating === 5 && "Excellent (5/5)"}
-              {feedbackRating === 4 && "Very Good (4/5)"}
-              {feedbackRating === 3 && "Average (3/5)"}
-              {feedbackRating === 2 && "Poor (2/5)"}
-              {feedbackRating === 1 && "Very Poor (1/5)"}
-            </p>
-          </div>
-
-          <div>
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">
-              Feedback Category
-            </label>
-            <select
-              value={feedbackCategory}
-              onChange={(e) => setFeedbackCategory(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-800 focus:outline-none"
-            >
-              <option value="General Care">General Care & Facility</option>
-              <option value="Doctor Consultation">Doctor Consultation</option>
-              <option value="Wait Time">Wait Time & Queuing</option>
-              <option value="Staff Courtesy">Staff Courtesy</option>
-              <option value="Optical & Glasses">Optical & Glasses Dispensing</option>
-              <option value="Billing & Payment">Billing & Checkout</option>
-              <option value="Other">Other</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">
-              Your Comments & Experience (Optional)
-            </label>
-            <textarea
-              rows={3}
-              value={feedbackComment}
-              onChange={(e) => setFeedbackComment(e.target.value)}
-              placeholder="Tell us what you liked or what we could improve..."
-              className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-800 focus:outline-none resize-none"
-            />
-          </div>
-
-          <div className="flex gap-3 pt-2">
-            <button
-              type="button"
-              onClick={() => setShowFeedbackModal(false)}
-              className="flex-1 py-3 rounded-xl border border-slate-200 text-slate-600 text-xs font-black uppercase tracking-wider hover:bg-slate-50"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={submitFeedbackMut.isPending}
-              className="flex-1 py-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-black uppercase tracking-wider shadow-lg shadow-amber-500/20 transition-all disabled:opacity-50"
-            >
-              {submitFeedbackMut.isPending ? "Submitting..." : "Submit Review"}
-            </button>
-          </div>
-        </form>
-      </Modal>
     </div>
   );
 }

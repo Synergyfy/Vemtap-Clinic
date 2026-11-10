@@ -133,4 +133,39 @@ describe('ClinicsService', () => {
     }));
     expect(userRepo.update).toHaveBeenCalledWith({ id: 'user-42' }, { clinicId: 'clinic-123' });
   });
+
+  it('generates a unique qr code for each newly created clinic', async () => {
+    const clinicRepo = {
+      create: jest.fn((dto) => ({ ...dto, id: 'clinic-123' })),
+      save: jest.fn(async (clinic) => clinic),
+    };
+
+    const userRepo = {
+      update: jest.fn().mockResolvedValue(undefined),
+    };
+
+    const service = new ClinicsService(clinicRepo as any, userRepo as any, {} as any, {} as any);
+
+    await service.create({
+      name: 'Beacon Eye Clinic',
+      city: 'Abuja',
+      state: 'Nigeria',
+      email: 'beacon@clinic.com',
+    }, 'user-42');
+
+    expect(clinicRepo.save).toHaveBeenNthCalledWith(2, expect.objectContaining({
+      id: 'clinic-123',
+      qrCode: 'VEM-CLINIC123',
+      qrUrl: expect.stringContaining('check-in?clinic=VEM-CLINIC123'),
+    }));
+  });
+
+  it('creates a usable qr value when a clinic record has no qr fields populated yet', () => {
+    const service = new ClinicsService({} as any, {} as any, {} as any, {} as any);
+
+    expect(service.resolveClinicQrCodeValue({ id: 'clinic-123', qrCode: null, qrUrl: null } as any)).toBe('VEM-CLINIC123');
+    expect(service.resolveClinicQrCodeValue({ id: 'clinic-123', qrCode: 'VEM-SAVEDCODE', qrUrl: null } as any)).toBe('VEM-SAVEDCODE');
+    expect(service.resolveClinicQrCodeValue({ id: '', qrCode: null, qrUrl: null } as any)).toBe('');
+    expect(service.resolveClinicQrCodeValue({ id: null, qrCode: null, qrUrl: null } as any)).toBe('');
+  });
 });

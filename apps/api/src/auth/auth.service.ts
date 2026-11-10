@@ -7,6 +7,7 @@ import * as nodemailer from 'nodemailer';
 import { ConfigService } from '@nestjs/config';
 import { User, UserRole } from '../entities/user.entity';
 import { RefreshToken } from '../entities/refresh-token.entity';
+import { Clinic } from '../entities/clinic.entity';
 import { LoginDto, RegisterDto, ChangePasswordDto, ResetPasswordDto } from './dto/auth.dto';
 import { generateOpaqueToken, sha256Hex } from './utils/crypto.util';
 import { EmailService } from '../common/services/email.service';
@@ -23,6 +24,8 @@ export interface AuthUser {
   email: string;
   roles: string[];
   clinicId: string | null;
+  branchId?: string | null;
+  clinicName?: string;
   firstName?: string;
   lastName?: string;
 }
@@ -39,27 +42,56 @@ export class AuthService {
     private jwtService: JwtService,
     private configService: ConfigService,
     private emailService: EmailService,
+    @InjectRepository(Clinic)
+    private clinicRepository: Repository<Clinic>,
   ) {}
 
   async register(dto: RegisterDto, reqInfo?: { userAgent?: string; ip?: string }): Promise<{ tokens: TokenPair; user: AuthUser }> {
     const normalizedEmail = dto.email.trim().toLowerCase();
     const existing = await this.findUserByEmail(normalizedEmail);
     if (existing) {
-      throw new ConflictException('Email already exists');
+      throw new ConflictException('This email is already registered. Please log in or reset your password.');
     }
 
     const hashedPassword = await bcrypt.hash(dto.password, 10);
     const user = this.userRepository.create({
-      ...dto,
+      firstName: dto.firstName,
+      lastName: dto.lastName,
       email: normalizedEmail,
-      role: UserRole.ADMIN,
+      role: UserRole.CLINIC_ADMIN,
       clinicId: dto.clinicId ?? null,
       password: hashedPassword,
       isActive: true,
     });
     const saved = await this.userRepository.save(user);
 
-    return this.generateTokens(saved, reqInfo);
+    const clinicName = dto.clinicName?.trim();
+    if (clinicName) {
+      const clinic = this.clinicRepository.create({
+        name: clinicName,
+        address: dto.clinicAddress?.trim() || undefined,
+        city: dto.clinicCity?.trim() || undefined,
+        state: dto.clinicState?.trim() || undefined,
+        phone: dto.clinicPhone?.trim() || undefined,
+        email: (dto.clinicEmail ?? normalizedEmail).trim().toLowerCase(),
+        ownerId: saved.id,
+        isActive: true,
+      });
+      const createdClinic = await this.clinicRepository.save(clinic);
+
+      saved.clinicId = createdClinic.id;
+      saved.role = UserRole.CLINIC_ADMIN;
+      await this.userRepository.save(saved);
+    }
+
+    const authResult = await this.generateTokens(saved, reqInfo);
+    if (clinicName) {
+      authResult.user.clinicName = clinicName;
+    } else if (saved.clinicId) {
+      authResult.user.clinicName = await this.getClinicNameById(saved.clinicId);
+    }
+
+    return authResult;
   }
 
   async login(dto: LoginDto, reqInfo?: { userAgent?: string; ip?: string }): Promise<{ tokens: TokenPair; user: AuthUser }> {
@@ -74,6 +106,7 @@ export class AuthService {
         'user.password',
         'user.role',
         'user.clinicId',
+        'user.branchId',
         'user.isActive',
       ])
       .getOne();
@@ -92,7 +125,10 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    return this.generateTokens(user, reqInfo);
+    const authResult = await this.generateTokens(user, reqInfo);
+    authResult.user.clinicName = await this.getClinicNameById(user.clinicId);
+    authResult.user.branchId = user.branchId ?? null;
+    return authResult;
   }
 
   async getProfile(userId: string): Promise<Partial<User>> {
@@ -137,9 +173,13 @@ export class AuthService {
 
     const newTokens = await this.rotateRefreshToken(storedToken, reqInfo);
 
+    const authUser = this.mapUserToAuthUser(storedToken.user);
+    authUser.clinicName = await this.getClinicNameById(storedToken.user.clinicId);
+    authUser.branchId = storedToken.user.branchId ?? null;
+
     return {
       tokens: newTokens,
-      user: this.mapUserToAuthUser(storedToken.user),
+      user: authUser,
     };
   }
 
@@ -359,6 +399,8 @@ export class AuthService {
       user_id: user.id,
       userId: user.id,
       roles: [user.role],
+      clinicId: user.clinicId,
+      branchId: user.branchId,
     };
     return this.jwtService.sign(payload);
   }
@@ -369,9 +411,23 @@ export class AuthService {
       email: user.email,
       roles: [user.role],
       clinicId: user.clinicId,
+      branchId: user.branchId ?? null,
       firstName: user.firstName,
       lastName: user.lastName,
     };
+  }
+
+  private async getClinicNameById(clinicId: string | null | undefined): Promise<string | undefined> {
+    if (!clinicId) {
+      return undefined;
+    }
+
+    const clinic = await this.clinicRepository.findOne({
+      where: { id: clinicId },
+      select: ['id', 'name'],
+    });
+
+    return clinic?.name?.trim() || undefined;
   }
 
   private parseDuration(input: string): number {

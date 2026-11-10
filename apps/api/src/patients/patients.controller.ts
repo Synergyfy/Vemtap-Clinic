@@ -19,7 +19,14 @@ export class PatientsController {
   @Roles(UserRole.ADMIN, UserRole.RECEPTIONIST, UserRole.DOCTOR)
   @ApiOperation({ summary: 'Create a patient' })
   create(@CurrentUser() user: any, @Body() dto: CreatePatientDto) {
-    return this.patientsService.create({ ...dto, clinicId: user?.clinicId ?? dto.clinicId }, user);
+    return this.patientsService.create(
+      {
+        ...dto,
+        clinicId: user?.clinicId ?? dto.clinicId,
+        branchId: user?.branchId ?? dto.branchId,
+      },
+      user,
+    );
   }
 
   @Get()
