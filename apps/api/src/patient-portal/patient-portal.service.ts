@@ -28,6 +28,9 @@ export interface PatientAuthUser {
   phone: string;
   clinicId: string | null;
   branchId: string | null;
+  guardianId?: string | null;
+  guardianRelationship?: string | null;
+  accountType?: 'individual' | 'guardian';
 }
 
 @Injectable()
@@ -80,6 +83,7 @@ export class PatientPortalService {
     }
 
     const { clinicId, branchId } = await this.resolveClinicAssociation(dto.clinicId, dto.branchId, dto.clinicQrCode);
+    const accountType = dto.accountType === 'guardian' ? 'guardian' : 'individual';
     const hashedPassword = await bcrypt.hash(dto.password, 10);
     const patientData: Partial<Patient> = {
       firstName: dto.firstName,
@@ -93,6 +97,8 @@ export class PatientPortalService {
       branchId,
       patientType: 'private',
       portalAccessEnabled: true,
+      guardianRelationship: accountType === 'guardian' ? 'guardian' : undefined,
+      guardianId: null,
     };
     const saved: Patient = await this.patientRepo.save(patientData as any);
 
@@ -102,8 +108,8 @@ export class PatientPortalService {
 
     // Send welcome email only when an email address is available, but do not block
     // registration on the external mail provider.
-    if (saved.email) {
-      void this.emailService?.sendTemplatedEmail('welcome', saved.email, {
+    if (saved.email && this.emailService?.sendTemplatedEmail) {
+      void this.emailService.sendTemplatedEmail('welcome', saved.email, {
         firstName: saved.firstName,
         clinicName: 'Vemtap Health Clinic',
         loginUrl: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/patient/login`,
@@ -118,7 +124,7 @@ export class PatientPortalService {
   async login(dto: PatientLoginDto): Promise<{ tokens: PatientTokenPair; patient: PatientAuthUser }> {
     const patient = await this.patientRepo.findOne({
       where: { email: dto.email },
-      select: ['id', 'firstName', 'lastName', 'email', 'phone', 'patientPassword', 'clinicId', 'branchId', 'portalAccessEnabled'],
+      select: ['id', 'firstName', 'lastName', 'email', 'phone', 'patientPassword', 'clinicId', 'branchId', 'guardianId', 'guardianRelationship', 'portalAccessEnabled'],
     });
 
     if (!patient || !patient.portalAccessEnabled) {
@@ -619,6 +625,8 @@ export class PatientPortalService {
   private generateToken(patient: Patient): { tokens: PatientTokenPair; patient: PatientAuthUser } {
     const payload = { sub: patient.id, email: patient.email, type: 'patient' };
     const accessToken = this.jwtService!.sign(payload);
+    const accountType = patient.guardianRelationship === 'guardian' ? 'guardian' : 'individual';
+
     return {
       tokens: { accessToken },
       patient: {
@@ -629,6 +637,9 @@ export class PatientPortalService {
         phone: patient.phone,
         clinicId: patient.clinicId ?? null,
         branchId: patient.branchId ?? null,
+        guardianId: patient.guardianId ?? null,
+        guardianRelationship: patient.guardianRelationship ?? null,
+        accountType,
       },
     };
   }

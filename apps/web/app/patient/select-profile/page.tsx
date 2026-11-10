@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/auth-context";
 
 interface Profile {
   id: string;
@@ -64,9 +65,15 @@ const PROFILES: Profile[] = [
 
 export default function SelectProfilePage() {
   const router = useRouter();
+  const { user } = useAuth();
   const [selectedId, setSelectedId] = useState<string>("p1");
   const [isSwitching, setIsSwitching] = useState<boolean>(false);
 
+  const isFamilyMember = Boolean(
+    user?.guardianId ||
+    user?.guardianRelationship === 'guardian' ||
+    user?.accountType === 'guardian'
+  );
   const selectedProfile = PROFILES.find((p) => p.id === selectedId) || PROFILES[0];
 
   const handleContinue = () => {
@@ -94,11 +101,13 @@ export default function SelectProfilePage() {
                 Who is visiting today?
               </h1>
               <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-[#e2e7ff] text-[#0055c4] text-xs font-bold">
-                {PROFILES.length} Profiles Linked
+                {isFamilyMember ? "Family Linked" : `${PROFILES.length} Profiles Linked`}
               </span>
             </div>
             <p className="text-sm text-[#424655]">
-              Select profile for records, appointments &amp; prescriptions
+              {isFamilyMember
+                ? "This account is linked to a guardian profile. You can switch between your family-linked records here."
+                : "Select profile for records, appointments & prescriptions"}
             </p>
           </div>
           <div className="flex items-center gap-2">

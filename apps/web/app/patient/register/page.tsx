@@ -101,6 +101,7 @@ function PatientRegisterPage() {
         email,
         password,
         clinicQrCode,
+        accountType,
       });
 
       try {

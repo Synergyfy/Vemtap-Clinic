@@ -1,3 +1,4 @@
+import * as bcrypt from 'bcryptjs';
 import { PatientPortalService } from './patient-portal.service';
 
 describe('PatientPortalService', () => {
@@ -323,6 +324,77 @@ describe('PatientPortalService', () => {
     expect(activation.patient.guardianRelationship).toBe('child');
     expect(activation.patient.email).toBe('dependent@example.com');
     expect(activation.patient.portalAccessEnabled).toBe(true);
+  });
+
+  it('keeps guardian family metadata on the patient auth payload for dependent accounts', async () => {
+    const patientRepo = {
+      findOne: jest.fn().mockResolvedValue({
+        id: 'dependent-123',
+        firstName: 'Sam',
+        lastName: 'Doe',
+        email: 'dependent@example.com',
+        phone: '+2348000000001',
+        clinicId: 'clinic-1',
+        branchId: 'branch-1',
+        guardianId: 'guardian-1',
+        guardianRelationship: 'child',
+        portalAccessEnabled: true,
+        patientPassword: await bcrypt.hash('password123', 10),
+      }),
+    };
+
+    const service = new PatientPortalService(
+      patientRepo as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      { sign: jest.fn().mockReturnValue('token-123') } as any,
+      {} as any,
+      {} as any,
+    );
+
+    const login = await service.login({ email: 'dependent@example.com', password: 'password123' } as any);
+
+    expect(login.patient.guardianId).toBe('guardian-1');
+    expect(login.patient.guardianRelationship).toBe('child');
+    expect(login.patient.id).toBe('dependent-123');
+  });
+
+  it('marks a guardian-family registration as a family-linked account instead of a plain individual account', async () => {
+    const patientRepo = {
+      findOne: jest.fn().mockResolvedValue(null),
+      save: jest.fn(async (dto) => ({ ...dto, id: 'guardian-123' })),
+    };
+
+    const service = new PatientPortalService(
+      patientRepo as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      { sign: jest.fn().mockReturnValue('token-guardian') } as any,
+      {} as any,
+      {} as any,
+    );
+
+    const result = await service.register({
+      firstName: 'Mary',
+      lastName: 'James',
+      dateOfBirth: '1985-05-10',
+      gender: 'female',
+      phone: '+2348001234567',
+      email: 'guardian@example.com',
+      password: 'password123',
+      accountType: 'guardian',
+    } as any);
+
+    expect(result.patient.guardianRelationship).toBe('guardian');
+    expect(patientRepo.save).toHaveBeenCalledWith(expect.objectContaining({
+      guardianRelationship: 'guardian',
+    }));
   });
 
   it('requires a real SMS provider in production and blocks silent debugging', async () => {

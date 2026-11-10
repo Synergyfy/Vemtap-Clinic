@@ -47,6 +47,15 @@ export default function PatientDashboard() {
     || user?.email
     || "";
 
+  const isGuardianProfile = Boolean(
+    user?.guardianRelationship === 'guardian' ||
+    user?.accountType === 'guardian' ||
+    profile?.guardianRelationship === 'guardian' ||
+    profile?.accountType === 'guardian'
+  );
+
+  const dashboardProfileLabel = isGuardianProfile ? 'Family profile' : 'Patient profile';
+
   return (
     <div className="w-full text-[#0F2942] antialiased selection:bg-blue-100 font-['Plus_Jakarta_Sans',sans-serif]">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6 bg-white p-4 sm:p-5 rounded-2xl border border-[#E9F1F7]/70 shadow-[0_8px_30px_-4px_rgba(12,38,70,0.05)]">
@@ -58,8 +67,8 @@ export default function PatientDashboard() {
         </div>
         <div className="flex items-center gap-2.5 self-start sm:self-auto">
           <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#F4F9FD] rounded-full border border-[#E2EBF2] shadow-sm shrink-0">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
-            <span className="text-xs font-bold text-[#0F2942] font-mono tracking-tight">Patient profile</span>
+            <span className={`w-2 h-2 rounded-full shrink-0 ${isGuardianProfile ? 'bg-violet-500' : 'bg-emerald-500'}`}></span>
+            <span className="text-xs font-bold text-[#0F2942] font-mono tracking-tight">{dashboardProfileLabel}</span>
             <span className="text-[11px] text-[#73889B] font-medium">• Active</span>
           </div>
           <Link
@@ -71,6 +80,34 @@ export default function PatientDashboard() {
           </Link>
         </div>
       </div>
+
+      {isGuardianProfile && (
+        <div className="mb-6 bg-gradient-to-r from-violet-50 via-indigo-50 to-white rounded-2xl border border-violet-100 p-4 sm:p-5 shadow-[0_8px_30px_-4px_rgba(16,24,40,0.06)]">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-wider text-violet-600">Family account</p>
+              <h2 className="mt-1 text-lg font-bold text-[#0F2942]">Manage your dependents and shared records</h2>
+              <p className="mt-1 text-sm text-[#5E6783]">Link children, spouses, or parents under your guardian profile.</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Link
+                href="/patient/family/add"
+                className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-[#0055C4] px-3.5 py-2 text-xs font-bold text-white shadow-sm hover:bg-[#0047A6] transition-colors"
+              >
+                <span className="material-symbols-outlined text-[16px]">group_add</span>
+                Add family member
+              </Link>
+              <Link
+                href="/patient/select-profile"
+                className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-[#D9E2FF] bg-white px-3.5 py-2 text-xs font-bold text-[#0F2942] hover:bg-[#F4F9FD] transition-colors"
+              >
+                <span className="material-symbols-outlined text-[16px]">switch_account</span>
+                View family profiles
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
 
       {memberships.length > 0 && (
         <div className="mb-6 bg-white rounded-2xl border border-[#E9F1F7]/70 p-4 shadow-[0_8px_30px_-4px_rgba(12,38,70,0.05)]">

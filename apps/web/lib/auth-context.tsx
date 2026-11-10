@@ -90,6 +90,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           phone: profile.phone ?? user.phone,
           clinicId: profile.clinicId ?? user.clinicId ?? '',
           branchId: profile.branchId ?? user.branchId,
+          guardianId: profile.guardianId ?? user.guardianId,
+          guardianRelationship: profile.guardianRelationship ?? user.guardianRelationship,
+          accountType: profile.accountType ?? user.accountType ?? 'individual',
           roles: ['patient'],
         });
 

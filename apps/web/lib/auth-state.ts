@@ -11,6 +11,9 @@ export interface AuthUser {
   firstName?: string;
   lastName?: string;
   phone?: string;
+  guardianId?: string;
+  guardianRelationship?: string;
+  accountType?: 'individual' | 'guardian';
 }
 
 const normalizeIdValue = (value: unknown): string => {
@@ -43,6 +46,9 @@ export const normalizeAuthUser = (user: Partial<AuthUser> | null | undefined): A
     firstName: user.firstName,
     lastName: user.lastName,
     phone: user.phone,
+    guardianId: user.guardianId ? normalizeIdValue(user.guardianId) : undefined,
+    guardianRelationship: user.guardianRelationship?.trim() || undefined,
+    accountType: user.accountType === 'guardian' ? 'guardian' : 'individual',
   } satisfies AuthUser;
 };
 
