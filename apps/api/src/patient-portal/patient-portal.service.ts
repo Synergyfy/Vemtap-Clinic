@@ -100,12 +100,15 @@ export class PatientPortalService {
       await this.ensurePatientClinicMembership(saved.id, clinicId, branchId ?? null);
     }
 
-    // Send welcome email only when an email address is available.
+    // Send welcome email only when an email address is available, but do not block
+    // registration on the external mail provider.
     if (saved.email) {
-      await this.emailService!.sendTemplatedEmail('welcome', saved.email, {
+      void this.emailService?.sendTemplatedEmail('welcome', saved.email, {
         firstName: saved.firstName,
         clinicName: 'Vemtap Health Clinic',
         loginUrl: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/patient/login`,
+      }).catch((error) => {
+        console.error('[patient-portal] welcome email failed:', error);
       });
     }
 
