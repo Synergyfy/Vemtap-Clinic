@@ -15,6 +15,7 @@ import { motion } from "framer-motion";
 import { Modal } from "@/components/ui/modal";
 
 import { useAuth } from "@/lib/auth-context";
+import { getPatientsRegisterRoute } from "@/lib/dashboard-routes";
 import { 
   useQueue, 
   useQueueStats, 
@@ -34,6 +35,7 @@ import { Loader2 } from "lucide-react";
 export default function ReceptionDashboard() {
   const router = useRouter();
   const { user } = useAuth();
+  const newPatientHref = getPatientsRegisterRoute(user);
   const clinicId = user?.clinicId ?? "";
 
   const [toast, setToast] = useState("");
@@ -290,7 +292,7 @@ export default function ReceptionDashboard() {
               </Link>
 
               <Link
-                href="/reception/patients/register"
+                href={newPatientHref}
                 className="group relative bg-white p-2.5 sm:p-3 rounded-xl border border-slate-100 shadow-xs hover:shadow-md hover:border-emerald-200 transition-all text-left flex flex-col justify-between"
               >
                 <div>

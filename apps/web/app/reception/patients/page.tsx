@@ -3,6 +3,7 @@
 import React, { useMemo, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
+import { getPatientsRegisterRoute } from "@/lib/dashboard-routes";
 import { usePatients } from "@/hooks/usePatients";
 
 type FilterType = "all" | "hmo" | "private" | "pediatric" | "branch";
@@ -46,6 +47,7 @@ export default function ReceptionPatientDirectoryPage() {
     limit: 12,
   });
 
+  const registerPatientHref = getPatientsRegisterRoute(user);
   const patients = patientResponse?.data ?? [];
   const totalPatients = patientResponse?.total ?? patients.length;
   const totalPages = patientResponse?.totalPages ?? 1;
@@ -126,7 +128,7 @@ export default function ReceptionPatientDirectoryPage() {
               </div>
 
               <Link
-                href="/reception/patients/register"
+                href={registerPatientHref}
                 className="h-7 sm:h-8 px-2.5 rounded-lg bg-primary text-on-primary text-xs font-bold flex items-center justify-center gap-1 shadow-xs hover:bg-primary-hover active:scale-[0.98] transition-all"
               >
                 <span className="material-symbols-outlined text-[15px] sm:text-[16px]">person_add</span>

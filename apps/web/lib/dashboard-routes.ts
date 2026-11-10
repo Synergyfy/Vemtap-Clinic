@@ -83,3 +83,9 @@ export function getClinicEntryRoute(userOrRole?: DashboardUserLike) {
 
   return getDashboardRoute(userOrRole);
 }
+
+export function getPatientsRegisterRoute(userOrRole?: DashboardUserLike) {
+  const dashboardRoute = getDashboardRoute(userOrRole);
+  const dashboardRoot = dashboardRoute.replace(/\/dashboard$/, '');
+  return `${dashboardRoot}/patients/register`;
+}

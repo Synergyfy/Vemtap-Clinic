@@ -114,13 +114,15 @@ export class CreatePatientDto {
   @MaxLength(200)
   allergies?: string;
 
-  @ApiProperty({ example: 'clinic-uuid' })
+  @ApiPropertyOptional({ example: 'clinic-uuid' })
+  @IsOptional()
   @IsUUID()
-  clinicId: string;
+  clinicId?: string;
 
-  @ApiProperty({ example: 'branch-uuid' })
+  @ApiPropertyOptional({ example: 'branch-uuid' })
+  @IsOptional()
   @IsUUID()
-  branchId: string;
+  branchId?: string;
 }
 
 export class UpdatePatientDto {

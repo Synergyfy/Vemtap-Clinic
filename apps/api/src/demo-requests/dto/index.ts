@@ -6,50 +6,50 @@ export class CreateDemoRequestDto {
   @IsString()
   @IsNotEmpty()
   @MaxLength(100)
-  clinicType: string;
+  clinicType = '';
 
   @ApiProperty()
   @IsString()
   @IsNotEmpty()
   @MaxLength(200)
-  clinicName: string;
+  clinicName = '';
 
   @ApiProperty()
   @IsString()
   @IsNotEmpty()
   @MaxLength(50)
-  branchCount: string;
+  branchCount = '';
 
   @ApiProperty()
   @IsString()
   @IsNotEmpty()
-  preferredDate: string;
+  preferredDate = '';
 
   @ApiProperty()
   @IsString()
   @IsNotEmpty()
-  preferredTime: string;
-
-  @ApiProperty()
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(100)
-  firstName: string;
+  preferredTime = '';
 
   @ApiProperty()
   @IsString()
   @IsNotEmpty()
   @MaxLength(100)
-  lastName: string;
+  firstName = '';
+
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(100)
+  lastName = '';
 
   @ApiProperty()
   @IsEmail()
   @IsNotEmpty()
-  email: string;
+  email = '';
 
   @ApiProperty()
   @IsString()
   @IsNotEmpty()
   @MaxLength(40)
-  phone: string;
+  phone = '';
 }

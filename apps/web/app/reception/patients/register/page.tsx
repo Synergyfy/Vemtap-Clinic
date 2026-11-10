@@ -4,10 +4,30 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
+import { useCreatePatient } from "@/hooks/usePatients";
+
+function calculateAge(dateOfBirth: string): number {
+  if (!dateOfBirth) return 0;
+
+  const birthDate = new Date(dateOfBirth);
+  const today = new Date();
+
+  if (Number.isNaN(birthDate.getTime())) return 0;
+
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const monthDifference = today.getMonth() - birthDate.getMonth();
+
+  if (monthDifference < 0 || (monthDifference === 0 && today.getDate() < birthDate.getDate())) {
+    age -= 1;
+  }
+
+  return age;
+}
 
 export default function ReceptionPatientRegistrationPage() {
   const router = useRouter();
   const { user } = useAuth();
+  const createPatientMut = useCreatePatient();
 
   // Form State
   const [patientType, setPatientType] = useState<"adult" | "child">("adult");
@@ -19,7 +39,7 @@ export default function ReceptionPatientRegistrationPage() {
   const [firstName, setFirstName] = useState("Patient");
   const [middleName, setMiddleName] = useState("");
   const [surname, setSurname] = useState("Surname");
-  const [dob, setDob] = useState("DD/MM/YYYY");
+  const [dob, setDob] = useState("");
   const [gender, setGender] = useState<"M" | "F">("M");
   const [phone, setPhone] = useState("000 000 0000");
   const [email, setEmail] = useState("patient@example.com");
@@ -47,6 +67,8 @@ export default function ReceptionPatientRegistrationPage() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const ageLabel = dob ? `${calculateAge(dob)} Yrs` : "Age";
+
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3000);
@@ -56,15 +78,55 @@ export default function ReceptionPatientRegistrationPage() {
     showToast("Registration draft saved successfully!");
   };
 
-  const handleCompleteRegistration = () => {
+  const handleCompleteRegistration = async () => {
+    if (!firstName.trim() || !surname.trim()) {
+      showToast("Please enter the patient first name and surname");
+      return;
+    }
+
+    if (!dob) {
+      showToast("Please select the patient date of birth");
+      return;
+    }
+
+    if (!user?.clinicId) {
+      showToast("No active clinic is available for this account. Please sign in again.");
+      return;
+    }
+
     setIsSubmitting(true);
-    setTimeout(() => {
-      setIsSubmitting(false);
-      showToast("Patient Registered & Queued: #VI-042");
+
+    try {
+      const patient = await createPatientMut.mutateAsync({
+        firstName: firstName.trim(),
+        lastName: surname.trim(),
+        dateOfBirth: dob,
+        gender: gender === "M" ? "male" : "female",
+        phone: phone.replace(/\D/g, "") || "0000000000",
+        email: email.trim() || undefined,
+        address: address.trim() || undefined,
+        city: "",
+        state: "",
+        nationality: "Nigeria",
+        occupation: occupation.trim() || undefined,
+        patientType: billingType === "hmo" ? "hmo" : "private",
+        hmoName: billingType === "hmo" ? hmoProvider : undefined,
+        hmoNumber: enrolleeId.trim() || undefined,
+        emergencyContact: kinName.trim() || undefined,
+        emergencyPhone: kinPhone.replace(/\D/g, "") || undefined,
+        clinicId: user.clinicId,
+        branchId: user.branchId || undefined,
+      });
+
+      showToast("Patient registered successfully");
       setTimeout(() => {
-        router.push("/reception/check-in");
-      }, 1200);
-    }, 800);
+        router.push(`/reception/check-in?patientId=${patient.id}`);
+      }, 700);
+    } catch (error: any) {
+      showToast(error?.message || "Failed to register patient");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -254,15 +316,15 @@ export default function ReceptionPatientRegistrationPage() {
                   <div className="col-span-12 sm:col-span-7 flex flex-col gap-1">
                     <label className="text-[10px] text-on-surface-variant font-semibold flex items-center justify-between">
                       <span>Date of Birth *</span>
-                      <span className="text-primary font-bold">34 Yrs</span>
+                      <span className="text-primary font-bold">{ageLabel}</span>
                     </label>
                     <div className="h-8 bg-surface-container-low rounded-lg px-2 flex items-center justify-between border border-surface-container">
                       <input
-                        type="text"
+                        type="date"
                         value={dob}
                         onChange={(e) => setDob(e.target.value)}
-                        placeholder="DD/MM/YYYY"
-                        className="w-full bg-transparent text-xs text-on-surface focus:outline-none"
+                        max={new Date().toISOString().slice(0, 10)}
+                        className="w-full bg-transparent text-xs text-on-surface focus:outline-none [color-scheme:light]"
                       />
                       <span className="material-symbols-outlined text-[15px] text-outline">
                         calendar_today

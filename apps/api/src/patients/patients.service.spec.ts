@@ -44,4 +44,19 @@ describe('PatientsService', () => {
 
     expect(result).toMatchObject({ firstName: 'Ada', clinicId: 'clinic-123', id: 'patient-2' });
   });
+
+  it('does not reuse the clinic ID as a branch ID when a real branch is not assigned', async () => {
+    const patientRepository = {
+      create: jest.fn((dto) => dto),
+      save: jest.fn(async (dto) => ({ ...dto, id: 'patient-3' })),
+    };
+
+    const service = new PatientsService(patientRepository as any, {} as any);
+
+    await service.create({ firstName: 'Grace', clinicId: 'clinic-123', branchId: 'clinic-123' } as any, { clinicId: 'clinic-123' });
+
+    const payload = patientRepository.create.mock.calls[0][0];
+    expect(payload.clinicId).toBe('clinic-123');
+    expect(payload.branchId).toBeUndefined();
+  });
 });

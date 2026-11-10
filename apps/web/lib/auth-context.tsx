@@ -2,7 +2,14 @@
 
 import { createContext, useContext, useEffect, useCallback, useState, ReactNode, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { useAuthState, AuthUser, normalizeAuthUser, hasUsablePatientIdentity, hasActivePersistedSession } from './auth-state';
+import {
+  useAuthState,
+  AuthUser,
+  normalizeAuthUser,
+  hasUsablePatientIdentity,
+  hasActivePersistedSession,
+  getAccessToken,
+} from './auth-state';
 import { api } from './api';
 
 interface AuthContextType {
@@ -170,7 +177,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     hasCheckedAuth.current = false;
     try {
-      await api.post('/auth/logout');
+      const token = getAccessToken();
+      if (token) {
+        try {
+          await api.post('/auth/logout');
+        } catch (error) {
+          const status = (error as { response?: { status?: number } })?.response?.status;
+          if (status !== 401 && status !== 403) {
+            throw error;
+          }
+        }
+      }
     } finally {
       queryClient.clear();
       clearAuthState();
