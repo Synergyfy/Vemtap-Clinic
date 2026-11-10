@@ -1,11 +1,19 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { usePatientRegister } from "@/hooks/usePatientPortal";
 
-export default function PatientRegisterPage() {
+export default function PatientRegisterPageWrapper() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#faf8ff]" />}>
+      <PatientRegisterPage />
+    </Suspense>
+  );
+}
+
+function PatientRegisterPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const registerMutation = usePatientRegister();

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type FormEvent } from "react";
+import { Suspense, useMemo, useState, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { patientPortalService } from "@/services/patient-portal.service";
 
@@ -21,7 +21,15 @@ const monthOptions = [
 
 const dayOptions = Array.from({ length: 31 }, (_, index) => String(index + 1).padStart(2, "0"));
 
-export default function FamilyActivationPage() {
+export default function FamilyActivationPageWrapper() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#f3f6ff] px-4 py-8" />}> 
+      <FamilyActivationPage />
+    </Suspense>
+  );
+}
+
+function FamilyActivationPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get("token") ?? "";

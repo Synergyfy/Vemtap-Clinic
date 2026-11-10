@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import QRCode from "react-qr-code";
 import { useAuth } from "@/lib/auth-context";
@@ -47,7 +47,15 @@ type VisitPurpose =
 
 type PriorityLevel = "standard" | "senior" | "urgent";
 
-export default function ReceptionCheckInPage() {
+export default function ReceptionCheckInPageWrapper() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-surface text-on-surface" />}>
+      <ReceptionCheckInPage />
+    </Suspense>
+  );
+}
+
+function ReceptionCheckInPage() {
   const { user } = useAuth();
   const searchParams = useSearchParams();
   const patientIdFromQuery = searchParams.get("patientId");
