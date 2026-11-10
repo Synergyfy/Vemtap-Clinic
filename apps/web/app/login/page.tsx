@@ -192,6 +192,7 @@ export default function LoginPage() {
                   )}
                 </Button>
 
+                {/*
                 <div className="space-y-3 pt-1">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block ml-1">Dashboard Access</label>
                   <div className="flex gap-2">
@@ -216,6 +217,7 @@ export default function LoginPage() {
                     </Button>
                   </div>
                 </div>
+                */}
 
                 <p className="text-center text-sm text-slate-500">
                   Don&apos;t have an account?{' '}
@@ -230,6 +232,7 @@ export default function LoginPage() {
                   </Link>
                 </p>
 
+                {/*
                 <div className="relative pt-4 border-t border-slate-50 z-[80]">
                   <button
                     type="button"
@@ -298,6 +301,7 @@ export default function LoginPage() {
                     )}
                   </AnimatePresence>
                 </div>
+                */}
               </form>
             </div>
           </div>
