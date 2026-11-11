@@ -7,6 +7,8 @@ import { Modal } from "@/components/ui/modal";
 import { Settings2, Bell, Shield, User, Globe, Moon, CheckCircle2, Eye, EyeOff } from "lucide-react";
 import { PageHeader } from "@/app/clinic/_components/page-header";
 import { useAuth } from "@/lib/auth-context";
+import { useUserPreferences } from "@/hooks/useUserPreferences";
+import { api } from "@/lib/api";
 
 type ModalKey = "profile" | "notifications" | "security" | "display" | "regional" | null;
 
@@ -56,7 +58,10 @@ const settingsSections = [
 export default function NurseSettings() {
   const [modal, setModal] = useState<ModalKey>(null);
   const [toast, setToast] = useState("");
-  const { user } = useAuth();
+  const [toastError, setToastError] = useState(false);
+  const { user, updateProfile } = useAuth();
+  const { prefs, save, isLoaded: prefsLoaded } = useUserPreferences();
+  const [prefsHydrated, setPrefsHydrated] = useState(false);
 
   const liveDisplayName = user ? [user.firstName, user.lastName].filter(Boolean).join(" ").trim() || "User" : "User";
   const liveRoleLabel = user?.roles?.[0] ? user.roles[0].replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase()) : "";
@@ -89,17 +94,137 @@ export default function NurseSettings() {
   const [dateFormat, setDateFormat] = useState("DD/MM/YYYY");
   const [units, setUnits] = useState("Metric");
 
-  const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 3000); };
+  const showToast = (msg: string, isError = false) => {
+    setToastError(isError);
+    setToast(msg);
+    setTimeout(() => setToast(""), 3000);
+  };
 
-  const handleSave = (label: string) => {
-    showToast(`${label} updated successfully`);
-    setModal(null);
+  useEffect(() => {
+    if (!prefsLoaded || prefsHydrated) return;
+    setPrefsHydrated(true);
+
+    const notifications = prefs["nurse.notifications"] as
+      | { vitals?: boolean; alerts?: boolean; followups?: boolean; reports?: boolean }
+      | undefined;
+    if (notifications) {
+      if (typeof notifications.vitals === "boolean") setNotifVitals(notifications.vitals);
+      if (typeof notifications.alerts === "boolean") setNotifAlerts(notifications.alerts);
+      if (typeof notifications.followups === "boolean") setNotifFollowups(notifications.followups);
+      if (typeof notifications.reports === "boolean") setNotifReports(notifications.reports);
+    }
+
+    const securityPrefs = prefs["nurse.security"] as { twoFactor?: boolean } | undefined;
+    if (securityPrefs && typeof securityPrefs.twoFactor === "boolean") setTwoFactor(securityPrefs.twoFactor);
+
+    const displayPrefs = prefs["nurse.display"] as
+      | { darkMode?: boolean; language?: string; layout?: string }
+      | undefined;
+    if (displayPrefs) {
+      if (typeof displayPrefs.darkMode === "boolean") setDarkMode(displayPrefs.darkMode);
+      if (typeof displayPrefs.language === "string") setLanguage(displayPrefs.language);
+      if (typeof displayPrefs.layout === "string") setLayout(displayPrefs.layout);
+    }
+
+    const regionalPrefs = prefs["nurse.regional"] as
+      | { timezone?: string; dateFormat?: string; units?: string }
+      | undefined;
+    if (regionalPrefs) {
+      if (typeof regionalPrefs.timezone === "string") setTimezone(regionalPrefs.timezone);
+      if (typeof regionalPrefs.dateFormat === "string") setDateFormat(regionalPrefs.dateFormat);
+      if (typeof regionalPrefs.units === "string") setUnits(regionalPrefs.units);
+    }
+  }, [prefsLoaded, prefs, prefsHydrated]);
+
+  const persist = async (patch: Record<string, any>, successMessage: string) => {
+    try {
+      await save(patch);
+      showToast(successMessage);
+      return true;
+    } catch (err: any) {
+      showToast(err?.response?.data?.message || "Could not save settings. Please try again.", true);
+      return false;
+    }
+  };
+
+  const handleSave = async (label: string) => {
+    if (label === "Profile") {
+      const name = profileName.trim();
+      if (!name) {
+        showToast("Please enter your full name.", true);
+        return;
+      }
+      const [firstName, ...rest] = name.split(/\s+/);
+      try {
+        await updateProfile({
+          firstName,
+          lastName: rest.join(" "),
+          email: profileEmail.trim(),
+          phone: profilePhone.trim(),
+        });
+        showToast("Profile updated successfully");
+        setModal(null);
+      } catch (err: any) {
+        showToast(err?.response?.data?.message || "Could not update your profile.", true);
+      }
+      return;
+    }
+
+    if (label === "Notification preferences") {
+      const saved = await persist(
+        { "nurse.notifications": { vitals: notifVitals, alerts: notifAlerts, followups: notifFollowups, reports: notifReports } },
+        "Notification preferences updated successfully",
+      );
+      if (saved) setModal(null);
+      return;
+    }
+
+    if (label === "Security settings") {
+      const wantsPasswordChange = Boolean(currentPw || newPw);
+      if (wantsPasswordChange) {
+        if (newPw.length < 6) {
+          showToast("New password must be at least 6 characters.", true);
+          return;
+        }
+        if (!currentPw) {
+          showToast("Enter your current password to change it.", true);
+          return;
+        }
+        try {
+          await api.put("/auth/password", { currentPassword: currentPw, newPassword: newPw });
+        } catch (err: any) {
+          showToast(err?.response?.data?.message || "Could not update your password.", true);
+          return;
+        }
+      }
+      const saved = await persist(
+        { "nurse.security": { twoFactor } },
+        wantsPasswordChange ? "Password updated. Other sessions were signed out." : "Security settings updated successfully",
+      );
+      if (saved) {
+        setCurrentPw("");
+        setNewPw("");
+        setModal(null);
+      }
+      return;
+    }
+
+    if (label === "Display settings") {
+      const saved = await persist({ "nurse.display": { darkMode, language, layout } }, "Display settings updated successfully");
+      if (saved) setModal(null);
+      return;
+    }
+
+    if (label === "Regional settings") {
+      const saved = await persist({ "nurse.regional": { timezone, dateFormat, units } }, "Regional settings updated successfully");
+      if (saved) setModal(null);
+    }
   };
 
   return (
     <div className="space-y-6 md:space-y-8">
       {toast && (
-        <div className="fixed top-4 right-4 z-[200] bg-cyan-600 text-white px-4 py-3 rounded-xl shadow-lg shadow-cyan-200 flex items-center gap-2 animate-in fade-in slide-in-from-top-4 duration-300">
+        <div className={`fixed top-4 right-4 z-[200] ${toastError ? "bg-rose-600 shadow-rose-200" : "bg-cyan-600 shadow-cyan-200"} text-white px-4 py-3 rounded-xl shadow-lg flex items-center gap-2 animate-in fade-in slide-in-from-top-4 duration-300`}>
           <CheckCircle2 size={18} />
           <span className="text-sm font-bold">{toast}</span>
         </div>

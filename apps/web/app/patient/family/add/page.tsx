@@ -1,14 +1,53 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { patientPortalService } from "@/services/patient-portal.service";
+import { useAuth } from "@/lib/auth-context";
+import { getActivePatientProfileId } from "@/lib/api";
+import { isFamilyOwner } from "@/lib/patient-family";
+
+const DOB_MONTHS: Record<string, string> = {
+  Jan: '01',
+  Feb: '02',
+  Mar: '03',
+  Apr: '04',
+  May: '05',
+  Jun: '06',
+  Jul: '07',
+  Aug: '08',
+  Sep: '09',
+  Oct: '10',
+  Nov: '11',
+  Dec: '12',
+};
+
+const DOB_DAY_OPTIONS = Array.from({ length: 31 }, (_, index) => String(index + 1).padStart(2, "0"));
+
+const DOB_MONTH_OPTIONS = Object.keys(DOB_MONTHS);
 
 export default function AddDependentPage() {
   const router = useRouter();
+  const { user, isHydrated } = useAuth();
+  const [activeProfileId, setActiveProfileId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setActiveProfileId(getActivePatientProfileId());
+  }, []);
+
+  // Only the family owner, while their own profile is selected, can add
+  // members; dependents (or a dependent profile) are sent back.
+  const isOwnerProfileActive = !activeProfileId || activeProfileId === user?.userId;
+  const canManageFamily = isFamilyOwner(user) && isOwnerProfileActive;
+
+  useEffect(() => {
+    if (isHydrated && user && !canManageFamily) {
+      router.replace("/patient/select-profile");
+    }
+  }, [canManageFamily, isHydrated, router, user]);
 
   const [relationship, setRelationship] = useState<"child" | "spouse" | "parent" | "other">("child");
-  const [fullName, setFullName] = useState("Dependent Full Name");
+  const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [dobDay, setDobDay] = useState("12");
   const [dobMonth, setDobMonth] = useState("May");
@@ -28,8 +67,26 @@ export default function AddDependentPage() {
 
   // Dynamic age calculation
   const currentYear = new Date().getFullYear();
+  const dobYearOptions = Array.from({ length: currentYear - 1900 + 1 }, (_, index) => String(currentYear - index));
+  const daysInSelectedMonth = new Date(Number(dobYear), Number(DOB_MONTHS[dobMonth] ?? "01"), 0).getDate();
+  const dobDayOptions = DOB_DAY_OPTIONS.slice(0, daysInSelectedMonth);
   const calculatedAge = Math.max(0, currentYear - parseInt(dobYear || "2016", 10));
   const ageClassification = calculatedAge <= 12 ? "Pediatric" : calculatedAge <= 18 ? "Adolescent" : "Adult";
+
+  const keepDayValid = (month: string, year: string) => {
+    const max = new Date(Number(year), Number(DOB_MONTHS[month] ?? "01"), 0).getDate();
+    setDobDay((day) => (Number(day) > max ? String(max).padStart(2, "0") : day));
+  };
+
+  const handleMonthChange = (month: string) => {
+    setDobMonth(month);
+    keepDayValid(month, dobYear);
+  };
+
+  const handleYearChange = (year: string) => {
+    setDobYear(year);
+    keepDayValid(dobMonth, year);
+  };
 
   const toggleSymptom = (key: string) => {
     setSymptoms((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -46,30 +103,41 @@ export default function AddDependentPage() {
     const trimmedName = fullName.trim();
     const trimmedEmail = email.trim();
 
-    if (!trimmedName || !trimmedEmail) {
-      showToast("Please enter the dependent name and email address.");
+    if (!trimmedName) {
+      showToast("Please enter the dependent's full name.");
+      return;
+    }
+
+    if (!trimmedEmail) {
+      showToast("Please enter the dependent's email address.");
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      await patientPortalService.sendFamilyActivationInvite({
+      await patientPortalService.addFamilyMember({
         fullName: trimmedName,
         email: trimmedEmail,
         relationship,
+        dateOfBirth: `${dobYear}-${DOB_MONTHS[dobMonth] ?? '01'}-${dobDay.padStart(2, "0")}`,
+        gender: gender === "boy" ? "male" : "female",
       });
 
-      showToast(`Activation link sent to ${trimmedEmail}.`);
+      showToast(`${trimmedName} has been added to your family.`);
       setTimeout(() => {
         setIsSubmitting(false);
         router.push("/patient/select-profile");
       }, 1200);
     } catch (error: any) {
       setIsSubmitting(false);
-      showToast(error?.response?.data?.message || error?.message || "Unable to send the activation email right now.");
+      showToast(error?.response?.data?.message || error?.message || "Unable to add this family member right now.");
     }
   };
+
+  if (isHydrated && user && !canManageFamily) {
+    return null;
+  }
 
   return (
     <div className="w-full text-[#131b2e] antialiased selection:bg-[#0055c4]/20 font-[Inter,sans-serif]">
@@ -224,10 +292,11 @@ export default function AddDependentPage() {
                   value={dobDay}
                   onChange={(e) => setDobDay(e.target.value)}
                 >
-                  <option value="05">05</option>
-                  <option value="12">12</option>
-                  <option value="18">18</option>
-                  <option value="25">25</option>
+                  {dobDayOptions.map((day) => (
+                    <option key={day} value={day}>
+                      {day}
+                    </option>
+                  ))}
                 </select>
                 <span className="material-symbols-outlined absolute right-2.5 top-3 text-[#727786] pointer-events-none text-[18px]">
                   expand_more
@@ -237,12 +306,13 @@ export default function AddDependentPage() {
                 <select
                   className="w-full h-11 px-3 rounded-xl bg-[#f2f3ff] border border-transparent focus:border-[#0055c4] text-[#131b2e] text-sm font-semibold appearance-none outline-none pr-8 cursor-pointer"
                   value={dobMonth}
-                  onChange={(e) => setDobMonth(e.target.value)}
+                  onChange={(e) => handleMonthChange(e.target.value)}
                 >
-                  <option value="May">May</option>
-                  <option value="Aug">Aug</option>
-                  <option value="Oct">Oct</option>
-                  <option value="Nov">Nov</option>
+                  {DOB_MONTH_OPTIONS.map((month) => (
+                    <option key={month} value={month}>
+                      {month}
+                    </option>
+                  ))}
                 </select>
                 <span className="material-symbols-outlined absolute right-2.5 top-3 text-[#727786] pointer-events-none text-[18px]">
                   expand_more
@@ -252,13 +322,13 @@ export default function AddDependentPage() {
                 <select
                   className="w-full h-11 px-3 rounded-xl bg-[#f2f3ff] border border-transparent focus:border-[#0055c4] text-[#131b2e] text-sm font-semibold appearance-none outline-none pr-8 cursor-pointer"
                   value={dobYear}
-                  onChange={(e) => setDobYear(e.target.value)}
+                  onChange={(e) => handleYearChange(e.target.value)}
                 >
-                  <option value="2016">2016</option>
-                  <option value="2017">2017</option>
-                  <option value="2018">2018</option>
-                  <option value="2019">2019</option>
-                  <option value="2020">2020</option>
+                  {dobYearOptions.map((year) => (
+                    <option key={year} value={year}>
+                      {year}
+                    </option>
+                  ))}
                 </select>
                 <span className="material-symbols-outlined absolute right-2.5 top-3 text-[#727786] pointer-events-none text-[18px]">
                   expand_more
@@ -395,7 +465,7 @@ export default function AddDependentPage() {
               </>
             ) : (
               <>
-                <span>Save &amp; Continue to Eye Check</span>
+                <span>Add Family Member</span>
                 <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
               </>
             )}

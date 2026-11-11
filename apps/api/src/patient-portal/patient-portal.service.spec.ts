@@ -264,6 +264,7 @@ describe('PatientPortalService', () => {
       fullName: 'Sam Doe',
       email: 'dependent@example.com',
       relationship: 'child',
+      sendInvite: true,
     });
 
     expect(result.success).toBe(true);
@@ -309,9 +310,10 @@ describe('PatientPortalService', () => {
       fullName: 'Sam Doe',
       email: 'dependent@example.com',
       relationship: 'child',
+      sendInvite: true,
     });
 
-    const activation = await service.activateFamilyMember(invite.invitationId, {
+    const activation = await service.activateFamilyMember(invite.invitationId!, {
       fullName: 'Sam Doe',
       dateOfBirth: '2015-04-12',
       gender: 'male',
@@ -397,6 +399,555 @@ describe('PatientPortalService', () => {
     }));
   });
 
+  it('refreshes a patient session from a valid patient-refresh token', async () => {
+    const patientRepo = {
+      findOne: jest.fn().mockResolvedValue({
+        id: 'patient-1',
+        firstName: 'Jane',
+        lastName: 'Doe',
+        email: 'patient@example.com',
+        phone: '+2348000000000',
+        clinicId: 'clinic-1',
+        branchId: 'branch-1',
+        portalAccessEnabled: true,
+      }),
+    };
+
+    const jwtService = {
+      verify: jest.fn().mockReturnValue({ sub: 'patient-1', type: 'patient-refresh' }),
+      sign: jest.fn().mockReturnValueOnce('new-access-token').mockReturnValueOnce('new-refresh-token'),
+    };
+
+    const service = new PatientPortalService(
+      patientRepo as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      jwtService as any,
+      {} as any,
+      {} as any,
+    );
+
+    const result = await service.refreshSession('old-refresh-token');
+
+    expect(jwtService.verify).toHaveBeenCalledWith('old-refresh-token');
+    expect(result.tokens).toEqual({
+      accessToken: 'new-access-token',
+      refreshToken: 'new-refresh-token',
+    });
+    expect(result.patient.id).toBe('patient-1');
+  });
+
+  it('rejects refresh tokens that were not issued for the patient portal', async () => {
+    const jwtService = {
+      verify: jest.fn().mockReturnValue({ sub: 'user-1', type: 'user' }),
+      sign: jest.fn(),
+    };
+
+    const service = new PatientPortalService(
+      { findOne: jest.fn() } as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      jwtService as any,
+      {} as any,
+      {} as any,
+    );
+
+    await expect(service.refreshSession('staff-token')).rejects.toThrow(/Invalid refresh token/);
+    expect(jwtService.sign).not.toHaveBeenCalled();
+  });
+
+  it('lists the guardian, dependent profiles and pending invitations for the family group', async () => {
+    const guardian = {
+      id: 'guardian-1',
+      firstName: 'Mary',
+      lastName: 'James',
+      email: 'guardian@example.com',
+      phone: '+2348000000000',
+      guardianId: null,
+      guardianRelationship: 'guardian',
+      portalAccessEnabled: true,
+    };
+    const dependent = {
+      id: 'dependent-1',
+      firstName: 'Sam',
+      lastName: 'James',
+      email: 'sam@example.com',
+      phone: '+2348000000001',
+      guardianId: 'guardian-1',
+      guardianRelationship: 'child',
+      portalAccessEnabled: true,
+    };
+
+    const patientRepo = {
+      findOne: jest.fn().mockImplementation(async ({ where }) => {
+        if (where.id === 'guardian-1') return guardian;
+        return null;
+      }),
+      find: jest.fn().mockResolvedValue([dependent]),
+    };
+
+    const service = new PatientPortalService(
+      patientRepo as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      { sendTemplatedEmail: jest.fn().mockResolvedValue({ success: true }) } as any,
+      {} as any,
+    );
+
+    const result = await service.getFamilyProfiles('guardian-1');
+
+    expect(result.primary?.id).toBe('guardian-1');
+    expect(result.members).toHaveLength(1);
+    expect(result.members[0]).toEqual(
+      expect.objectContaining({ id: 'dependent-1', relationship: 'child', status: 'active' }),
+    );
+    expect(result.pendingInvites).toHaveLength(0);
+  });
+
+  it('creates the dependent profile immediately so it is usable before activation', async () => {
+    const patients: any[] = [
+      {
+        id: 'guardian-1',
+        firstName: 'Mary',
+        lastName: 'James',
+        email: 'guardian@example.com',
+        phone: '+2348000000000',
+        guardianId: null,
+        guardianRelationship: 'guardian',
+        portalAccessEnabled: true,
+      },
+    ];
+
+    const patientRepo = {
+      findOne: jest.fn(async ({ where }) => {
+        if (where.id) return patients.find((patient) => patient.id === where.id) ?? null;
+        if (where.email) return patients.find((patient) => patient.email === where.email) ?? null;
+        if (where.phone) return patients.find((patient) => patient.phone === where.phone) ?? null;
+        return null;
+      }),
+      find: jest.fn(async ({ where }) =>
+        patients.filter((patient) => patient.guardianId === where.guardianId),
+      ),
+      create: jest.fn((dto) => dto),
+      save: jest.fn(async (dto) => {
+        const saved = dto.id ? dto : { ...dto, id: `dependent-${patients.length}` };
+        const index = patients.findIndex((patient) => patient.id === saved.id);
+        if (index >= 0) {
+          patients[index] = saved;
+        } else {
+          patients.push(saved);
+        }
+        return saved;
+      }),
+    };
+
+    const service = new PatientPortalService(
+      patientRepo as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      { sendTemplatedEmail: jest.fn().mockResolvedValue({ success: true }) } as any,
+      {} as any,
+    );
+
+    const invite = await service.createFamilyMemberInvite('guardian-1', {
+      fullName: 'Joy Johnson',
+      email: 'joy@example.com',
+      relationship: 'child',
+      dateOfBirth: '2016-05-12',
+      gender: 'female',
+    });
+
+    expect(invite.patientId).toBeTruthy();
+    expect(patientRepo.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        firstName: 'Joy',
+        lastName: 'Johnson',
+        email: 'joy@example.com',
+        guardianId: 'guardian-1',
+        guardianRelationship: 'child',
+        portalAccessEnabled: false,
+      }),
+    );
+
+    const result = await service.getFamilyProfiles('guardian-1');
+
+    expect(result.members).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: invite.patientId, fullName: 'Joy Johnson', status: 'pending' }),
+      ]),
+    );
+    expect(result.pendingInvites).toHaveLength(0);
+  });
+
+  it('does not email the activation link when a family member is added', async () => {
+    const patients: any[] = [
+      {
+        id: 'guardian-1',
+        firstName: 'Mary',
+        lastName: 'James',
+        email: 'guardian@example.com',
+        guardianRelationship: 'guardian',
+        portalAccessEnabled: true,
+      },
+    ];
+
+    const patientRepo = {
+      findOne: jest.fn(async ({ where }) => {
+        if (where.id) return patients.find((patient) => patient.id === where.id) ?? null;
+        if (where.email) return patients.find((patient) => patient.email === where.email) ?? null;
+        return null;
+      }),
+      find: jest.fn(async ({ where }) =>
+        patients.filter((patient) => patient.guardianId === where.guardianId),
+      ),
+      create: jest.fn((dto) => dto),
+      save: jest.fn(async (dto) => {
+        const saved = dto.id ? dto : { ...dto, id: `dependent-${patients.length}` };
+        patients.push(saved);
+        return saved;
+      }),
+    };
+    const emailService = { sendTemplatedEmail: jest.fn() };
+    const invitationRepo = {
+      update: jest.fn(async () => ({})),
+      create: jest.fn((dto) => dto),
+      save: jest.fn(async (dto) => dto),
+      find: jest.fn(async () => []),
+      findOne: jest.fn(async () => null),
+      delete: jest.fn(async () => ({})),
+    };
+
+    const service = new PatientPortalService(
+      patientRepo as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      emailService as any,
+      {} as any,
+      undefined,
+      undefined,
+      invitationRepo as any,
+    );
+
+    const result = await service.createFamilyMemberInvite('guardian-1', {
+      fullName: 'Joy Johnson',
+      email: 'joy@example.com',
+      relationship: 'child',
+    });
+
+    expect(result.patientId).toBeTruthy();
+    expect(result.emailSent).toBe(false);
+    expect(result.invitationId).toBeUndefined();
+    expect(emailService.sendTemplatedEmail).not.toHaveBeenCalled();
+    expect(invitationRepo.save).not.toHaveBeenCalled();
+    expect(patients).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ email: 'joy@example.com', guardianId: 'guardian-1', portalAccessEnabled: false }),
+      ]),
+    );
+  });
+
+  it('sends the activation invite only when the guardian requests it', async () => {
+    const patients: any[] = [
+      {
+        id: 'guardian-1',
+        firstName: 'Mary',
+        lastName: 'James',
+        email: 'guardian@example.com',
+        guardianRelationship: 'guardian',
+        portalAccessEnabled: true,
+      },
+      {
+        id: 'stranger-1',
+        firstName: 'Not',
+        lastName: 'Family',
+        email: 'stranger@example.com',
+        portalAccessEnabled: true,
+      },
+    ];
+
+    const patientRepo = {
+      findOne: jest.fn(async ({ where }) => {
+        if (where.id) return patients.find((patient) => patient.id === where.id) ?? null;
+        if (where.email) return patients.find((patient) => patient.email === where.email) ?? null;
+        return null;
+      }),
+      find: jest.fn(async ({ where }) =>
+        patients.filter((patient) => patient.guardianId === where.guardianId),
+      ),
+      create: jest.fn((dto) => dto),
+      save: jest.fn(async (dto) => {
+        const saved = dto.id ? dto : { ...dto, id: `dependent-${patients.length}` };
+        const index = patients.findIndex((patient) => patient.id === saved.id);
+        if (index >= 0) {
+          patients[index] = saved;
+        } else {
+          patients.push(saved);
+        }
+        return saved;
+      }),
+    };
+    const emailService = { sendTemplatedEmail: jest.fn().mockResolvedValue({ success: true }) };
+    const invitationRepo = {
+      update: jest.fn(async () => ({})),
+      create: jest.fn((dto) => dto),
+      save: jest.fn(async (dto) => dto),
+      find: jest.fn(async () => []),
+      findOne: jest.fn(async () => null),
+      delete: jest.fn(async () => ({})),
+    };
+
+    const service = new PatientPortalService(
+      patientRepo as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      emailService as any,
+      {} as any,
+      undefined,
+      undefined,
+      invitationRepo as any,
+    );
+
+    const added = await service.createFamilyMemberInvite('guardian-1', {
+      fullName: 'Joy Johnson',
+      email: 'joy@example.com',
+      relationship: 'child',
+    });
+    expect(emailService.sendTemplatedEmail).not.toHaveBeenCalled();
+
+    const invited = await service.sendFamilyActivationInvite('guardian-1', added.patientId);
+
+    expect(emailService.sendTemplatedEmail).toHaveBeenCalledTimes(1);
+    expect(invited.invitationId).toBeTruthy();
+    expect(invited.emailSent).toBe(true);
+    expect(invitationRepo.save).toHaveBeenCalledWith(
+      expect.objectContaining({ patientId: added.patientId, email: 'joy@example.com' }),
+    );
+
+    await expect(service.sendFamilyActivationInvite('guardian-1', 'stranger-1')).rejects.toThrow(
+      /access to this family profile/i,
+    );
+  });
+
+  it('activates the profile created at invite time instead of creating a duplicate', async () => {
+    const patients: any[] = [
+      {
+        id: 'guardian-1',
+        firstName: 'Mary',
+        lastName: 'James',
+        email: 'guardian@example.com',
+        guardianRelationship: 'guardian',
+        portalAccessEnabled: true,
+      },
+    ];
+
+    const patientRepo = {
+      findOne: jest.fn(async ({ where }) => {
+        if (where.id) return patients.find((patient) => patient.id === where.id) ?? null;
+        if (where.email) return patients.find((patient) => patient.email === where.email) ?? null;
+        if (where.phone) return patients.find((patient) => patient.phone === where.phone) ?? null;
+        return null;
+      }),
+      find: jest.fn(async ({ where }) =>
+        patients.filter((patient) => patient.guardianId === where.guardianId),
+      ),
+      create: jest.fn((dto) => dto),
+      save: jest.fn(async (dto) => {
+        const saved = dto.id ? dto : { ...dto, id: `dependent-${patients.length}` };
+        const index = patients.findIndex((patient) => patient.id === saved.id);
+        if (index >= 0) {
+          patients[index] = saved;
+        } else {
+          patients.push(saved);
+        }
+        return saved;
+      }),
+    };
+
+    const service = new PatientPortalService(
+      patientRepo as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      { sendTemplatedEmail: jest.fn().mockResolvedValue({ success: true }) } as any,
+      {} as any,
+    );
+
+    const invite = await service.createFamilyMemberInvite('guardian-1', {
+      fullName: 'Joy Johnson',
+      email: 'joy@example.com',
+      relationship: 'child',
+      dateOfBirth: '2016-05-12',
+      gender: 'female',
+      sendInvite: true,
+    });
+
+    const activation = await service.activateFamilyMember(invite.invitationId!, {
+      fullName: 'Joy Johnson',
+      dateOfBirth: '2016-05-12',
+      gender: 'female',
+      phone: '+2348000000009',
+      password: 'newPassword123',
+    });
+
+    expect(activation.success).toBe(true);
+    expect(activation.patient.id).toBe(invite.patientId);
+    expect(activation.patient.portalAccessEnabled).toBe(true);
+    expect(patients.filter((patient) => patient.email === 'joy@example.com')).toHaveLength(1);
+  });
+
+  it('lets a guardian switch to a family profile but rejects unrelated patients', async () => {
+    const patients = [
+      { id: 'guardian-1', guardianId: null, portalAccessEnabled: true },
+      { id: 'dependent-1', guardianId: 'guardian-1', portalAccessEnabled: false },
+      { id: 'stranger-1', guardianId: null, portalAccessEnabled: true },
+    ];
+
+    const patientRepo = {
+      findOne: jest.fn(async ({ where }) => patients.find((patient) => patient.id === where.id) ?? null),
+    };
+
+    const service = new PatientPortalService(patientRepo as any, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any);
+
+    await expect(service.resolvePatientId('guardian-1', 'dependent-1')).resolves.toBe('dependent-1');
+    await expect(service.resolvePatientId('guardian-1')).resolves.toBe('guardian-1');
+    await expect(service.resolvePatientId('guardian-1', 'stranger-1')).rejects.toThrow(/access to this family profile/i);
+  });
+
+  it('resolves the guardian group when a dependent views the family list', async () => {
+    const guardian = {
+      id: 'guardian-1',
+      firstName: 'Mary',
+      lastName: 'James',
+      email: 'guardian@example.com',
+      guardianRelationship: 'guardian',
+    };
+    const dependent = {
+      id: 'dependent-1',
+      firstName: 'Sam',
+      lastName: 'James',
+      email: 'sam@example.com',
+      guardianId: 'guardian-1',
+      guardianRelationship: 'child',
+    };
+
+    const patientRepo = {
+      findOne: jest.fn().mockImplementation(async ({ where }) => {
+        if (where.id === 'dependent-1') return dependent;
+        if (where.id === 'guardian-1') return guardian;
+        return null;
+      }),
+      find: jest.fn().mockResolvedValue([dependent]),
+    };
+
+    const service = new PatientPortalService(
+      patientRepo as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+    );
+
+    const result = await service.getFamilyProfiles('dependent-1');
+
+    expect(result.primary?.id).toBe('guardian-1');
+    expect(result.members.map((member) => member.id)).toEqual(['dependent-1']);
+  });
+
+  it('persists family invitations so pending members survive an API restart', async () => {
+    const invitations: any[] = [];
+    const invitationRepo = {
+      update: jest.fn(async () => ({})),
+      create: jest.fn((dto) => dto),
+      save: jest.fn(async (dto) => {
+        invitations.push(dto);
+        return dto;
+      }),
+      find: jest.fn(async ({ where }) =>
+        invitations.filter((invitation) => invitation.guardianId === where.guardianId && !invitation.used),
+      ),
+      findOne: jest.fn(async ({ where }) => invitations.find((invitation) => invitation.token === where.token) ?? null),
+      delete: jest.fn(async () => ({})),
+    };
+
+    const guardian = {
+      id: 'guardian-1',
+      firstName: 'Mary',
+      lastName: 'James',
+      email: 'guardian@example.com',
+      guardianRelationship: 'guardian',
+    };
+    const patientRepo = {
+      findOne: jest.fn().mockImplementation(async ({ where }) => (where.id === 'guardian-1' ? guardian : null)),
+      find: jest.fn().mockResolvedValue([]),
+      create: jest.fn((dto) => dto),
+      save: jest.fn(async (dto) => ({ ...dto, id: 'dependent-123' })),
+    };
+
+    const service = new PatientPortalService(
+      patientRepo as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      { sendTemplatedEmail: jest.fn().mockResolvedValue({ success: true }) } as any,
+      {} as any,
+      undefined,
+      undefined,
+      invitationRepo as any,
+    );
+
+    const invite = await service.createFamilyMemberInvite('guardian-1', {
+      fullName: 'Joy Johnson',
+      email: 'joy@example.com',
+      relationship: 'child',
+      sendInvite: true,
+    });
+
+    expect(invitationRepo.save).toHaveBeenCalledWith(
+      expect.objectContaining({ guardianId: 'guardian-1', email: 'joy@example.com', used: false }),
+    );
+
+    const result = await service.getFamilyProfiles('guardian-1');
+
+    expect(result.pendingInvites).toHaveLength(0);
+    expect(result.members).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ fullName: 'Joy Johnson', email: 'joy@example.com', status: 'pending' }),
+      ]),
+    );
+  });
+
   it('requires a real SMS provider in production and blocks silent debugging', async () => {
     const originalNodeEnv = process.env.NODE_ENV;
     const originalAllowOtpDebug = process.env.ALLOW_OTP_DEBUG;
@@ -436,5 +987,86 @@ describe('PatientPortalService', () => {
         process.env.ALLOW_OTP_DEBUG = originalAllowOtpDebug;
       }
     }
+  });
+
+  it('rejects adding family members from a dependent profile', async () => {
+    const patientRepo = {
+      findOne: jest.fn(async ({ where }) => {
+        if (where.id === 'dependent-1') {
+          return { id: 'dependent-1', guardianId: 'guardian-1', portalAccessEnabled: true };
+        }
+        return null;
+      }),
+    };
+
+    const service = new PatientPortalService(
+      patientRepo as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+    );
+
+    await expect(
+      service.createFamilyMemberInvite('dependent-1', {
+        fullName: 'New Member',
+        email: 'new@example.com',
+        relationship: 'child',
+      }),
+    ).rejects.toThrow(/only the family owner/i);
+  });
+
+  it('returns only the selected profile lens orders', async () => {
+    const lensOrders = [
+      { id: 'lens-1', patientId: 'guardian-1', lensType: 'Single vision' },
+      { id: 'lens-2', patientId: 'dependent-1', lensType: 'Bifocal' },
+    ];
+    const lensOrderRepo = {
+      find: jest.fn(async ({ where }) => lensOrders.filter((order) => order.patientId === where.patientId)),
+    };
+
+    const service = new PatientPortalService(
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      undefined,
+      undefined,
+      undefined,
+      lensOrderRepo as any,
+    );
+
+    await expect(service.getMyLensOrders('dependent-1')).resolves.toEqual([
+      expect.objectContaining({ id: 'lens-2', patientId: 'dependent-1' }),
+    ]);
+    expect(lensOrderRepo.find).toHaveBeenCalledWith({
+      where: { patientId: 'dependent-1' },
+      order: { createdAt: 'DESC' },
+    });
+  });
+
+  it('returns an empty lens order list when the repository is unavailable', async () => {
+    const service = new PatientPortalService(
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+    );
+
+    await expect(service.getMyLensOrders('dependent-1')).resolves.toEqual([]);
   });
 });

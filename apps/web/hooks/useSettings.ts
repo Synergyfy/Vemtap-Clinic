@@ -2,6 +2,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth-context";
 import {
   getSettingsMap, getCategorySettings, setSetting, bulkSetSettings,
+  getMySettings, bulkSetMySettings, setMySetting,
+  getPlatformSettings, bulkSetPlatformSettings,
   listWorkflows, createWorkflow, updateWorkflow, deleteWorkflow,
   listTemplates, createTemplate, updateTemplate, deleteTemplate,
   type SetSettingData, type Workflow, type Template,
@@ -12,6 +14,8 @@ import {
 const SETTINGS_KEYS = {
   all: (clinicId: string) => ["settings", "all", clinicId] as const,
   category: (clinicId: string, category: string) => ["settings", "category", clinicId, category] as const,
+  mine: ["settings", "me"] as const,
+  platform: ["settings", "platform"] as const,
   workflows: (clinicId: string) => ["settings", "workflows", clinicId] as const,
   templates: (clinicId: string) => ["settings", "templates", clinicId] as const,
 };
@@ -146,6 +150,61 @@ export function useBulkSetSettings() {
       if (user?.clinicId) {
         qc.invalidateQueries({ queryKey: SETTINGS_KEYS.all(user.clinicId) });
       }
+    },
+  });
+}
+
+// ─── Personal preferences ───────────────────────────────────────────────────
+
+export function useMySettings() {
+  const { user, isAuthenticated } = useAuth();
+  return useQuery({
+    queryKey: SETTINGS_KEYS.mine,
+    queryFn: getMySettings,
+    enabled: isAuthenticated && !!user,
+    staleTime: 30_000,
+  });
+}
+
+export function useSetMySetting() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (dto: SetSettingData) => setMySetting(dto),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: SETTINGS_KEYS.mine });
+    },
+  });
+}
+
+export function useBulkSetMySettings() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (settings: SetSettingData[]) => bulkSetMySettings(settings),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: SETTINGS_KEYS.mine });
+    },
+  });
+}
+
+// ─── Platform settings ──────────────────────────────────────────────────────
+
+export function usePlatformSettings() {
+  const { user } = useAuth();
+  const roles = user?.roles ?? [];
+  const canManage = roles.includes("super_admin") || roles.includes("admin");
+  return useQuery({
+    queryKey: SETTINGS_KEYS.platform,
+    queryFn: getPlatformSettings,
+    enabled: canManage,
+  });
+}
+
+export function useBulkSetPlatformSettings() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (settings: SetSettingData[]) => bulkSetPlatformSettings(settings),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: SETTINGS_KEYS.platform });
     },
   });
 }

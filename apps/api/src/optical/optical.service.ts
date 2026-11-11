@@ -6,6 +6,9 @@ import { LensOrder } from '../entities/lens-order.entity';
 import { OpticalProductionItem, ProductionStage } from '../entities/optical-production-item.entity';
 import { OpticalSale, SaleStatus, SalePaymentMethod } from '../entities/optical-sale.entity';
 import { CreateOpticalItemDto, UpdateOpticalItemDto, CreateLensOrderDto, UpdateLensOrderDto } from './dto';
+import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationType } from '../entities/notification.entity';
+import { UserRole } from '../entities/user.entity';
 
 @Injectable()
 export class OpticalService {
@@ -18,6 +21,7 @@ export class OpticalService {
     private productionRepository: Repository<OpticalProductionItem>,
     @InjectRepository(OpticalSale)
     private saleRepository: Repository<OpticalSale>,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async createItem(dto: CreateOpticalItemDto): Promise<OpticalInventoryItem> {
@@ -50,7 +54,32 @@ export class OpticalService {
 
   async createLensOrder(dto: CreateLensOrderDto): Promise<LensOrder> {
     const order = this.orderRepository.create(dto);
-    return this.orderRepository.save(order);
+    const saved = await this.orderRepository.save(order);
+
+    try {
+      await this.notificationsService.notifyClinicRoles(
+        saved.clinicId,
+        [UserRole.OPTOMETRIST, UserRole.CLINIC_ADMIN, UserRole.ADMIN],
+        {
+          title: 'New lens order',
+          message: `A lens order (${saved.lensType}) was created for a patient.`,
+          type: NotificationType.SYSTEM,
+        },
+      );
+      if (saved.patientId) {
+        await this.notificationsService.create({
+          title: 'Lens order created',
+          message: `Your lens order for ${saved.lensType} has been created.`,
+          type: NotificationType.SYSTEM,
+          patientId: saved.patientId,
+          clinicId: saved.clinicId,
+        });
+      }
+    } catch {
+      // Notifications are best-effort.
+    }
+
+    return saved;
   }
 
   async findAllLensOrders(clinicId?: string): Promise<LensOrder[]> {
@@ -63,7 +92,23 @@ export class OpticalService {
     const order = await this.orderRepository.findOne({ where: { id } });
     if (!order) throw new NotFoundException('Lens order not found');
     Object.assign(order, dto);
-    return this.orderRepository.save(order);
+    const saved = await this.orderRepository.save(order);
+
+    if (dto.status && saved.patientId) {
+      try {
+        await this.notificationsService.create({
+          title: 'Lens order updated',
+          message: `Your lens order is now ${String(saved.status).replace(/_/g, ' ')}.`,
+          type: NotificationType.SYSTEM,
+          patientId: saved.patientId,
+          clinicId: saved.clinicId,
+        });
+      } catch {
+        // Notifications are best-effort.
+      }
+    }
+
+    return saved;
   }
 
   async updateProductionStage(id: string, stage: ProductionStage): Promise<OpticalProductionItem> {

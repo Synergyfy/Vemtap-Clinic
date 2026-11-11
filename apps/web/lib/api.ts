@@ -1,5 +1,16 @@
 import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios';
-import { getAccessToken, clearAuth, useAuthState } from './auth-state';
+import { getAccessToken, clearAuth, useAuthState, normalizeAuthUser, type AuthUser } from './auth-state';
+
+declare module 'axios' {
+  export interface AxiosRequestConfig {
+    /**
+     * Set on calls that must act as the signed-in account itself, not as the
+     * family profile currently selected in the UI. Used by the auth bootstrap
+     * so the session identity is never overwritten by X-Patient-Id.
+     */
+    skipPatientProfileHeader?: boolean;
+  }
+}
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api';
 
@@ -63,6 +74,102 @@ export const shouldSkipAuthHeader = (url: string) => {
   return isPublicAuthEndpoint(normalized);
 };
 
+const isPatientApiRequest = (url: string) => url.toLowerCase().includes('/patient-portal/');
+
+export const ACTIVE_PATIENT_PROFILE_KEY = 'vemtap_active_profile';
+
+const PATIENT_PROFILE_SWITCH_EXCLUSIONS = [
+  '/patient-portal/login',
+  '/patient-portal/register',
+  '/patient-portal/refresh',
+  '/patient-portal/logout',
+  '/patient-portal/family',
+  '/patient-portal/otp/',
+  '/patient-portal/email-otp/',
+];
+
+export const ACTIVE_PATIENT_PROFILE_EVENT = 'vemtap:active-patient-profile-changed';
+
+export interface ActivePatientProfile {
+  id: string;
+  name?: string;
+  fullName?: string;
+  role?: string;
+}
+
+export const setActivePatientProfile = (profile: ActivePatientProfile | null) => {
+  if (typeof window === 'undefined') return;
+  try {
+    if (!profile) {
+      window.localStorage.removeItem(ACTIVE_PATIENT_PROFILE_KEY);
+    } else {
+      window.localStorage.setItem(ACTIVE_PATIENT_PROFILE_KEY, JSON.stringify(profile));
+    }
+  } catch {
+    // ignore storage failures (private mode, quota)
+  }
+  window.dispatchEvent(new Event(ACTIVE_PATIENT_PROFILE_EVENT));
+};
+
+export const subscribeToActivePatientProfile = (onChange: () => void) => {
+  if (typeof window === 'undefined') return () => undefined;
+
+  const handleStorage = (event: StorageEvent) => {
+    if (event.key === ACTIVE_PATIENT_PROFILE_KEY) onChange();
+  };
+
+  window.addEventListener(ACTIVE_PATIENT_PROFILE_EVENT, onChange);
+  window.addEventListener('storage', handleStorage);
+
+  return () => {
+    window.removeEventListener(ACTIVE_PATIENT_PROFILE_EVENT, onChange);
+    window.removeEventListener('storage', handleStorage);
+  };
+};
+
+export const getActivePatientProfileId = (): string | null => {
+  if (typeof window === 'undefined') return null;
+
+  try {
+    const raw = window.localStorage.getItem(ACTIVE_PATIENT_PROFILE_KEY);
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw);
+    const id = typeof parsed === 'string' ? parsed : parsed?.id;
+    return typeof id === 'string' && id.trim() ? id.trim() : null;
+  } catch {
+    return null;
+  }
+};
+
+// Patient auth endpoints must never trigger a refresh-and-retry loop.
+const PATIENT_NO_REFRESH_ENDPOINTS = [
+  '/patient-portal/login',
+  '/patient-portal/register',
+  '/patient-portal/refresh',
+  '/patient-portal/family/activate',
+  '/patient-portal/otp/',
+  '/patient-portal/email-otp/',
+];
+
+const patientToAuthUser = (patient: Record<string, any> | null | undefined): AuthUser | null => {
+  if (!patient?.id) return null;
+
+  return normalizeAuthUser({
+    userId: patient.id,
+    email: patient.email ?? '',
+    firstName: patient.firstName,
+    lastName: patient.lastName,
+    phone: patient.phone,
+    roles: ['patient'],
+    clinicId: patient.clinicId ?? '',
+    branchId: patient.branchId ?? undefined,
+    guardianId: patient.guardianId ?? undefined,
+    guardianRelationship: patient.guardianRelationship ?? undefined,
+    accountType: patient.accountType,
+  });
+};
+
 class ApiClient {
   private client: AxiosInstance | null = null;
   private isRefreshing = false;
@@ -102,6 +209,25 @@ class ApiClient {
           if (token && config.headers) {
             config.headers.Authorization = `Bearer ${token}`;
           }
+
+          const normalizedRequestUrl = url.toLowerCase();
+          const isPatientProfileScopedRequest =
+            isPatientApiRequest(url) || normalizedRequestUrl.includes('/notifications');
+          const isPatientSession =
+            Array.isArray(useAuthState.getState().user?.roles) &&
+            useAuthState.getState().user!.roles.includes('patient');
+
+          if (
+            isPatientProfileScopedRequest &&
+            !config.skipPatientProfileHeader &&
+            isPatientSession &&
+            !PATIENT_PROFILE_SWITCH_EXCLUSIONS.some((endpoint) => normalizedRequestUrl.includes(endpoint))
+          ) {
+            const activePatientId = getActivePatientProfileId();
+            if (activePatientId) {
+              config.headers['X-Patient-Id'] = activePatientId;
+            }
+          }
           return config;
         },
         (error) => Promise.reject(error),
@@ -113,11 +239,14 @@ class ApiClient {
           const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
           const url = originalRequest.url || '';
+          const normalizedUrl = url.toLowerCase();
+          const isPatientRequest = isPatientApiRequest(url);
           const isAuthEndpoint =
             url.includes('/auth/refresh') ||
             url.includes('/auth/login') ||
             url.includes('/auth/logout') ||
-            url.includes('/patient-portal/logout');
+            url.includes('/patient-portal/logout') ||
+            PATIENT_NO_REFRESH_ENDPOINTS.some((endpoint) => normalizedUrl.includes(endpoint));
 
           if (error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
             if (this.isRefreshing) {
@@ -137,10 +266,14 @@ class ApiClient {
             this.isRefreshing = true;
 
             try {
-              // Use plain axios call to avoid self-intercepting 401 into an infinite loop
-              const response = await axios.post(`${API_URL}/auth/refresh`, {}, { withCredentials: true });
+              // Use plain axios call to avoid self-intercepting 401 into an infinite loop.
+              // Patients have their own refresh cookie/endpoint; staff use /auth/refresh.
+              const refreshUrl = isPatientRequest ? `${API_URL}/patient-portal/refresh` : `${API_URL}/auth/refresh`;
+              const response = await axios.post(refreshUrl, {}, { withCredentials: true });
               const newAccessToken = response.data?.accessToken;
-              const refreshedUser = response.data?.user ?? useAuthState.getState().user;
+              const refreshedUser = isPatientRequest
+                ? patientToAuthUser(response.data?.patient) ?? useAuthState.getState().user
+                : response.data?.user ?? useAuthState.getState().user;
 
               if (newAccessToken && refreshedUser) {
                 useAuthState.getState().setAuth(newAccessToken, refreshedUser);

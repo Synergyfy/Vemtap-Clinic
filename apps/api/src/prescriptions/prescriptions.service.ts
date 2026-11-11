@@ -4,12 +4,16 @@ import { Repository } from 'typeorm';
 import { Prescription } from '../entities/prescription.entity';
 import { MedicalRecord } from '../entities/medical-record.entity';
 import { CreatePrescriptionDto, UpdatePrescriptionDto } from './dto';
+import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationType } from '../entities/notification.entity';
+import { UserRole } from '../entities/user.entity';
 
 @Injectable()
 export class PrescriptionsService {
   constructor(
     @InjectRepository(Prescription)
     private prescriptionRepository: Repository<Prescription>,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async create(dto: CreatePrescriptionDto): Promise<Prescription> {
@@ -19,7 +23,36 @@ export class PrescriptionsService {
     }
 
     const prescription = this.prescriptionRepository.create({ ...dto, clinicId });
-    return this.prescriptionRepository.save(prescription);
+    const saved = await this.prescriptionRepository.save(prescription);
+
+    try {
+      await this.notificationsService.notifyClinicRoles(
+        clinicId,
+        [UserRole.PHARMACIST, UserRole.CLINIC_ADMIN, UserRole.ADMIN],
+        {
+          title: 'New prescription',
+          message: `${saved.medication} (${saved.dosage}) was prescribed for a patient.`,
+          type: NotificationType.PRESCRIPTION,
+        },
+      );
+
+      const record = await this.prescriptionRepository.manager
+        .getRepository(MedicalRecord)
+        .findOne({ where: { id: saved.medicalRecordId }, select: ['patientId'] });
+      if (record?.patientId) {
+        await this.notificationsService.create({
+          title: 'New prescription',
+          message: `A prescription for ${saved.medication} (${saved.dosage}) was added to your records.`,
+          type: NotificationType.PRESCRIPTION,
+          patientId: record.patientId,
+          clinicId,
+        });
+      }
+    } catch {
+      // Notifications are best-effort.
+    }
+
+    return saved;
   }
 
   private async resolveClinicId(medicalRecordId: string): Promise<string | null> {

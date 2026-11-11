@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsEmail, IsUUID, MinLength, MaxLength, IsNumber, IsEnum, IsIn } from 'class-validator';
+import { IsString, IsOptional, IsEmail, IsUUID, MinLength, MaxLength, IsNumber, IsEnum, IsIn, IsBoolean } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class PatientLoginDto {
@@ -130,6 +130,30 @@ export class CreateFamilyMemberInviteDto {
   @IsString()
   @IsIn(['child', 'spouse', 'parent', 'other'])
   relationship: 'child' | 'spouse' | 'parent' | 'other';
+
+  @ApiPropertyOptional({ example: '2015-04-12' })
+  @IsOptional()
+  @IsString()
+  dateOfBirth?: string;
+
+  @ApiPropertyOptional({ example: 'male', enum: ['male', 'female', 'other'] })
+  @IsOptional()
+  @IsIn(['male', 'female', 'other'])
+  gender?: string;
+
+  @ApiPropertyOptional({ example: '+2348000000001' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  phone?: string;
+
+  @ApiPropertyOptional({
+    example: false,
+    description: 'Set to true to also email the activation link right away.',
+  })
+  @IsOptional()
+  @IsBoolean()
+  sendInvite?: boolean;
 }
 
 export class ActivateFamilyMemberDto {

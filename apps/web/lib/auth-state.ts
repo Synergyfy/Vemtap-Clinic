@@ -113,13 +113,20 @@ export const useAuthState = create<AuthState>()(
           isAuthenticated: true,
           isLoggedOut: false,
         }),
-      clearAuth: () =>
+      clearAuth: () => {
+        if (typeof window !== 'undefined') {
+          window.localStorage.removeItem('vemtap_active_profile');
+          // Keep patient queries in sync with the cleared profile selection
+          // (same event dispatched by setActivePatientProfile in lib/api.ts).
+          window.dispatchEvent(new Event('vemtap:active-patient-profile-changed'));
+        }
         set({
           accessToken: null,
           user: null,
           isAuthenticated: false,
           isLoggedOut: true,
-        }),
+        });
+      },
       setHydrated: (isHydrated: boolean) => set({ isHydrated }),
     }),
     {

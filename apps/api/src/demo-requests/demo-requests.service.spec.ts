@@ -1,10 +1,14 @@
 import { DemoRequestsService } from './demo-requests.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 describe('DemoRequestsService', () => {
-  it('stores a submitted demo request and returns the saved payload', () => {
-    const service = new DemoRequestsService();
+  it('stores a submitted demo request and returns the saved payload', async () => {
+    const notifications = {
+      notifySuperAdmins: jest.fn().mockResolvedValue([]),
+    } as unknown as NotificationsService;
+    const service = new DemoRequestsService(notifications);
 
-    const result = service.create({
+    const result = await service.create({
       clinicType: 'eye-clinic',
       clinicName: 'BrightSight Eye Clinic',
       branchCount: '2-5',
@@ -19,5 +23,6 @@ describe('DemoRequestsService', () => {
     expect(result.success).toBe(true);
     expect(result.data.email).toBe('ada@brightsight.example');
     expect(service.findAll()).toHaveLength(1);
+    expect(notifications.notifySuperAdmins).toHaveBeenCalledTimes(1);
   });
 });

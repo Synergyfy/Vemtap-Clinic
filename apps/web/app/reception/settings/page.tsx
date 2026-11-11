@@ -6,11 +6,16 @@ import { cn } from "@/lib/utils";
 import { Modal } from "@/components/ui/modal";
 import { User, Bell, Shield, Save, LogOut, CheckCircle2, Eye, EyeOff, Layout, Users, Clock } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
+import { useUserPreferences } from "@/hooks/useUserPreferences";
+import { api } from "@/lib/api";
 
 export default function ReceptionSettings() {
   const [toast, setToast] = useState("");
+  const [toastError, setToastError] = useState(false);
   const router = useRouter();
-  const { user, logout: logoutUser } = useAuth();
+  const { user, logout: logoutUser, updateProfile } = useAuth();
+  const { prefs, save, isLoaded: prefsLoaded } = useUserPreferences();
+  const [prefsHydrated, setPrefsHydrated] = useState(false);
   const liveDisplayName = user ? [user.firstName, user.lastName].filter(Boolean).join(" ").trim() || "User" : "User";
   const liveRoleLabel = user?.roles?.[0] ? user.roles[0].replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase()) : "";
 
@@ -44,7 +49,114 @@ export default function ReceptionSettings() {
   const [showPw, setShowPw] = useState(false);
   const [sessionTimeout, setSessionTimeout] = useState("15 minutes");
 
-  const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 3000); };
+  const showToast = (msg: string, isError = false) => {
+    setToastError(isError);
+    setToast(msg);
+    setTimeout(() => setToast(""), 3000);
+  };
+
+  useEffect(() => {
+    if (!prefsLoaded || prefsHydrated) return;
+    setPrefsHydrated(true);
+
+    const notifications = prefs["reception.notifications"] as
+      | { newPatient?: boolean; appointments?: boolean; hmoPending?: boolean; queueAlert?: boolean; sound?: boolean }
+      | undefined;
+    if (notifications) {
+      if (typeof notifications.newPatient === "boolean") setNewPatientNotif(notifications.newPatient);
+      if (typeof notifications.appointments === "boolean") setAppointmentNotif(notifications.appointments);
+      if (typeof notifications.hmoPending === "boolean") setHmoPendingNotif(notifications.hmoPending);
+      if (typeof notifications.queueAlert === "boolean") setQueueAlertNotif(notifications.queueAlert);
+      if (typeof notifications.sound === "boolean") setSoundNotif(notifications.sound);
+    }
+
+    const preferences = prefs["reception.preferences"] as
+      | { defaultView?: string; itemsPerPage?: string; sessionTimeout?: string }
+      | undefined;
+    if (preferences) {
+      if (typeof preferences.defaultView === "string") setDefaultView(preferences.defaultView);
+      if (typeof preferences.itemsPerPage === "string") setItemsPerPage(preferences.itemsPerPage);
+      if (typeof preferences.sessionTimeout === "string") setSessionTimeout(preferences.sessionTimeout);
+    }
+  }, [prefsLoaded, prefs, prefsHydrated]);
+
+  const persist = async (patch: Record<string, any>, successMessage: string) => {
+    try {
+      await save(patch);
+      showToast(successMessage);
+      return true;
+    } catch (err: any) {
+      showToast(err?.response?.data?.message || "Could not save settings. Please try again.", true);
+      return false;
+    }
+  };
+
+  const saveProfile = async () => {
+    const name = profName.trim();
+    if (!name) {
+      showToast("Please enter your full name.", true);
+      return;
+    }
+    const [firstName, ...rest] = name.split(/\s+/);
+    try {
+      await updateProfile({
+        firstName,
+        lastName: rest.join(" "),
+        email: profEmail.trim(),
+        phone: profPhone.trim(),
+      });
+      showToast("Profile updated");
+      setProfileModal(false);
+    } catch (err: any) {
+      showToast(err?.response?.data?.message || "Could not update your profile.", true);
+    }
+  };
+
+  const saveNotifications = async () => {
+    const saved = await persist(
+      {
+        "reception.notifications": {
+          newPatient: newPatientNotif,
+          appointments: appointmentNotif,
+          hmoPending: hmoPendingNotif,
+          queueAlert: queueAlertNotif,
+          sound: soundNotif,
+        },
+      },
+      "Notification preferences saved",
+    );
+    if (saved) setNotifModal(false);
+  };
+
+  const savePreferences = async (next: { defaultView?: string; itemsPerPage?: string; sessionTimeout?: string }, message: string) => {
+    const merged = {
+      defaultView,
+      itemsPerPage,
+      sessionTimeout,
+      ...next,
+    };
+    await persist({ "reception.preferences": merged }, message);
+  };
+
+  const savePassword = async () => {
+    if (newPw.length < 6) {
+      showToast("New password must be at least 6 characters.", true);
+      return;
+    }
+    if (!currentPw) {
+      showToast("Enter your current password.", true);
+      return;
+    }
+    try {
+      await api.put("/auth/password", { currentPassword: currentPw, newPassword: newPw });
+      setCurrentPw("");
+      setNewPw("");
+      setPasswordModal(false);
+      showToast("Password updated. Other sessions were signed out.");
+    } catch (err: any) {
+      showToast(err?.response?.data?.message || "Could not update your password.", true);
+    }
+  };
 
   const notifToggles = [
     { label: "New Patient Registration", val: newPatientNotif, set: setNewPatientNotif },
@@ -62,8 +174,8 @@ export default function ReceptionSettings() {
       </div>
 
       {toast && (
-        <div className="fixed top-6 right-6 z-50 px-6 py-4 rounded-2xl bg-slate-900 text-white text-xs font-black shadow-2xl flex items-center gap-3 animate-in slide-in-from-top-2">
-          <CheckCircle2 size={18} className="text-emerald-400" /> {toast}
+        <div className={`fixed top-6 right-6 z-50 px-6 py-4 rounded-2xl ${toastError ? "bg-rose-700" : "bg-slate-900"} text-white text-xs font-black shadow-2xl flex items-center gap-3 animate-in slide-in-from-top-2`}>
+          <CheckCircle2 size={18} className={toastError ? "text-rose-300" : "text-emerald-400"} /> {toast}
         </div>
       )}
 
@@ -129,7 +241,7 @@ export default function ReceptionSettings() {
             <input value={profPhone} onChange={e => setProfPhone(e.target.value)}
               className="w-full p-4 rounded-2xl bg-slate-50 border border-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500/10 font-bold" />
           </div>
-          <button onClick={() => { setProfileModal(false); showToast("Profile updated"); }}
+          <button onClick={saveProfile}
             className="w-full p-4 rounded-2xl bg-sky-600 text-white text-xs font-black uppercase tracking-widest hover:bg-sky-700 flex items-center justify-center gap-2">
             <Save size={16} /> Save Changes
           </button>
@@ -148,7 +260,7 @@ export default function ReceptionSettings() {
               </button>
             </div>
           ))}
-          <button onClick={() => { setNotifModal(false); showToast("Notification preferences saved"); }}
+          <button onClick={saveNotifications}
             className="w-full p-4 rounded-2xl bg-sky-600 text-white text-xs font-black uppercase tracking-widest hover:bg-sky-700 flex items-center justify-center gap-2">
             <Save size={16} /> Save Preferences
           </button>
@@ -159,7 +271,7 @@ export default function ReceptionSettings() {
       <Modal isOpen={viewModal} onClose={() => setViewModal(false)} title="Default View">
         <div className="space-y-3">
           {["Dashboard", "Queue", "Appointments", "Billing"].map(view => (
-            <button key={view} onClick={() => { setDefaultView(view); setViewModal(false); showToast(`Default view set to ${view}`); }}
+            <button key={view} onClick={() => { setDefaultView(view); setViewModal(false); void savePreferences({ defaultView: view }, `Default view set to ${view}`); }}
               className={cn("w-full p-4 rounded-2xl border text-left text-sm font-bold transition-all", defaultView === view ? "bg-sky-50 border-sky-200 text-sky-700" : "border-slate-100 text-slate-700 hover:border-sky-100")}>
               {view}
             </button>
@@ -171,7 +283,7 @@ export default function ReceptionSettings() {
       <Modal isOpen={itemsModal} onClose={() => setItemsModal(false)} title="Items Per Page">
         <div className="space-y-3">
           {["10", "20", "50", "100"].map(n => (
-            <button key={n} onClick={() => { setItemsPerPage(n); setItemsModal(false); showToast(`Showing ${n} items per page`); }}
+            <button key={n} onClick={() => { setItemsPerPage(n); setItemsModal(false); void savePreferences({ itemsPerPage: n }, `Showing ${n} items per page`); }}
               className={cn("w-full p-4 rounded-2xl border text-left text-sm font-bold transition-all", itemsPerPage === n ? "bg-purple-50 border-purple-200 text-purple-700" : "border-slate-100 text-slate-700 hover:border-purple-100")}>
               {n} items
             </button>
@@ -198,7 +310,7 @@ export default function ReceptionSettings() {
               className="w-full p-4 rounded-2xl bg-slate-50 border border-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500/10 font-bold text-slate-900" />
           </div>
           <div className="flex flex-col gap-2">
-            <button onClick={() => { setPasswordModal(false); showToast("Password updated"); setCurrentPw(""); setNewPw(""); }}
+            <button onClick={savePassword}
               className="w-full p-4 rounded-2xl bg-sky-600 text-white text-xs font-black uppercase tracking-widest hover:bg-sky-700 flex items-center justify-center gap-2">
               <Save size={16} /> Update Password
             </button>
@@ -216,7 +328,7 @@ export default function ReceptionSettings() {
       <Modal isOpen={sessionModal} onClose={() => setSessionModal(false)} title="Session Timeout">
         <div className="space-y-3">
           {["5 minutes", "15 minutes", "30 minutes", "1 hour", "Never"].map(t => (
-            <button key={t} onClick={() => { setSessionTimeout(t); setSessionModal(false); showToast(`Session timeout set to ${t}`); }}
+            <button key={t} onClick={() => { setSessionTimeout(t); setSessionModal(false); void savePreferences({ sessionTimeout: t }, `Session timeout set to ${t}`); }}
               className={cn("w-full p-4 rounded-2xl border text-left text-sm font-bold transition-all", sessionTimeout === t ? "bg-rose-50 border-rose-200 text-rose-700" : "border-slate-100 text-slate-700 hover:border-rose-100")}>
               {t}
             </button>

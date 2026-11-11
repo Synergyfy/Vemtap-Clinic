@@ -6,9 +6,10 @@ import * as bcrypt from 'bcryptjs';
 import * as nodemailer from 'nodemailer';
 import { ConfigService } from '@nestjs/config';
 import { User, UserRole } from '../entities/user.entity';
+import { Staff } from '../entities/staff.entity';
 import { RefreshToken } from '../entities/refresh-token.entity';
 import { Clinic } from '../entities/clinic.entity';
-import { LoginDto, RegisterDto, ChangePasswordDto, ResetPasswordDto } from './dto/auth.dto';
+import { LoginDto, RegisterDto, ChangePasswordDto, ResetPasswordDto, UpdateProfileDto } from './dto/auth.dto';
 import { generateOpaqueToken, sha256Hex } from './utils/crypto.util';
 import { EmailService } from '../common/services/email.service';
 
@@ -28,6 +29,7 @@ export interface AuthUser {
   clinicName?: string;
   firstName?: string;
   lastName?: string;
+  phone?: string | null;
 }
 
 @Injectable()
@@ -44,6 +46,8 @@ export class AuthService {
     private emailService: EmailService,
     @InjectRepository(Clinic)
     private clinicRepository: Repository<Clinic>,
+    @InjectRepository(Staff)
+    private staffRepository: Repository<Staff>,
   ) {}
 
   async register(dto: RegisterDto, reqInfo?: { userAgent?: string; ip?: string }): Promise<{ tokens: TokenPair; user: AuthUser }> {
@@ -103,6 +107,7 @@ export class AuthService {
         'user.firstName',
         'user.lastName',
         'user.email',
+        'user.phone',
         'user.password',
         'user.role',
         'user.clinicId',
@@ -136,6 +141,47 @@ export class AuthService {
     if (!user) {
       throw new UnauthorizedException('User not found');
     }
+    const { password, refreshToken, ...result } = user as any;
+    return result;
+  }
+
+  async updateProfile(userId: string, dto: UpdateProfileDto): Promise<Partial<User>> {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    if (typeof dto.firstName === 'string') {
+      user.firstName = dto.firstName.trim();
+    }
+    if (typeof dto.lastName === 'string') {
+      user.lastName = dto.lastName.trim();
+    }
+    if (typeof dto.phone === 'string') {
+      user.phone = dto.phone.trim() || null;
+    }
+
+    if (typeof dto.email === 'string') {
+      const normalizedEmail = dto.email.trim().toLowerCase();
+      if (normalizedEmail && normalizedEmail !== user.email) {
+        const existing = await this.userRepository.findOne({ where: { email: normalizedEmail } });
+        if (existing && existing.id !== user.id) {
+          throw new ConflictException('This email is already in use by another account.');
+        }
+
+        const previousEmail = user.email;
+        user.email = normalizedEmail;
+
+        // Staff records are matched to portal users by email (for assignment
+        // notifications), so keep the linked row in sync when the email changes.
+        if (previousEmail) {
+          await this.staffRepository.update({ email: previousEmail }, { email: normalizedEmail });
+        }
+      }
+    }
+
+    await this.userRepository.save(user);
+
     const { password, ...result } = user as any;
     return result;
   }
@@ -414,6 +460,7 @@ export class AuthService {
       branchId: user.branchId ?? null,
       firstName: user.firstName,
       lastName: user.lastName,
+      phone: user.phone ?? null,
     };
   }
 

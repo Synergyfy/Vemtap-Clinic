@@ -8,11 +8,16 @@ import { Modal } from "@/components/ui/modal";
 import { User, Bell, Shield, Palette, Save, LogOut, ChevronRight, CheckCircle2, Eye, EyeOff } from "lucide-react";
 import { PageHeader } from "@/app/clinic/_components/page-header";
 import { useAuth } from "@/lib/auth-context";
+import { useUserPreferences } from "@/hooks/useUserPreferences";
+import { api } from "@/lib/api";
 
 export default function PharmacySettings() {
   const [toast, setToast] = useState("");
+  const [toastError, setToastError] = useState(false);
   const router = useRouter();
-  const { user, logout: logoutUser } = useAuth();
+  const { user, logout: logoutUser, updateProfile } = useAuth();
+  const { prefs, save, isLoaded: prefsLoaded } = useUserPreferences();
+  const [prefsHydrated, setPrefsHydrated] = useState(false);
   const liveDisplayName = user ? [user.firstName, user.lastName].filter(Boolean).join(" ").trim() || "User" : "User";
   const liveRoleLabel = user?.roles?.[0] ? user.roles[0].replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase()) : "";
 
@@ -56,19 +61,112 @@ export default function PharmacySettings() {
   // Sign out
   const [signOutModal, setSignOutModal] = useState(false);
 
-  const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 3000); };
+  const showToast = (msg: string, isError = false) => {
+    setToastError(isError);
+    setToast(msg);
+    setTimeout(() => setToast(""), 3000);
+  };
+
+  const notifState = {
+    lowStock: lowStockAlert,
+    expiry: expiryAlert,
+    newRx: newRxAlert,
+    po: poUpdates,
+  };
+
+  useEffect(() => {
+    if (!prefsLoaded || prefsHydrated) return;
+    setPrefsHydrated(true);
+
+    const notifications = prefs["pharmacy.notifications"] as
+      | { lowStock?: boolean; expiry?: boolean; newRx?: boolean; po?: boolean }
+      | undefined;
+    if (notifications) {
+      if (typeof notifications.lowStock === "boolean") setLowStockAlert(notifications.lowStock);
+      if (typeof notifications.expiry === "boolean") setExpiryAlert(notifications.expiry);
+      if (typeof notifications.newRx === "boolean") setNewRxAlert(notifications.newRx);
+      if (typeof notifications.po === "boolean") setPoUpdates(notifications.po);
+    }
+
+    const preferences = prefs["pharmacy.preferences"] as
+      | { defaultView?: string; itemsPerPage?: string; confirmDialogs?: boolean }
+      | undefined;
+    if (preferences) {
+      if (typeof preferences.defaultView === "string") setDefaultView(preferences.defaultView);
+      if (typeof preferences.itemsPerPage === "string") setItemsPerPage(preferences.itemsPerPage);
+      if (typeof preferences.confirmDialogs === "boolean") setConfirmDialogs(preferences.confirmDialogs);
+    }
+
+    const securityPrefs = prefs["pharmacy.security"] as { twoFactor?: boolean; sessionTimeout?: string } | undefined;
+    if (securityPrefs) {
+      if (typeof securityPrefs.twoFactor === "boolean") setTwoFactor(securityPrefs.twoFactor);
+      if (typeof securityPrefs.sessionTimeout === "string") setSessionTimeout(securityPrefs.sessionTimeout);
+    }
+  }, [prefsLoaded, prefs, prefsHydrated]);
+
+  const persist = async (patch: Record<string, any>, successMessage: string) => {
+    try {
+      await save(patch);
+      showToast(successMessage);
+      return true;
+    } catch (err: any) {
+      showToast(err?.response?.data?.message || "Could not save settings. Please try again.", true);
+      return false;
+    }
+  };
+
+  const saveProfile = async () => {
+    const name = profName.trim();
+    if (!name) {
+      showToast("Please enter your full name.", true);
+      return;
+    }
+    const [firstName, ...rest] = name.split(/\s+/);
+    try {
+      await updateProfile({
+        firstName,
+        lastName: rest.join(" "),
+        email: profEmail.trim(),
+        phone: profPhone.trim(),
+      });
+      setProfileModal(false);
+      showToast("Profile updated successfully");
+    } catch (err: any) {
+      showToast(err?.response?.data?.message || "Could not update your profile.", true);
+    }
+  };
+
+  const savePassword = async () => {
+    if (newPw.length < 6) {
+      showToast("New password must be at least 6 characters.", true);
+      return;
+    }
+    if (!currentPw) {
+      showToast("Enter your current password.", true);
+      return;
+    }
+    try {
+      await api.put("/auth/password", { currentPassword: currentPw, newPassword: newPw });
+      setCurrentPw("");
+      setNewPw("");
+      setPasswordModal(false);
+      showToast("Password changed successfully. Other sessions were signed out.");
+    } catch (err: any) {
+      showToast(err?.response?.data?.message || "Could not update your password.", true);
+    }
+  };
 
   const notifToggles = [
-    { label: "Low Stock Alerts", val: lowStockAlert, set: setLowStockAlert },
-    { label: "Expiry Alerts (30 days)", val: expiryAlert, set: setExpiryAlert },
-    { label: "New Prescription Alert", val: newRxAlert, set: setNewRxAlert },
-    { label: "Purchase Order Updates", val: poUpdates, set: setPoUpdates },
+    { key: "lowStock" as const, label: "Low Stock Alerts", val: lowStockAlert, set: setLowStockAlert },
+    { key: "expiry" as const, label: "Expiry Alerts (30 days)", val: expiryAlert, set: setExpiryAlert },
+    { key: "newRx" as const, label: "New Prescription Alert", val: newRxAlert, set: setNewRxAlert },
+    { key: "po" as const, label: "Purchase Order Updates", val: poUpdates, set: setPoUpdates },
   ];
 
   return (
     <div className="space-y-6 md:space-y-8">
       {toast && (
-        <div className="fixed top-4 right-4 z-[200] bg-emerald-600 text-white px-4 py-3 rounded-xl shadow-lg shadow-emerald-200 flex items-center gap-2 animate-in fade-in slide-in-from-top-4 duration-300">
+        <div className={`fixed top-4 right-4 z-[200] ${toastError ? "bg-rose-600 shadow-rose-200" : "bg-emerald-600 shadow-emerald-200"} text-white px-4 py-3 rounded-xl shadow-lg flex items-center gap-2 animate-in fade-in slide-in-from-top-4 duration-300`}>
           <CheckCircle2 size={18} />
           <span className="text-sm font-bold">{toast}</span>
         </div>
@@ -102,7 +200,11 @@ export default function PharmacySettings() {
             {notifToggles.map((n) => (
               <div key={n.label} className="flex items-center justify-between py-2 border-b border-slate-50 last:border-0">
                 <span className="text-sm text-slate-700">{n.label}</span>
-                <button onClick={() => n.set(!n.val)} className={`relative w-11 h-6 rounded-full transition-colors ${n.val ? "bg-emerald-600" : "bg-slate-200"}`}>
+                <button onClick={() => {
+                  const next = !n.val;
+                  n.set(next);
+                  void persist({ "pharmacy.notifications": { ...notifState, [n.key]: next } }, "Notification preferences saved");
+                }} className={`relative w-11 h-6 rounded-full transition-colors ${n.val ? "bg-emerald-600" : "bg-slate-200"}`}>
                   <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-transform ${n.val ? "translate-x-5" : ""}`} />
                 </button>
               </div>
@@ -149,7 +251,11 @@ export default function PharmacySettings() {
             </div>
             <div className="flex items-center justify-between py-2">
               <span className="text-sm text-slate-700">Confirmation Dialogs</span>
-              <button onClick={() => setConfirmDialogs(!confirmDialogs)} className={`relative w-11 h-6 rounded-full transition-colors ${confirmDialogs ? "bg-emerald-600" : "bg-slate-200"}`}>
+              <button onClick={() => {
+                const next = !confirmDialogs;
+                setConfirmDialogs(next);
+                void persist({ "pharmacy.preferences": { defaultView, itemsPerPage, confirmDialogs: next } }, "Preferences updated");
+              }} className={`relative w-11 h-6 rounded-full transition-colors ${confirmDialogs ? "bg-emerald-600" : "bg-slate-200"}`}>
                 <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-transform ${confirmDialogs ? "translate-x-5" : ""}`} />
               </button>
             </div>
@@ -175,7 +281,7 @@ export default function PharmacySettings() {
           <div><label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Phone</label><input type="text" value={profPhone} onChange={(e) => setProfPhone(e.target.value)} className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50" /></div>
           <div className="flex justify-end gap-2 pt-2">
             <button onClick={() => setProfileModal(false)} className="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-700 hover:bg-slate-50">Cancel</button>
-            <button onClick={() => { setProfileModal(false); showToast("Profile updated successfully"); }} className="px-6 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-200">Save Changes</button>
+            <button onClick={saveProfile} className="px-6 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-200">Save Changes</button>
           </div>
         </div>
       </Modal>
@@ -187,7 +293,7 @@ export default function PharmacySettings() {
           <div><label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1.5">New Password</label><input type={showPw ? "text" : "password"} value={newPw} onChange={(e) => setNewPw(e.target.value)} className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50" placeholder="Enter new password" /></div>
           <div className="flex justify-end gap-2 pt-2">
             <button onClick={() => setPasswordModal(false)} className="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-700 hover:bg-slate-50">Cancel</button>
-            <button onClick={() => { setPasswordModal(false); setCurrentPw(""); setNewPw(""); showToast("Password changed successfully"); }} className="px-6 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-200">Update Password</button>
+            <button onClick={savePassword} className="px-6 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-200">Update Password</button>
           </div>
         </div>
       </Modal>
@@ -203,7 +309,7 @@ export default function PharmacySettings() {
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <button onClick={() => setTwoFactorModal(false)} className="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-700 hover:bg-slate-50">Cancel</button>
-            <button onClick={() => { setTwoFactorModal(false); showToast(twoFactor ? "2FA enabled" : "2FA disabled"); }} className="px-6 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-200">Save</button>
+            <button onClick={async () => { if (await persist({ "pharmacy.security": { twoFactor, sessionTimeout } }, twoFactor ? "2FA enabled" : "2FA disabled")) setTwoFactorModal(false); }} className="px-6 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-200">Save</button>
           </div>
         </div>
       </Modal>
@@ -220,7 +326,7 @@ export default function PharmacySettings() {
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <button onClick={() => setSessionModal(false)} className="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-700 hover:bg-slate-50">Cancel</button>
-            <button onClick={() => { setSessionModal(false); showToast("Session timeout updated"); }} className="px-6 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-200">Save</button>
+            <button onClick={async () => { if (await persist({ "pharmacy.security": { twoFactor, sessionTimeout } }, "Session timeout updated")) setSessionModal(false); }} className="px-6 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-200">Save</button>
           </div>
         </div>
       </Modal>
@@ -235,7 +341,7 @@ export default function PharmacySettings() {
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <button onClick={() => setViewModal(false)} className="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-700 hover:bg-slate-50">Cancel</button>
-            <button onClick={() => { setViewModal(false); showToast("Default view updated"); }} className="px-6 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-200">Save</button>
+            <button onClick={async () => { if (await persist({ "pharmacy.preferences": { defaultView, itemsPerPage, confirmDialogs } }, "Default view updated")) setViewModal(false); }} className="px-6 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-200">Save</button>
           </div>
         </div>
       </Modal>
@@ -250,7 +356,7 @@ export default function PharmacySettings() {
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <button onClick={() => setItemsModal(false)} className="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-700 hover:bg-slate-50">Cancel</button>
-            <button onClick={() => { setItemsModal(false); showToast("Items per page updated"); }} className="px-6 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-200">Save</button>
+            <button onClick={async () => { if (await persist({ "pharmacy.preferences": { defaultView, itemsPerPage, confirmDialogs } }, "Items per page updated")) setItemsModal(false); }} className="px-6 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-200">Save</button>
           </div>
         </div>
       </Modal>

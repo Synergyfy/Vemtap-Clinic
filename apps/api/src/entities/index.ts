@@ -60,3 +60,6 @@ export { SupportTicket, SupportTicketMessage, TicketStatus, TicketPriority, Tick
 export { RefreshToken } from './refresh-token.entity';
 export { Expense, ExpenseCategory, ExpenseStatus } from './expense.entity';
 export { ClinicSetting } from './clinic-setting.entity';
+export { UserSetting } from './user-setting.entity';
+export { AppSetting } from './app-setting.entity';
+export { PatientFamilyInvitation } from './patient-family-invitation.entity';

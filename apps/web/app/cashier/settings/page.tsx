@@ -1,10 +1,12 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Modal } from "@/components/ui/modal";
 import { useAuth } from "@/lib/auth-context";
+import { useUserPreferences } from "@/hooks/useUserPreferences";
 import {
   useCashierProducts,
   useCreateProduct,
@@ -61,6 +63,32 @@ export default function CashierSettingsPage() {
   const [receiptPrinting, setReceiptPrinting] = useState(true);
   const [soundAlerts, setSoundAlerts] = useState(true);
   const [currency, setCurrency] = useState("NGN");
+  const { prefs, save, isLoaded: prefsLoaded } = useUserPreferences();
+  const [prefsHydrated, setPrefsHydrated] = useState(false);
+
+  useEffect(() => {
+    if (!prefsLoaded || prefsHydrated) return;
+    setPrefsHydrated(true);
+    const terminal = prefs["cashier.terminal"] as
+      | { receiptPrinting?: boolean; soundAlerts?: boolean; currency?: string }
+      | undefined;
+    if (!terminal) return;
+    if (typeof terminal.receiptPrinting === "boolean") setReceiptPrinting(terminal.receiptPrinting);
+    if (typeof terminal.soundAlerts === "boolean") setSoundAlerts(terminal.soundAlerts);
+    if (typeof terminal.currency === "string") setCurrency(terminal.currency);
+  }, [prefsLoaded, prefs, prefsHydrated]);
+
+  const updateTerminal = async (
+    next: Partial<{ receiptPrinting: boolean; soundAlerts: boolean; currency: string }>,
+    message: string,
+  ) => {
+    try {
+      await save({ "cashier.terminal": { receiptPrinting, soundAlerts, currency, ...next } });
+      toast.success(message);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Could not save terminal settings.");
+    }
+  };
 
   const categories = useMemo(() => {
     const fromProducts = products.map((p) => p.category);
@@ -181,7 +209,7 @@ export default function CashierSettingsPage() {
           <label className="flex items-center gap-3 cursor-pointer">
             <button
               type="button"
-              onClick={() => setReceiptPrinting(!receiptPrinting)}
+              onClick={() => { const next = !receiptPrinting; setReceiptPrinting(next); void updateTerminal({ receiptPrinting: next }, `Receipt printing ${next ? "enabled" : "disabled"}`); }}
               className={cn(
                 "w-11 h-6 rounded-full relative transition-colors p-0.5",
                 receiptPrinting ? "bg-emerald-600" : "bg-slate-300"
@@ -209,7 +237,7 @@ export default function CashierSettingsPage() {
           <label className="flex items-center gap-3 cursor-pointer">
             <button
               type="button"
-              onClick={() => setSoundAlerts(!soundAlerts)}
+              onClick={() => { const next = !soundAlerts; setSoundAlerts(next); void updateTerminal({ soundAlerts: next }, `Audio feedback ${next ? "enabled" : "disabled"}`); }}
               className={cn(
                 "w-11 h-6 rounded-full relative transition-colors p-0.5",
                 soundAlerts ? "bg-emerald-600" : "bg-slate-300"
@@ -236,7 +264,7 @@ export default function CashierSettingsPage() {
           <p className="text-xs text-slate-500 mb-3">Local currency configuration.</p>
           <select
             value={currency}
-            onChange={(e) => setCurrency(e.target.value)}
+            onChange={(e) => { const next = e.target.value; setCurrency(next); void updateTerminal({ currency: next }, `Default currency set to ${next}`); }}
             className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-900 focus:outline-none"
           >
             <option value="NGN">NGN — Nigerian Naira (₦)</option>

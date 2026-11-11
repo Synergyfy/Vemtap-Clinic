@@ -18,9 +18,22 @@ import {
   MakePaymentPayload,
   SendPhoneOtpResponse,
 } from '@/services/patient-portal.service';
+import { useSyncExternalStore } from 'react';
 import { useAuth } from '@/lib/auth-context';
+import { getActivePatientProfileId, subscribeToActivePatientProfile } from '@/lib/api';
 
 const PATIENT_PORTAL_KEY = 'patient-portal';
+
+// Patient portal reads are scoped to the guardian token *and* the profile the
+// guardian is currently viewing, so switching profiles refetches instead of
+// reusing the previously selected patient's cached data.
+function useActiveProfileScope(): string {
+  return useSyncExternalStore(
+    subscribeToActivePatientProfile,
+    () => getActivePatientProfileId() ?? 'primary',
+    () => 'primary',
+  );
+}
 
 // ─── Auth Hooks ───
 export function usePatientRegister() {
@@ -81,8 +94,9 @@ export function usePatientLogout() {
 
 export function usePatientProfile() {
   const { user } = useAuth();
+  const profileScope = useActiveProfileScope();
   return useQuery({
-    queryKey: [PATIENT_PORTAL_KEY, 'profile', user?.userId],
+    queryKey: [PATIENT_PORTAL_KEY, 'profile', user?.userId, profileScope],
     queryFn: () => patientPortalService.getProfile(),
     enabled: !!user?.userId,
     staleTime: 60_000,
@@ -103,8 +117,9 @@ export function useUpdateProfile() {
 
 export function usePatientAppointmentsList() {
   const { user } = useAuth();
+  const profileScope = useActiveProfileScope();
   return useQuery({
-    queryKey: [PATIENT_PORTAL_KEY, 'appointments', user?.userId],
+    queryKey: [PATIENT_PORTAL_KEY, 'appointments', user?.userId, profileScope],
     queryFn: () => patientPortalService.getAppointments(),
     enabled: !!user?.userId,
     staleTime: 30_000,
@@ -113,8 +128,9 @@ export function usePatientAppointmentsList() {
 
 export function usePatientClinicMemberships() {
   const { user } = useAuth();
+  const profileScope = useActiveProfileScope();
   return useQuery({
-    queryKey: [PATIENT_PORTAL_KEY, 'memberships', user?.userId],
+    queryKey: [PATIENT_PORTAL_KEY, 'memberships', user?.userId, profileScope],
     queryFn: () => patientPortalService.getClinicMemberships(),
     enabled: !!user?.userId,
     staleTime: 30_000,
@@ -154,8 +170,9 @@ export function useCancelAppointment() {
 
 export function usePatientRecords() {
   const { user } = useAuth();
+  const profileScope = useActiveProfileScope();
   return useQuery({
-    queryKey: [PATIENT_PORTAL_KEY, 'records', user?.userId],
+    queryKey: [PATIENT_PORTAL_KEY, 'records', user?.userId, profileScope],
     queryFn: () => patientPortalService.getRecords(),
     enabled: !!user?.userId,
     staleTime: 30_000,
@@ -164,8 +181,9 @@ export function usePatientRecords() {
 
 export function usePatientBilling() {
   const { user } = useAuth();
+  const profileScope = useActiveProfileScope();
   return useQuery({
-    queryKey: [PATIENT_PORTAL_KEY, 'billing', user?.userId],
+    queryKey: [PATIENT_PORTAL_KEY, 'billing', user?.userId, profileScope],
     queryFn: () => patientPortalService.getBilling(),
     enabled: !!user?.userId,
     staleTime: 30_000,
@@ -185,8 +203,9 @@ export function useMakePayment() {
 
 export function usePatientNotifications() {
   const { user } = useAuth();
+  const profileScope = useActiveProfileScope();
   return useQuery({
-    queryKey: [PATIENT_PORTAL_KEY, 'notifications', user?.userId],
+    queryKey: [PATIENT_PORTAL_KEY, 'notifications', user?.userId, profileScope],
     queryFn: () => patientPortalService.getNotifications(),
     enabled: !!user?.userId,
     staleTime: 30_000,
@@ -195,8 +214,9 @@ export function usePatientNotifications() {
 
 export function useUnreadNotificationCount() {
   const { user } = useAuth();
+  const profileScope = useActiveProfileScope();
   return useQuery({
-    queryKey: [PATIENT_PORTAL_KEY, 'notifications', 'unread-count', user?.userId],
+    queryKey: [PATIENT_PORTAL_KEY, 'notifications', 'unread-count', user?.userId, profileScope],
     queryFn: () => patientPortalService.getUnreadCount(),
     enabled: !!user?.userId,
     staleTime: 10_000,
@@ -225,8 +245,9 @@ export function useMarkAllNotificationsRead() {
 
 export function usePatientOpticalItems() {
   const { user } = useAuth();
+  const profileScope = useActiveProfileScope();
   return useQuery({
-    queryKey: [PATIENT_PORTAL_KEY, 'optical-items', user?.clinicId],
+    queryKey: [PATIENT_PORTAL_KEY, 'optical-items', user?.clinicId, profileScope],
     queryFn: () => patientPortalService.getOpticalItems(),
     enabled: !!user?.clinicId,
     staleTime: 60_000,
@@ -235,8 +256,9 @@ export function usePatientOpticalItems() {
 
 export function usePatientLensOrders() {
   const { user } = useAuth();
+  const profileScope = useActiveProfileScope();
   return useQuery({
-    queryKey: [PATIENT_PORTAL_KEY, 'lens-orders', user?.userId],
+    queryKey: [PATIENT_PORTAL_KEY, 'lens-orders', user?.userId, profileScope],
     queryFn: () => patientPortalService.getLensOrders(),
     enabled: !!user?.userId,
     staleTime: 30_000,

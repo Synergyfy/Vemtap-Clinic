@@ -34,6 +34,7 @@ describe('AuthService.register', () => {
       create: jest.fn((entity) => entity),
       save: jest.fn(async (entity) => entity),
     };
+    const staffRepository = { update: jest.fn().mockResolvedValue(undefined) };
 
     const service = new AuthService(
       userRepository as any,
@@ -42,6 +43,7 @@ describe('AuthService.register', () => {
       configService as any,
       emailService,
       clinicRepository as any,
+      staffRepository as any,
     );
 
     await service.register({
@@ -71,6 +73,7 @@ describe('AuthService.register', () => {
       create: jest.fn(),
       save: jest.fn(),
     };
+    const staffRepository = { update: jest.fn().mockResolvedValue(undefined) };
 
     const refreshTokenRepository = {
       create: jest.fn((entity) => entity),
@@ -94,6 +97,7 @@ describe('AuthService.register', () => {
       configService as any,
       emailService,
       clinicRepository as any,
+      staffRepository as any,
     );
 
     await expect(
@@ -119,6 +123,7 @@ describe('AuthService.register', () => {
       create: jest.fn((entity) => ({ ...entity, id: 'clinic-123' })),
       save: jest.fn(async (entity) => ({ ...entity, id: 'clinic-123' })),
     };
+    const staffRepository = { update: jest.fn().mockResolvedValue(undefined) };
 
     const refreshTokenRepository = {
       create: jest.fn((entity) => entity),
@@ -142,6 +147,7 @@ describe('AuthService.register', () => {
       configService as any,
       emailService,
       clinicRepository as any,
+      staffRepository as any,
     );
 
     const result = await service.register({
@@ -197,6 +203,7 @@ describe('AuthService.register', () => {
       create: jest.fn((entity) => entity),
       save: jest.fn(async (entity) => entity),
     };
+    const staffRepository = { update: jest.fn().mockResolvedValue(undefined) };
 
     const service = new AuthService(
       userRepository as any,
@@ -205,6 +212,7 @@ describe('AuthService.register', () => {
       configService as any,
       emailService,
       clinicRepository as any,
+      staffRepository as any,
     );
 
     const result = await service.register({
@@ -234,6 +242,7 @@ describe('AuthService.register', () => {
       create: jest.fn((entity) => ({ ...entity, id: 'clinic-123', name: 'Apex Vision Clinic' })),
       save: jest.fn(async (entity) => ({ ...entity, id: 'clinic-123', name: 'Apex Vision Clinic' })),
     };
+    const staffRepository = { update: jest.fn().mockResolvedValue(undefined) };
 
     const refreshTokenRepository = {
       create: jest.fn((entity) => entity),
@@ -257,6 +266,7 @@ describe('AuthService.register', () => {
       configService as any,
       emailService,
       clinicRepository as any,
+      staffRepository as any,
     );
 
     const result = await service.register({
@@ -316,6 +326,7 @@ describe('AuthService.register', () => {
       create: jest.fn((entity) => entity),
       save: jest.fn(async (entity) => entity),
     };
+    const staffRepository = { update: jest.fn().mockResolvedValue(undefined) };
     const bcryptCompare = jest.spyOn(require('bcryptjs'), 'compare').mockResolvedValue(true);
 
     const service = new AuthService(
@@ -325,6 +336,7 @@ describe('AuthService.register', () => {
       configService as any,
       emailService,
       clinicRepository as any,
+      staffRepository as any,
     );
 
     const result = await service.login({ email: 'JANE@VEMTAP.COM', password: 'secure123' } as any);
@@ -336,5 +348,99 @@ describe('AuthService.register', () => {
     expect(result.user.email).toBe(normalizedEmail);
 
     bcryptCompare.mockRestore();
+  });
+});
+
+describe('AuthService.updateProfile', () => {
+  const buildService = (userRepository: any, staffRepository: any) => {
+    const refreshTokenRepository = {
+      create: jest.fn((entity) => entity),
+      save: jest.fn().mockResolvedValue(undefined),
+    };
+
+    return new AuthService(
+      userRepository as any,
+      refreshTokenRepository as any,
+      { sign: jest.fn().mockReturnValue('access-token') } as any,
+      { get: jest.fn().mockReturnValue('7d') } as any,
+      {} as any,
+      { create: jest.fn(), save: jest.fn() } as any,
+      staffRepository as any,
+    );
+  };
+
+  it('persists name and phone updates for the signed-in user', async () => {
+    const user = {
+      id: 'user-1',
+      firstName: 'Mary',
+      lastName: 'Williams',
+      email: 'nurse@vemtap.com',
+      phone: null,
+    };
+    const userRepository = {
+      findOne: jest.fn().mockResolvedValue(user),
+      save: jest.fn(async (entity) => entity),
+    };
+    const staffRepository = { update: jest.fn() };
+
+    const service = buildService(userRepository, staffRepository);
+    const result = await service.updateProfile('user-1', {
+      firstName: '  Marian ',
+      lastName: 'Williams',
+      phone: '+2348000000000',
+    });
+
+    expect(userRepository.save).toHaveBeenCalledWith(
+      expect.objectContaining({ firstName: 'Marian', phone: '+2348000000000' }),
+    );
+    expect(result).not.toHaveProperty('password');
+    expect(staffRepository.update).not.toHaveBeenCalled();
+  });
+
+  it('rejects an email already used by another account', async () => {
+    const user = {
+      id: 'user-1',
+      firstName: 'Mary',
+      lastName: 'Williams',
+      email: 'nurse@vemtap.com',
+      phone: null,
+    };
+    const userRepository = {
+      findOne: jest.fn().mockResolvedValueOnce(user).mockResolvedValueOnce({ id: 'user-2' }),
+      save: jest.fn(),
+    };
+    const staffRepository = { update: jest.fn() };
+
+    const service = buildService(userRepository, staffRepository);
+
+    await expect(
+      service.updateProfile('user-1', { email: 'doctor@vemtap.com' }),
+    ).rejects.toThrow('This email is already in use by another account.');
+    expect(userRepository.save).not.toHaveBeenCalled();
+    expect(staffRepository.update).not.toHaveBeenCalled();
+  });
+
+  it('syncs the linked staff record when the account email changes', async () => {
+    const user = {
+      id: 'user-1',
+      firstName: 'Mary',
+      lastName: 'Williams',
+      email: 'nurse@vemtap.com',
+      phone: null,
+    };
+    const userRepository = {
+      findOne: jest.fn().mockResolvedValueOnce(user).mockResolvedValueOnce(null),
+      save: jest.fn(async (entity) => entity),
+    };
+    const staffRepository = { update: jest.fn().mockResolvedValue(undefined) };
+
+    const service = buildService(userRepository, staffRepository);
+    await service.updateProfile('user-1', { email: 'Mary.Williams@vemtap.com' });
+
+    expect(user.email).toBe('mary.williams@vemtap.com');
+    expect(staffRepository.update).toHaveBeenCalledWith(
+      { email: 'nurse@vemtap.com' },
+      { email: 'mary.williams@vemtap.com' },
+    );
   });
 });

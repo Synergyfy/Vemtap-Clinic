@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Bell, CheckCircle2, FileText, CalendarDays, Info, User, ArrowRightFromLine, Users } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePatientNotifications, useMarkNotificationRead, useMarkAllNotificationsRead, usePatientProfile } from "@/hooks/usePatientPortal";
+import { useNotificationsSocket } from "@/hooks/useNotificationsSocket";
 import { useAuth } from "@/lib/auth-context";
 import { Modal } from "@/components/ui/modal";
 
@@ -30,6 +31,8 @@ export default function TopNav() {
   const { user } = useAuth();
   const { data: profile } = usePatientProfile();
   const { data: notifications = [] } = usePatientNotifications();
+  // Realtime delivery for the currently selected family profile.
+  useNotificationsSocket();
   const markRead = useMarkNotificationRead();
   const markAllRead = useMarkAllNotificationsRead();
   const unreadCount = notifications.filter(n => !n.isRead).length;

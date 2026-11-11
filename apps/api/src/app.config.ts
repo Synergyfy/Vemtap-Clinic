@@ -22,6 +22,9 @@ export const appConfig = ConfigModule.forRoot({
     JWT_SECRET: Joi.string().required(),
     JWT_EXPIRES_IN: Joi.string().default('15m'),
     JWT_REFRESH_EXPIRES_IN: Joi.string().default('7d'),
+    // Patient portal tokens are longer-lived than staff access tokens.
+    PATIENT_ACCESS_EXPIRES_IN: Joi.string().default('1h'),
+    PATIENT_REFRESH_EXPIRES_IN: Joi.string().default('7d'),
     // Email: Resend API or SMTP (e.g. Brevo). smtp is also auto-selected when SMTP_HOST is set.
     EMAIL_PROVIDER: Joi.string().valid('resend', 'smtp').optional(),
     EMAIL_FROM: Joi.string().optional(),

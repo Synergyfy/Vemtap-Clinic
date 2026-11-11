@@ -21,7 +21,16 @@ interface AuthContextType {
   register: (data: RegisterData) => Promise<AuthUser | null>;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
+  refreshProfile: () => Promise<AuthUser | null>;
+  updateProfile: (data: UpdateProfileData) => Promise<AuthUser | null>;
   hasRole: (roles: string[]) => boolean;
+}
+
+interface UpdateProfileData {
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  phone?: string;
 }
 
 interface RegisterData {
@@ -79,7 +88,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       try {
-        const response = await api.get('/patient-portal/profile');
+        // Identity bootstrap: never let the selected family profile replace the
+        // signed-in account. The UI reads the selected profile through the
+        // regular /patient-portal/profile query instead.
+        const response = await api.get('/patient-portal/profile', { skipPatientProfileHeader: true });
         const profile = response.data ?? {};
         const refreshedUser = normalizeAuthUser({
           ...user,
@@ -90,8 +102,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           phone: profile.phone ?? user.phone,
           clinicId: profile.clinicId ?? user.clinicId ?? '',
           branchId: profile.branchId ?? user.branchId,
-          guardianId: profile.guardianId ?? user.guardianId,
-          guardianRelationship: profile.guardianRelationship ?? user.guardianRelationship,
+          // The profile endpoint is the authority on family linkage: a null
+          // guardianId means "family owner" and must clear any stale value.
+          guardianId: profile.guardianId ?? undefined,
+          guardianRelationship: profile.guardianRelationship ?? undefined,
           accountType: profile.accountType ?? user.accountType ?? 'individual',
           roles: ['patient'],
         });
@@ -177,6 +191,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const refreshProfile = async (): Promise<AuthUser | null> => {
+    const response = await api.get('/auth/profile');
+    const profile = response.data ?? {};
+    if (!user) return null;
+    const refreshed = normalizeAuthUser({
+      ...user,
+      userId: profile.id ?? user.userId,
+      email: profile.email ?? user.email,
+      firstName: profile.firstName ?? user.firstName,
+      lastName: profile.lastName ?? user.lastName,
+      // An explicit null means the phone was cleared, so don't fall back.
+      phone: profile.phone === undefined ? user.phone : (profile.phone ?? undefined),
+      roles: profile.roles ?? (profile.role ? [profile.role] : user.roles),
+      clinicId: profile.clinicId ?? user.clinicId,
+      branchId: profile.branchId ?? user.branchId,
+    });
+    const token = getAccessToken();
+    if (refreshed && token) {
+      setAuth(token, refreshed);
+    }
+    return refreshed;
+  };
+
+  const updateProfile = async (data: UpdateProfileData): Promise<AuthUser | null> => {
+    const response = await api.patch('/auth/profile', data);
+    const profile = response.data ?? {};
+    if (!user) return null;
+    const updated = normalizeAuthUser({
+      ...user,
+      userId: profile.id ?? user.userId,
+      email: profile.email ?? user.email,
+      firstName: profile.firstName ?? user.firstName,
+      lastName: profile.lastName ?? user.lastName,
+      phone: profile.phone === undefined ? user.phone : (profile.phone ?? undefined),
+    });
+    const token = getAccessToken();
+    if (updated && token) {
+      setAuth(token, updated);
+    }
+    return updated;
+  };
+
   const logout = async () => {
     hasCheckedAuth.current = false;
     try {
@@ -213,6 +269,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         register,
         logout,
         checkAuth,
+        refreshProfile,
+        updateProfile,
         hasRole,
       }}
     >
