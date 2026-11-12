@@ -5,9 +5,10 @@ import { Payment } from '../entities/payment.entity';
 import { Patient } from '../entities/patient.entity';
 import { BillingService } from './billing.service';
 import { BillingController } from './billing.controller';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Invoice, Payment, Patient])],
+  imports: [TypeOrmModule.forFeature([Invoice, Payment, Patient]), NotificationsModule],
   providers: [BillingService],
   controllers: [BillingController],
   exports: [BillingService],

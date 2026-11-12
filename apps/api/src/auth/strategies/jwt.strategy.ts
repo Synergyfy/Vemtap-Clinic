@@ -68,8 +68,12 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       email: user.email,
       firstName: user.firstName,
       lastName: user.lastName,
+      phone: user.phone ?? null,
       roles: [user.role],
       clinicId: user.clinicId,
+      // Read from the row, not the token, so staff-created records get the
+      // staff member's current branch even if they switched after logging in.
+      branchId: user.branchId ?? null,
       type: 'user',
     };
   }

@@ -9,12 +9,16 @@ import { Appointment } from '../entities/appointment.entity';
 import { MedicalRecord } from '../entities/medical-record.entity';
 import { Invoice } from '../entities/invoice.entity';
 import { PatientClinicMembership } from '../entities/patient-clinic-membership.entity';
+import { PatientFamilyInvitation } from '../entities/patient-family-invitation.entity';
+import { LensOrder } from '../entities/lens-order.entity';
 import { PatientPortalService } from './patient-portal.service';
+import { NotificationsModule } from '../notifications/notifications.module';
 import { PatientPortalController } from './patient-portal.controller';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Patient, Clinic, Branch, Appointment, MedicalRecord, Invoice, PatientClinicMembership]),
+    TypeOrmModule.forFeature([Patient, Clinic, Branch, Appointment, MedicalRecord, Invoice, PatientClinicMembership, PatientFamilyInvitation, LensOrder]),
+    NotificationsModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: (config: ConfigService) => ({

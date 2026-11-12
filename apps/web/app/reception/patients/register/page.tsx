@@ -36,14 +36,14 @@ export default function ReceptionPatientRegistrationPage() {
 
   // Form Fields
   const [title, setTitle] = useState("Mr.");
-  const [firstName, setFirstName] = useState("Patient");
+  const [firstName, setFirstName] = useState("");
   const [middleName, setMiddleName] = useState("");
-  const [surname, setSurname] = useState("Surname");
+  const [surname, setSurname] = useState("");
   const [dob, setDob] = useState("");
   const [gender, setGender] = useState<"M" | "F">("M");
-  const [phone, setPhone] = useState("000 000 0000");
-  const [email, setEmail] = useState("patient@example.com");
-  const [address, setAddress] = useState("Clinic address");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [address, setAddress] = useState("");
   const [nin, setNin] = useState("••••••••••");
 
   // Next of Kin
@@ -89,6 +89,11 @@ export default function ReceptionPatientRegistrationPage() {
       return;
     }
 
+    if (phone.replace(/\D/g, "").length < 10) {
+      showToast("Please enter a valid phone number for the patient");
+      return;
+    }
+
     if (!user?.clinicId) {
       showToast("No active clinic is available for this account. Please sign in again.");
       return;
@@ -102,7 +107,7 @@ export default function ReceptionPatientRegistrationPage() {
         lastName: surname.trim(),
         dateOfBirth: dob,
         gender: gender === "M" ? "male" : "female",
-        phone: phone.replace(/\D/g, "") || "0000000000",
+        phone: phone.replace(/\D/g, ""),
         email: email.trim() || undefined,
         address: address.trim() || undefined,
         city: "",
@@ -120,10 +125,18 @@ export default function ReceptionPatientRegistrationPage() {
 
       showToast("Patient registered successfully");
       setTimeout(() => {
-        router.push(`/reception/check-in?patientId=${patient.id}`);
+        // Only reception owns the front-desk check-in flow; clinic (and other
+        // staff) stay inside their own area instead of being sent to reception.
+        router.push(
+          user?.roles?.includes("receptionist")
+            ? `/reception/check-in?patientId=${patient.id}`
+            : `/clinic/patients/${patient.id}`,
+        );
       }, 700);
     } catch (error: any) {
-      showToast(error?.message || "Failed to register patient");
+      showToast(
+        error?.response?.data?.message || error?.message || "Failed to register patient",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -379,7 +392,8 @@ export default function ReceptionPatientRegistrationPage() {
                         type="tel"
                         value={phone}
                         onChange={(e) => setPhone(e.target.value)}
-                        className="flex-1 bg-transparent text-xs text-on-surface focus:outline-none font-medium"
+                        placeholder="803 000 0000"
+                        className="flex-1 bg-transparent text-xs text-on-surface focus:outline-none font-medium placeholder:text-outline"
                       />
                       <span className="material-symbols-outlined text-[16px] text-tertiary">
                         check_circle
@@ -397,7 +411,8 @@ export default function ReceptionPatientRegistrationPage() {
                         type="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        className="flex-1 bg-transparent text-xs text-on-surface focus:outline-none"
+                        placeholder="patient@example.com"
+                        className="flex-1 bg-transparent text-xs text-on-surface focus:outline-none placeholder:text-outline"
                       />
                     </div>
                   </div>
@@ -412,7 +427,8 @@ export default function ReceptionPatientRegistrationPage() {
                         type="text"
                         value={address}
                         onChange={(e) => setAddress(e.target.value)}
-                        className="flex-1 bg-transparent text-xs text-on-surface focus:outline-none"
+                        placeholder="Residential address"
+                        className="flex-1 bg-transparent text-xs text-on-surface focus:outline-none placeholder:text-outline"
                       />
                     </div>
                   </div>

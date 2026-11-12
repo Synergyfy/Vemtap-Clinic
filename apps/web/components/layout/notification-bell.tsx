@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Bell } from "lucide-react";
 import { useState } from "react";
 import { useNotifications, useUnreadCount } from "@/hooks/useNotifications";
+import { useNotificationsSocket } from "@/hooks/useNotificationsSocket";
 
 type NotificationItem = {
   id: string;
@@ -26,6 +27,8 @@ export function NotificationBell({
   const [isOpen, setIsOpen] = useState(false);
   const { data: liveNotifications = [] } = useNotifications();
   const { data: unreadCount = 0 } = useUnreadCount();
+  // Keeps the bell live instead of waiting for the 30s poll.
+  useNotificationsSocket();
 
   const normalizedNotifications = Array.isArray(liveNotifications)
     ? liveNotifications

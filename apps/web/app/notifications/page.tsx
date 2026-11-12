@@ -1,9 +1,14 @@
 "use client";
 
+import Link from "next/link";
 import { useDeleteNotification, useMarkAllNotificationsRead, useMarkNotificationRead, useNotifications, useUnreadCount } from "@/hooks/useNotifications";
-import { Bell, CheckCheck, Trash2 } from "lucide-react";
+import { useAuth } from "@/lib/auth-context";
+import { getDashboardRoute } from "@/lib/dashboard-routes";
+import { ArrowLeft, Bell, CheckCheck, Trash2 } from "lucide-react";
 
 export default function NotificationsPage() {
+  const { user } = useAuth();
+  const dashboardHref = getDashboardRoute(user);
   const { data, isLoading } = useNotifications();
   const { data: unreadCount = 0 } = useUnreadCount();
   const markAllRead = useMarkAllNotificationsRead();
@@ -14,6 +19,14 @@ export default function NotificationsPage() {
 
   return (
     <div className="mx-auto max-w-5xl p-4 sm:p-6">
+      <Link
+        href={dashboardHref}
+        className="mb-4 inline-flex items-center gap-2 text-sm font-medium text-slate-600 transition hover:text-slate-900"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Back to dashboard
+      </Link>
+
       <div className="mb-6 flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-100 text-sky-700">

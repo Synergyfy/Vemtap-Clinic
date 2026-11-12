@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between } from 'typeorm';
 import { Patient } from '../entities/patient.entity';
@@ -77,8 +77,9 @@ export class DashboardService {
   }
 
   async getRevenueReport(clinicId: string, startDate: string, endDate: string) {
-    const start = new Date(startDate);
-    const end = new Date(endDate);
+    this.assertClinicId(clinicId);
+    const start = this.parseDate(startDate, 'startDate');
+    const end = this.parseDate(endDate, 'endDate');
 
     const result = await this.invoiceRepo.createQueryBuilder('i')
       .select("DATE_TRUNC('day', i.createdAt)", 'date')
@@ -100,8 +101,9 @@ export class DashboardService {
   }
 
   async getAppointmentAnalytics(clinicId: string, startDate: string, endDate: string) {
-    const start = new Date(startDate);
-    const end = new Date(endDate);
+    this.assertClinicId(clinicId);
+    const start = this.parseDate(startDate, 'startDate');
+    const end = this.parseDate(endDate, 'endDate');
 
     const byStatus = await this.appointmentRepo.createQueryBuilder('a')
       .select('a.status', 'status')
@@ -133,5 +135,19 @@ export class DashboardService {
       .getRawMany();
 
     return { byStatus };
+  }
+
+  private assertClinicId(clinicId: string): void {
+    if (!clinicId) {
+      throw new BadRequestException('clinicId is required');
+    }
+  }
+
+  private parseDate(value: string, field: string): Date {
+    const date = new Date(value);
+    if (!value || Number.isNaN(date.getTime())) {
+      throw new BadRequestException(`${field} must be a valid date`);
+    }
+    return date;
   }
 }

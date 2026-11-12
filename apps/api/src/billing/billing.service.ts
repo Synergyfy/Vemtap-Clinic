@@ -6,6 +6,9 @@ import { Payment } from '../entities/payment.entity';
 import { Patient } from '../entities/patient.entity';
 import { CreateInvoiceDto, UpdateInvoiceDto, CreatePaymentDto, InvoiceQueryDto } from './dto';
 import { EmailService } from '../common/services/email.service';
+import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationType } from '../entities/notification.entity';
+import { UserRole } from '../entities/user.entity';
 
 @Injectable()
 export class BillingService {
@@ -18,14 +21,62 @@ export class BillingService {
     private patientRepository: Repository<Patient>,
     private entityManager: EntityManager,
     private emailService: EmailService,
+    private readonly notificationsService: NotificationsService,
   ) {}
+
+  private async notifyPatient(
+    patientId: string,
+    clinicId: string | null | undefined,
+    title: string,
+    message: string,
+    type: NotificationType,
+  ) {
+    try {
+      await this.notificationsService.create({ title, message, type, patientId, clinicId: clinicId ?? undefined });
+    } catch {
+      // Notifications are best-effort; never fail billing actions.
+    }
+  }
+
+  /** Alerts the cash desk and clinic admins about billing activity. */
+  private async notifyStaff(
+    clinicId: string | null | undefined,
+    title: string,
+    message: string,
+    type: NotificationType = NotificationType.BILLING,
+  ) {
+    try {
+      await this.notificationsService.notifyClinicRoles(
+        clinicId,
+        [UserRole.CASHIER, UserRole.CLINIC_ADMIN, UserRole.ADMIN],
+        { title, message, type },
+      );
+    } catch {
+      // Notifications are best-effort; never fail billing actions.
+    }
+  }
 
   async createInvoice(dto: CreateInvoiceDto): Promise<Invoice> {
     const invoice = this.invoiceRepository.create({
       ...dto,
       balance: dto.totalAmount,
     });
-    return this.invoiceRepository.save(invoice);
+    const saved = await this.invoiceRepository.save(invoice);
+
+    await this.notifyPatient(
+      saved.patientId,
+      saved.clinicId,
+      'New invoice',
+      `Invoice ${saved.invoiceNumber} for ₦${Number(saved.totalAmount).toLocaleString()} is now available.`,
+      NotificationType.BILLING,
+    );
+    await this.notifyStaff(
+      saved.clinicId,
+      'New invoice',
+      `Invoice ${saved.invoiceNumber} for ₦${Number(saved.totalAmount).toLocaleString()} was created.`,
+    );
+
+    return saved;
   }
 
   async findAllInvoices(query: InvoiceQueryDto): Promise<Invoice[]> {
@@ -81,6 +132,19 @@ export class BillingService {
       balance,
       status: balance <= 0 ? InvoiceStatus.PAID : InvoiceStatus.PARTIALLY_PAID,
     });
+
+    await this.notifyPatient(
+      invoice.patientId,
+      invoice.clinicId,
+      'Payment received',
+      `We received a payment of ₦${Number(dto.amount).toLocaleString()} for invoice ${invoice.invoiceNumber}.`,
+      NotificationType.BILLING,
+    );
+    await this.notifyStaff(
+      invoice.clinicId,
+      'Payment received',
+      `Payment of ₦${Number(dto.amount).toLocaleString()} recorded for invoice ${invoice.invoiceNumber}.`,
+    );
 
     // Send payment receipt email if patient has email
     const patient = await this.patientRepository.findOne({ where: { id: invoice.patientId } });

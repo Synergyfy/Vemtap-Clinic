@@ -3,9 +3,10 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Prescription } from '../entities/prescription.entity';
 import { PrescriptionsService } from './prescriptions.service';
 import { PrescriptionsController } from './prescriptions.controller';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Prescription])],
+  imports: [TypeOrmModule.forFeature([Prescription]), NotificationsModule],
   providers: [PrescriptionsService],
   controllers: [PrescriptionsController],
   exports: [PrescriptionsService],

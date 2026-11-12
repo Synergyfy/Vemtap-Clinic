@@ -3,13 +3,59 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between, LessThanOrEqual, MoreThanOrEqual } from 'typeorm';
 import { Appointment, AppointmentStatus } from '../entities/appointment.entity';
 import { CreateAppointmentDto, UpdateAppointmentDto, AppointmentQueryDto } from './dto';
+import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationType } from '../entities/notification.entity';
+import { UserRole } from '../entities/user.entity';
 
 @Injectable()
 export class AppointmentsService {
   constructor(
     @InjectRepository(Appointment)
     private appointmentRepository: Repository<Appointment>,
+    private readonly notificationsService: NotificationsService,
   ) {}
+
+  private async notifyPatient(
+    appointment: Pick<Appointment, 'patientId' | 'clinicId' | 'appointmentDate' | 'appointmentTime'>,
+    title: string,
+    message: string,
+  ) {
+    try {
+      await this.notificationsService.create({
+        title,
+        message,
+        type: NotificationType.APPOINTMENT,
+        patientId: appointment.patientId,
+        clinicId: appointment.clinicId,
+      });
+    } catch {
+      // Notifications are best-effort; never fail the appointment action.
+    }
+  }
+
+  /** Alerts the assigned clinician plus the front desk for their own clinic. */
+  private async notifyStaff(
+    appointment: Pick<Appointment, 'staffId' | 'clinicId'>,
+    title: string,
+    message: string,
+  ) {
+    try {
+      await Promise.all([
+        this.notificationsService.notifyAssignedStaff(appointment.staffId, {
+          title,
+          message,
+          type: NotificationType.APPOINTMENT,
+        }),
+        this.notificationsService.notifyClinicRoles(appointment.clinicId, [UserRole.RECEPTIONIST, UserRole.ADMIN], {
+          title,
+          message,
+          type: NotificationType.APPOINTMENT,
+        }),
+      ]);
+    } catch {
+      // Notifications are best-effort; never fail the appointment action.
+    }
+  }
 
   async create(dto: CreateAppointmentDto): Promise<Appointment> {
     const conflict = await this.appointmentRepository.findOne({
@@ -23,7 +69,20 @@ export class AppointmentsService {
       throw new ConflictException('Staff member has an appointment at this time');
     }
     const appointment = this.appointmentRepository.create(dto);
-    return this.appointmentRepository.save(appointment);
+    const saved = await this.appointmentRepository.save(appointment);
+
+    const when = `${new Date(saved.appointmentDate).toLocaleDateString()}${
+      saved.appointmentTime ? ` at ${saved.appointmentTime}` : ''
+    }`;
+
+    await this.notifyPatient(
+      saved,
+      'Appointment scheduled',
+      `An appointment was scheduled for you on ${when}.`,
+    );
+    await this.notifyStaff(saved, 'New appointment', `An appointment was scheduled on ${when}.`);
+
+    return saved;
   }
 
   async findAll(query: AppointmentQueryDto): Promise<{ data: Appointment[]; total: number; page: number; limit: number; totalPages: number }> {
@@ -75,7 +134,27 @@ export class AppointmentsService {
   async update(id: string, dto: UpdateAppointmentDto): Promise<Appointment> {
     const appointment = await this.findOne(id);
     Object.assign(appointment, dto);
-    return this.appointmentRepository.save(appointment);
+    const saved = await this.appointmentRepository.save(appointment);
+
+    if (dto.status || dto.appointmentDate || dto.appointmentTime) {
+      const cancelled = saved.status === AppointmentStatus.CANCELLED;
+      const when = `${new Date(saved.appointmentDate).toLocaleDateString()}${
+        saved.appointmentTime ? ` at ${saved.appointmentTime}` : ''
+      }`;
+
+      await this.notifyPatient(
+        saved,
+        cancelled ? 'Appointment cancelled' : 'Appointment updated',
+        cancelled ? `Your appointment on ${when} was cancelled.` : `Your appointment is now ${when}.`,
+      );
+      await this.notifyStaff(
+        saved,
+        cancelled ? 'Appointment cancelled' : 'Appointment rescheduled',
+        cancelled ? `The appointment on ${when} was cancelled.` : `An appointment was moved to ${when}.`,
+      );
+    }
+
+    return saved;
   }
 
   async remove(id: string): Promise<void> {

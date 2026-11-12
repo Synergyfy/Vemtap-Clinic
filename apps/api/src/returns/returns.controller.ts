@@ -38,12 +38,6 @@ export class ReturnsController {
     return this.returnsService.getStats(clinicId);
   }
 
-  @Get(':id')
-  @ApiOperation({ summary: 'Get return request by ID' })
-  findReturn(@Param('id') id: string) {
-    return this.returnsService.findReturnById(id);
-  }
-
   @Put(':id')
   @Roles(UserRole.ADMIN, UserRole.DOCTOR, UserRole.NURSE, UserRole.CASHIER)
   @ApiOperation({ summary: 'Update return request (only REQUESTED status)' })
@@ -111,5 +105,13 @@ export class ReturnsController {
   @ApiOperation({ summary: 'Delete refund (only PENDING/CANCELLED)' })
   deleteRefund(@Param('id') id: string) {
     return this.returnsService.deleteRefund(id);
+  }
+
+  // Parameterised route last: otherwise GET 'refunds' is captured as an :id
+  // and fails with an invalid-uuid error.
+  @Get(':id')
+  @ApiOperation({ summary: 'Get return request by ID' })
+  findReturn(@Param('id') id: string) {
+    return this.returnsService.findReturnById(id);
   }
 }

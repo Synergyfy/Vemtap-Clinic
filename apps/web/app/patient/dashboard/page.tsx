@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePatientClinicMemberships, usePatientProfile, usePatientAppointmentsList } from "@/hooks/usePatientPortal";
 import { useAuth } from "@/lib/auth-context";
+import { isFamilyOwner } from "@/lib/patient-family";
 
 export default function PatientDashboard() {
   const { user } = useAuth();
@@ -54,6 +55,10 @@ export default function PatientDashboard() {
     profile?.accountType === 'guardian'
   );
 
+  // Adding family members belongs to the family owner's own profile only: a
+  // dependent login, or the owner viewing a dependent, never shows it.
+  const canManageFamily = isFamilyOwner(user) && Boolean(profile) && !profile?.guardianId;
+
   const dashboardProfileLabel = isGuardianProfile ? 'Family profile' : 'Patient profile';
 
   return (
@@ -81,7 +86,7 @@ export default function PatientDashboard() {
         </div>
       </div>
 
-      {isGuardianProfile && (
+      {canManageFamily && (
         <div className="mb-6 bg-gradient-to-r from-violet-50 via-indigo-50 to-white rounded-2xl border border-violet-100 p-4 sm:p-5 shadow-[0_8px_30px_-4px_rgba(16,24,40,0.06)]">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>

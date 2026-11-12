@@ -7,7 +7,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/app/clinic/_components/page-header";
 import { useAuth } from "@/lib/auth-context";
+import { api } from "@/lib/api";
 import { useSettingsMap, useBulkSetSettings } from "@/hooks/useSettings";
+import { useClinic } from "@/hooks/useClinics";
+import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import { Modal } from "@/components/ui/modal";
 import { toast } from "sonner";
@@ -33,7 +36,9 @@ type SettingsTab = "profile" | "branches" | "billing" | "currencies" | "branding
 export default function SettingsPage() {
   const { user } = useAuth();
   const { data: settings = {}, isLoading } = useSettingsMap();
+  const { data: clinic } = useClinic(user?.clinicId ?? "");
   const bulkSetMut = useBulkSetSettings();
+  const queryClient = useQueryClient();
 
   // Currency hooks & state
   const { data: currencies = [], isLoading: currenciesLoading } = useCurrencies();
@@ -96,30 +101,29 @@ export default function SettingsPage() {
     theme: "light", primary_color: "#0284C7",
   });
 
-  // Load settings into form
+  // Load settings into form. The clinic record is the source of truth for the
+  // profile fields, so it also acts as a fallback when a setting is unset.
   useEffect(() => {
-    if (Object.keys(settings).length > 0) {
-      setForm(prev => ({
-        ...prev,
-        clinic_name: settings.clinic_name || prev.clinic_name,
-        registration_id: settings.registration_id || prev.registration_id,
-        address: settings.address || prev.address,
-        email: settings.email || prev.email,
-        phone: settings.phone || prev.phone,
-        currency: settings.currency || prev.currency,
-        timezone: settings.timezone || prev.timezone,
-        apply_vat: settings.apply_vat || prev.apply_vat,
-        invoice_prefix: settings.invoice_prefix || prev.invoice_prefix,
-        payment_terms: settings.payment_terms || prev.payment_terms,
-        patient_deposits: settings.patient_deposits || prev.patient_deposits,
-        auto_hmo_claims: settings.auto_hmo_claims || prev.auto_hmo_claims,
-        lock_paid_invoices: settings.lock_paid_invoices || prev.lock_paid_invoices,
-        sms_receipts: settings.sms_receipts || prev.sms_receipts,
-        theme: settings.theme || prev.theme,
-        primary_color: settings.primary_color || prev.primary_color,
-      }));
-    }
-  }, [settings]);
+    setForm(prev => ({
+      ...prev,
+      clinic_name: settings.clinic_name || clinic?.name || prev.clinic_name,
+      registration_id: settings.registration_id || prev.registration_id,
+      address: settings.address || clinic?.address || prev.address,
+      email: settings.email || clinic?.email || prev.email,
+      phone: settings.phone || clinic?.phone || prev.phone,
+      currency: settings.currency || prev.currency,
+      timezone: settings.timezone || prev.timezone,
+      apply_vat: settings.apply_vat || prev.apply_vat,
+      invoice_prefix: settings.invoice_prefix || prev.invoice_prefix,
+      payment_terms: settings.payment_terms || prev.payment_terms,
+      patient_deposits: settings.patient_deposits || prev.patient_deposits,
+      auto_hmo_claims: settings.auto_hmo_claims || prev.auto_hmo_claims,
+      lock_paid_invoices: settings.lock_paid_invoices || prev.lock_paid_invoices,
+      sms_receipts: settings.sms_receipts || prev.sms_receipts,
+      theme: settings.theme || prev.theme,
+      primary_color: settings.primary_color || prev.primary_color,
+    }));
+  }, [settings, clinic]);
 
   const tabs = [
     { id: "profile", label: "Clinic Profile", icon: Globe },
@@ -135,11 +139,36 @@ export default function SettingsPage() {
 
   const toggle = (key: string) => setForm(f => ({ ...f, [key]: f[key] === "true" ? "false" : "true" }));
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const settingsList = Object.entries(form).map(([key, value]) => ({ key, value, category: getTabCategory(key) }));
-    bulkSetMut.mutate(settingsList, {
-      onSuccess: () => { setSaved(true); setTimeout(() => setSaved(false), 3000); },
-    });
+    try {
+      await bulkSetMut.mutateAsync(settingsList);
+
+      // Mirror the clinic profile fields onto the clinic record so the name,
+      // contact details and address used across the app stay in sync.
+      if (user?.clinicId) {
+        const clinicUpdate: Record<string, string> = {};
+        if (form.clinic_name.trim()) clinicUpdate.name = form.clinic_name.trim();
+        if (form.address.trim()) clinicUpdate.address = form.address.trim();
+        if (form.email.trim()) clinicUpdate.email = form.email.trim();
+        if (form.phone.trim()) clinicUpdate.phone = form.phone.trim();
+
+        if (Object.keys(clinicUpdate).length > 0) {
+          try {
+            await api.put(`/clinics/${user.clinicId}`, clinicUpdate);
+            queryClient.invalidateQueries({ queryKey: ["clinics"] });
+          } catch {
+            toast.error("Settings saved, but the clinic profile could not be updated.");
+          }
+        }
+      }
+
+      setSaved(true);
+      toast.success("Settings saved successfully");
+      setTimeout(() => setSaved(false), 3000);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Could not save settings. Please try again.");
+    }
   };
 
   const getTabCategory = (key: string): string => {

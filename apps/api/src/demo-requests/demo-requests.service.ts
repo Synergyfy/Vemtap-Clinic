@@ -1,5 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { CreateDemoRequestDto } from './dto';
+import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationType } from '../entities/notification.entity';
 
 export type DemoRequestRecord = {
   id: string;
@@ -19,7 +21,9 @@ export type DemoRequestRecord = {
 export class DemoRequestsService {
   private readonly demoRequests: DemoRequestRecord[] = [];
 
-  create(dto: CreateDemoRequestDto): { success: boolean; message: string; data: DemoRequestRecord } {
+  constructor(private readonly notificationsService: NotificationsService) {}
+
+  async create(dto: CreateDemoRequestDto): Promise<{ success: boolean; message: string; data: DemoRequestRecord }> {
     const request: DemoRequestRecord = {
       id: typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`,
       clinicType: dto.clinicType,
@@ -35,6 +39,17 @@ export class DemoRequestsService {
     };
 
     this.demoRequests.push(request);
+
+    try {
+      await this.notificationsService.notifySuperAdmins({
+        title: 'New demo request',
+        message: `${request.firstName} ${request.lastName} (${request.clinicName}) requested a demo on ${request.preferredDate} at ${request.preferredTime}.`,
+        type: NotificationType.SYSTEM,
+        metadata: { demoRequestId: request.id, email: request.email, phone: request.phone },
+      });
+    } catch {
+      // Notifications are best-effort; the demo request itself is still stored.
+    }
 
     return {
       success: true,

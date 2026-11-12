@@ -7,6 +7,8 @@ import { Modal } from "@/components/ui/modal";
 import { Settings2, Bell, Shield, User, Globe, Moon, PackageSearch, CheckCircle2, Eye, EyeOff } from "lucide-react";
 import { PageHeader } from "@/app/clinic/_components/page-header";
 import { useAuth } from "@/lib/auth-context";
+import { useUserPreferences } from "@/hooks/useUserPreferences";
+import { api } from "@/lib/api";
 
 type ModalKey = "profile" | "notifications" | "lab" | "security" | "display" | "regional" | null;
 
@@ -22,7 +24,10 @@ const settingsSections = [
 export default function OpticianSettings() {
   const [modal, setModal] = useState<ModalKey>(null);
   const [toast, setToast] = useState("");
-  const { user } = useAuth();
+  const [toastError, setToastError] = useState(false);
+  const { user, updateProfile } = useAuth();
+  const { prefs, save, isLoaded: prefsLoaded } = useUserPreferences();
+  const [prefsHydrated, setPrefsHydrated] = useState(false);
 
   const liveDisplayName = user ? [user.firstName, user.lastName].filter(Boolean).join(" ").trim() || "User" : "User";
   const liveRoleLabel = user?.roles?.[0] ? user.roles[0].replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase()) : "";
@@ -30,13 +35,12 @@ export default function OpticianSettings() {
   const [profileName, setProfileName] = useState(liveDisplayName);
   const [profileEmail, setProfileEmail] = useState(user?.email || "");
   const [profilePhone, setProfilePhone] = useState(user?.phone || "");
-  const [licenseNo, setLicenseNo] = useState(user?.userId || "");
+  const [licenseNo, setLicenseNo] = useState("");
 
   useEffect(() => {
     setProfileName(liveDisplayName);
     setProfileEmail(user?.email || "");
     setProfilePhone(user?.phone || "");
-    setLicenseNo(user?.userId || "");
   }, [liveDisplayName, user]);
 
   const [notifOrders, setNotifOrders] = useState(true);
@@ -61,13 +65,158 @@ export default function OpticianSettings() {
   const [currency, setCurrency] = useState("NGN (₦)");
   const [dateFormat, setDateFormat] = useState("DD/MM/YYYY");
 
-  const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 3000); };
-  const handleSave = (label: string) => { showToast(`${label} updated successfully`); setModal(null); };
+  const showToast = (msg: string, isError = false) => {
+    setToastError(isError);
+    setToast(msg);
+    setTimeout(() => setToast(""), 3000);
+  };
+
+  useEffect(() => {
+    if (!prefsLoaded || prefsHydrated) return;
+    setPrefsHydrated(true);
+
+    const notifications = prefs["optician.notifications"] as
+      | { orders?: boolean; stock?: boolean; production?: boolean; reports?: boolean }
+      | undefined;
+    if (notifications) {
+      if (typeof notifications.orders === "boolean") setNotifOrders(notifications.orders);
+      if (typeof notifications.stock === "boolean") setNotifStock(notifications.stock);
+      if (typeof notifications.production === "boolean") setNotifProduction(notifications.production);
+      if (typeof notifications.reports === "boolean") setNotifReports(notifications.reports);
+    }
+
+    const labPrefs = prefs["optician.lab"] as
+      | { defaultLensType?: string; edgerCalib?: string; qcInspection?: boolean }
+      | undefined;
+    if (labPrefs) {
+      if (typeof labPrefs.defaultLensType === "string") setDefaultLensType(labPrefs.defaultLensType);
+      if (typeof labPrefs.edgerCalib === "string") setEdgerCalib(labPrefs.edgerCalib);
+      if (typeof labPrefs.qcInspection === "boolean") setQcInspection(labPrefs.qcInspection);
+    }
+
+    const securityPrefs = prefs["optician.security"] as { twoFactor?: boolean } | undefined;
+    if (securityPrefs && typeof securityPrefs.twoFactor === "boolean") setTwoFactor(securityPrefs.twoFactor);
+
+    const displayPrefs = prefs["optician.display"] as
+      | { darkMode?: boolean; language?: string; layout?: string }
+      | undefined;
+    if (displayPrefs) {
+      if (typeof displayPrefs.darkMode === "boolean") setDarkMode(displayPrefs.darkMode);
+      if (typeof displayPrefs.language === "string") setLanguage(displayPrefs.language);
+      if (typeof displayPrefs.layout === "string") setLayout(displayPrefs.layout);
+    }
+
+    const regionalPrefs = prefs["optician.regional"] as
+      | { timezone?: string; currency?: string; dateFormat?: string }
+      | undefined;
+    if (regionalPrefs) {
+      if (typeof regionalPrefs.timezone === "string") setTimezone(regionalPrefs.timezone);
+      if (typeof regionalPrefs.currency === "string") setCurrency(regionalPrefs.currency);
+      if (typeof regionalPrefs.dateFormat === "string") setDateFormat(regionalPrefs.dateFormat);
+    }
+
+    const profilePrefs = prefs["optician.profile"] as { licenseNo?: string } | undefined;
+    if (profilePrefs && typeof profilePrefs.licenseNo === "string") setLicenseNo(profilePrefs.licenseNo);
+  }, [prefsLoaded, prefs, prefsHydrated]);
+
+  const persist = async (patch: Record<string, any>, successMessage: string) => {
+    try {
+      await save(patch);
+      showToast(successMessage);
+      return true;
+    } catch (err: any) {
+      showToast(err?.response?.data?.message || "Could not save settings. Please try again.", true);
+      return false;
+    }
+  };
+
+  const handleSave = async (label: string) => {
+    if (label === "Profile") {
+      const name = profileName.trim();
+      if (!name) {
+        showToast("Please enter your full name.", true);
+        return;
+      }
+      const [firstName, ...rest] = name.split(/\s+/);
+      try {
+        await updateProfile({
+          firstName,
+          lastName: rest.join(" "),
+          email: profileEmail.trim(),
+          phone: profilePhone.trim(),
+        });
+        await persist({ "optician.profile": { licenseNo: licenseNo.trim() } }, "Profile updated successfully");
+        setModal(null);
+      } catch (err: any) {
+        showToast(err?.response?.data?.message || "Could not update your profile.", true);
+      }
+      return;
+    }
+
+    if (label === "Notification preferences") {
+      const saved = await persist(
+        { "optician.notifications": { orders: notifOrders, stock: notifStock, production: notifProduction, reports: notifReports } },
+        "Notification preferences updated successfully",
+      );
+      if (saved) setModal(null);
+      return;
+    }
+
+    if (label === "Lab configuration") {
+      const saved = await persist(
+        { "optician.lab": { defaultLensType, edgerCalib, qcInspection } },
+        "Lab configuration updated successfully",
+      );
+      if (saved) setModal(null);
+      return;
+    }
+
+    if (label === "Security settings") {
+      const wantsPasswordChange = Boolean(currentPw || newPw);
+      if (wantsPasswordChange) {
+        if (newPw.length < 6) {
+          showToast("New password must be at least 6 characters.", true);
+          return;
+        }
+        if (!currentPw) {
+          showToast("Enter your current password to change it.", true);
+          return;
+        }
+        try {
+          await api.put("/auth/password", { currentPassword: currentPw, newPassword: newPw });
+        } catch (err: any) {
+          showToast(err?.response?.data?.message || "Could not update your password.", true);
+          return;
+        }
+      }
+      const saved = await persist(
+        { "optician.security": { twoFactor } },
+        wantsPasswordChange ? "Password updated. Other sessions were signed out." : "Security settings updated successfully",
+      );
+      if (saved) {
+        setCurrentPw("");
+        setNewPw("");
+        setModal(null);
+      }
+      return;
+    }
+
+    if (label === "Display settings") {
+      const saved = await persist({ "optician.display": { darkMode, language, layout } }, "Display settings updated successfully");
+      if (saved) setModal(null);
+      return;
+    }
+
+    if (label === "Regional settings") {
+      const saved = await persist({ "optician.regional": { timezone, currency, dateFormat } }, "Regional settings updated successfully");
+      if (saved) setModal(null);
+    }
+  };
 
   return (
     <div className="space-y-6 md:space-y-8">
       {toast && (
-        <div className="fixed top-4 right-4 z-[200] bg-amber-600 text-white px-4 py-3 rounded-xl shadow-lg shadow-amber-200 flex items-center gap-2 animate-in fade-in slide-in-from-top-4 duration-300">
+        <div className={`fixed top-4 right-4 z-[200] ${toastError ? "bg-rose-600 shadow-rose-200" : "bg-amber-600 shadow-amber-200"} text-white px-4 py-3 rounded-xl shadow-lg flex items-center gap-2 animate-in fade-in slide-in-from-top-4 duration-300`}>
           <CheckCircle2 size={18} />
           <span className="text-sm font-bold">{toast}</span>
         </div>

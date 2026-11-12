@@ -52,12 +52,6 @@ export class DebtorsController {
     return this.debtorsService.recalculateDebtorBalances(clinicId, asOfDate ? new Date(asOfDate) : undefined);
   }
 
-  @Get(':id')
-  @ApiOperation({ summary: 'Get debtor by ID' })
-  findDebtor(@Param('id') id: string) {
-    return this.debtorsService.findDebtorById(id);
-  }
-
   @Put(':id')
   @Roles(UserRole.ADMIN, UserRole.CASHIER)
   @ApiOperation({ summary: 'Update debtor' })
@@ -118,5 +112,13 @@ export class DebtorsController {
   @ApiOperation({ summary: 'Update collection activity' })
   updateActivity(@Param('id') id: string, @Body() dto: UpdateCollectionActivityDto) {
     return this.debtorsService.updateCollectionActivity(id, dto);
+  }
+
+  // Parameterised route last: otherwise GET 'payment-plans' / 'activities'
+  // are captured as an :id and fail with an invalid-uuid error.
+  @Get(':id')
+  @ApiOperation({ summary: 'Get debtor by ID' })
+  findDebtor(@Param('id') id: string) {
+    return this.debtorsService.findDebtorById(id);
   }
 }

@@ -220,6 +220,20 @@ export interface FamilyActivationInvitePayload {
   fullName: string;
   email: string;
   relationship: 'child' | 'spouse' | 'parent' | 'other';
+  dateOfBirth?: string;
+  gender?: 'male' | 'female' | 'other' | string;
+  phone?: string;
+  sendInvite?: boolean;
+}
+
+export interface FamilyInviteResult {
+  success: boolean;
+  patientId: string;
+  email: string;
+  emailSent: boolean;
+  invitationId?: string;
+  expiresAt?: string;
+  activationUrl?: string;
 }
 
 export interface FamilyActivationPayload {
@@ -229,6 +243,29 @@ export interface FamilyActivationPayload {
   gender: 'male' | 'female' | 'other' | string;
   phone: string;
   password: string;
+}
+
+export interface FamilyProfile {
+  id: string;
+  firstName: string;
+  lastName: string;
+  fullName: string;
+  email: string | null;
+  phone?: string | null;
+  relationship: string;
+  accountType: 'guardian' | 'dependent';
+  isPrimary: boolean;
+  status: 'active' | 'pending';
+  invitationId?: string;
+  expiresAt?: string;
+  clinicId?: string | null;
+  branchId?: string | null;
+}
+
+export interface FamilyProfilesResponse {
+  primary: FamilyProfile | null;
+  members: FamilyProfile[];
+  pendingInvites: FamilyProfile[];
 }
 
 export interface UpdatePatientProfilePayload {
@@ -295,8 +332,18 @@ export const patientPortalService = {
     return response.data;
   },
 
-  async sendFamilyActivationInvite(dto: FamilyActivationInvitePayload): Promise<{ success: boolean; invitationId: string; email: string; activationUrl: string; expiresAt: string }> {
+  async getFamilyProfiles(): Promise<FamilyProfilesResponse> {
+    const response = await api.get('/patient-portal/family');
+    return response.data;
+  },
+
+  async addFamilyMember(dto: FamilyActivationInvitePayload): Promise<FamilyInviteResult> {
     const response = await api.post('/patient-portal/family/invite', dto);
+    return response.data;
+  },
+
+  async sendFamilyMemberInvite(patientId: string): Promise<FamilyInviteResult> {
+    const response = await api.post(`/patient-portal/family/${patientId}/invite`);
     return response.data;
   },
 
@@ -397,7 +444,7 @@ export const patientPortalService = {
   },
 
   async getLensOrders(): Promise<LensOrder[]> {
-    const response = await api.get('/optical/lens-orders');
+    const response = await api.get('/patient-portal/optical/lens-orders');
     const data = response.data as PaginatedResponse<LensOrder>;
     return data.data || [];
   },

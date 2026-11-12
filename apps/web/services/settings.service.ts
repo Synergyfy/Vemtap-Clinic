@@ -70,32 +70,6 @@ export interface UpdateTemplateData {
   status?: string;
 }
 
-export interface Template {
-  id: string;
-  name: string;
-  category: string;
-  fields: any[];
-  status: string;
-  lastUpdated: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface CreateTemplateData {
-  name: string;
-  category: string;
-  fields: any[];
-  status: string;
-  clinicId: string;
-}
-
-export interface UpdateTemplateData {
-  name?: string;
-  category?: string;
-  fields?: any[];
-  status?: string;
-}
-
 export async function listSettings(clinicId: string, category?: string): Promise<ClinicSetting[]> {
   const params: any = { clinicId };
   if (category) params.category = category;
@@ -130,6 +104,36 @@ export async function bulkSetSettings(clinicId: string, settings: SetSettingData
 
 export async function deleteSetting(clinicId: string, key: string): Promise<void> {
   await api.delete(`/settings/${key}`, { params: { clinicId } });
+}
+
+// ─── Personal (per-user) preferences ────────────────────────────────────────
+
+export async function getMySettings(): Promise<Record<string, string>> {
+  const { data } = await api.get("/settings/me");
+  return data;
+}
+
+export async function setMySetting(dto: SetSettingData): Promise<void> {
+  await api.post("/settings/me", dto);
+}
+
+export async function bulkSetMySettings(settings: SetSettingData[]): Promise<void> {
+  await api.post("/settings/me/bulk", { settings });
+}
+
+export async function deleteMySetting(key: string): Promise<void> {
+  await api.delete(`/settings/me/${key}`);
+}
+
+// ─── Platform-wide settings (super admin console) ───────────────────────────
+
+export async function getPlatformSettings(): Promise<Record<string, string>> {
+  const { data } = await api.get("/settings/platform");
+  return data;
+}
+
+export async function bulkSetPlatformSettings(settings: SetSettingData[]): Promise<void> {
+  await api.post("/settings/platform/bulk", { settings });
 }
 
 // Workflow functions (using settings API with 'workflow' category)

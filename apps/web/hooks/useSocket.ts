@@ -3,6 +3,7 @@
 import { useEffect, useRef, useCallback, useState } from "react";
 import { io, Socket } from "socket.io-client";
 import { useAuth } from "@/lib/auth-context";
+import { getAccessToken } from "@/lib/auth-state";
 
 const SOCKET_URL = process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") || "http://localhost:3001";
 
@@ -15,7 +16,7 @@ export function useSocket(namespace: string) {
     if (!user) return;
 
     const socket = io(`${SOCKET_URL}/${namespace}`, {
-      auth: { token: localStorage.getItem("vemtap_access_token") },
+      auth: { token: getAccessToken() ?? undefined },
       transports: ["websocket", "polling"],
       reconnection: true,
       reconnectionDelay: 1000,

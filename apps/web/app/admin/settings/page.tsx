@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
+import { toast } from "sonner";
 import { 
   Settings2, Zap, Bell, MessageSquare, 
   Mail, Key, Globe, ShieldCheck, 
@@ -13,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useCurrencyStore, currencies } from "@/store/currencyStore";
+import { usePlatformSettings, useBulkSetPlatformSettings } from "@/hooks/useSettings";
 
 const integrations = [
   { name: "WhatsApp Business API", provider: "Twilio", status: "Connected", icon: MessageSquare, color: "emerald" },
@@ -83,9 +85,44 @@ export default function SettingsPage() {
     advancedImaging: true,
     telemedicine: false
   });
+  const { data: platformSettings } = usePlatformSettings();
+  const bulkSetPlatform = useBulkSetPlatformSettings();
+  const [settingsHydrated, setSettingsHydrated] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    // `data` is undefined until the platform settings have actually loaded,
+    // which is the only safe moment to hydrate the feature toggles.
+    if (platformSettings === undefined || settingsHydrated) return;
+    setSettingsHydrated(true);
+    const stored = platformSettings.features;
+    if (!stored) return;
+    try {
+      const parsed = JSON.parse(stored);
+      if (parsed && typeof parsed === "object") {
+        setFeatures((prev) => ({ ...prev, ...parsed }));
+      }
+    } catch {
+      // Ignore malformed legacy values.
+    }
+  }, [platformSettings, settingsHydrated]);
 
   const toggleFeature = (key: keyof typeof features) => {
     setFeatures(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      await bulkSetPlatform.mutateAsync([
+        { key: "features", value: JSON.stringify(features) },
+      ]);
+      toast.success("Global feature settings saved");
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Could not save global settings.");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -96,8 +133,8 @@ export default function SettingsPage() {
           <h1 className="text-3xl font-bold text-brand-navy font-black tracking-tight">System Control</h1>
           <p className="mt-1 text-slate-500 font-medium">Configure global feature toggles, notifications, and API integrations.</p>
         </div>
-        <Button variant="default" className="gap-2 self-start shadow-xl shadow-brand-blue/20 sm:self-auto">
-          <Save size={18} /> Save Global Changes
+        <Button variant="default" onClick={handleSave} disabled={isSaving} className="gap-2 self-start shadow-xl shadow-brand-blue/20 sm:self-auto">
+          <Save size={18} /> {isSaving ? "Saving..." : "Save Global Changes"}
         </Button>
       </div>
 

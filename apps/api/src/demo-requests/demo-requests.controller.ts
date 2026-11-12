@@ -1,5 +1,9 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
-import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { UserRole } from '../entities/user.entity';
 import { CreateDemoRequestDto } from './dto';
 import { DemoRequestsService } from './demo-requests.service';
 
@@ -9,7 +13,10 @@ export class DemoRequestsController {
   constructor(private readonly demoRequestsService: DemoRequestsService) {}
 
   @Get()
-  @ApiOperation({ summary: 'List submitted demo requests' })
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'List submitted demo requests (admin only)' })
   findAll() {
     return this.demoRequestsService.findAll();
   }

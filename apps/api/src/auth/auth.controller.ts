@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Put, Body, Res, Req, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Post, Get, Put, Patch, Body, Res, Req, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
 import { Response, Request } from 'express';
 import { ConfigService } from '@nestjs/config';
@@ -6,7 +6,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Clinic } from '../entities/clinic.entity';
 import { AuthService } from './auth.service';
-import { LoginDto, RegisterDto, ChangePasswordDto, ResetPasswordDto, RequestPasswordResetDto, RefreshTokenDto, AuthUserDto, AuthResponseDto } from './dto/auth.dto';
+import { LoginDto, RegisterDto, ChangePasswordDto, ResetPasswordDto, RequestPasswordResetDto, RefreshTokenDto, AuthUserDto, AuthResponseDto, UpdateProfileDto } from './dto/auth.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { getRefreshCookieOptions, getClearedRefreshCookieOptions, REFRESH_COOKIE_NAME } from './utils/refresh-cookie.util';
@@ -128,8 +128,16 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get current user profile' })
-  getProfile(@CurrentUser() user: AuthUserDto) {
-    return user;
+  getProfile(@CurrentUser('userId') userId: string) {
+    return this.authService.getProfile(userId);
+  }
+
+  @Patch('profile')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Update the signed-in user\'s profile' })
+  updateProfile(@CurrentUser('userId') userId: string, @Body() dto: UpdateProfileDto) {
+    return this.authService.updateProfile(userId, dto);
   }
 
   private setRefreshCookie(res: Response, token: string) {

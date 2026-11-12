@@ -14,13 +14,13 @@ export class Patient {
   @Column({ length: 50 })
   lastName: string;
 
-  @Column({ type: 'date' })
+  @Column({ type: 'date', nullable: true })
   dateOfBirth: Date;
 
   @Column({ type: 'enum', enum: ['male', 'female', 'other'] })
   gender: string;
 
-  @Column({ length: 20 })
+  @Column({ nullable: true, length: 20 })
   phone: string;
 
   @Column({ nullable: true, length: 100 })

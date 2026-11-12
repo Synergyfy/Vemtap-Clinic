@@ -13,6 +13,7 @@ import {
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { UserRole } from '../entities/user.entity';
 
 @ApiTags('HMO')
@@ -203,6 +204,62 @@ export class HmoController {
   @ApiOperation({ summary: 'Get HMO totals by HMO' })
   getHMOTotals(@Query('clinicId') clinicId: string) {
     return this.hmoService.getHMOTotals(clinicId);
+  }
+
+  // --- Plans ---
+  @Post('plans')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Create HMO plan' })
+  createPlan(@Body() dto: CreateHMOPlanDto, @CurrentUser() user: any) {
+    return this.hmoService.createPlan({ ...dto, clinicId: dto.clinicId ?? user.clinicId });
+  }
+
+  @Get('plans/:hmoId')
+  @ApiOperation({ summary: 'List HMO plans for a provider' })
+  findAllPlans(@Param('hmoId') hmoId: string) {
+    return this.hmoService.findAllPlans(hmoId);
+  }
+
+  @Put('plans/:id')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Update HMO plan' })
+  updatePlan(@Param('id') id: string, @Body() dto: UpdateHMOPlanDto) {
+    return this.hmoService.updatePlan(id, dto);
+  }
+
+  @Delete('plans/:id')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Delete HMO plan' })
+  removePlan(@Param('id') id: string) {
+    return this.hmoService.removePlan(id);
+  }
+
+  // --- Remittances ---
+  @Post('remittances')
+  @Roles(UserRole.ADMIN, UserRole.CASHIER)
+  @ApiOperation({ summary: 'Record HMO remittance' })
+  createRemittance(@Body() dto: CreateRemittanceDto, @CurrentUser() user: any) {
+    return this.hmoService.createRemittance({ ...dto, clinicId: dto.clinicId ?? user.clinicId });
+  }
+
+  @Get('remittances/all')
+  @ApiOperation({ summary: 'List HMO remittances' })
+  findAllRemittances(@Query('clinicId') clinicId: string) {
+    return this.hmoService.findAllRemittances(clinicId);
+  }
+
+  @Put('remittances/:id')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Update remittance status' })
+  updateRemittance(@Param('id') id: string, @Body() dto: UpdateRemittanceDto) {
+    return this.hmoService.updateRemittance(id, dto);
+  }
+
+  @Put('remittances/:id/match')
+  @Roles(UserRole.ADMIN, UserRole.CASHIER)
+  @ApiOperation({ summary: 'Match remittance to claims' })
+  matchRemittance(@Param('id') id: string, @Body() dto: MatchRemittanceDto) {
+    return this.hmoService.matchRemittance(id, dto.claimIds);
   }
 
   // --- Stats ---

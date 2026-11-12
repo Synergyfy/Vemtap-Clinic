@@ -1,4 +1,4 @@
-import { IsString, IsEmail, MinLength, IsOptional } from 'class-validator';
+import { IsString, IsEmail, MinLength, IsOptional, MaxLength } from 'class-validator';
 import { Transform } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 
@@ -86,6 +86,35 @@ export class ChangePasswordDto {
   newPassword: string;
 }
 
+export class UpdateProfileDto {
+  @ApiProperty({ example: 'John', required: false })
+  @Transform(({ value }) => (value === '' || value === null ? undefined : value))
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  firstName?: string;
+
+  @ApiProperty({ example: 'Doe', required: false })
+  @Transform(({ value }) => (value === '' || value === null ? undefined : value))
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  lastName?: string;
+
+  @ApiProperty({ example: 'john@vemtap.com', required: false })
+  @Transform(({ value }) => (value === '' || value === null ? undefined : value))
+  @IsOptional()
+  @IsEmail()
+  @MaxLength(100)
+  email?: string;
+
+  @ApiProperty({ example: '+234 812 345 6789', required: false })
+  @IsOptional()
+  @IsString()
+  @MaxLength(30)
+  phone?: string;
+}
+
 export class RequestPasswordResetDto {
   @ApiProperty({ example: 'john@vemtap.com' })
   @IsEmail()
@@ -133,6 +162,9 @@ export class AuthUserDto {
 
   @ApiProperty({ required: false })
   lastName?: string;
+
+  @ApiProperty({ required: false, nullable: true })
+  phone?: string | null;
 }
 
 export class AuthResponseDto {

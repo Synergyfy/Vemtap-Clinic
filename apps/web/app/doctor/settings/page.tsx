@@ -8,10 +8,14 @@ import { Badge } from "@/components/ui/badge";
 import { Settings2, User, Bell, Shield, Globe, CheckCircle2, Eye, EyeOff, Save } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-context";
+import { useUserPreferences } from "@/hooks/useUserPreferences";
 import { api } from "@/lib/api";
 
 export default function DoctorSettings() {
-  const { user } = useAuth();
+  const { user, updateProfile } = useAuth();
+  const { prefs, save, isLoaded: prefsLoaded } = useUserPreferences();
+  const [prefsHydrated, setPrefsHydrated] = useState(false);
+  const [toastError, setToastError] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [consultOpen, setConsultOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -38,14 +42,12 @@ export default function DoctorSettings() {
         const response = await api.get("/auth/profile");
         const profileData = response.data || {};
 
-        setProfile({
+        setProfile((prev) => ({
+          ...prev,
           name: [profileData.firstName, profileData.lastName].filter(Boolean).join(" ").trim() || "Doctor",
           email: profileData.email || user.email || "",
           phone: profileData.phone || user.phone || "",
-          license: profileData.license || "",
-          specialization: profileData.specialization || (user.roles?.[0] ? user.roles[0].replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase()) : "General Medicine"),
-          bio: profileData.bio || "",
-        });
+        }));
       } catch {
         setProfile(buildProfileFromUser(user));
       }
@@ -59,7 +61,107 @@ export default function DoctorSettings() {
   const [security, setSecurity] = useState({ currentPw: "", newPw: "", confirmPw: "", twoFactor: false, showPw: false });
   const [lang, setLang] = useState({ language: "English (UK)", timezone: "Africa/Lagos", dateFormat: "DD/MM/YYYY", timeFormat: "12h" });
 
-  const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 3000); };
+  useEffect(() => {
+    if (!prefsLoaded || prefsHydrated) return;
+    setPrefsHydrated(true);
+
+    const consultation = prefs["doctor.consultation"] as Partial<typeof consultDefaults> | undefined;
+    if (consultation) setConsultDefaults((prev) => ({ ...prev, ...consultation }));
+
+    const notifications = prefs["doctor.notifications"] as Partial<typeof notifs> | undefined;
+    if (notifications) setNotifs((prev) => ({ ...prev, ...notifications }));
+
+    const securityPrefs = prefs["doctor.security"] as { twoFactor?: boolean } | undefined;
+    if (securityPrefs) setSecurity((prev) => ({ ...prev, twoFactor: Boolean(securityPrefs.twoFactor) }));
+
+    const regional = prefs["doctor.regional"] as Partial<typeof lang> | undefined;
+    if (regional) setLang((prev) => ({ ...prev, ...regional }));
+
+    const profilePrefs = prefs["doctor.profile"] as { license?: string; specialization?: string; bio?: string } | undefined;
+    if (profilePrefs) {
+      setProfile((prev) => ({
+        ...prev,
+        license: profilePrefs.license ?? prev.license,
+        specialization: profilePrefs.specialization ?? prev.specialization,
+        bio: profilePrefs.bio ?? prev.bio,
+      }));
+    }
+  }, [prefsLoaded, prefs, prefsHydrated]);
+
+  const showToast = (msg: string, isError = false) => {
+    setToastError(isError);
+    setToast(msg);
+    setTimeout(() => setToast(""), 3000);
+  };
+
+  const persist = async (patch: Record<string, any>, successMessage: string) => {
+    try {
+      await save(patch);
+      showToast(successMessage);
+      return true;
+    } catch (err: any) {
+      showToast(err?.response?.data?.message || "Could not save settings. Please try again.", true);
+      return false;
+    }
+  };
+
+  const saveProfile = async () => {
+    const name = profile.name.trim();
+    if (!name) {
+      showToast("Please enter your full name.", true);
+      return;
+    }
+    const [firstName, ...rest] = name.split(/\s+/);
+    try {
+      await updateProfile({ firstName, lastName: rest.join(" "), email: profile.email.trim(), phone: profile.phone.trim() });
+      await persist(
+        {
+          "doctor.profile": {
+            license: profile.license.trim(),
+            specialization: profile.specialization.trim(),
+            bio: profile.bio.trim(),
+          },
+        },
+        "Profile updated successfully!",
+      );
+      setProfileOpen(false);
+    } catch (err: any) {
+      showToast(err?.response?.data?.message || "Could not update your profile.", true);
+    }
+  };
+
+  const savePassword = async () => {
+    const wantsPasswordChange = Boolean(security.currentPw || security.newPw || security.confirmPw);
+    if (wantsPasswordChange) {
+      if (security.newPw.length < 6) {
+        showToast("New password must be at least 6 characters.", true);
+        return;
+      }
+      if (security.newPw !== security.confirmPw) {
+        showToast("New passwords do not match.", true);
+        return;
+      }
+      if (!security.currentPw) {
+        showToast("Enter your current password to change it.", true);
+        return;
+      }
+      try {
+        await api.put("/auth/password", { currentPassword: security.currentPw, newPassword: security.newPw });
+      } catch (err: any) {
+        showToast(err?.response?.data?.message || "Could not update your password.", true);
+        return;
+      }
+    }
+
+    const saved = await persist(
+      { "doctor.security": { twoFactor: security.twoFactor } },
+      wantsPasswordChange ? "Password updated. Other sessions were signed out." : "Security settings updated!",
+    );
+    if (saved) {
+      setSecurity((prev) => ({ ...prev, currentPw: "", newPw: "", confirmPw: "" }));
+      setSecurityOpen(false);
+    }
+  };
 
   const sections = [
     { title: "Profile Information", icon: User, desc: "Manage your personal details and professional bio.", onClick: () => setProfileOpen(true) },
@@ -72,7 +174,7 @@ export default function DoctorSettings() {
   return (
     <div className="space-y-4 sm:space-y-8">
       {toast && (
-        <div className="fixed top-4 right-4 z-[200] bg-emerald-600 text-white px-4 py-3 rounded-xl shadow-lg shadow-emerald-200 flex items-center gap-2 animate-in fade-in slide-in-from-top-4 duration-300">
+        <div className={`fixed top-4 right-4 z-[200] ${toastError ? "bg-rose-600 shadow-rose-200" : "bg-emerald-600 shadow-emerald-200"} text-white px-4 py-3 rounded-xl shadow-lg flex items-center gap-2 animate-in fade-in slide-in-from-top-4 duration-300`}>
           <CheckCircle2 size={18} />
           <span className="text-sm font-bold">{toast}</span>
         </div>
@@ -111,7 +213,7 @@ export default function DoctorSettings() {
           <div className="space-y-1"><label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Bio</label><textarea value={profile.bio} onChange={e => setProfile(p => ({ ...p, bio: e.target.value }))} rows={3} className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm font-medium outline-none focus:ring-2 focus:ring-emerald-500/20 resize-none" /></div>
           <div className="flex justify-end gap-2 pt-2">
             <button onClick={() => setProfileOpen(false)} className="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-700 hover:bg-slate-50">Cancel</button>
-            <button onClick={() => { showToast("Profile updated successfully!"); setProfileOpen(false); }} className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-200"><Save size={16} /> Save Changes</button>
+            <button onClick={saveProfile} className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-200"><Save size={16} /> Save Changes</button>
           </div>
         </div>
       </Modal>
@@ -133,7 +235,7 @@ export default function DoctorSettings() {
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <button onClick={() => setConsultOpen(false)} className="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-700 hover:bg-slate-50">Cancel</button>
-            <button onClick={() => { showToast("Consultation settings saved!"); setConsultOpen(false); }} className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-200"><Save size={16} /> Save</button>
+            <button onClick={async () => { if (await persist({ "doctor.consultation": consultDefaults }, "Consultation settings saved!")) setConsultOpen(false); }} className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-200"><Save size={16} /> Save</button>
           </div>
         </div>
       </Modal>
@@ -157,7 +259,7 @@ export default function DoctorSettings() {
           ))}
           <div className="flex justify-end gap-2 pt-2">
             <button onClick={() => setNotifOpen(false)} className="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-700 hover:bg-slate-50">Cancel</button>
-            <button onClick={() => { showToast("Notification preferences updated!"); setNotifOpen(false); }} className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-200"><Save size={16} /> Save Preferences</button>
+            <button onClick={async () => { if (await persist({ "doctor.notifications": notifs }, "Notification preferences updated!")) setNotifOpen(false); }} className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-200"><Save size={16} /> Save Preferences</button>
           </div>
         </div>
       </Modal>
@@ -182,7 +284,7 @@ export default function DoctorSettings() {
           </label>
           <div className="flex justify-end gap-2 pt-2">
             <button onClick={() => setSecurityOpen(false)} className="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-700 hover:bg-slate-50">Cancel</button>
-            <button onClick={() => { showToast("Security settings updated!"); setSecurityOpen(false); }} className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-200"><Save size={16} /> Update</button>
+            <button onClick={savePassword} className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-200"><Save size={16} /> Update</button>
           </div>
         </div>
       </Modal>
@@ -198,7 +300,7 @@ export default function DoctorSettings() {
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <button onClick={() => setLangOpen(false)} className="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-700 hover:bg-slate-50">Cancel</button>
-            <button onClick={() => { showToast("Language & region settings updated!"); setLangOpen(false); }} className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-200"><Save size={16} /> Save</button>
+            <button onClick={async () => { if (await persist({ "doctor.regional": lang }, "Language & region settings updated!")) setLangOpen(false); }} className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-200"><Save size={16} /> Save</button>
           </div>
         </div>
       </Modal>

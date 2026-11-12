@@ -114,6 +114,16 @@ export class CreatePatientDto {
   @MaxLength(200)
   allergies?: string;
 
+  @ApiPropertyOptional({ example: 'guardian-uuid' })
+  @IsOptional()
+  @IsUUID()
+  guardianId?: string;
+
+  @ApiPropertyOptional({ enum: ['child', 'spouse', 'parent', 'other'], default: 'other' })
+  @IsOptional()
+  @IsEnum(['child', 'spouse', 'parent', 'other'])
+  guardianRelationship?: 'child' | 'spouse' | 'parent' | 'other';
+
   @ApiPropertyOptional({ example: 'clinic-uuid' })
   @IsOptional()
   @IsUUID()
