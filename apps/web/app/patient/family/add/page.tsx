@@ -35,14 +35,16 @@ export default function AddDependentPage() {
     setActiveProfileId(getActivePatientProfileId());
   }, []);
 
-  // Only the family owner, while their own profile is selected, can add
+  // Only a guardian family owner, while their own profile is selected, can add
   // members; dependents (or a dependent profile) are sent back.
   const isOwnerProfileActive = !activeProfileId || activeProfileId === user?.userId;
   const canManageFamily = isFamilyOwner(user) && isOwnerProfileActive;
 
   useEffect(() => {
     if (isHydrated && user && !canManageFamily) {
-      router.replace("/patient/select-profile");
+      // Dependents need the profile switcher to reach the owner's profile;
+      // individual accounts simply do not have a family ledger.
+      router.replace(user.guardianId ? "/patient/select-profile" : "/patient/dashboard");
     }
   }, [canManageFamily, isHydrated, router, user]);
 

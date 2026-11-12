@@ -45,6 +45,35 @@ describe('PatientsService', () => {
     expect(result).toMatchObject({ firstName: 'Ada', clinicId: 'clinic-123', id: 'patient-2' });
   });
 
+  it('defaults a new patient to the staff branch when the form omits it', async () => {
+    const patientRepository = {
+      create: jest.fn((dto) => dto),
+      save: jest.fn(async (dto) => ({ ...dto, id: 'patient-branch' })),
+      findOne: jest.fn().mockResolvedValue(null),
+    };
+
+    const membershipRepository = {
+      findOne: jest.fn().mockResolvedValue(null),
+      count: jest.fn().mockResolvedValue(0),
+      create: jest.fn((dto) => dto),
+      save: jest.fn(async (dto) => ({ ...dto, id: 'membership-branch' })),
+    };
+
+    const service = new PatientsService(patientRepository as any, {} as any, membershipRepository as any);
+
+    await service.create(
+      { firstName: 'Ada', phone: '08030000000' } as any,
+      { clinicId: 'clinic-123', branchId: 'branch-9' },
+    );
+
+    expect(patientRepository.create).toHaveBeenCalledWith(
+      expect.objectContaining({ clinicId: 'clinic-123', branchId: 'branch-9' }),
+    );
+    expect(membershipRepository.create).toHaveBeenCalledWith(
+      expect.objectContaining({ patientId: 'patient-branch', clinicId: 'clinic-123', branchId: 'branch-9' }),
+    );
+  });
+
   it('does not reuse the clinic ID as a branch ID when a real branch is not assigned', async () => {
     const patientRepository = {
       create: jest.fn((dto) => dto),

@@ -125,19 +125,20 @@ export default function ReceptionDashboard() {
       const firstName = parts[0];
       const lastName = parts.slice(1).join(" ") || "Patient";
       const targetClinic = clinicId || "";
+      const targetBranch = user?.branchId ?? "";
       const newPatient = await createPatientMut.mutateAsync({
         firstName,
         lastName,
         phone: regPhone.trim(),
         clinicId: targetClinic,
-        branchId: targetClinic,
+        branchId: targetBranch,
         gender: "other",
         dateOfBirth: "1990-01-01",
       });
 
       await createQueueMut.mutateAsync({
         clinicId: targetClinic,
-        branchId: targetClinic,
+        branchId: targetBranch || targetClinic,
         patientId: newPatient.id,
         serviceType: "consultation",
         priority: "Normal",
@@ -159,20 +160,21 @@ export default function ReceptionDashboard() {
       const firstName = parts[0];
       const lastName = parts.slice(1).join(" ") || "Patient";
       const targetClinic = clinicId || "";
+      const targetBranch = user?.branchId ?? "";
       const newPatient = await createPatientMut.mutateAsync({
         firstName,
         lastName,
         phone: walkPhone.trim(),
         email: walkEmail.trim() || undefined,
         clinicId: targetClinic,
-        branchId: targetClinic,
+        branchId: targetBranch,
         gender: "other",
         dateOfBirth: "1990-01-01",
       });
 
       await createQueueMut.mutateAsync({
         clinicId: targetClinic,
-        branchId: targetClinic,
+        branchId: targetBranch || targetClinic,
         patientId: newPatient.id,
         serviceType: "consultation",
         priority: "Normal",

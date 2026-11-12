@@ -45,9 +45,7 @@ export default function SelectProfilePage() {
   const [invitedIds, setInvitedIds] = useState<string[]>([]);
   const [inviteNotice, setInviteNotice] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
-  const isFamilyMember = Boolean(
-    user?.guardianId || user?.guardianRelationship === "guardian" || user?.accountType === "guardian",
-  );
+  const isDependentAccount = Boolean(user?.guardianId);
 
   // The family owner manages the family; dependents never see these actions.
   const canManageInvites = isFamilyOwner(user);
@@ -158,11 +156,13 @@ export default function SelectProfilePage() {
                 Who is visiting today?
               </h1>
               <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-[#e2e7ff] text-[#0055c4] text-xs font-bold">
-                {isFamilyMember ? "Family Linked" : `${linkedCount} Profiles Linked`}
+                {isDependentAccount
+                  ? "Family Linked"
+                  : `${linkedCount} ${linkedCount === 1 ? "Profile" : "Profiles"} Linked`}
               </span>
             </div>
             <p className="text-sm text-[#424655]">
-              {isFamilyMember
+              {isDependentAccount
                 ? "This account is linked to a guardian profile. You can switch between your family-linked records here."
                 : "Select profile for records, appointments & prescriptions"}
             </p>
