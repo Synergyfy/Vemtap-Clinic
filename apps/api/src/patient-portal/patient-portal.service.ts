@@ -117,23 +117,99 @@ export class PatientPortalService {
     const existingByEmail = normalizedEmail
       ? await this.patientRepo.findOne({ where: { email: normalizedEmail } })
       : null;
-    const existingByPhone = normalizedPhone
-      ? await this.patientRepo.findOne({ where: { phone: normalizedPhone } })
-      : null;
+    const existingByPhone = normalizedPhone ? await this.findPatientByPhone(normalizedPhone) : null;
 
-    if (existingByEmail && existingByPhone) {
-      throw new ConflictException('An account with this email and phone number already exists. Please log in or use different registration details.');
+    // The same person can be matched twice (once by email, once by phone): only
+    // the same row may be claimed, otherwise the details belong to two records.
+    const matches = Array.from(
+      new Map(
+        [existingByEmail, existingByPhone]
+          .filter((row): row is Patient => Boolean(row))
+          .map((row) => [row.id, row]),
+      ).values(),
+    );
+
+    if (matches.length > 1) {
+      throw new ConflictException('An account with these details already exists. Please log in or use different registration details.');
     }
-    if (existingByEmail) {
-      throw new ConflictException('An account with this email already exists. Please log in or use a different email.');
+
+    const existing = matches[0] ?? null;
+
+    // Only rows created by clinic staff that were never activated can be claimed.
+    // A row with portal access is a real account: the patient must log in instead
+    // of registering over it.
+    if (existing && (existing.portalAccessEnabled || existing.patientPassword)) {
+      throw new ConflictException(
+        existing.email === normalizedEmail
+          ? 'An account with this email already exists. Please log in or use a different email.'
+          : 'An account with this phone number already exists. Please log in or use a different phone number.',
+      );
     }
-    if (existingByPhone) {
-      throw new ConflictException('An account with this phone number already exists. Please log in or use a different phone number.');
+
+    // Claiming an unactivated record requires the contact details the clinic
+    // recorded, so knowing just the email is not enough to take it over.
+    if (existing) {
+      const emailMatches = !existing.email || existing.email.trim().toLowerCase() === normalizedEmail;
+      const phoneMatches = !existing.phone || this.samePhone(existing.phone, normalizedPhone);
+      if (!emailMatches || !phoneMatches) {
+        throw new ConflictException(
+          emailMatches
+            ? 'A clinic record with this email already exists under a different phone number. Please contact the clinic to update your details.'
+            : 'An account with this phone number already exists. Please log in or use a different phone number.',
+        );
+      }
     }
 
     const { clinicId, branchId } = await this.resolveClinicAssociation(dto.clinicId, dto.branchId, dto.clinicQrCode);
     const accountType = dto.accountType === 'guardian' ? 'guardian' : 'individual';
     const hashedPassword = await bcrypt.hash(dto.password, 10);
+
+    if (existing) {
+      // Claim the record the clinic already created: keep its clinic association
+      // (and any appointments/records already booked against it) and add portal
+      // access plus the membership that powers the clinic list on the dashboard.
+      existing.firstName = dto.firstName;
+      existing.lastName = dto.lastName;
+      existing.dateOfBirth = dto.dateOfBirth as any;
+      existing.gender = dto.gender as any;
+      existing.phone = normalizedPhone;
+      existing.email = normalizedEmail;
+      existing.patientPassword = hashedPassword;
+      existing.portalAccessEnabled = true;
+      if (accountType === 'guardian') existing.guardianRelationship = 'guardian';
+
+      const claimed = await this.patientRepo.save(existing);
+
+      if (claimed.clinicId) {
+        await this.ensurePatientClinicMembership(claimed.id, claimed.clinicId, claimed.branchId ?? null);
+      }
+      if (clinicId && clinicId !== claimed.clinicId) {
+        await this.ensurePatientClinicMembership(claimed.id, clinicId, branchId ?? null);
+      }
+
+      // The same person may have been registered at more than one clinic before
+      // activating the portal. Every one of those clinics belongs on their
+      // dashboard, so mirror each unactivated clinic record as a membership.
+      if (typeof this.patientRepo.find === 'function') {
+        const siblings = await this.patientRepo.find({ where: { email: normalizedEmail } });
+        for (const sibling of siblings) {
+          if (sibling.id === claimed.id || sibling.portalAccessEnabled || !sibling.clinicId) continue;
+          await this.ensurePatientClinicMembership(claimed.id, sibling.clinicId, sibling.branchId ?? null);
+        }
+      }
+
+      await this.notifyClinicStaff(
+        claimed.clinicId ?? clinicId,
+        [UserRole.RECEPTIONIST, UserRole.CLINIC_ADMIN, UserRole.ADMIN],
+        'Patient activated their portal account',
+        `${this.displayName(claimed)} linked their patient portal account.`,
+        NotificationType.SYSTEM,
+      );
+
+      this.sendWelcomeEmail(claimed);
+      return this.generateToken(claimed);
+    }
+
     const patientData: Partial<Patient> = {
       firstName: dto.firstName,
       lastName: dto.lastName,
@@ -163,19 +239,41 @@ export class PatientPortalService {
       NotificationType.SYSTEM,
     );
 
-    // Send welcome email only when an email address is available, but do not block
-    // registration on the external mail provider.
-    if (saved.email && this.emailService?.sendTemplatedEmail) {
-      void this.emailService.sendTemplatedEmail('welcome', saved.email, {
-        firstName: saved.firstName,
-        clinicName: 'Vemtap Health Clinic',
-        loginUrl: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/patient/login`,
-      }).catch((error) => {
-        console.error('[patient-portal] welcome email failed:', error);
-      });
-    }
+    this.sendWelcomeEmail(saved);
 
     return this.generateToken(saved);
+  }
+
+  /**
+   * Matches a stored phone number on its last 10 digits so numbers entered by
+   * clinic staff (`0803...`) match the same number in E.164 (`+234803...`).
+   */
+  private async findPatientByPhone(phone: string): Promise<Patient | null> {
+    const digits = String(phone ?? '').replace(/\D/g, '');
+    if (digits.length < 10 || typeof this.patientRepo.createQueryBuilder !== 'function') return null;
+
+    return this.patientRepo
+      .createQueryBuilder('p')
+      .where("RIGHT(REGEXP_REPLACE(p.phone, '[^0-9]', '', 'g'), 10) = :tail", { tail: digits.slice(-10) })
+      .getOne();
+  }
+
+  private samePhone(a: string, b: string): boolean {
+    const left = String(a ?? '').replace(/\D/g, '');
+    const right = String(b ?? '').replace(/\D/g, '');
+    if (!left || !right) return false;
+    return left === right || left.slice(-10) === right.slice(-10);
+  }
+
+  private sendWelcomeEmail(patient: Patient): void {
+    if (!patient.email || !this.emailService?.sendTemplatedEmail) return;
+    void this.emailService.sendTemplatedEmail('welcome', patient.email, {
+      firstName: patient.firstName,
+      clinicName: 'Vemtap Health Clinic',
+      loginUrl: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/patient/login`,
+    }).catch((error) => {
+      console.error('[patient-portal] welcome email failed:', error);
+    });
   }
 
   async login(dto: PatientLoginDto): Promise<{ tokens: PatientTokenPair; patient: PatientAuthUser }> {

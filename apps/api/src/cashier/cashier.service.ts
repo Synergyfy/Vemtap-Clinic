@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, MoreThanOrEqual } from 'typeorm';
 import { CashierShift, ShiftStatus } from '../entities/cashier-shift.entity';
 import { Payment } from '../entities/payment.entity';
 import { CashierTransaction, CashierTransactionStatus, CashierPaymentMethod } from '../entities/cashier-transaction.entity';
@@ -84,11 +84,15 @@ export class CashierService {
   }
 
   async getDailySummary(clinicId: string) {
+    if (!clinicId) {
+      throw new BadRequestException('clinicId is required');
+    }
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
     const shifts = await this.shiftRepo.find({
-      where: { clinicId, createdAt: { $gte: today } as any },
+      where: { clinicId, createdAt: MoreThanOrEqual(today) },
     });
 
     return {

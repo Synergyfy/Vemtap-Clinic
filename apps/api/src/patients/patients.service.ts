@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Like } from 'typeorm';
 import { Patient } from '../entities/patient.entity';
 import { HMOPlan } from '../entities/hmo-plan.entity';
+import { PatientClinicMembership } from '../entities/patient-clinic-membership.entity';
 import { CreatePatientDto, UpdatePatientDto, PatientQueryDto } from './dto';
 
 @Injectable()
@@ -12,6 +13,8 @@ export class PatientsService {
     private patientRepository: Repository<Patient>,
     @InjectRepository(HMOPlan)
     private hmoPlanRepository: Repository<HMOPlan>,
+    @InjectRepository(PatientClinicMembership)
+    private membershipRepository?: Repository<PatientClinicMembership>,
   ) {}
 
   async create(dto: CreatePatientDto, currentUser?: { clinicId?: string | null; branchId?: string | null }): Promise<Patient> {
@@ -28,8 +31,91 @@ export class PatientsService {
       safeDto.branchId = effectiveBranchId.trim();
     }
 
+    // Emails are matched case-insensitively everywhere else (portal register and
+    // login), so store the normalised form here too.
+    if (safeDto.email) safeDto.email = String(safeDto.email).trim().toLowerCase();
+    else delete safeDto.email;
+
+    // A patient who created their own portal account before visiting the clinic
+    // already has a row. Adopting that row (when it is not attached to a clinic)
+    // keeps a single identity, so the clinic shows up on their portal dashboard.
+    const existing = await this.findExistingIdentity(safeDto.email, safeDto.phone);
+    if (existing?.portalAccessEnabled && (!existing.clinicId || existing.clinicId === safeDto.clinicId)) {
+      if (!existing.clinicId && safeDto.clinicId) {
+        existing.clinicId = safeDto.clinicId;
+        existing.branchId = safeDto.branchId ?? null;
+        await this.patientRepository.save(existing);
+      }
+      await this.ensureClinicMembership(existing.id, safeDto.clinicId, safeDto.branchId ?? null);
+      return this.findOne(existing.id, { clinicId: safeDto.clinicId ?? null });
+    }
+
     const patient = this.patientRepository.create(safeDto) as unknown as Patient;
-    return this.patientRepository.save(patient);
+    const saved = await this.patientRepository.save(patient);
+
+    await this.ensureClinicMembership(saved.id, saved.clinicId, saved.branchId ?? null);
+
+    // The clinic keeps its own clinical record, but the patient's existing portal
+    // account must still see the clinic on their dashboard.
+    if (existing?.portalAccessEnabled && existing.id !== saved.id) {
+      await this.ensureClinicMembership(existing.id, saved.clinicId, saved.branchId ?? null);
+    }
+
+    return saved;
+  }
+
+  /**
+   * Finds an existing patient row for the same person, preferring a portal
+   * account. Phone numbers are compared on their last 10 digits because clinic
+   * staff store local numbers (`0803...`) while the portal stores E.164 (`+803...`).
+   */
+  private async findExistingIdentity(email?: string | null, phone?: string | null): Promise<Patient | null> {
+    if (!this.patientRepository?.findOne) return null;
+
+    const normalizedEmail = String(email ?? '').trim().toLowerCase();
+    if (normalizedEmail) {
+      const byEmail = await this.patientRepository.findOne({ where: { email: normalizedEmail } });
+      // When staff captured an email, only that email is authoritative. Falling
+      // back to the phone here could attach this clinic to a different person who
+      // happens to share a (family) phone number.
+      return byEmail ?? null;
+    }
+
+    const digits = String(phone ?? '').replace(/\D/g, '');
+    if (digits.length < 10 || !this.patientRepository.createQueryBuilder) return null;
+
+    return this.patientRepository
+      .createQueryBuilder('p')
+      .where("RIGHT(REGEXP_REPLACE(p.phone, '[^0-9]', '', 'g'), 10) = :tail", { tail: digits.slice(-10) })
+      .getOne();
+  }
+
+  private async ensureClinicMembership(
+    patientId?: string | null,
+    clinicId?: string | null,
+    branchId?: string | null,
+  ): Promise<void> {
+    if (!this.membershipRepository || !patientId || !clinicId) return;
+
+    const existing = await this.membershipRepository.findOne({ where: { patientId, clinicId } });
+    if (existing) {
+      if (branchId && existing.branchId !== branchId) {
+        existing.branchId = branchId;
+        await this.membershipRepository.save(existing);
+      }
+      return;
+    }
+
+    const count = await this.membershipRepository.count({ where: { patientId } });
+    await this.membershipRepository.save(
+      this.membershipRepository.create({
+        patientId,
+        clinicId,
+        branchId: branchId ?? null,
+        isPrimary: count === 0,
+        isActive: true,
+      }),
+    );
   }
 
   async findAll(

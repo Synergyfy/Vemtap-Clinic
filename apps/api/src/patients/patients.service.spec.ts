@@ -59,4 +59,36 @@ describe('PatientsService', () => {
     expect(payload.clinicId).toBe('clinic-123');
     expect(payload.branchId).toBeUndefined();
   });
+
+  it('creates a clinic membership so the patient portal can list the clinic', async () => {
+    const patientRepository = {
+      create: jest.fn((dto) => dto),
+      save: jest.fn(async (dto) => ({ ...dto, id: 'patient-4' })),
+      findOne: jest.fn().mockResolvedValue(null),
+    };
+
+    const membershipRepository = {
+      findOne: jest.fn().mockResolvedValue(null),
+      count: jest.fn().mockResolvedValue(0),
+      create: jest.fn((dto) => dto),
+      save: jest.fn(async (dto) => ({ ...dto, id: 'membership-1' })),
+    };
+
+    const service = new PatientsService(patientRepository as any, {} as any, membershipRepository as any);
+
+    await service.create(
+      { firstName: 'Ada', phone: '08030000000' } as any,
+      { clinicId: 'clinic-123' },
+    );
+
+    expect(membershipRepository.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        patientId: 'patient-4',
+        clinicId: 'clinic-123',
+        isPrimary: true,
+        isActive: true,
+      }),
+    );
+    expect(membershipRepository.save).toHaveBeenCalled();
+  });
 });

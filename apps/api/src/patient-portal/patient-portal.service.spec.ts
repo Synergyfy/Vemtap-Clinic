@@ -98,13 +98,20 @@ describe('PatientPortalService', () => {
     );
   });
 
-  it('blocks registration when the email or phone is already in use', async () => {
+  it('blocks registration when the email or phone belongs to an activated account', async () => {
+    const existing = {
+      id: 'existing-patient',
+      email: 'new@example.com',
+      phone: '+2348000000000',
+      portalAccessEnabled: true,
+      patientPassword: 'hashed-password',
+    };
+
     const patientRepo = {
-      findOne: jest.fn().mockImplementation(async ({ where }) => {
-        if (where.email === 'new@example.com') return null;
-        if (where.phone === '+2348000000000') return { id: 'existing-patient' };
-        return null;
-      }),
+      findOne: jest.fn().mockImplementation(async ({ where }) => (where.email === 'new@example.com' ? existing : null)),
+      createQueryBuilder: jest.fn(() => ({
+        where: () => ({ getOne: async () => existing }),
+      })),
       create: jest.fn((dto) => dto),
       save: jest.fn(),
     };
@@ -134,6 +141,75 @@ describe('PatientPortalService', () => {
     ).rejects.toThrow(/already.*(email|phone)|already.*registered/i);
 
     expect(patientRepo.save).not.toHaveBeenCalled();
+  });
+
+  it('claims the clinic-created record when the patient registers with the same email and phone', async () => {
+    const clinicRecord = {
+      id: 'patient-1',
+      firstName: 'Clinic',
+      lastName: 'Record',
+      email: 'clinic.patient@example.com',
+      phone: '08030000000',
+      clinicId: 'clinic-9',
+      branchId: null,
+      portalAccessEnabled: false,
+      patientPassword: null,
+    };
+
+    const patientRepo = {
+      findOne: jest.fn().mockImplementation(async ({ where }) => (where.email === clinicRecord.email ? clinicRecord : null)),
+      createQueryBuilder: jest.fn(() => ({
+        where: () => ({ getOne: async () => clinicRecord }),
+      })),
+      create: jest.fn((dto) => dto),
+      save: jest.fn(async (dto) => dto),
+    };
+
+    const membershipRepo = {
+      findOne: jest.fn().mockResolvedValue(null),
+      find: jest.fn().mockResolvedValue([]),
+      count: jest.fn().mockResolvedValue(0),
+      create: jest.fn((dto) => dto),
+      save: jest.fn(async (dto) => ({ ...dto, id: 'membership-1' })),
+    };
+
+    const service = new PatientPortalService(
+      patientRepo as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      { sign: jest.fn(() => 'access-token') } as any,
+      {} as any,
+      {} as any,
+      membershipRepo as any,
+      { get: jest.fn() } as any,
+    );
+
+    const result = await service.register({
+      firstName: 'Jane',
+      lastName: 'Doe',
+      dateOfBirth: '2000-01-15',
+      gender: 'female',
+      phone: '+2348030000000',
+      email: 'clinic.patient@example.com',
+      password: 'password123',
+    } as any);
+
+    expect(result.patient.id).toBe('patient-1');
+    expect(patientRepo.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'patient-1',
+        clinicId: 'clinic-9',
+        email: 'clinic.patient@example.com',
+        portalAccessEnabled: true,
+      }),
+    );
+    expect(patientRepo.create).not.toHaveBeenCalled();
+    expect(membershipRepo.create).toHaveBeenCalledWith(
+      expect.objectContaining({ patientId: 'patient-1', clinicId: 'clinic-9' }),
+    );
   });
 
   it('sends and verifies an email OTP for patient registration', async () => {

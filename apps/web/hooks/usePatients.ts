@@ -10,7 +10,7 @@ export function usePatients(params: PatientQueryParams = {}) {
   const { user } = useAuth();
   const effectiveParams = {
     ...params,
-    ...(params.clinicId ? {} : user?.clinicId ? { clinicId: user.clinicId } : {}),
+    clinicId: params.clinicId || user?.clinicId || undefined,
   };
 
   return useQuery({

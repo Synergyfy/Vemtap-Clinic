@@ -94,7 +94,6 @@ export class CreateRemittanceDto {
   @ApiProperty({ example: 'REM-001' })
   @IsString()
   remittanceNumber: string;
-
   @ApiProperty({ example: 200000 })
   @IsNumber()
   totalAmount: number;
@@ -110,14 +109,17 @@ export class CreateRemittanceDto {
   @ApiPropertyOptional() @IsOptional() @IsString() claimsBreakdown?: string;
   @ApiPropertyOptional() @IsOptional() @IsDateString() periodStart?: string;
   @ApiPropertyOptional() @IsOptional() @IsDateString() periodEnd?: string;
+  @ApiPropertyOptional() @IsOptional() @IsDateString() receivedDate?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() notes?: string;
 
   @ApiProperty({ example: 'hmo-uuid' })
   @IsUUID()
   hmoId: string;
 
-  @ApiProperty({ example: 'clinic-uuid' })
+  @ApiPropertyOptional({ example: 'clinic-uuid' })
+  @IsOptional()
   @IsUUID()
-  clinicId: string;
+  clinicId?: string;
 }
 
 export class UpdateRemittanceDto {
@@ -133,9 +135,10 @@ export class HMOQueryDto {
 // --- HMO Plans ---
 
 export class CreateHMOPlanDto {
-  @ApiProperty({ example: 'clinic-uuid' })
+  @ApiPropertyOptional({ example: 'clinic-uuid' })
+  @IsOptional()
   @IsUUID()
-  clinicId: string;
+  clinicId?: string;
 
   @ApiProperty({ example: 'Basic Plan' })
   @IsString()
@@ -155,6 +158,7 @@ export class CreateHMOPlanDto {
   @ApiPropertyOptional() @IsOptional() @IsNumber() opticalCoverage?: number;
   @ApiPropertyOptional() @IsOptional() @IsNumber() drugCoverage?: number;
   @ApiPropertyOptional() @IsOptional() @IsNumber() surgeryCoverage?: number;
+  @ApiPropertyOptional() @IsOptional() @IsNumber() coveragePercentage?: number;
 
   @ApiPropertyOptional() @IsOptional() @IsNumber() annualLimit?: number;
   @ApiPropertyOptional() @IsOptional() @IsNumber() monthlyLimit?: number;
@@ -182,6 +186,7 @@ export class UpdateHMOPlanDto {
   @ApiPropertyOptional() @IsOptional() @IsNumber() opticalCoverage?: number;
   @ApiPropertyOptional() @IsOptional() @IsNumber() drugCoverage?: number;
   @ApiPropertyOptional() @IsOptional() @IsNumber() surgeryCoverage?: number;
+  @ApiPropertyOptional() @IsOptional() @IsNumber() coveragePercentage?: number;
   @ApiPropertyOptional() @IsOptional() @IsNumber() annualLimit?: number;
   @ApiPropertyOptional() @IsOptional() @IsNumber() monthlyLimit?: number;
   @ApiPropertyOptional() @IsOptional() @IsNumber() opticalAllowance?: number;
