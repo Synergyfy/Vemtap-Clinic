@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 import { getPatientsRegisterRoute } from "@/lib/dashboard-routes";
 import { usePatients } from "@/hooks/usePatients";
+import type { Patient } from "@/services/patients.service";
 
 type FilterType = "all" | "hmo" | "private" | "pediatric" | "branch";
 type ViewMode = "cards" | "table";
@@ -34,6 +35,22 @@ function calculateAge(dateOfBirth?: string) {
   return age;
 }
 
+/**
+ * Read-only family hint for the registry. Dependents point at their guardian;
+ * guardians show how many profiles are linked. The rows themselves stay flat.
+ */
+function getFamilyLabel(patient: Patient): string | null {
+  if (patient.guardianId) {
+    const relationship = patient.guardianRelationship
+      ? patient.guardianRelationship.charAt(0).toUpperCase() + patient.guardianRelationship.slice(1)
+      : "Dependent";
+    return `${relationship} of ${patient.guardianName ?? "family account"}`;
+  }
+
+  const dependentCount = patient.dependentCount ?? 0;
+  return dependentCount > 0 ? `Family · ${dependentCount} linked` : null;
+}
+
 export default function ReceptionPatientDirectoryPage() {
   const { user } = useAuth();
   const [activeFilter, setActiveFilter] = useState<FilterType>("all");
@@ -48,6 +65,9 @@ export default function ReceptionPatientDirectoryPage() {
   });
 
   const registerPatientHref = getPatientsRegisterRoute(user);
+  // Front-desk check-in belongs to reception only. Clinic/admins share this
+  // directory but must not be sent into the reception intake flow.
+  const canCheckIn = Boolean(user?.roles?.includes("receptionist"));
   const patients = patientResponse?.data ?? [];
   const totalPatients = patientResponse?.total ?? patients.length;
   const totalPages = patientResponse?.totalPages ?? 1;
@@ -224,6 +244,12 @@ export default function ReceptionPatientDirectoryPage() {
                           <p className="text-[10px] text-on-surface-variant mt-0.5 flex items-center gap-1 font-mono">
                             <span className="text-primary font-bold">#{patient.id.slice(0, 8).toUpperCase()}</span>
                           </p>
+                          {getFamilyLabel(patient) && (
+                            <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full bg-[#ede9fe] text-[#5b21b6] text-[10px] font-bold">
+                              <span className="material-symbols-outlined text-[12px]">family_restroom</span>
+                              {getFamilyLabel(patient)}
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -267,18 +293,20 @@ export default function ReceptionPatientDirectoryPage() {
                     <div className="grid grid-cols-12 gap-1.5 pt-1 border-t border-surface-container">
                       <Link
                         href={`/clinic/patients/${patient.id}`}
-                        className="col-span-6 h-7 sm:h-8 px-2 rounded-lg bg-surface-container text-on-surface font-bold flex items-center justify-center gap-1 hover:bg-surface-container-high transition-colors active:scale-95 text-[11px]"
+                        className={`${canCheckIn ? "col-span-6" : "col-span-12"} h-7 sm:h-8 px-2 rounded-lg bg-surface-container text-on-surface font-bold flex items-center justify-center gap-1 hover:bg-surface-container-high transition-colors active:scale-95 text-[11px]`}
                       >
                         <span className="material-symbols-outlined text-[14px]">badge</span>
                         <span>View Profile</span>
                       </Link>
-                      <Link
-                        href={`/reception/check-in?patientId=${patient.id}`}
-                        className="col-span-6 h-7 sm:h-8 px-2 rounded-lg bg-primary text-on-primary font-bold flex items-center justify-center gap-1 hover:bg-primary-hover transition-colors active:scale-95 text-[11px]"
-                      >
-                        <span className="material-symbols-outlined text-[14px]">how_to_reg</span>
-                        <span>Check-In</span>
-                      </Link>
+                      {canCheckIn && (
+                        <Link
+                          href={`/reception/check-in?patientId=${patient.id}`}
+                          className="col-span-6 h-7 sm:h-8 px-2 rounded-lg bg-primary text-on-primary font-bold flex items-center justify-center gap-1 hover:bg-primary-hover transition-colors active:scale-95 text-[11px]"
+                        >
+                          <span className="material-symbols-outlined text-[14px]">how_to_reg</span>
+                          <span>Check-In</span>
+                        </Link>
+                      )}
                     </div>
                   </article>
                 );
@@ -317,6 +345,12 @@ export default function ReceptionPatientDirectoryPage() {
                                 <div className="font-mono text-primary text-[10px] font-semibold">
                                   #{patient.id.slice(0, 8).toUpperCase()}
                                 </div>
+                                {getFamilyLabel(patient) && (
+                                  <span className="inline-flex items-center gap-0.5 mt-0.5 px-1.5 py-0.5 rounded-full bg-[#ede9fe] text-[#5b21b6] text-[9px] font-bold">
+                                    <span className="material-symbols-outlined text-[10px]">family_restroom</span>
+                                    {getFamilyLabel(patient)}
+                                  </span>
+                                )}
                               </div>
                             </div>
                           </td>
@@ -350,12 +384,14 @@ export default function ReceptionPatientDirectoryPage() {
                               >
                                 Profile
                               </Link>
-                              <Link
-                                href={`/reception/check-in?patientId=${patient.id}`}
-                                className="px-2 py-1 rounded-md bg-primary text-on-primary font-bold text-[11px] hover:bg-primary-hover transition-colors"
-                              >
-                                Check-In
-                              </Link>
+                              {canCheckIn && (
+                                <Link
+                                  href={`/reception/check-in?patientId=${patient.id}`}
+                                  className="px-2 py-1 rounded-md bg-primary text-on-primary font-bold text-[11px] hover:bg-primary-hover transition-colors"
+                                >
+                                  Check-In
+                                </Link>
+                              )}
                             </div>
                           </td>
                         </tr>

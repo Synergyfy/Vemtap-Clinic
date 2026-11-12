@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
+import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { usePatient } from "@/hooks/usePatients";
 
@@ -65,6 +66,8 @@ export default function ClinicalPatientProfilePage() {
   const insuranceText = patient.hmoName
     ? `${patient.hmoName}${patient.hmoNumber ? ` • ${patient.hmoNumber}` : ""}`
     : "Private patient";
+  const familyMembers = patient.dependents ?? [];
+  const hasFamily = Boolean(patient.guardianId) || familyMembers.length > 0;
 
   return (
     <div className="min-h-full bg-surface text-on-surface flex flex-col font-sans pb-16">
@@ -205,6 +208,65 @@ export default function ClinicalPatientProfilePage() {
                 <div className="mt-1 font-semibold text-on-surface">{patient.address ?? "No address saved"}</div>
               </div>
             </div>
+
+            {hasFamily && (
+              <div className="bg-surface-container-lowest rounded-xl p-4 shadow-xs border border-surface-container">
+                <div className="flex items-center justify-between gap-2 mb-3">
+                  <h3 className="text-sm font-bold text-on-surface">Family</h3>
+                  <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wide">
+                    {patient.guardianId
+                      ? "Dependent profile"
+                      : `${familyMembers.length} linked ${familyMembers.length === 1 ? "profile" : "profiles"}`}
+                  </span>
+                </div>
+
+                {patient.guardianId && (
+                  <Link
+                    href={`/clinic/patients/${patient.guardianId}`}
+                    className="flex items-center gap-2.5 rounded-lg bg-surface-container p-3 hover:bg-surface-container-high transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-[18px] text-primary">family_restroom</span>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-xs font-bold text-on-surface truncate">
+                        {patient.guardianName ?? "Guardian account"}
+                      </div>
+                      <div className="text-[10px] text-on-surface-variant capitalize">
+                        {patient.guardianRelationship ?? "Dependent"} · Guardian account
+                      </div>
+                    </div>
+                    <span className="material-symbols-outlined text-[16px] text-outline">chevron_right</span>
+                  </Link>
+                )}
+
+                {familyMembers.length > 0 && (
+                  <div className="flex flex-col gap-1.5">
+                    {familyMembers.map((member) => (
+                      <Link
+                        key={member.id}
+                        href={`/clinic/patients/${member.id}`}
+                        className="flex items-center gap-2.5 rounded-lg bg-surface-container p-2.5 hover:bg-surface-container-high transition-colors"
+                      >
+                        <div className="w-7 h-7 rounded-md bg-primary-fixed text-primary flex items-center justify-center font-bold text-[10px] shrink-0">
+                          {member.firstName?.[0]?.toUpperCase() ?? "P"}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="text-xs font-bold text-on-surface truncate">
+                            {member.firstName} {member.lastName}
+                          </div>
+                          <div className="text-[10px] text-on-surface-variant capitalize">
+                            {member.guardianRelationship ?? "dependent"}
+                            {member.portalAccessEnabled === false
+                              ? " · portal invite pending"
+                              : " · portal active"}
+                          </div>
+                        </div>
+                        <span className="material-symbols-outlined text-[16px] text-outline">chevron_right</span>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="bg-surface-container-lowest rounded-xl p-4 shadow-xs border border-surface-container">
               <div className="flex items-center justify-between gap-2 mb-3">
