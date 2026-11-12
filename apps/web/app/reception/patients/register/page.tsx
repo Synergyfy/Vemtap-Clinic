@@ -125,10 +125,18 @@ export default function ReceptionPatientRegistrationPage() {
 
       showToast("Patient registered successfully");
       setTimeout(() => {
-        router.push(`/reception/check-in?patientId=${patient.id}`);
+        // Only reception owns the front-desk check-in flow; clinic (and other
+        // staff) stay inside their own area instead of being sent to reception.
+        router.push(
+          user?.roles?.includes("receptionist")
+            ? `/reception/check-in?patientId=${patient.id}`
+            : `/clinic/patients/${patient.id}`,
+        );
       }, 700);
     } catch (error: any) {
-      showToast(error?.message || "Failed to register patient");
+      showToast(
+        error?.response?.data?.message || error?.message || "Failed to register patient",
+      );
     } finally {
       setIsSubmitting(false);
     }

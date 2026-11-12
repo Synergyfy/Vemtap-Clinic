@@ -25,6 +25,18 @@ export interface Patient {
   status: 'new' | 'active' | 'inactive';
   clinicId: string;
   branchId?: string;
+  guardianId?: string | null;
+  guardianRelationship?: string | null;
+  guardianName?: string | null;
+  dependentCount?: number;
+  dependents?: Array<{
+    id: string;
+    firstName: string;
+    lastName: string;
+    guardianRelationship?: string | null;
+    portalAccessEnabled?: boolean;
+    status?: string;
+  }>;
   createdAt: string;
   updatedAt: string;
 }
@@ -70,6 +82,8 @@ export interface CreatePatientData {
   bloodGroup?: string;
   genotype?: string;
   allergies?: string;
+  guardianId?: string;
+  guardianRelationship?: 'child' | 'spouse' | 'parent' | 'other';
   clinicId: string;
   branchId?: string;
 }

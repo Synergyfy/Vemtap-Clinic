@@ -149,7 +149,7 @@ export default function ReceptionDashboard() {
       setRegPhone("");
       showToast(`${firstName} ${lastName} registered & placed in live queue`);
     } catch (e: any) {
-      showToast(e?.message || "Failed to register patient");
+      showToast(e?.response?.data?.message || e?.message || "Failed to register patient");
     }
   };
 
@@ -187,7 +187,7 @@ export default function ReceptionDashboard() {
       setWalkIdNumber("");
       showToast(`${firstName} ${lastName} walk-in registered to live system`);
     } catch (e: any) {
-      showToast(e?.message || "Failed to register walk-in patient");
+      showToast(e?.response?.data?.message || e?.message || "Failed to register walk-in patient");
     }
   };
 
