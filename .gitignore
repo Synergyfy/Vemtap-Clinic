@@ -38,8 +38,8 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-!.env.example
+# env files (never commit, including examples)
+.env*
 
 # locally stored uploads (may contain patient files)
 uploads/
@@ -54,4 +54,3 @@ next-env.d.ts
 # Playwright test artifacts
 apps/web/playwright-report/
 apps/web/test-results/
-config.bat
