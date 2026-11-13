@@ -768,7 +768,7 @@ export default function ReceptionDashboard() {
               </div>
               <div className="space-y-1">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Email</label>
-                <input type="email" value={walkEmail} onChange={e => setWalkEmail(e.target.value)} placeholder="Email"
+                <input type="email" name="walkInPatientEmail" autoComplete="off" autoCapitalize="none" spellCheck={false} value={walkEmail} onChange={e => setWalkEmail(e.target.value)} placeholder="Email"
                   className="w-full p-4 rounded-2xl bg-slate-50 border border-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500/10 font-bold text-slate-900" />
               </div>
             </div>

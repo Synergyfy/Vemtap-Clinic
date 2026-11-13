@@ -476,6 +476,10 @@ export default function ReceptionPatientRegistrationPage() {
                       <span className="material-symbols-outlined text-[15px] text-outline">mail</span>
                       <input
                         type="email"
+                        name="patientEmail"
+                        autoComplete="off"
+                        autoCapitalize="none"
+                        spellCheck={false}
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="patient@example.com"
