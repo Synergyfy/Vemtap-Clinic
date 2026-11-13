@@ -59,6 +59,15 @@ export class PatientsService {
       delete safeDto.guardianRelationship;
     }
 
+    // accountType is a portal-only field. Some clients still send it on patient
+    // creation, so accept it instead of failing the whole request — but never
+    // write it to the patients table. "guardian" is the one value with meaning:
+    // it marks a row that owns a family (portal accounts use the same column).
+    if (!guardianId && safeDto.accountType === 'guardian') {
+      safeDto.guardianRelationship = 'guardian';
+    }
+    delete safeDto.accountType;
+
     // A patient who created their own portal account before visiting the clinic
     // already has a row — and so does a family member the guardian added, even
     // though their own login is not active yet. Reusing that row keeps a single

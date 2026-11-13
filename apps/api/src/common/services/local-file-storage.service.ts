@@ -1,7 +1,7 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'node:crypto';
 
 @Injectable()
 export class LocalFileStorageService {
@@ -45,7 +45,7 @@ export class LocalFileStorageService {
       throw new BadRequestException(`File type not allowed. Allowed: ${allowedExts.join(', ')}`);
     }
 
-    const fileName = `${uuidv4()}${ext}`;
+    const fileName = `${randomUUID()}${ext}`;
     const categoryDir = path.join(this.uploadDir, category);
     const filePath = path.join(categoryDir, fileName);
 

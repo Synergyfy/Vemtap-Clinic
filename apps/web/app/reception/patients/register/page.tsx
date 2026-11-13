@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
-import { useCreatePatient } from "@/hooks/usePatients";
+import { useCreatePatient, usePatients } from "@/hooks/usePatients";
 
 function calculateAge(dateOfBirth: string): number {
   if (!dateOfBirth) return 0;
@@ -30,9 +30,16 @@ export default function ReceptionPatientRegistrationPage() {
   const createPatientMut = useCreatePatient();
 
   // Form State
-  const [patientType, setPatientType] = useState<"adult" | "child">("adult");
+  const [registrationType, setRegistrationType] = useState<"individual" | "family">("individual");
   const [billingType, setBillingType] = useState<"hmo" | "self">("hmo");
   const [isKinOpen, setIsKinOpen] = useState(true);
+
+  // Family account: the patient being registered is a member of an existing family.
+  const [guardianId, setGuardianId] = useState("");
+  const [guardianRelationship, setGuardianRelationship] =
+    useState<"child" | "spouse" | "parent" | "other">("child");
+  const { data: registryResponse } = usePatients({ clinicId: user?.clinicId ?? "", limit: 100 });
+  const guardianOptions = (registryResponse?.data ?? []).filter((patient) => !patient.guardianId);
 
   // Form Fields
   const [title, setTitle] = useState("Mr.");
@@ -99,6 +106,11 @@ export default function ReceptionPatientRegistrationPage() {
       return;
     }
 
+    if (registrationType === "family" && !guardianId) {
+      showToast("Select the guardian this patient belongs to");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -119,6 +131,8 @@ export default function ReceptionPatientRegistrationPage() {
         hmoNumber: enrolleeId.trim() || undefined,
         emergencyContact: kinName.trim() || undefined,
         emergencyPhone: kinPhone.replace(/\D/g, "") || undefined,
+        guardianId: registrationType === "family" ? guardianId : undefined,
+        guardianRelationship: registrationType === "family" ? guardianRelationship : undefined,
         clinicId: user.clinicId,
         branchId: user.branchId ?? "",
       });
@@ -180,33 +194,86 @@ export default function ReceptionPatientRegistrationPage() {
             </p>
           </div>
 
-          {/* Patient Demographic Type Switcher */}
+          {/* Patient Account Type Switcher */}
           <div className="bg-surface-container rounded-xl p-1 flex items-center justify-between shadow-xs max-w-sm">
             <button
               type="button"
-              onClick={() => setPatientType("adult")}
+              onClick={() => setRegistrationType("individual")}
               className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
-                patientType === "adult"
+                registrationType === "individual"
                   ? "bg-surface-container-lowest text-primary shadow-xs"
                   : "text-on-surface-variant hover:text-on-surface"
               }`}
             >
               <span className="material-symbols-outlined text-[16px]">person</span>
-              <span>Adult (Self)</span>
+              <span>Individual</span>
             </button>
             <button
               type="button"
-              onClick={() => setPatientType("child")}
+              onClick={() => setRegistrationType("family")}
               className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
-                patientType === "child"
+                registrationType === "family"
                   ? "bg-surface-container-lowest text-primary shadow-xs"
                   : "text-on-surface-variant hover:text-on-surface"
               }`}
             >
               <span className="material-symbols-outlined text-[16px]">family_restroom</span>
-              <span>Child / Dependent</span>
+              <span>Family member</span>
             </button>
           </div>
+
+          {registrationType === "family" && (
+            <div className="bg-surface-container-lowest rounded-xl p-3 shadow-xs border border-surface-container max-w-xl flex flex-col gap-2">
+              <div className="flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-[16px] text-primary">family_restroom</span>
+                <span className="text-xs font-bold text-on-surface">Family account</span>
+              </div>
+              <p className="text-[11px] text-on-surface-variant">
+                This patient will be linked to an existing family account, so their records sit
+                with the guardian and the patient portal shows them under the same family.
+              </p>
+
+              <label className="text-[10px] font-bold uppercase tracking-wide text-on-surface-variant mt-1">
+                Guardian / family account owner
+              </label>
+              <select
+                value={guardianId}
+                onChange={(event) => setGuardianId(event.target.value)}
+                className="h-9 rounded-lg border border-surface-container-high bg-surface-container px-2 text-xs font-semibold text-on-surface outline-none focus:border-primary"
+              >
+                <option value="">Select the guardian…</option>
+                {guardianOptions.map((guardian) => (
+                  <option key={guardian.id} value={guardian.id}>
+                    {guardian.firstName} {guardian.lastName}
+                    {guardian.phone ? ` · ${guardian.phone}` : ""}
+                  </option>
+                ))}
+              </select>
+
+              {guardianOptions.length === 0 && (
+                <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5">
+                  No family accounts yet in this clinic. Register the guardian as an individual
+                  first, then add family members.
+                </p>
+              )}
+
+              <label className="text-[10px] font-bold uppercase tracking-wide text-on-surface-variant mt-1">
+                Relationship to guardian
+              </label>
+              <select
+                value={guardianRelationship}
+                onChange={(event) =>
+                  setGuardianRelationship(event.target.value as "child" | "spouse" | "parent" | "other")
+                }
+                className="h-9 rounded-lg border border-surface-container-high bg-surface-container px-2 text-xs font-semibold text-on-surface outline-none focus:border-primary"
+              >
+                <option value="child">Child</option>
+                <option value="spouse">Spouse</option>
+                <option value="parent">Parent</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+          )}
 
           {/* Multi-step Completion Progress Bar */}
           <div className="bg-surface-container-low rounded-xl p-2.5 sm:p-3 shadow-xs border border-surface-container flex flex-col gap-1.5">
@@ -409,6 +476,10 @@ export default function ReceptionPatientRegistrationPage() {
                       <span className="material-symbols-outlined text-[15px] text-outline">mail</span>
                       <input
                         type="email"
+                        name="patientEmail"
+                        autoComplete="off"
+                        autoCapitalize="none"
+                        spellCheck={false}
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="patient@example.com"

@@ -1,5 +1,10 @@
 import { IsString, IsOptional, IsEmail, IsUUID, MinLength, MaxLength, IsNumber, IsEnum, IsIn, IsBoolean } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Transform } from 'class-transformer';
+
+/** Older clients send "" for unselected ids; treat that as "not provided". */
+const EmptyStringToUndefined = () =>
+  Transform(({ value }) => (typeof value === 'string' && value.trim() === '' ? undefined : value));
 
 export class PatientLoginDto {
   @ApiProperty({ example: 'john@example.com' })
@@ -46,11 +51,13 @@ export class PatientRegisterDto {
 
   @ApiPropertyOptional({ example: 'clinic-uuid' })
   @IsOptional()
+  @EmptyStringToUndefined()
   @IsUUID()
   clinicId?: string;
 
   @ApiPropertyOptional({ example: 'branch-uuid' })
   @IsOptional()
+  @EmptyStringToUndefined()
   @IsUUID()
   branchId?: string;
 

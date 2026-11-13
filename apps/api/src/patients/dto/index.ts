@@ -2,6 +2,10 @@ import { IsString, IsEmail, IsDateString, IsEnum, IsOptional, IsUUID, MinLength,
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 
+/** Older clients send "" for unselected ids; treat that as "not provided". */
+const EmptyStringToUndefined = () =>
+  Transform(({ value }) => (typeof value === 'string' && value.trim() === '' ? undefined : value));
+
 export class CreatePatientDto {
   @ApiProperty({ example: 'John' })
   @IsString()
@@ -124,13 +128,22 @@ export class CreatePatientDto {
   @IsEnum(['child', 'spouse', 'parent', 'other'])
   guardianRelationship?: 'child' | 'spouse' | 'parent' | 'other';
 
+  // Sent by the patient-portal style forms. Accepted so an older client (which
+  // still posts its account type here) does not fail the whole registration.
+  @ApiPropertyOptional({ enum: ['individual', 'guardian'], default: 'individual' })
+  @IsOptional()
+  @IsEnum(['individual', 'guardian'])
+  accountType?: 'individual' | 'guardian';
+
   @ApiPropertyOptional({ example: 'clinic-uuid' })
   @IsOptional()
+  @EmptyStringToUndefined()
   @IsUUID()
   clinicId?: string;
 
   @ApiPropertyOptional({ example: 'branch-uuid' })
   @IsOptional()
+  @EmptyStringToUndefined()
   @IsUUID()
   branchId?: string;
 }
@@ -281,11 +294,13 @@ export class PatientQueryDto {
 
   @ApiPropertyOptional({ example: 'branch-uuid' })
   @IsOptional()
+  @EmptyStringToUndefined()
   @IsUUID()
   branchId?: string;
 
   @ApiPropertyOptional({ example: 'clinic-uuid' })
   @IsOptional()
+  @EmptyStringToUndefined()
   @IsUUID()
   clinicId?: string;
 

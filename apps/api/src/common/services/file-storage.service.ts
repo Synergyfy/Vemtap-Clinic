@@ -1,7 +1,7 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { v2 as cloudinary, UploadApiResponse } from 'cloudinary';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'node:crypto';
 import * as fs from 'fs';
 import * as path from 'path';
 import { FileCategory } from '../../entities/file-upload.entity';
@@ -106,7 +106,7 @@ export class FileStorageService {
     clinicId: string,
   ): Promise<FileUploadResult> {
     const isImage = IMAGE_EXTENSIONS.includes(ext);
-    const id = uuidv4();
+    const id = randomUUID();
     // Raw assets keep their extension in the public_id; image assets get it from `format`
     const publicId = `${CLOUDINARY_ROOT_FOLDER}/${clinicId}/${category}/${isImage ? id : id + ext}`;
 
@@ -148,7 +148,7 @@ export class FileStorageService {
     ext: string,
     category: FileCategory,
   ): Promise<FileUploadResult> {
-    const relativePath = `${category}/${uuidv4()}${ext}`;
+    const relativePath = `${category}/${randomUUID()}${ext}`;
     const filePath = path.join(this.localUploadDir, relativePath);
     fs.mkdirSync(path.dirname(filePath), { recursive: true });
     fs.writeFileSync(filePath, file.buffer);
