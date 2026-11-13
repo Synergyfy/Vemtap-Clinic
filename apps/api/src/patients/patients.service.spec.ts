@@ -410,6 +410,27 @@ describe('PatientsService', () => {
     expect(patientRepository.save).not.toHaveBeenCalled();
   });
 
+  it('accepts a portal-style accountType without storing it on the patient', async () => {
+    const patientRepository = {
+      create: jest.fn((dto) => dto),
+      save: jest.fn(async (dto) => ({ ...dto, id: 'patient-account-type' })),
+    };
+
+    const service = new PatientsService(patientRepository as any, {} as any);
+
+    await service.create({ firstName: 'Ada', accountType: 'guardian' } as any, { clinicId: 'clinic-123' });
+
+    const guardianPayload = patientRepository.create.mock.calls[0][0];
+    expect(guardianPayload.accountType).toBeUndefined();
+    expect(guardianPayload.guardianRelationship).toBe('guardian');
+
+    await service.create({ firstName: 'Bola', accountType: 'individual' } as any, { clinicId: 'clinic-123' });
+
+    const individualPayload = patientRepository.create.mock.calls[1][0];
+    expect(individualPayload.accountType).toBeUndefined();
+    expect(individualPayload.guardianRelationship).toBeUndefined();
+  });
+
   it('refuses to make a dependent the guardian of another patient', async () => {
     const patientRepository = {
       findOne: jest.fn().mockResolvedValue({
