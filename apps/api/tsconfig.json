@@ -12,10 +12,23 @@
     "rootDir": "./src",
     "skipLibCheck": true,
     "strictNullChecks": true,
+    "strictPropertyInitialization": false,
     "noImplicitAny": false,
     "strictBindCallApply": false,
     "forceConsistentCasingInFileNames": false,
-    "noFallthroughCasesInSwitch": false
+    "noFallthroughCasesInSwitch": false,
+    "types": [
+      "node",
+      "jest",
+      "express",
+      "multer",
+      "cookie-parser",
+      "passport-jwt",
+      "socket.io",
+      "supertest",
+      "nodemailer",
+      "bcryptjs"
+    ]
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]
