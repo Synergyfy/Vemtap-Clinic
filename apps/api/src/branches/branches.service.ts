@@ -1,7 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Branch } from '../entities/branch.entity';
+import { UsageMetric } from '../entities/usage-counter.entity';
+import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { CreateBranchDto, UpdateBranchDto, BranchQueryDto } from './dto';
 
 @Injectable()
@@ -9,9 +11,14 @@ export class BranchesService {
   constructor(
     @InjectRepository(Branch)
     private branchRepository: Repository<Branch>,
+    @Optional() private readonly subscriptions?: SubscriptionsService,
   ) {}
 
   async create(dto: CreateBranchDto): Promise<Branch> {
+    // Soft plan limit on branches: warns and audits, never blocks opening one.
+    if (dto.clinicId && this.subscriptions) {
+      await this.subscriptions.assertLimit(dto.clinicId, UsageMetric.BRANCHES);
+    }
     const branch = this.branchRepository.create(dto);
     return this.branchRepository.save(branch);
   }

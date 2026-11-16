@@ -51,5 +51,12 @@ export const appConfig = ConfigModule.forRoot({
     // Legacy names used by the password-reset mailer in auth.service
     SMTP_PASSWORD: Joi.string().optional(),
     SMTP_FROM: Joi.string().default('noreply@localhost'),
+    // Subscriptions: days of continued access after a missed renewal, and whether
+    // plan limits warn (soft) or block (hard).
+    SUBSCRIPTION_GRACE_DAYS: Joi.number().min(0).default(14),
+    SUBSCRIPTION_ENFORCEMENT: Joi.string().valid('soft', 'hard').default('soft'),
+    // Paystack is optional; the payment endpoints report a clear error without it.
+    PAYSTACK_SECRET_KEY: Joi.string().optional(),
+    PAYSTACK_PUBLIC_KEY: Joi.string().optional(),
   }),
 });

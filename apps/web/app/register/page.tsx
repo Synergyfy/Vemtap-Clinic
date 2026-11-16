@@ -13,12 +13,14 @@ import {
   EyeOff,
   Loader2,
   AlertCircle,
+  LogOut,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
-import { getClinicEntryRoute, getDashboardRoute } from "@/lib/dashboard-routes";
+import { getClinicEntryRoute } from "@/lib/dashboard-routes";
+import { usePatientLogout } from "@/hooks/usePatientPortal";
 
 const steps = ["Account"];
 
@@ -40,16 +42,30 @@ export default function RegisterPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { register, isAuthenticated, user } = useAuth();
   const router = useRouter();
+  const patientLogout = usePatientLogout();
+  const isPatientSession = !!user?.roles?.includes("patient");
   const passwordMismatch =
     !!formData.password &&
     !!formData.confirmPassword &&
     formData.password !== formData.confirmPassword;
 
   useEffect(() => {
-    if (isAuthenticated && user) {
-      router.replace(getClinicEntryRoute(user));
-    }
-  }, [isAuthenticated, user, router]);
+    // Patient sessions are intentionally exempt: bouncing them to the patient
+    // dashboard made "Create one" look like an automatic re-login.
+    if (!isAuthenticated || !user || isPatientSession) return;
+    router.replace(getClinicEntryRoute(user));
+  }, [isAuthenticated, user, isPatientSession, router]);
+
+  const handlePatientSignOut = () => {
+    setError(null);
+    // Clears the persisted patient session and both portal cookies so the
+    // clinic signup form can be used without two sessions sharing one store.
+    patientLogout.mutate(undefined, {
+      onSettled: () => {
+        router.replace("/register");
+      },
+    });
+  };
 
   const nextStep = () => setCurrentStep((prev) => Math.min(prev + 1, steps.length - 1));
   const prevStep = () => setCurrentStep((prev) => Math.max(prev - 1, 0));
@@ -104,6 +120,60 @@ export default function RegisterPage() {
   };
 
   const renderStep = () => {
+    if (isPatientSession) {
+      return (
+        <motion.div
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -20 }}
+          className="space-y-6"
+        >
+          <div className="text-center mb-8">
+            <div className="w-14 h-14 rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center mx-auto mb-4">
+              <User size={26} />
+            </div>
+            <h2 className="text-2xl font-bold text-brand-navy mb-2">You&apos;re signed in as a patient</h2>
+            <p className="text-slate-500 text-sm">
+              {user?.firstName ? `Hi ${user.firstName}, ` : ""}
+              this page creates a clinic admin account. Sign out of the patient portal first, or head back to your
+              portal.
+            </p>
+          </div>
+          <Button
+            variant="default"
+            className="w-full py-5 text-lg font-bold rounded-2xl"
+            onClick={() => router.push("/patient/dashboard")}
+          >
+            Open patient portal
+          </Button>
+          <Button
+            variant="outline"
+            className="w-full py-5 text-lg font-bold rounded-2xl"
+            onClick={handlePatientSignOut}
+            disabled={patientLogout.isPending}
+          >
+            {patientLogout.isPending ? (
+              <span className="flex items-center justify-center gap-2">
+                <Loader2 size={20} className="animate-spin" />
+                Signing out...
+              </span>
+            ) : (
+              <span className="flex items-center justify-center gap-2">
+                <LogOut size={20} />
+                Sign out &amp; create clinic account
+              </span>
+            )}
+          </Button>
+          <p className="text-center text-sm text-slate-500">
+            Already have a clinic account?{" "}
+            <Link href="/login" className="text-brand-blue font-bold">
+              Login
+            </Link>
+          </p>
+        </motion.div>
+      );
+    }
+
     switch (currentStep) {
       case 0:
         return (
@@ -287,7 +357,7 @@ export default function RegisterPage() {
     }
   };
 
-  if (isAuthenticated && user) {
+  if (isAuthenticated && user && !isPatientSession) {
     return null;
   }
 
