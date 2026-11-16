@@ -67,7 +67,19 @@ export function getDashboardRoute(userOrRole?: DashboardUserLike) {
 }
 
 export function getClinicEntryRoute(userOrRole?: DashboardUserLike) {
-  if (typeof userOrRole !== 'object' || userOrRole === null || !userOrRole.clinicId) {
+  if (typeof userOrRole !== 'object' || userOrRole === null) {
+    return getDashboardRoute(userOrRole);
+  }
+
+  // Patient sessions never belong to the staff entry flow. Their clinic
+  // association must not send them into clinic onboarding, and they must not
+  // inherit a clinic dashboard just because clinicId is set.
+  const normalizedRoles = (userOrRole.roles ?? []).map((role) => normalizeRole(role));
+  if (normalizedRoles.includes('patient')) {
+    return '/patient/dashboard';
+  }
+
+  if (!userOrRole.clinicId) {
     return getDashboardRoute(userOrRole);
   }
 

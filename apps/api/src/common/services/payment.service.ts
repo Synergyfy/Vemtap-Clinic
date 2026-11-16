@@ -1,6 +1,7 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
+import { createHmac, timingSafeEqual } from 'crypto';
 
 export interface PaymentInitData {
   amount: number;
@@ -68,6 +69,27 @@ export class PaymentService {
       this.secretKey = '';
       this.publicKey = '';
       this.isConfigured = false;
+    }
+  }
+
+  get isPaystackConfigured(): boolean {
+    return this.isConfigured;
+  }
+
+  /**
+   * Paystack signs the raw request body with HMAC-SHA512 using the secret key.
+   * The route must receive the unparsed body (`rawBody: true` in main.ts).
+   */
+  verifyWebhookSignature(rawBody: Buffer | string, signature: string): boolean {
+    if (!this.isConfigured || !signature) return false;
+    const payload = Buffer.isBuffer(rawBody) ? rawBody : Buffer.from(rawBody);
+    const expected = createHmac('sha512', this.secretKey).update(payload).digest('hex');
+    const provided = signature.trim().toLowerCase();
+    if (expected.length !== provided.length) return false;
+    try {
+      return timingSafeEqual(Buffer.from(expected, 'utf8'), Buffer.from(provided, 'utf8'));
+    } catch {
+      return false;
     }
   }
 

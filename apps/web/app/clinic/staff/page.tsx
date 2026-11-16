@@ -13,6 +13,7 @@ import { Modal } from "@/components/ui/modal";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useStaff, useCreateStaff, useUpdateStaff, useDeleteStaff, Staff, StaffQueryParams, StaffRole } from "@/hooks/useStaff";
 import { useBranches } from "@/hooks/useBranches";
+import { Branch } from "@/services/branches.service";
 import { useAuth } from "@/lib/auth-context";
 import { toast } from "sonner";
 
@@ -26,9 +27,15 @@ type ClinicShift = {
 
 type TabType = "team" | "shifts" | "permissions";
 
+// Stable identity for the empty fallback. A fresh `[]` on every render made
+// `staffRoleOptions` change identity each time, so the role-sync effects below
+// re-ran forever (and blew the update depth once sign-out cleared the query).
+const EMPTY_STAFF: Staff[] = [];
+
 export default function StaffPage() {
   const { user } = useAuth();
-  const { data: branches = [] } = useBranches();
+  const { data: branchesData } = useBranches();
+  const branches = useMemo<Branch[]>(() => branchesData ?? [], [branchesData]);
   const { openModal } = useModals();
   const [activeTab, setActiveTab] = useState<TabType>("team");
   
@@ -51,9 +58,10 @@ export default function StaffPage() {
   const updateStaffMutation = useUpdateStaff();
   const deleteStaffMutation = useDeleteStaff();
 
-  const staff = Array.isArray(staffResponse)
-    ? staffResponse
-    : (staffResponse?.data ?? []);
+  const staff = useMemo<Staff[]>(
+    () => (Array.isArray(staffResponse) ? staffResponse : (staffResponse?.data ?? EMPTY_STAFF)),
+    [staffResponse]
+  );
 
   const [roster, setRoster] = useState<ClinicShift[]>([]);
 
@@ -74,12 +82,13 @@ export default function StaffPage() {
   const [permissionsMap, setPermissionsMap] = useState<Record<string, string[]>>({});
 
   useEffect(() => {
-    if (!staffRoleOptions.length) {
-      setSelectedRole("");
-      return;
-    }
-
+    // Return the current value untouched when nothing changes so the effect can
+    // never ping-pong state updates.
     setSelectedRole((current) => {
+      if (!staffRoleOptions.length) {
+        return current === "" ? current : "";
+      }
+
       if (current && staffRoleOptions.includes(current)) {
         return current;
       }
@@ -157,10 +166,13 @@ export default function StaffPage() {
 
   useEffect(() => {
     const fallbackBranchId = user?.branchId?.trim() || branches[0]?.id || "";
-    setCreateForm((prev) => ({
-      ...prev,
-      branchId: prev.branchId || fallbackBranchId,
-    }));
+    setCreateForm((prev) => {
+      // Only touch state when the branch actually needs filling in; returning a
+      // fresh object every run turned this effect into an update loop whenever
+      // the branches query had no data (e.g. right after signing out).
+      if (prev.branchId || !fallbackBranchId) return prev;
+      return { ...prev, branchId: fallbackBranchId };
+    });
   }, [user?.branchId, branches]);
 
   // Assign Shift Modal State

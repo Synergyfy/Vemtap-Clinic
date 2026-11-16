@@ -17,6 +17,7 @@ import {
   Users,
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
+import { usePatientLogout } from "@/hooks/usePatientPortal";
 
 const navigation = [
   { name: "Home", href: "/patient/dashboard", icon: LayoutDashboard },
@@ -36,16 +37,17 @@ export default function BottomNav() {
   const pathname = usePathname();
   const router = useRouter();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const logout = usePatientLogout();
 
   const handleLogout = () => {
-    try {
-      localStorage.removeItem("vemtap_patient_access_token");
-      localStorage.removeItem("patient-portal-storage");
-    } catch {
-      // ignore
-    }
-    setIsMenuOpen(false);
-    router.replace("/patient/login");
+    // Real sign-out: clears the persisted vemtap-auth session and both patient
+    // cookies server-side instead of only navigating to the login screen.
+    logout.mutate(undefined, {
+      onSettled: () => {
+        setIsMenuOpen(false);
+        router.replace("/patient/login");
+      },
+    });
   };
 
   return (
@@ -120,12 +122,13 @@ export default function BottomNav() {
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="mt-2 flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-sm font-semibold text-rose-600 transition-colors hover:bg-rose-50"
+                  disabled={logout.isPending}
+                  className="mt-2 flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-sm font-semibold text-rose-600 transition-colors hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <div className="rounded-xl bg-rose-100 p-2 text-rose-600">
                     <LogOut size={16} />
                   </div>
-                  Sign out
+                  {logout.isPending ? "Signing out..." : "Sign out"}
                 </button>
               </div>
             </motion.div>

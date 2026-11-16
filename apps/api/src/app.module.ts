@@ -44,6 +44,7 @@ import { FileUploadModule } from './file-upload/file-upload.module';
 import { ExpensesModule } from './expenses/expenses.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { SettingsModule } from './settings/settings.module';
+import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 
 @Module({
   imports: [
@@ -94,6 +95,7 @@ import { SettingsModule } from './settings/settings.module';
     DemoRequestsModule,
     AnalyticsModule,
     SettingsModule,
+    SubscriptionsModule,
   ],
 })
 export class AppModule {}

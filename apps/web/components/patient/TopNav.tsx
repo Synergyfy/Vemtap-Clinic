@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Bell, CheckCircle2, FileText, CalendarDays, Info, User, ArrowRightFromLine, Users } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { usePatientNotifications, useMarkNotificationRead, useMarkAllNotificationsRead, usePatientProfile } from "@/hooks/usePatientPortal";
+import { usePatientNotifications, useMarkNotificationRead, useMarkAllNotificationsRead, usePatientProfile, usePatientLogout } from "@/hooks/usePatientPortal";
 import { useNotificationsSocket } from "@/hooks/useNotificationsSocket";
 import { useAuth } from "@/lib/auth-context";
 import { Modal } from "@/components/ui/modal";
@@ -35,6 +35,7 @@ export default function TopNav() {
   useNotificationsSocket();
   const markRead = useMarkNotificationRead();
   const markAllRead = useMarkAllNotificationsRead();
+  const patientLogout = usePatientLogout();
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
   const patientDisplayName = [profile?.firstName, profile?.lastName].filter(Boolean).join(" ").trim()
@@ -64,12 +65,14 @@ export default function TopNav() {
     .join("") || "P";
 
   const handleLogout = () => {
-    try {
-      localStorage.removeItem("vemtap_patient_access_token");
-      localStorage.removeItem("patient-portal-storage");
-    } catch { /* ignore */ }
-    setShowLogoutModal(false);
-    router.replace("/patient/login");
+    // Real sign-out: clears the persisted vemtap-auth session and both patient
+    // cookies server-side, so the staff portal can no longer resume this login.
+    patientLogout.mutate(undefined, {
+      onSettled: () => {
+        setShowLogoutModal(false);
+        router.replace("/patient/login");
+      },
+    });
   };
 
   // Close dropdowns on click outside
@@ -286,9 +289,9 @@ export default function TopNav() {
             className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-900 hover:bg-slate-50 transition-colors">
             Cancel
           </button>
-          <button type="button" onClick={handleLogout}
-            className="inline-flex items-center justify-center rounded-xl bg-rose-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-rose-700 transition-colors">
-            Sign out
+          <button type="button" onClick={handleLogout} disabled={patientLogout.isPending}
+            className="inline-flex items-center justify-center rounded-xl bg-rose-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-rose-700 transition-colors disabled:cursor-not-allowed disabled:opacity-60">
+            {patientLogout.isPending ? "Signing out..." : "Sign out"}
           </button>
         </div>
       </Modal>

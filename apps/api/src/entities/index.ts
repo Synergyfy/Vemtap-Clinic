@@ -63,3 +63,13 @@ export { ClinicSetting } from './clinic-setting.entity';
 export { UserSetting } from './user-setting.entity';
 export { AppSetting } from './app-setting.entity';
 export { PatientFamilyInvitation } from './patient-family-invitation.entity';
+export { SubscriptionPlan, PlanLimits, PlanReportingLevel } from './subscription-plan.entity';
+export { ClinicSubscription, SubscriptionStatus, BillingCycle } from './clinic-subscription.entity';
+export { SubscriptionInvoice, SubscriptionInvoiceStatus } from './subscription-invoice.entity';
+export {
+  SubscriptionPayment,
+  SubscriptionPaymentStatus,
+  SubscriptionPaymentProvider,
+} from './subscription-payment.entity';
+export { SubscriptionEvent, SubscriptionEventType } from './subscription-event.entity';
+export { UsageCounter, UsageMetric } from './usage-counter.entity';
