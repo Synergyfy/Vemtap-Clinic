@@ -1,9 +1,11 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, Optional } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Like } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
 import { Staff, StaffRole } from '../entities/staff.entity';
 import { User, UserRole } from '../entities/user.entity';
+import { UsageMetric } from '../entities/usage-counter.entity';
+import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { CreateStaffDto, UpdateStaffDto, StaffQueryDto } from './dto';
 
 @Injectable()
@@ -13,12 +15,18 @@ export class StaffService {
     private staffRepository: Repository<Staff>,
     @InjectRepository(User)
     private userRepository: Repository<User>,
+    @Optional() private readonly subscriptions?: SubscriptionsService,
   ) {}
 
   async create(dto: CreateStaffDto): Promise<Staff> {
     const existing = await this.staffRepository.findOne({ where: { email: dto.email } });
     if (existing) {
       throw new ConflictException('Email already exists');
+    }
+
+    // Soft plan limit on staff seats: warns and audits, never blocks hiring.
+    if (dto.clinicId && this.subscriptions) {
+      await this.subscriptions.assertLimit(dto.clinicId, UsageMetric.STAFF);
     }
 
     const staff = this.staffRepository.create(dto);

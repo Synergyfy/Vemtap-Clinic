@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { Modal } from "@/components/ui/modal";
+import { usePatientLogout } from "@/hooks/usePatientPortal";
 
 const navigation = [
   { name: "Dashboard", href: "/patient/dashboard", icon: LayoutDashboard },
@@ -29,14 +30,18 @@ export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const logout = usePatientLogout();
 
   const handleLogout = () => {
-    try {
-      localStorage.removeItem("vemtap_patient_access_token");
-      localStorage.removeItem("patient-portal-storage");
-    } catch { /* ignore */ }
-    setShowLogoutModal(false);
-    router.replace("/patient/login");
+    // Real sign-out: clears the persisted vemtap-auth session and both patient
+    // cookies server-side. Clearing obsolete localStorage keys alone left the
+    // session alive, so "signed out" users were routed back into the portal.
+    logout.mutate(undefined, {
+      onSettled: () => {
+        setShowLogoutModal(false);
+        router.replace("/patient/login");
+      },
+    });
   };
 
   return (
@@ -131,9 +136,9 @@ export default function Sidebar() {
             className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-900 hover:bg-slate-50 transition-colors">
             Cancel
           </button>
-          <button type="button" onClick={handleLogout}
-            className="inline-flex items-center justify-center rounded-xl bg-rose-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-rose-700 transition-colors">
-            Sign out
+          <button type="button" onClick={handleLogout} disabled={logout.isPending}
+            className="inline-flex items-center justify-center rounded-xl bg-rose-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-rose-700 transition-colors disabled:cursor-not-allowed disabled:opacity-60">
+            {logout.isPending ? "Signing out..." : "Sign out"}
           </button>
         </div>
       </Modal>

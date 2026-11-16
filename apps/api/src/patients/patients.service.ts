@@ -1,9 +1,11 @@
-import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Like, In } from 'typeorm';
 import { Patient } from '../entities/patient.entity';
 import { HMOPlan } from '../entities/hmo-plan.entity';
 import { PatientClinicMembership } from '../entities/patient-clinic-membership.entity';
+import { UsageMetric } from '../entities/usage-counter.entity';
+import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { CreatePatientDto, UpdatePatientDto, PatientQueryDto } from './dto';
 
 @Injectable()
@@ -15,6 +17,7 @@ export class PatientsService {
     private hmoPlanRepository: Repository<HMOPlan>,
     @InjectRepository(PatientClinicMembership)
     private membershipRepository?: Repository<PatientClinicMembership>,
+    @Optional() private readonly subscriptions?: SubscriptionsService,
   ) {}
 
   async create(dto: CreatePatientDto, currentUser?: { clinicId?: string | null; branchId?: string | null }): Promise<Patient> {
@@ -109,6 +112,12 @@ export class PatientsService {
       // so they carry no clinic and stay invisible to staff. Adopt them too.
       await this.attachDependentsToClinic(existing.id, safeDto.clinicId, safeDto.branchId ?? null);
       return this.findOne(existing.id, { clinicId: safeDto.clinicId ?? null });
+    }
+
+    // Soft plan limit: warn + audit when a clinic passes its patient allowance.
+    // It never blocks a registration, so emergency and walk-in care continue.
+    if (safeDto.clinicId && this.subscriptions) {
+      await this.subscriptions.assertLimit(safeDto.clinicId, UsageMetric.PATIENTS);
     }
 
     const patient = this.patientRepository.create(safeDto) as unknown as Patient;

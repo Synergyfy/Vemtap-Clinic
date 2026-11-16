@@ -3,9 +3,10 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Branch } from '../entities/branch.entity';
 import { BranchesService } from './branches.service';
 import { BranchesController } from './branches.controller';
+import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Branch])],
+  imports: [TypeOrmModule.forFeature([Branch]), SubscriptionsModule],
   providers: [BranchesService],
   controllers: [BranchesController],
   exports: [BranchesService],
