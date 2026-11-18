@@ -11,8 +11,8 @@ interface RoleDef {
 
 const STAFF_ROLES: RoleDef[] = [
   {
-    name: 'admin',
-    email: 'admin@vemtap.com',
+    name: 'super_admin',
+    email: 'superadmin@vemtap.com',
     home: '/admin/dashboard',
     pages: [
       '/admin/dashboard',

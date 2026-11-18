@@ -106,6 +106,23 @@ describe('ClinicsService', () => {
     expect(where).toHaveBeenCalledWith('clinic.ownerId = :ownerId', { ownerId: 'user-42' });
   });
 
+  it('lists every clinic for a Vemtap super admin without a clinic', async () => {
+    const where = jest.fn().mockReturnThis();
+    const andWhere = jest.fn().mockReturnThis();
+    const orderBy = jest.fn().mockReturnThis();
+    const getMany = jest.fn().mockResolvedValue([{ id: 'clinic-1' }]);
+
+    const clinicRepo = {
+      createQueryBuilder: jest.fn().mockReturnValue({ where, andWhere, orderBy, getMany }),
+    };
+
+    const service = new ClinicsService(clinicRepo as any, {} as any, {} as any, {} as any);
+
+    await service.findAll({} as any, { userId: 'owner-1', clinicId: null, roles: ['super_admin'] });
+
+    expect(where).not.toHaveBeenCalled();
+  });
+
   it('assigns a newly created clinic to its owner in a multi-tenant setup', async () => {
     const clinicRepo = {
       create: jest.fn((dto) => ({ ...dto, id: 'clinic-123' })),

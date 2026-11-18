@@ -75,7 +75,8 @@ export class DevSeedService implements OnModuleInit {
     const passwordHash = await bcrypt.hash('password123', 10);
 
     const testUsers = [
-      { email: 'admin@vemtap.com', firstName: 'Admin', lastName: 'User', role: UserRole.ADMIN, clinicId: clinic.id },
+      { email: 'superadmin@vemtap.com', firstName: 'Vemtap', lastName: 'Owner', role: UserRole.SUPER_ADMIN, clinicId: null },
+      { email: 'admin@vemtap.com', firstName: 'Admin', lastName: 'User', role: UserRole.CLINIC_ADMIN, clinicId: clinic.id },
       { email: 'doctor@vemtap.com', firstName: 'Dr. Sarah', lastName: 'Johnson', role: UserRole.DOCTOR, clinicId: clinic.id },
       { email: 'nurse@vemtap.com', firstName: 'Mary', lastName: 'Williams', role: UserRole.NURSE, clinicId: clinic.id },
       { email: 'reception@vemtap.com', firstName: 'Jennifer', lastName: 'Davis', role: UserRole.RECEPTIONIST, clinicId: clinic.id },

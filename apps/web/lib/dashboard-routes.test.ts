@@ -28,7 +28,11 @@ beforeEach(() => {
 
 test('returns super admin dashboard for platform admins even with a stale clinic assignment', () => {
   assert.equal(getDashboardRoute({ clinicId: 'clinic-123', roles: ['super_admin'] }), '/admin/dashboard');
-  assert.equal(getDashboardRoute({ clinicId: 'clinic-123', roles: ['admin'] }), '/admin/dashboard');
+});
+
+test('keeps clinic-level admins out of the platform dashboard', () => {
+  assert.equal(getDashboardRoute({ clinicId: 'clinic-123', roles: ['admin'] }), '/clinic/dashboard');
+  assert.equal(getDashboardRoute('admin'), '/clinic/dashboard');
 });
 
 test('returns clinic admin dashboard for clinic owners/managers', () => {

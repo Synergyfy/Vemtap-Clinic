@@ -48,6 +48,11 @@ export class ClinicsService {
     return name === 'local test clinic' || email === 'clinic@example.com';
   }
 
+  private scopeFor(currentUser?: { userId?: string; clinicId?: string | null; roles?: string[] }) {
+    const isSuperAdmin = (currentUser?.roles ?? []).some((role) => String(role).toLowerCase() === 'super_admin');
+    return isSuperAdmin ? undefined : currentUser;
+  }
+
   private filterVisibleClinics(clinics: Clinic[]): Clinic[] {
     return clinics.filter((clinic) => !this.isDemoClinic(clinic));
   }
@@ -88,8 +93,9 @@ export class ClinicsService {
 
   async findAll(
     query: ClinicQueryDto,
-    currentUser?: { userId?: string; clinicId?: string | null; roles?: string[] },
+    user?: { userId?: string; clinicId?: string | null; roles?: string[] },
   ): Promise<Clinic[]> {
+    const currentUser = this.scopeFor(user);
     const qb = this.clinicRepo.createQueryBuilder('clinic');
 
     if (currentUser?.clinicId) {
@@ -139,7 +145,8 @@ export class ClinicsService {
     await this.clinicRepo.remove(clinic);
   }
 
-  async getStats(currentUser?: { userId?: string; clinicId?: string | null; roles?: string[] }) {
+  async getStats(user?: { userId?: string; clinicId?: string | null; roles?: string[] }) {
+    const currentUser = this.scopeFor(user);
     const clinicScope = currentUser?.clinicId
       ? { id: currentUser.clinicId }
       : currentUser?.userId
@@ -161,7 +168,8 @@ export class ClinicsService {
     };
   }
 
-  async getPlatformOverview(currentUser?: { userId?: string; clinicId?: string | null; roles?: string[] }) {
+  async getPlatformOverview(user?: { userId?: string; clinicId?: string | null; roles?: string[] }) {
+    const currentUser = this.scopeFor(user);
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const clinicScope = currentUser?.clinicId

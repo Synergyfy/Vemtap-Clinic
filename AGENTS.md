@@ -29,7 +29,7 @@ Run from the repo root unless noted.
 - `NODE_ENV=development` enables TypeORM `synchronize`, SQL logging, and dev seeding. Only 3 migrations exist for 64 entities, so generate a migration for any schema change that must reach production.
 - DB CLI runs against `apps/api/src/data-source.ts` (dotenv reads `apps/api/.env`): `pnpm --filter api db:migrate`, `db:push` (= `schema:sync`). `db:generate` requires a path argument the script omits: `pnpm --filter api db:generate src/migrations/AddThing`.
 - **`pnpm --filter api db:studio` runs `schema:drop` then `schema:sync` — it wipes the database.** Never point it at shared data.
-- Dev seed (`common/dev-seed.service.ts`) runs automatically in development and creates `admin@vemtap.com`, `doctor@vemtap.com`, `nurse@vemtap.com`, etc., all with password `password123`.
+- Dev seed (`common/dev-seed.service.ts`) runs automatically in development and creates `superadmin@vemtap.com` (`super_admin`, no clinic — the only role allowed into `/admin`), `admin@vemtap.com` (`clinic_admin`), `doctor@vemtap.com`, `nurse@vemtap.com`, etc., all with password `password123`.
 - Uploads go to `./uploads` relative to the API cwd (override with `UPLOAD_DIR`) — normally `apps/api/uploads/`, gitignored. Cloudinary is used when `FILE_STORAGE_PROVIDER=cloudinary`.
 
 ## API conventions that matter

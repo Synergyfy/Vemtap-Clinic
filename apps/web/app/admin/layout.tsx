@@ -15,12 +15,14 @@ import { motion, AnimatePresence } from "framer-motion";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { NotificationBell } from "@/components/layout/notification-bell";
 import { useAuth } from "@/lib/auth-context";
+import { getDashboardRoute } from "@/lib/dashboard-routes";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Default closed on mobile
   const pathname = usePathname();
   const router = useRouter();
-  const { user, logout: logoutUser } = useAuth();
+  const { user, isAuthenticated, isHydrated, isLoading, logout: logoutUser } = useAuth();
+  const isSuperAdmin = Boolean(user?.roles?.includes("super_admin"));
   const dashboardHref = "/admin/dashboard";
   const sidebarLinks = [
     { name: "Dashboard", href: dashboardHref, icon: LayoutDashboard },
@@ -43,6 +45,23 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   React.useEffect(() => {
     setIsSidebarOpen(false);
   }, [pathname]);
+
+  React.useEffect(() => {
+    if (!isHydrated || isLoading) return;
+    if (!isAuthenticated || !user) {
+      router.replace("/login");
+    } else if (!isSuperAdmin) {
+      router.replace(getDashboardRoute(user));
+    }
+  }, [isHydrated, isLoading, isAuthenticated, user, isSuperAdmin, router]);
+
+  if (!isHydrated || isLoading || !isSuperAdmin) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-blue" />
+      </div>
+    );
+  }
 
   return (
     <div className="h-screen bg-slate-50 flex overflow-hidden relative">

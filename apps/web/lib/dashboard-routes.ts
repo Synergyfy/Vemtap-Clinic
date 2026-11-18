@@ -26,7 +26,7 @@ const getOnboardingState = () => {
 
 export const dashboardRedirectMap: Record<string, string> = {
   super_admin: '/admin/dashboard',
-  admin: '/admin/dashboard',
+  admin: '/clinic/dashboard',
   clinic_admin: '/clinic/dashboard',
   doctor: '/doctor/dashboard',
   nurse: '/nurse/dashboard',
@@ -42,11 +42,11 @@ export function getDashboardRoute(userOrRole?: DashboardUserLike) {
     const roles = userOrRole.roles ?? [];
     const normalizedRoles = roles.map((role) => normalizeRole(role));
 
-    if (normalizedRoles.includes('super_admin') || normalizedRoles.includes('admin')) {
+    if (normalizedRoles.includes('super_admin')) {
       return '/admin/dashboard';
     }
 
-    if (normalizedRoles.includes('clinic_admin')) {
+    if (normalizedRoles.includes('clinic_admin') || normalizedRoles.includes('admin')) {
       return '/clinic/dashboard';
     }
 
