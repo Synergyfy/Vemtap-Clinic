@@ -123,9 +123,8 @@ export class PatientPortalController {
     return this.portalService.activateFamilyMember(dto.token, dto);
   }
 
+  // Unguarded so the cookies are cleared even after the access token expires.
   @Post('logout')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
   @ApiOperation({ summary: 'Patient logout' })
   async logout(@Res({ passthrough: true }) res: Response) {
     res.clearCookie(PATIENT_ACCESS_COOKIE, { path: '/' });
