@@ -353,13 +353,6 @@ export const patientPortalService = {
   },
 
   async logout(): Promise<void> {
-    const token = useAuthState.getState().accessToken;
-
-    if (!token) {
-      useAuthState.getState().clearAuth();
-      return;
-    }
-
     try {
       await api.post('/patient-portal/logout');
     } catch (error) {
