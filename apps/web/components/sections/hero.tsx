@@ -4,7 +4,7 @@ import React from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { CheckCircle2, Play, Users, Calendar, Activity, QrCode, FileText, ChevronRight } from "lucide-react";
+import { CheckCircle2, Play, Users, Calendar, Activity, QrCode, FileText } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useModals } from "@/lib/modal-context";
 
@@ -41,9 +41,6 @@ export const Hero = () => {
           </p>
 
           <div className="mb-8 flex flex-col gap-3 sm:flex-row">
-            <Button variant="default" size="lg" className="w-full gap-2 justify-center sm:w-auto" onClick={() => router.push("/admin/dashboard")}>
-              Quick Dashboard <ChevronRight size={18} />
-            </Button>
             <Button variant="outline" size="lg" className="w-full gap-2 justify-center sm:w-auto" onClick={() => router.push("/book-demo")}>
               Request Demo
             </Button>

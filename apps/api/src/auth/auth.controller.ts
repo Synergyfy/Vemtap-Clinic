@@ -84,9 +84,9 @@ export class AuthController {
     return { accessToken: tokens.accessToken, user };
   }
 
+  // No access-token guard: the refresh cookie is the session, and it must be
+  // revoked even when the 15-minute access token has already expired.
   @Post('logout')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Logout user — revokes refresh token and clears cookie' })
   async logout(

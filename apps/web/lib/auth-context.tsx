@@ -236,15 +236,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     hasCheckedAuth.current = false;
     try {
-      const token = getAccessToken();
-      if (token) {
-        try {
-          await api.post('/auth/logout');
-        } catch (error) {
-          const status = (error as { response?: { status?: number } })?.response?.status;
-          if (status !== 401 && status !== 403) {
-            throw error;
-          }
+      try {
+        await api.post('/auth/logout');
+      } catch (error) {
+        const status = (error as { response?: { status?: number } })?.response?.status;
+        if (status !== 401 && status !== 403) {
+          throw error;
         }
       }
     } finally {

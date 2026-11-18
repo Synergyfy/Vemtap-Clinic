@@ -53,5 +53,5 @@ next-env.d.ts
 # Playwright test artifacts
 apps/web/playwright-report/
 apps/web/test-results/
-.env*
 !.env.example
+config.bat
