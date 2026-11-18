@@ -29,7 +29,7 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (!user) return;
 
-    if (user.clinicId && !user.roles?.includes('admin')) {
+    if (!user.roles?.includes('super_admin')) {
       router.replace(getDashboardRoute(user));
     }
   }, [user, router]);
